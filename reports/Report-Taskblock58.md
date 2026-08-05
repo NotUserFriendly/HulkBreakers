@@ -1,17 +1,15 @@
 # Taskblock 58 Report — Faces, locations, one answerer, and the editor's real tools
 
-**Passes A, B and C landed, in order; D, E and F are not started.** A and B are on `master` and
-green. **C is on branch `tb58-pass-c` and is not merged**: it is functionally complete and every
-sight, cover, overwatch, field, picker and map test passes, but it raised per-turn planning cost by
-1.38x, which trips `PlanPacer`'s 400 ms wall-clock budget and makes a viewed bout stop matching a
-headless one — `test_ai_batch_yield` goes red as a result, and it is the block's only red test
-(branch: 3156 of 3157, 770 s; `master` at Pass B: 3149 of 3149, 682 s). That is left red and reported
-(`BR58.01`) rather than tuned away, and it is the decision this report most needs.
+**Passes A, B, C and C.2 landed, in order; D, E and F are not started.** All four are on `master`
+and the suite is green. C was reviewed on a branch and merged on the supervisor's call; C.2 is the
+addendum written after that review, which merges C, takes the wall-clock budget out of
+`test_ai_batch_yield`, and files the pacer defect as its own `PLAN.md` item rather than building it.
 
-**The taskblock's own docs for all three passes are on the branch, not on `master`.** They were
-written as one taskblock-58 entry covering A through C, and splitting it so `master` could carry the
-A/B half would put two records of the same change in the tree. So `master` currently has A and B's
-code with their changelog entries pending the merge. Flagged rather than worked around.
+**Two measurements are in play and they are not the same number.** Per-turn planning cost rose
+**1.38x** (412 ms -> 569 ms, twelve steps at seed 4242); whole-suite cost rose **1.13x** (682 s ->
+770 s). The addendum's own framing reads the 1.13x as replacing the 1.38x — it does not. What 1.13x
+replaced was a wrong 2.2x of mine; the 1.38x planning figure was taken after the optimisations and
+stands. Both are true of the same code.
 
 ## Decisions made without asking
 
@@ -65,11 +63,26 @@ that in a comment.
 **`LoS.obstruction_count` deleted.** A second visibility formula with no caller anywhere in `src/`,
 whose own comment named a consumer that had already been retired.
 
-**Pass C committed to a branch rather than to `master`, and the failing test left failing.** The
-cheap alternative was making `test_ai_batch_yield` compare like with like — both paths budgeted or
-neither — which closes the red today and costs nothing. It also hides that the AI searches less on
-real hardware, so I did not take it. Raising `DEFAULT_BUDGET_MSEC` was rejected for the same reason:
-it is flagged in its own comment as a guarantee rather than a balance figure.
+**Pass C was committed to a branch rather than to `master`, and its failing test left failing for
+review.** The cheap alternative was making `test_ai_batch_yield` compare like with like, which
+closes the red at no cost and hides that the AI searches less on real hardware. **The supervisor
+took a third option in C.2** — raise the budget out of the test *and* record the defect as its own
+item — which gets the test back to testing yielding without the regression going unrecorded.
+Raising `DEFAULT_BUDGET_MSEC` itself stayed rejected throughout: it is flagged in its own comment as
+a guarantee rather than a balance figure, and it would hide the machine-dependence rather than fix
+it.
+
+**Pass C.2: `ControlOverlay` grew two fields so a test could stop measuring the wrong thing.**
+`pacer_budget_msec` and `last_pacer`. The addendum asked for the budget to be raised in the test and
+for a companion assertion that the raise was genuinely enough — neither was reachable, because
+`advance_ai_turns` builds its pacer internally. The view owns the pacer (only something in a tree
+can supply a frame signal), so the view owning its budget follows, and `last_pacer` has the same
+diagnostics-only standing `PlanPacer.aborted` already has. Production sets neither. **The
+alternative was making `DEFAULT_BUDGET_MSEC` a `static var`**, which would have let any caller
+mutate a guarantee that is meant to be one.
+
+**Ten minutes as the raised budget.** Far past any turn, so if it is ever reached that is a real
+defect rather than a slow machine — which is what the companion assertion is for.
 
 ## Tests that failed, then were corrected
 
@@ -93,6 +106,14 @@ right and the fixture held an assumption that had stopped being true.
 4. **`test_void_vocabulary_guard.gd`.** I used a retired word in a new doc comment. Reworded.
 5. **`test_ai_batch_yield.gd` — not corrected, still red.** See below.
 
+**Pass C.2's instruction extended to a second site the addendum did not name.**
+`test_watched_run.gd`'s watched-vs-headless comparison has the identical shape — a pacer'd run
+against a corpus record played with none — and it was **flaky rather than red**: green in isolation,
+failing under full-suite load at 39 turns against 67. The addendum's reasoning is general ("refusing
+to let one test carry two claims"), so I applied it there too rather than leaving a known flake
+behind. Recorded in `BR58.01`. **The flaky one is the more alarming of the two**, because a test
+that fails only when the machine is busy reads as noise rather than as a finding.
+
 ## `SUPERVISOR`-owned entries moved to `Pending`
 
 **None.** Two `SUPERVISOR`-owned entries got dated notes and no status change: `BR35.02` and
@@ -111,32 +132,13 @@ the end of the block on the same machine, **`master` at Pass B is 682 s and the 
 lesson is the one the project already writes down: a measurement that predates the fixes is not a
 measurement.
 
-**1. The pacer, which is what blocks the merge.** `PlanPacer` aborts on wall-clock, so a bout driven
-through the viewed path stops being reproducible from its seed once planning exceeds the budget —
-which contradicts the standing determinism rule. Measured, twelve steps on the bout board at seed
-4242: **412 ms mean per turn at Pass B, 569 ms at Pass C, against a 400 ms budget.** The budget was
-therefore already being exceeded before this block; C is what walked it off the edge.
-
-Options, and where the evidence points:
-
-- **Pace on candidates instead of milliseconds.** The counter already exists — `note_candidate()` is
-  called once per scored candidate at both sites, and `should_abort()` is already called immediately
-  before each, so neither call site changes. Roughly fifteen lines in `plan_pacer.gd` plus six tests
-  that set `budget_msec`. **The subtlety is the point of it**: `note_candidate()` returns early
-  headless today, so a deterministic budget must count unconditionally — which means headless bouts
-  start aborting too, and that is exactly what makes the two paths agree again. It is also a real
-  behaviour change, and I cannot size the golden churn without running it. **This is where the
-  evidence points**, and the cap value is balance-adjacent, so it wants a measured distribution
-  rather than a number I invent. The suite's own counters give a ~900 candidates/turn mean over
-  1,063 turns; a mean is not a cap.
-- **Keep wall-clock as a backstop alongside it.** Then determinism holds only until the backstop
-  fires — the window narrows rather than closing.
-- **Drop the time stop entirely.** A pathological board then freezes the view for as long as the
-  work takes, which is the precise failure `PlanPacer` was built to prevent. The trade is that a slow
-  machine stops thinking *worse* and starts freezing *longer*.
-- **Leave the pacer alone and change the test.** Unblocks D-F immediately at the cost of hiding the
-  regression. Reasonable if you want the editor work now and the pacer as its own item; I would note
-  it in `BR58.01` rather than quietly rewriting the test.
+**1. The pacer — answered, and filed rather than built.** The supervisor's call: merge C, take the
+budget out of `test_ai_batch_yield`, and make the pacer its own item. It is in `PLAN.md` now with
+the direction (pace on candidates, keep wall-clock as a pathological backstop) and with the cap
+named as a measurement rather than a value. `BR58.01` stays `Active`. **The one thing that item
+cannot state is its own size** — every seeded bout that completes headlessly today may begin
+aborting mid-plan once the counter runs unconditionally, and that churn cannot be sized without
+running it. Sizing it is the item's first task, which is written down there.
 
 **2. `LoS.SIGHT_HEIGHT` is `UnitGeometry.DEFAULT_MUZZLE_HEIGHT`, flagged not designed.** A sight line
 and a shot line wanting the same height is the honest default, and every production caller of

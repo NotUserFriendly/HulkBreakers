@@ -229,6 +229,42 @@ shell performs measurably differently under two different-attribute matrices.
 
 # QUEUED
 
+### The plan pacer's budget is wall-clock, so a seeded bout is not reproducible
+**Needs:** nothing. **Unblocks:** a viewed bout matching a headless one on any machine; any later
+change that raises planning cost, without this conversation repeating.
+
+**`PlanPacer.should_abort()` compares `Time.get_ticks_msec()` against a deadline**, so whether a
+unit finishes planning depends on the hardware. The viewed path aborts and the headless path does
+not, which contradicts the standing rule that the same seed is the same battle, always. **Latent
+since taskblock-44** and unobserved while planning stayed under the number; `BR58.01` has the
+measurements that made it visible — 412 ms mean per turn at Pass B, 569 ms at Pass C, against a
+400 ms budget. **The budget was already being exceeded before taskblock-58.**
+
+**Pace on candidates, not milliseconds.** `note_candidate()` is already called once per scored
+candidate at both sites and `should_abort()` is already called immediately before each, so **neither
+call site changes** — and both loops sit inside one `begin()` scope, so one per-turn counter covers
+them. Same seed, same candidates in the same order, both paths abort identically.
+
+- **The subtlety is the point of it.** `note_candidate()` returns early headless today, so a
+  deterministic budget must count **unconditionally** — which means headless bouts start aborting
+  too. That reads as a regression and is the fix: **determinism means both paths do the same thing,
+  not that neither aborts.**
+- **Keep wall-clock as a backstop at a pathological threshold** — seconds, not milliseconds. Set
+  where ordinary play cannot reach it, its nondeterminism is unreachable in practice while a runaway
+  board still terminates. **Dropping the time stop entirely trades *thinking worse* for *freezing
+  longer***, which is the failure `PlanPacer` was built to prevent.
+- **The cap wants a measured distribution, not a number.** The suite reports a **~900
+  candidates/turn mean over 1 063 turns**, and **a mean is not a cap** — the cap lives in the tail,
+  at the value that lets ordinary turns finish and stops pathological ones. Same shape as
+  taskblock-50's `SAMPLE_SEEDS` derivation, and it is balance-adjacent, so it must not be invented.
+- **Expect golden churn.** Every seeded bout that currently completes headlessly may begin aborting
+  mid-plan. **Deliberately unsized** — sizing it is this item's first task, and it cannot be sized
+  without running it.
+- **Two tests raise the budget out of the way** so they test yielding rather than wall-clock:
+  `test_ai_batch_yield` and `test_watched_run`'s watched-vs-headless comparison. **The second one
+  was flaky rather than red** — it passed in isolation and failed under full-suite load, which is
+  the failure mode to expect elsewhere. Both raises come out when this lands.
+
 ### Nothing in a BOUT emits an announcement yet
 
 **Needs:** nothing. **Unblocks:** the announcement position doing anything during a battle.

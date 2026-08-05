@@ -1,5 +1,10 @@
 extends GutTest
 
+## taskblock-58 Pass C.2: the wall-clock budget `test_a_yielding_batch_produces_the_identical_bout`
+## raises so it cannot trip. Ten minutes — far past any turn, so reaching it is a real defect
+## rather than a slow machine. That test's own header has why.
+const UNREACHABLE_BUDGET_MSEC := 1000 * 60 * 10
+
 ## taskblock-42 Pass D (BR27.09 cost #4): `advance_ai_turns` was a bare `while`
 ## loop with no `await`, so the main thread was blocked for the whole AI batch —
 ## nothing rendered, no input was processed, and every opposing unit appeared to
@@ -64,6 +69,25 @@ func _fingerprint(state: CombatState) -> String:
 ## The load-bearing test. The same seed, driven through the yielding overlay
 ## path and through a tight `BoutRunner` loop with no yielding at all, must land
 ## in the identical state.
+##
+## ## taskblock-58 Pass C.2: the budget is not this test's subject
+##
+## **`PlanPacer`'s wall-clock budget is raised here so it cannot trip, and that is the point of the
+## raise.** This test was written to assert one thing — the same seed lands in the same state
+## whether driven through the yielding overlay or through a tight loop — and it was accidentally
+## asserting something about wall-clock as well, because the yielding path aborts on a deadline and
+## the tight loop has no pacer to abort. A slower machine then fails a test about determinism for a
+## reason that has nothing to do with determinism, which is what happened when taskblock-58 Pass C
+## raised planning cost.
+##
+## **This is not the regression being hidden.** `BR58.01` owns it, with the numbers and the
+## mechanism: the defect is that the budget is wall-clock **at all**, so the same seed produces
+## different bouts on different hardware — latent since taskblock-44 and unobserved while planning
+## stayed under the number. Raising it here refuses to let one test carry two claims; the fix is
+## `PLAN.md`'s own item.
+##
+## **The comparison itself is untouched.** The fingerprint equality is the whole test, and the
+## companion assertion below checks the raise was genuinely enough rather than assuming headroom.
 func test_a_yielding_batch_produces_the_identical_bout() -> void:
 	var tight: Dictionary = _bout(4242)
 	assert_eq(tight.get("error", ""), "", "sanity: the bout built")
@@ -80,9 +104,18 @@ func test_a_yielding_batch_produces_the_identical_bout() -> void:
 	battle.set_overlay(ControlOverlay.new())
 	battle.load_battle(yielded.state, yielded.mission)
 	var overlay: ControlOverlay = battle.overlay
+	overlay.pacer_budget_msec = UNREACHABLE_BUDGET_MSEC
 	await overlay.advance_ai_turns(battle)
 
 	assert_eq(_fingerprint(yielded.state), expected, "yielding must not change the sim at all")
+	# **Otherwise the raise is a guess about headroom.** If this ever fires, the two paths diverged
+	# for the reason `BR58.01` describes and the equality above became untrustworthy rather than
+	# false — a distinction worth being told about.
+	assert_not_null(overlay.last_pacer, "the overlay really did pace this run")
+	assert_false(
+		(overlay.last_pacer as PlanPacer).aborted,
+		"the raised budget must genuinely not be reached, or this test is measuring it again"
+	)
 
 
 ## The yield itself: frames actually pass while the batch runs, which is what

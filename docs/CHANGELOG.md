@@ -1,5 +1,28 @@
 # CHANGELOG.md — What's Been Built
 
+### Pass C.2 — the pacer stops being a test's hidden variable
+
+**Pass C merged on the supervisor's call.** The one red test it carried,
+`test_ai_batch_yield::test_a_yielding_batch_produces_the_identical_bout`, now raises `PlanPacer`'s
+wall-clock budget out of the way and asserts the raise was genuinely enough rather than assuming
+headroom. `ControlOverlay` grew `pacer_budget_msec` and `last_pacer` to make that reachable — the
+view owns the pacer, so the view owning its budget follows, and production never sets either.
+
+**The fingerprint comparison is untouched.** That equality is the whole test.
+
+**This is not the regression being hidden**, and the distinction is worth stating: the test was
+built to assert a seeded bout is identical driven through the yielding overlay or through a tight
+loop, and it was *also* asserting something about wall-clock, because the yielding path aborts on a
+deadline and the tight loop has no pacer to abort. One test was carrying two claims.
+
+**The low budget was never the bug — the bug is that it is wall-clock at all.** A budget that fires
+on ordinary turns is a governor rather than a backstop, and a wall-clock governor varies by machine,
+so the same seed produces different bouts on different hardware. Latent since taskblock-44 and
+unobserved while planning stayed under the number; `BR58.01` stays `Active` with the mechanism, and
+`PLAN.md` carries the fix — pace on candidates, keep wall-clock only as a pathological backstop,
+and derive the cap from a measured distribution rather than inventing it.
+
+
 ### Sight is geometry, a placement has a position, and a pick reports its face
 
 Taskblock 58, passes A to C. Three prerequisites for the editor's real tools, each of which would
