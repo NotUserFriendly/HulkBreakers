@@ -130,9 +130,11 @@ func test_the_run_panel_keeps_its_width_whatever_the_feed_says() -> void:
 	var loaded_width: float = panel.get_global_rect().size.x
 	gut.p("width empty %.0f, with a 400-char line %.0f" % [empty_width, loaded_width])
 	assert_almost_eq(loaded_width, empty_width, 1.0, "the feed must not widen the panel")
-	assert_almost_eq(
-		loaded_width, SuiteRunPanel.PANEL_WIDTH, 1.0, "and it sits at the pinned width"
-	)
+	# **The pinned width is the placement's now, not the panel's own constant.** The UI review put
+	# this box on Inspect's rect — *"Can this be shaped like the inspect panel and put on the
+	# right"* — so `PANEL_WIDTH` is the floor it asks for when nobody places it, and a mode that does
+	# place it wins. What the test is about is unchanged: a long feed line must not widen the box.
+	assert_gt(loaded_width, 0.0, "sanity: it has a real width to keep")
 
 
 ## The background is a real drawn surface, not a transparent container. Asserted

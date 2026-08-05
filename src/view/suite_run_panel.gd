@@ -96,12 +96,14 @@ var battle: BattleScene = null
 
 ## The `[?]` carrying the completion criteria, and the `[x]` that dismisses the whole box. Public so
 ## a test reads back what they say.
-var criteria_button: UiButton = null
+var criteria_button: Button = null
 var close_button: Button = null
 
 var _force_failure: CheckBox = null
 
 var _body: PanelContainer = null
+## The column everything in this box stacks in, so `adopt` can put the watched-run table under it.
+var _column: VBoxContainer = null
 var _status: Label = null
 var _feed: Label = null
 var _counts: Label = null
@@ -123,22 +125,45 @@ func _ready() -> void:
 	_body.add_theme_stylebox_override("panel", style)
 	add_child(_body)
 
-	var column := VBoxContainer.new()
+	_column = VBoxContainer.new()
+	var column: VBoxContainer = _column
 	_body.add_child(column)
 
 	# **A title bar with `[?]` and `[x]`, like the other menus.** The UI review: *"The box should
 	# have a title bar, with a descriptive name, with a [?] and a [x] beside each other like we've
 	# done for other menus."* Without one this panel was an unlabelled block of status text in a
 	# corner, and the criteria it explains were a separate loose paragraph beside it.
+	# **The same title bar the combat log has**, which the review asked for: *"can the title bar of
+	# the test suite be sized and shaped like the combat log's title bar element?"* A
+	# `PanelContainer` at `CombatLogPanel.TITLE_BAR_HEIGHT` with a fully opaque background, so the
+	# two window-shaped surfaces read as the same kind of thing rather than merely resembling each
+	# other — the split `CombatLogPanel`'s own header describes.
+	var title_bar := PanelContainer.new()
+	title_bar.custom_minimum_size = Vector2(0.0, CombatLogPanel.TITLE_BAR_HEIGHT)
+	var bar_style := StyleBoxFlat.new()
+	bar_style.bg_color = Color(
+		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, 1.0
+	)
+	title_bar.add_theme_stylebox_override("panel", bar_style)
+	column.add_child(title_bar)
+
 	var bar := HBoxContainer.new()
-	column.add_child(bar)
+	title_bar.add_child(bar)
 	var title := Label.new()
 	title.text = TITLE
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	bar.add_child(title)
-	# Filled by whoever mounts this — see `set_criteria`. The `[?]` carries the words that used to
-	# be printed under the table.
-	criteria_button = UiButton.build("?", TITLE, "", null)
+	# **Bracketed, to match the other window-management elements** — the review: *"give the '?' some
+	# brackets '[?]' so it matches"*. `[-]`, `[+]` and `[x]` are the existing vocabulary for "this
+	# control acts on the window", and a bare glyph beside them read as content.
+	#
+	# A plain `Button` rather than a `UiButton`: the square-abbreviation shape belongs to the
+	# UI-buttons cluster, and this is window chrome sized to a title bar. Its hover text is set by
+	# `set_criteria`.
+	criteria_button = Button.new()
+	criteria_button.text = "[?]"
+	criteria_button.focus_mode = Control.FOCUS_NONE
 	bar.add_child(criteria_button)
 	close_button = Button.new()
 	close_button.text = "[x]"
@@ -346,12 +371,19 @@ func _refresh() -> void:
 ## **Set from outside rather than read here**, because what the criteria say is
 ## `WatchedRun.describe_criteria`'s — logic, tested there — and this panel does not know what a
 ## completion sample is.
-func set_criteria(text: String, view: TooltipView) -> void:
-	if criteria_button == null:
-		return
-	criteria_button.description = text
-	criteria_button.tooltip_view = view
+func set_criteria(text: String, _view: TooltipView) -> void:
+	if criteria_button != null:
+		criteria_button.tooltip_text = text
 
 
 func _on_close_pressed() -> void:
 	dismissed.emit()
+
+
+## Takes `panel` into this box's own column, under the status rows.
+##
+## **One surface rather than two explaining each other** — the watched run's seed table and notice
+## line were a separate `Control` anchored centre-right, which read as loose text with no owner.
+func adopt(panel: Control) -> void:
+	if _column != null:
+		_column.add_child(panel)

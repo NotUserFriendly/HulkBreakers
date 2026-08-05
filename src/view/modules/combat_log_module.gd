@@ -108,7 +108,11 @@ func _fit_beside_the_bar() -> void:
 		return
 	var safe: float = UiLayout.safe_rect(root.size).size.x
 	var band: float = BattleLayout.action_bar_rect(root.size).size.x
-	var room: float = (safe - band) * 0.5 - UiLayout.scaled(BattleLayout.PADDING)
+	# **Two paddings, not one.** One holds the log off the bar (the table's *"left of the action bar,
+	# padded"*) and one holds it off the screen edge, which the UI review asked for: *"needs a touch
+	# of padding from the side of the screen."* Flush against the window is the perf monitor's
+	# deliberate exception, not everyone's default.
+	var room: float = (safe - band) * 0.5 - UiLayout.scaled(BattleLayout.PADDING) * 2.0
 	if room <= 0.0:
 		return
 	var width: float = minf(CombatLogPanel.DEFAULT_WIDTH, room)

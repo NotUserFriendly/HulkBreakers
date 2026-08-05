@@ -98,8 +98,19 @@ const SPECTATOR_MODULES: Array[StringName] = [
 	&"resolution",
 	&"debug_panel",
 	&"perf_monitor",
-	&"replay",
+	# **`inspect_viewer` before `inspect`**, which is the rule that mode has always lived under: the
+	# panel takes this module's `BotViewer` at its own mount time and builds one inside its own body
+	# if it does not find one. The UI review saw the consequence — *"Inspect menu looks to be the old
+	# one, and not split into two."* It was: the spectator had no viewer module, so it got the
+	# pre-Pass-C3 docked layout.
+	&"inspect_viewer",
 	&"inspect",
+	# **After `inspect`**, so the suite panel draws over it — they share the same rect now and the
+	# review asked for *"It should draw OVER the inspect panel if both are active."* Draw order in a
+	# `Control` tree is child order, and both are children of `ui_root`.
+	&"replay",
+	# The keybindings sheet, which every mode with a UI-buttons cluster should be able to open.
+	&"controls_legend",
 	&"playback",
 	&"board_inspect",
 	# **Assume Control lives here now.** The UI review: *"Assume Control should move to the TURN
@@ -205,6 +216,8 @@ const EDITOR_MODULES: Array[StringName] = [
 	&"board_inspect",
 	&"combat_log",
 	&"announcements",
+	# The keybindings sheet — *"Editor and Spectate: Both these modes need the Keybinds popup."*
+	&"controls_legend",
 	# **The debug menu, which the editor had no way to reach.** The UI review: *"Debug button
 	# missing in editor mode."* `ui_buttons` builds the `DBG` square from whichever mode declares a
 	# debug panel, so the button was absent because the panel was.

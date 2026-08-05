@@ -571,11 +571,13 @@ func test_the_completion_criteria_live_on_the_run_boxs_question_mark() -> void:
 		pass_test("release build: the run panels are not constructed")
 		return
 
-	var help: UiButton = replay.suite_run_panel.criteria_button
+	# **A plain `Button` with a real tooltip**, not a `UiButton` — the square-abbreviation shape
+	# belongs to the UI-buttons cluster, and this is window chrome sized to a title bar beside `[x]`.
+	var help: Button = replay.suite_run_panel.criteria_button
 	assert_not_null(help, "the criteria have no [?] to live on")
-	assert_eq(help.text, "?")
+	assert_eq(help.text, "[?]", "and it is bracketed, like the other window controls")
 	assert_true(
-		help.description.contains("completion over its sample"),
+		help.tooltip_text.contains("completion over its sample"),
 		"the [?] does not carry the words it replaced"
 	)
 	assert_not_null(replay.suite_run_panel.close_button, "and the box has no [x] beside it")

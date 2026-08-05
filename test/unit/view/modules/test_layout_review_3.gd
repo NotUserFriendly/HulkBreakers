@@ -259,3 +259,147 @@ func test_the_editors_details_panel_is_padded_all_round() -> void:
 		style.content_margin_bottom
 	]:
 		assert_gt(side, 0.0, "the details panel has an unpadded edge")
+
+
+# ================================================================ fifth review pass
+
+
+## **THE REVIEW POINT**: *"Can the Action/spectator/edit bar toggle button be the farthest to the
+## right, and ~70% the size of the other UI buttons?"*
+func test_the_bars_own_toggle_is_last_in_the_row_and_smaller() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var buttons: UiButtonsModule = overlay.module(&"ui_buttons") as UiButtonsModule
+	var bar: UiButton = buttons.toggles[&"action_bar"]
+	var children: Array[Node] = buttons.row.get_children()
+
+	gut.p("row: %s" % ", ".join(children.map(func(c: Node) -> String: return (c as Button).text)))
+	assert_eq(children[children.size() - 1], bar, "the bar's toggle is not the farthest right")
+	for child: Node in children:
+		if child == bar:
+			continue
+		assert_lt(
+			bar.custom_minimum_size.x,
+			(child as Control).custom_minimum_size.x,
+			"the bar's toggle must be smaller than '%s'" % (child as Button).text
+		)
+
+
+## **THE REVIEW POINT**: *"Highlight border is too aggressive of a color, can it be replaced with a
+## 50% gray?"* The alert yellow is the game's own tier for an armed action and a live announcement;
+## chrome saying "these are open" should not compete with it.
+func test_the_active_border_is_a_neutral_grey_not_the_alert_tier() -> void:
+	assert_ne(UiButton.ACTIVE_BORDER_COLOR, HulkTheme.HIGHLIGHT, "still the alert colour")
+	assert_almost_eq(UiButton.ACTIVE_BORDER_COLOR.r, 0.5, 0.01)
+	assert_almost_eq(UiButton.ACTIVE_BORDER_COLOR.g, 0.5, 0.01)
+	assert_almost_eq(UiButton.ACTIVE_BORDER_COLOR.b, 0.5, 0.01)
+
+
+## **THE REVIEW POINTS** on the test-suite box: *"Can this be shaped like the inspect panel and put
+## on the right?... It should draw OVER the inspect panel if both are active."*
+func test_the_suite_box_takes_inspects_rect_and_draws_over_it() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.spectator())
+	var replay: ReplayModule = overlay.module(&"replay") as ReplayModule
+	if replay.suite_run_panel == null:
+		pass_test("release build: the run panels are not constructed")
+		return
+
+	var expected: Rect2 = BattleLayout.inspect_rect(SCREEN)
+	gut.p(
+		"suite box at %s, inspect rect %s" % [str(replay.suite_run_panel.position), str(expected)]
+	)
+	assert_almost_eq(replay.suite_run_panel.position.x, expected.position.x, TOLERANCE)
+	assert_almost_eq(replay.suite_run_panel.position.y, expected.position.y, TOLERANCE)
+
+	# **Draw order is child order**, so "over" means "a later sibling" — and that is set by the
+	# mode's own module declaration rather than by a z-index nobody would find.
+	var inspect_at: int = overlay.inspect().panel.get_index()
+	assert_gt(
+		replay.suite_run_panel.get_index(),
+		inspect_at,
+		"the suite box is behind Inspect; `replay` must be declared after `inspect`"
+	)
+
+
+## *"There is floating white text in the spectator menu... that needs to be rolled into the Test
+## Suite Module."* It was the watched run's table, anchored centre-right on its own.
+func test_the_watched_run_table_lives_inside_the_suite_box() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.spectator())
+	var replay: ReplayModule = overlay.module(&"replay") as ReplayModule
+	if replay.suite_run_panel == null:
+		pass_test("release build: the run panels are not constructed")
+		return
+	assert_true(
+		replay.suite_run_panel.is_ancestor_of(replay.watched_run_panel),
+		"the run table is still a loose panel of its own"
+	)
+
+
+## *"Can the title bar of the test suite be sized and shaped like the combat log's... And give the
+## '?' some brackets '[?]' so it matches the other window management elements."*
+func test_the_suite_box_has_a_combat_log_shaped_title_bar() -> void:
+	var panel := SuiteRunPanel.new()
+	add_child_autofree(panel)
+	await get_tree().process_frame
+
+	assert_eq(panel.criteria_button.text, "[?]")
+	assert_eq(panel.close_button.text, "[x]")
+	var bar: Control = panel.criteria_button.get_parent().get_parent() as Control
+	assert_almost_eq(
+		bar.custom_minimum_size.y,
+		CombatLogPanel.TITLE_BAR_HEIGHT,
+		0.001,
+		"the title bar is not the shape the combat log's is"
+	)
+
+
+## **THE REVIEW POINT**: *"COMBAT LOG needs a touch of padding from the side of the screen."*
+func test_the_combat_log_is_padded_off_the_screen_edge() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.player())
+	var logs: CombatLogModule = overlay.module(&"combat_log") as CombatLogModule
+	var drawn: Rect2 = logs.panel.get_global_rect()
+
+	gut.p("log at %s" % str(drawn))
+	assert_gt(drawn.position.x, UiLayout.scaled(BattleLayout.PADDING) - TOLERANCE, "flush left")
+
+
+## **THE REVIEW POINT**: *"Editor and Spectate: Both these modes need the Keybinds popup."*
+func test_every_mode_with_a_ui_cluster_can_open_the_keybindings() -> void:
+	for mode: ViewMode in ViewModes.all():
+		if not mode.modules.has(&"ui_buttons"):
+			continue
+		assert_true(
+			mode.modules.has(&"controls_legend"),
+			"%s has a UI-buttons cluster and no keybindings sheet to open" % mode.id
+		)
+
+
+## **THE REVIEW POINT**: *"Spectate: Inspect menu looks to be the old one, and not split into
+## two."* It was — the mode had no viewer module, so `InspectPanel` built its own docked one.
+func test_the_spectator_gets_the_split_inspector() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.spectator())
+	var viewer: InspectViewerModule = overlay.module(&"inspect_viewer") as InspectViewerModule
+
+	assert_not_null(viewer, "the spectator declares no inspect viewer")
+	assert_eq(
+		overlay.inspect().panel.viewer,
+		viewer.viewer,
+		"the panel must drive the slotted viewer, not one of its own"
+	)
+
+
+## **THE REPORTED BUG**: *"Lighting in the inspect viewer is very dark."* The viewer shares the
+## battle's world so it can point at the real unit, which means it withdraws its own light — so the
+## fill has to come from the one thing that cannot leak, its camera's own environment override.
+func test_the_preview_camera_gets_more_ambient_than_the_board() -> void:
+	assert_gt(
+		WorldPalette.PREVIEW_AMBIENT_ENERGY,
+		WorldPalette.AMBIENT_ENERGY,
+		"a withdrawn-light preview needs more fill than the board it borrows"
+	)
+	var board: Environment = WorldPalette.environment()
+	assert_almost_eq(
+		board.ambient_light_energy,
+		WorldPalette.AMBIENT_ENERGY,
+		0.001,
+		"the default must stay the board's, or raising the preview raised the battle"
+	)

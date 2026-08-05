@@ -92,30 +92,33 @@ func _mount() -> void:
 	if root == null:
 		return
 	suite_run_panel = SuiteRunPanel.new()
-	# **taskblock-57 Pass G1: top-left, not bottom-right, and it is a real collision that moved it.**
+	# **Shaped and placed like the Inspect panel**, which the UI review asked for outright: *"Can
+	# this be shaped like the inspect panel and put on the right? Along with matching padding. It
+	# should draw OVER the inspect panel if both are active."*
 	#
-	# This panel is 560 x 331 anchored into the bottom-right corner, so it reached left to x = 1360
-	# on a 1920 screen — inside the action bar's own band, which Pass C's table puts at 480 to 1440.
-	# That conflict was always there and was invisible while the only mode showing this panel put its
-	# controls in the opposite corner; G1 folds the spectator's cluster into the bar and the two
-	# landed on top of each other, which `test_debug_panel_layout.gd` caught the same day.
+	# So it takes `BattleLayout.inspect_rect` — the same rect, the same corner padding — and the mode
+	# table declares `replay` after `inspect` so it is the later child of `ui_root` and therefore the
+	# one drawn on top. **That is the whole of the z-order**: `Control` draw order is child order,
+	# and a mode's module list is what sets it.
 	#
-	# The bottom-right corner is spoken for twice over — the table gives it to the performance
-	# monitor with no padding, and the band above it to the bar's satellites. The top-left is free in
-	# every mode that shows this panel: the player view never constructs it at all
-	# (`SuiteRunPanel.SHOW_IN_PLAYER_VIEW`), which is the one mode whose top-left holds the Inspect
-	# viewer.
-	#
-	# Offset below the announcement band rather than hard into the corner: announcements are drawn
-	# there and are click-through, so text would otherwise land over this panel's own rows.
-	suite_run_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	suite_run_panel.position = Vector2(0.0, UiLayout.scaled(BattleLayout.ANNOUNCEMENT_HEIGHT))
+	# Its previous home was the top-left, which taskblock-57 G1 moved it to after it collided with
+	# the action bar's band in the bottom-right. Two moves in three passes is worth noting: the panel
+	# had no declared placement of its own until now, and a surface with no row in the table goes
+	# wherever the last person to look at it put it.
 	root.add_child(suite_run_panel)
+	var rect: Rect2 = BattleLayout.inspect_rect(root.size)
+	suite_run_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	suite_run_panel.position = rect.position
+	suite_run_panel.custom_minimum_size = rect.size
+	suite_run_panel.size = rect.size
 
 	watched_run_panel = WatchedRunPanel.new()
-	watched_run_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	watched_run_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	root.add_child(watched_run_panel)
+	# **Inside the suite panel, not beside it.** The review: *"There is floating white text in the
+	# spectator menu that looks like it's pinned to the middle right that I believe is related to
+	# this that needs to be rolled into the Test Suite Module."* It was this panel, anchored
+	# centre-right on its own — the run's seed table and notice line, explaining a box in a different
+	# corner. One surface now.
+	suite_run_panel.adopt(watched_run_panel)
 
 	suite_run_panel.battle = context.battle
 	# **The criteria and the run box are one item**, which the UI review asked for: *"The white text

@@ -64,12 +64,21 @@ func _mount() -> void:
 ## One toggle per collapsible module, then the debug menu's button. **Order is the mode's own
 ## declaration order**, which is stable and readable, rather than alphabetical or arbitrary.
 func link() -> void:
+	# **The bar's own toggle is built last and smaller**, which the UI review asked for: *"Can the
+	# Action/spectator/edit bar toggle button be the farthest to the right, and ~70% the size of the
+	# other UI buttons?"* Deferred rather than sorted, because "last" is the only ordering claim
+	# being made and a sort key would be a second thing to keep true.
+	var bar_id: StringName = &""
 	for id: StringName in context.modules:
 		var module: ViewModule = context.modules[id]
 		# **A module with its own control in this row does not get a second one.** See
 		# `ViewModule.provides_own_button` — this is what produced three Inspect buttons and two
 		# debug buttons, two of each doing something subtly different from the one that worked.
 		if module == self or not module.is_collapsible() or module.provides_own_button():
+			continue
+		# Identified by class, not by id, so a fourth mode's bar is covered the day it is written.
+		if module is BarModule:
+			bar_id = id
 			continue
 		toggles[id] = _toggle(id, module)
 	var debug: ViewModule = context.module(&"debug_panel")
@@ -79,6 +88,10 @@ func link() -> void:
 		)
 		debug_button.pressed.connect(_on_debug_pressed)
 		row.add_child(debug_button)
+
+	# Last of all, so it really is the farthest right in the row.
+	if bar_id != &"":
+		toggles[bar_id] = _toggle(bar_id, context.module(bar_id), UiButton.SECONDARY_SCALE)
 
 
 ## A readable label from the module's own id, so no module is named here. `unit_resources` reads as
@@ -91,12 +104,13 @@ static func label_for(id: StringName) -> String:
 ## the supervisor's review: *"all toggles and descriptive text should be replaced with square
 ## BUTTONS with an up-to three letter abbreviation on them."* The sentence did not disappear; it
 ## moved into the hover description, which is where a row of controls can afford one.
-func _toggle(id: StringName, module: ViewModule) -> UiButton:
+func _toggle(id: StringName, module: ViewModule, scale: float = 1.0) -> UiButton:
 	var button: UiButton = UiButton.build(
 		UiButton.abbreviate(id),
 		label_for(id),
 		"Summons and dismisses the %s module." % label_for(id),
-		_tooltip_view()
+		_tooltip_view(),
+		scale
 	)
 	# **A press flips it**, which is the summon/dismiss feel the review asked every button in this
 	# row to share. `collapsed` stays the module's own inverse-sense field; nothing about what it

@@ -40,6 +40,19 @@ const SIDE := 44.0
 ## clock; only the duration is this caller's.
 const HOVER_SEC := 0.5
 
+## How much smaller a secondary control is than the rest of the row. The UI review asked for the
+## bar's own toggle at *"~70% the size of the other UI buttons"* — it is chrome about the chrome,
+## and reading as slightly apart from the module toggles is the point.
+const SECONDARY_SCALE := 0.7
+
+## The colour of the "this is open" border.
+##
+## **A 50% grey, not `HulkTheme.HIGHLIGHT`.** The review: *"Highlight border is too aggressive of a
+## color, can it be replaced with a 50% gray?"* The highlight tier is the game's alert yellow and is
+## used for an armed action and a live announcement; a row of chrome saying "these panels are open"
+## competing with those is the surface shouting about itself.
+const ACTIVE_BORDER_COLOR := Color(0.5, 0.5, 0.5)
+
 ## How thick the "this is open" border is, in pixels before UI scale.
 ##
 ## The UI review asked for the state to be visible: *"Buttons which have something open should be
@@ -71,14 +84,17 @@ var active: bool = false:
 ## toggles used to be `toggle_mode` buttons carrying a stuck pressed state while Inspect, the debug
 ## menu and the keybindings legend were plain presses — two feels in one row. Every one of them is a
 ## plain press now: you press it to summon the thing and press it again to dismiss it.
-static func build(abbrev: String, full: String, description: String, view: TooltipView) -> UiButton:
+static func build(
+	abbrev: String, full: String, description: String, view: TooltipView, scale: float = 1.0
+) -> UiButton:
 	var button := UiButton.new()
 	button.text = abbrev
 	button.full_name = full
 	button.description = description
 	button.tooltip_view = view
-	# Square, and the same square whatever the label's own width would have been.
-	var side: float = UiLayout.scaled(SIDE)
+	# Square, and the same square whatever the label's own width would have been. `scale` is for a
+	# secondary control — see `SECONDARY_SCALE`.
+	var side: float = UiLayout.scaled(SIDE) * scale
 	button.custom_minimum_size = Vector2(side, side)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -151,5 +167,5 @@ func _apply_border() -> void:
 		box.border_width_right = width
 		box.border_width_top = width
 		box.border_width_bottom = width
-		box.border_color = HulkTheme.HIGHLIGHT
+		box.border_color = ACTIVE_BORDER_COLOR
 		add_theme_stylebox_override(state, box)
