@@ -805,7 +805,10 @@ func test_the_turn_control_buttons_are_sized_to_their_own_text_not_stretched() -
 		if button == null:
 			continue
 		buttons += 1
-		assert_eq(button.size_flags_horizontal, Control.SIZE_SHRINK_END)
+		# **`SHRINK_BEGIN`, not `SHRINK_END`** — the UI review asked for these left-aligned: *"TURN
+		# ORDER MANAGEMENT — Left align the buttons if you can."* What the test is about is unchanged:
+		# each button is sized to its own text rather than stretched to the column's width.
+		assert_eq(button.size_flags_horizontal, Control.SIZE_SHRINK_BEGIN)
 	assert_gt(buttons, 0, "no buttons in the turn-control column, so this proved nothing")
 
 

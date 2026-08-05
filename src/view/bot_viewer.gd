@@ -117,7 +117,11 @@ func _init() -> void:
 	# own World3D, where a second WorldEnvironment node isn't a well-defined "also applies"
 	# situation. A per-camera `environment` override is unconditional regardless of which
 	# WorldEnvironment (if any) actually governs whatever World3D this camera ends up in.
-	camera.environment = WorldPalette.environment()
+	# **Brighter than the board's, and only for this camera.** See
+	# `WorldPalette.PREVIEW_AMBIENT_ENERGY`: sharing the battle's world means this view withdraws its
+	# own light, so a subject seen from a preview angle is lit by the board's light from the board's
+	# angle — dark, about half the time. A per-camera override cannot reach the board.
+	camera.environment = WorldPalette.environment(WorldPalette.PREVIEW_AMBIENT_ENERGY)
 	# G2: captured BEFORE any isolate ever narrows it — clearing restores exactly this, never a
 	# re-derived/guessed "everything" mask.
 	_default_cull_mask = camera.cull_mask

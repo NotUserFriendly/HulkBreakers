@@ -702,9 +702,16 @@ func test_isolate_focus_also_includes_the_floor_layer() -> void:
 func test_preview_camera_has_a_real_ambient_environment_override() -> void:
 	var panel: InspectPanel = _panel()
 
+	# **The preview's own ambient, which is brighter than the board's.** Sharing the battle's world
+	# means this view withdraws its own light (`BR48.01`), so a subject seen from a preview angle is
+	# lit by the board's light from the board's angle — reported as *"lighting in the inspect viewer
+	# is very dark"*. A per-camera override is the one place that can be raised without reaching the
+	# board, which is exactly why the override exists at all.
 	assert_not_null(panel.viewer.camera.environment)
 	assert_almost_eq(
-		panel.viewer.camera.environment.ambient_light_energy, WorldPalette.AMBIENT_ENERGY, 0.0001
+		panel.viewer.camera.environment.ambient_light_energy,
+		WorldPalette.PREVIEW_AMBIENT_ENERGY,
+		0.0001
 	)
 	assert_eq(panel.viewer.camera.environment.ambient_light_color, WorldPalette.AMBIENT_COLOR)
 

@@ -64,6 +64,23 @@ const LIGHT_AZIMUTH_DEG := 35.0
 const AMBIENT_COLOR := Color("#8A93A0")
 const AMBIENT_ENERGY := 0.35
 
+## The ambient a **close-up preview** gets, against the board's 0.35.
+##
+## The UI review: *"Lighting in the inspect viewer is very dark."* It is, and the reason is
+## structural rather than a bad number. `BR48.01` made the inspect viewer share the battle's world
+## so it can point a camera at the *real* unit at its real board position — which means it withdraws
+## its own light, because adding one there would light the whole battle. The subject is then lit by
+## the board's single directional light, from the board's angle, seen from a camera at a completely
+## different one. Half the time that is the shadowed side.
+##
+## **The camera's own `environment` override is the seam that fixes it without leaking**: it is
+## per-camera by construction, so raising the ambient here cannot reach the board. A preview is a
+## thing being examined rather than a scene being lit, and wanting more fill than the world it was
+## taken from is what a preview is for.
+##
+## A starting position, not a decision.
+const PREVIEW_AMBIENT_ENERGY := 0.9
+
 ## taskblock-51 `BR48.01`: **the battle board's key-light energy, and why it is 2.0.**
 ##
 ## The board ran for its whole life with **two** identical directional lights in its `World3D`:
@@ -89,13 +106,13 @@ const BOARD_LIGHT_ENERGY := 2.0
 ## node — `Camera3D.environment` (taskblock-23 Pass E2's own per-camera
 ## override) and anything else that only needs the settings, not a whole
 ## throwaway `WorldEnvironment` node to steal them from.
-static func environment() -> Environment:
+static func environment(ambient_energy: float = AMBIENT_ENERGY) -> Environment:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = BACKDROP
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = AMBIENT_COLOR
-	env.ambient_light_energy = AMBIENT_ENERGY
+	env.ambient_light_energy = ambient_energy
 	return env
 
 
