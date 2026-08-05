@@ -1,9 +1,17 @@
 # Taskblock 57 Report — the layout, and an editor you can actually author in
 
-**Every pass has landed and the block is closed.** The taskblock's eight passes took thirteen
-commits: A, B and C1 in session one; C2a, C2b, C3, D1, F, D2 and E in session two; G1, G2 and H in
-session three. Each ended on a green full gate and committed. **The closing gate is 3072/3072, 0
-failures**, confirmed by a second full run on the closing commit.
+**The block is closed, and three supervisor review passes over the shipped surface have been worked
+since.** This report covers both, in that order: the block first, then everything after it.
+
+**The taskblock's eight passes took thirteen commits** — A, B and C1 in session one; C2a, C2b, C3,
+D1, F, D2 and E in session two; G1, G2 and H in session three. Each ended on a green full gate and
+committed, and the closing gate was 3072/3072 with 0 failures.
+
+**The three review passes came after the block closed** and are *not* taskblock passes: the
+supervisor ran the game, wrote what they saw, and each pass worked that list. They ran on targeted
+gates at the supervisor's explicit instruction — *"I don't need a 20 minute test suite being run a
+dozen times for a UI tuning pass"* — with **one full gate at the end**, which is where this stands
+now: **3117/3117, 0 failures, 714.7 s**, pushed.
 
 Every line of the block's acceptance is met: `safe_rect` and `screen_rect` are real and escaping is a
 slot property; the action bar publishes slots and is not special-cased to do so; every surface in
@@ -283,3 +291,164 @@ G2 offers an either-or by name — a cursor icon *or* the bar's own highlight �
 shipped, because a cursor icon is a `Control` tracking the mouse over a 3D board with its own z-order
 and hit-testing questions. Recorded in `PLAN.md` only so a later reader does not find the sentence,
 look for the icon, and mistake a taken option for a missed one.
+
+---
+
+# After the block — three UI review passes
+
+**Not taskblock passes.** The supervisor ran the game and wrote up what they saw; each pass worked
+that list. There is no spec behind any of it, so every item below names what was reported.
+
+**Run on targeted gates by instruction**, with one full gate at the end — *"only check tests you
+create in the process of making these changes... We'll run one full suite at the end of my UI
+passes."* That trade is examined honestly under *Tests that failed* below, because it cost something.
+
+| pass | committed | what it covered |
+|---|---|---|
+| 1 | 2026-08-05 06:20 CDT | the bar is the centred item; square abbreviated buttons; four defects |
+| 2 | 2026-08-05 07:40 CDT | one button feel; tile filtering; six defects |
+| 3 | 2026-08-05 08:53 CDT | one control per thing; framed panels; the spectator contract |
+
+**Closing gate 3117/3117, 0 failures, 714.7 s** — against 3072 at the block's close, so the three
+passes added 45 tests. **714.7 s against the 620–645 s range measured then**: the growth is real but
+the run-to-run variance recorded above (~25 s) is a third of it, so this is one more data point in a
+range rather than a step change.
+
+## Decisions made without asking
+
+**The bar's rows are anchored `Control`s rather than containers.** My first fix for *"the action bar
+needs to be the centered item"* used two equally-expanding wings, which **looks** correct and is
+not: an `HBoxContainer` distributes only the *leftover* width evenly, on top of each child's own
+minimum, so a 520 px combat log still pushed the bar 48 px right of centre. Measured at 1008 against
+a screen centre of 960. Anchoring each piece against `BattleLayout`'s own band has no dependency on
+what is in the satellites. **The failed attempt is recorded in `SUPERSEDED.md` deliberately** —
+it is the kind of wrong answer that looks right in review.
+
+**`ActionBar.BOX_SIZE` no longer sizes the player's bar.** tb08 E1 set it to 108 ("3x its current
+size"); ten of those over two rows is 216 against a bar the placement table now gives 135. **A bar
+that is a fixed fraction of the screen cannot also be sized by its boxes**, so `box_side()` derives
+the square from the band and `BOX_SIZE` survives as the default and the stand-alone answer. That
+demotes a number an earlier taskblock chose, which is worth saying out loud.
+
+**`UiButton` is a shared class, and abbreviations are derived rather than tabled.** Three modules put
+controls in that row and each built its own shape, which is what the review saw. Deriving the label
+from the module id means a module added later gets one with no edit — at the cost of collisions,
+which is what the hover description is for. **The collision was predicted in that file's own header
+and then happened**: `inspect` and Inspect's own button both read `INS`.
+
+**Tile filtering was reported rather than invented.** The supervisor asked to be told if it needed a
+tag system, and it does — for two of the three kinds. A *surface* is answerable from data today (a
+tile attaches to `GROUND`, which is the rule `GridPlacement.can_place` enforces, not a convention),
+so that filter is in. **Blockers and field items are not**: `parts_pool()` is every `Part`, arms and
+heads included, and nothing says which belong on a board. That is a content decision.
+
+**A wall placed on bare ground brings the *last floor used*, not a named default.** Reaching for a
+specific part id would have been inventing content; the author's most recent floor is the one they
+are building with.
+
+**The editor's warnings label was deleted rather than restyled.** The supervisor asked what the
+orange text was; it was the editor's own warnings list, duplicating what G2 had just moved into the
+combat log. Two records of one thing.
+
+**`top_left_controls` and `TopLeftControls` are deleted, which is more than was asked.** The review
+retired the three controls individually; with all three gone the cluster held nothing. Deleting the
+container and its class is the conclusion, but it is a deletion nobody explicitly requested.
+
+**`ControlToggleModule` is a new module the review did not ask for**, and the reason is in the
+defects below: folding Watch into `TurnControlsModule` broke the spectator's contract, and the fix
+could not be a flag because `kind()` must be answerable unmounted.
+
+**`ReplayModule.is_collapsible()` is overridden rather than derived.** The collapse rule reads the
+slot's edge, and those panels anchor themselves. Overriding says "toggleable for a reason the slot
+cannot express" — the alternative was inventing a slot so the derivation came out right.
+
+**The combat log's width is derived from the layout rather than re-picked.** `DEFAULT_WIDTH` is 520
+and predates the bar being centred; the space beside the bar is `(safe - band) / 2`, so the panel
+takes whatever that leaves. A second number to keep in step with the first is a second number to get
+wrong.
+
+**Three tests were deleted rather than repaired**, each because its subject no longer exists: the
+top-left/debug-menu overlap (no cluster), the shared-cluster construction claim (same), and a
+source-reading gate check on a deleted file — that last one's *guarantee* moved to
+`DebugPanelModule` and is asserted there, so the check moved rather than being dropped.
+
+**`verbose` is left wired and unread**, on the supervisor's *"leave it open for later"*. It is the
+same shape as `Announcement`'s `sound` field, and the same risk: a field nobody reads is one somebody
+later assumes is wired.
+
+**The two plan items were ordered by me.** The live message asked for the terrain rename "next up";
+`temp.md` asked for the gizmo rework "at the top of plan". Both said top. The rename is NEXT 1 on the
+grounds that the chat instruction was the more recent and more specific one, and the gizmo rework is
+NEXT 2 — **say so if that is the wrong way round.**
+
+## Tests that failed, then were corrected
+
+**Five, and the first two are the ones worth reading.**
+
+1. **`SearchableList` was not filtering at all, and the test covering it passed.** `queue_free` is
+   deferred to the end of the frame, so the old rows were still children — and still drawn — while
+   the filtered ones were appended after them: typing `barrel` into a four-entry list left **five**
+   rows on screen. **The test read `shown_ids()`, which reports the module's own `rows` array — and
+   that array was correct throughout.** Nothing asked the container what it was actually showing.
+   This is the project's own "read the real node back" rule, failed by me, in a test I wrote two
+   sessions earlier. The replacement asserts against `results.get_children()`.
+2. **Folding Assume Control into `TurnControlsModule` broke the spectator's central contract**, and
+   the suite said so instantly — eight tests red at once, bouts advancing two turns per step, clicks
+   landing on a board that had moved. `ViewMode.has_unit_input()` builds each declared module
+   **unmounted** and asks `kind()`, so an INPUT module in a display-only mode makes that mode claim
+   it can mutate state. **The test that caught it was not a new one**; it was the spectator's own
+   pacing tests, which is what a contract test is for.
+3. **`Array[StringName].sort()` is not alphabetical.** It orders by the engine's internal
+   `StringName` ordering — measured as `ramp, metal_scraps, twisted_sheet_metal, head, battery, ...`
+   where alphabetical starts `ammo_rack, arc_welder, arm`. That was the supervisor's *"looks like
+   'add' order... looks random"*, and it is a real defect rather than a preference.
+4. **The final full gate truncated, and the completion guard caught it.** `test_battle_scene.gd`
+   asserted every child of the turn-control column is a `Button`, and `ControlToggleModule` inserts
+   a gap spacer there. **I had run that file — before the change that broke it.** See below.
+5. **Two spectator tests were reading a coordinate space that had stopped meaning what they
+   assumed**, reporting the log's bottom edge falling 100 px while it was still hard against the
+   bottom of the screen. Read off `get_global_rect()` now. The same lesson the block had already
+   recorded once.
+
+**The targeted-gate trade, stated plainly.** Running only the files I touched was the instruction and
+it was the right call for the pace — but it cannot see that a change broke a file tested *earlier in
+the same pass*, which is exactly what happened at item 4. **One truncated run at the checkpoint is a
+cheap price** against a dozen eleven-minute gates, and the guard turning a silent green into a loud
+red is what made it cheap. Worth knowing the shape of the cost rather than assuming there was none.
+
+**Several fixture and formatting errors of my own** are not counted above but were real time:
+`"%s" % an_empty_Array` raises an engine error (`%` treats an Array as the argument list), a warnings
+test authored a pit with no spawn marker to flood from, and a scripted comment rewrap mangled two
+markdown tables in file headers.
+
+## `SUPERVISOR`-owned entries moved to `Pending`
+
+**`BR57.01` — units stand at their previous bout's cells in editor mode.** Root-caused and fixed:
+`BoardSwap.swap_board` **returns** the ids of units it could place nowhere, and `EditorModule` was
+discarding that value, so on a board with no floor yet every unit kept its cell from the last bout
+and was still rendered there.
+
+**To see it work:** open the editor with a bout on screen (`E`). Before, the previous bout's units
+stood on the empty grid; now the board is empty until you author floor and spawn markers, and they
+return when *Run Test Bout* seats them.
+
+## Open questions
+
+**The tag system for the part list is yours to call**, and it is the one thing the review asked to be
+told about rather than worked around. Tiles filter today; blockers and field items cannot be
+separated from body parts without a tag on the part.
+
+**The terrain rename is NEXT 1 and wants its own full gate** — 524 hits across 49 files, including
+authored `.tres` maps that carry part ids as data. It was deliberately not done inside a review pass
+for that reason.
+
+**The gizmo rework is NEXT 2** and is a rebuild rather than an adjustment, on the supervisor's call.
+`GizmoDrag` and the ray-vs-box handle picking survive it; the arming and tool routing do not.
+
+**Two chromes are still named by no shipped mode** (`PLAYER_COLUMNS`, `TOP_LEFT_ROWS`), along with
+the slot vocabulary they publish. Unchanged from the block's own close: either they are the spare
+layouts a fifth mode picks up, and `ModeChrome`'s header should say so, or they go.
+
+**Nothing in a *bout* announces yet.** The editor's navigability warnings are the mechanism's first
+real customer; no call site in a battle tags anything, and which events should shout at the player is
+a design decision.
