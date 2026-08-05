@@ -61,6 +61,11 @@ const TOOLS: Array[StringName] = [
 	&"sight_blocking",
 	&"claim",
 	&"chance",
+	# taskblock-57 Pass H: **the manipulation gizmo, armed like every other verb.** A click with
+	# this tool focuses the handles on whatever is at the cell instead of authoring — which is what
+	# keeps the gizmo a tool over a click the one router already resolved, rather than a second
+	# picking path with its own idea of what is selected.
+	&"gizmo",
 ]
 
 ## The placement kinds the part dropdown can author. `MapPlacement`'s own three, read from its
@@ -246,6 +251,12 @@ func apply_tool_at(cell: Vector2i) -> bool:
 		&"claim":
 			controller.add_claim(selected_claim_kind, _cell_claim_box(cell))
 			applied = true
+		&"gizmo":
+			# **The gizmo is told, and it does not look.** This is the one router every board click
+			# in the editor goes through, so handing it the cell here is what stops the gizmo
+			# growing a second click path. A mode with no gizmo module answers false, which is the
+			# honest report that the tool did nothing.
+			applied = _focus_gizmo(cell)
 		&"chance":
 			applied = (
 				controller.set_cell_chance(
@@ -510,6 +521,15 @@ func _on_board_clicked(hit: Dictionary) -> void:
 
 func _board_inspect() -> BoardInspectModule:
 	return context.module(&"board_inspect") as BoardInspectModule if context != null else null
+
+
+## Points the gizmo at whatever is at `cell`, or clears it when nothing there can be dragged.
+##
+## **Focusing and clearing are both real answers** — *"a click elsewhere deselects"* — so both count
+## as the tool having done something.
+func _focus_gizmo(cell: Vector2i) -> bool:
+	var handles: GizmoModule = context.module(&"gizmo") as GizmoModule if context != null else null
+	return handles.focus_at(cell) if handles != null else false
 
 
 func _claim_volumes() -> ClaimVolumeModule:

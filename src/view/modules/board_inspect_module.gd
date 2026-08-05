@@ -94,23 +94,39 @@ func _playback() -> PlaybackModule:
 ## events wherever the host happened to parent it, and a host that also forwards would dispatch the
 ## same click twice. One entry point, owned by whoever mounted this — the same reasoning that keeps
 ## the per-frame `tick` on the host.
-func handle_input(event: InputEvent) -> void:
+##
+## **taskblock-57 Pass H: it returns false, always, and that is a statement.** The host now offers
+## input to every module in declaration order and stops at the first that consumes it. This module
+## never claims exclusivity: a mode that wants something to get a click *before* the board picker
+## declares that module earlier and has it consume, which is exactly what the editor's gizmo does.
+## Consuming here would make the board picker the end of the line for every event on the surface.
+func handle_input(event: InputEvent) -> bool:
 	var battle: BattleScene = context.battle if context != null else null
 	if battle == null or battle.combat_state == null:
-		return
+		return false
 	if event is InputEventMouseMotion:
 		_update_hover((event as InputEventMouseMotion).position)
-		return
+		return false
 	if event is not InputEventMouseButton:
-		return
+		return false
 	var mb := event as InputEventMouseButton
 	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
-		return
+		return false
 	var camera: Camera3D = battle.camera_rig.camera() if battle.camera_rig != null else null
 	if camera == null:
-		return
-	var from: Vector3 = camera.project_ray_origin(mb.position)
-	var dir: Vector3 = camera.project_ray_normal(mb.position)
+		return false
+	_click_at(mb.position, camera, battle)
+	return false
+
+
+## What a left press on the board does, once the guards above have found a camera and a state.
+##
+## **Split out of `handle_input` rather than inlined**: the guards and the click are two different
+## questions, and folding them into one function put eleven `return`s in it. Nothing here consumes
+## the event — see `handle_input`.
+func _click_at(screen_pos: Vector2, camera: Camera3D, battle: BattleScene) -> void:
+	var from: Vector3 = camera.project_ray_origin(screen_pos)
+	var dir: Vector3 = camera.project_ray_normal(screen_pos)
 	var hit: Dictionary = PartPicker.hit(
 		battle.combat_state.units, battle.combat_state.grid, from, dir
 	)

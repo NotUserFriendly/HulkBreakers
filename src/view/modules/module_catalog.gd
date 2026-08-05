@@ -56,6 +56,8 @@ const IDS: Array[StringName] = [
 	# taskblock-57 Pass G2: the coordinate readout, which replaces `unit_resources` in the editor's
 	# copy of the `action_bar_top_left` slot — "same slot, different module".
 	&"editor_coords",
+	# taskblock-57 Pass H: the CAD handle set. Editor-only, and armed by the `gizmo` tool.
+	&"gizmo",
 ]
 
 
@@ -116,4 +118,6 @@ static func build(id: StringName) -> ViewModule:
 			return EditorBarModule.new()
 		&"editor_coords":
 			return EditorCoordsModule.new()
+		&"gizmo":
+			return GizmoModule.new()
 	return null

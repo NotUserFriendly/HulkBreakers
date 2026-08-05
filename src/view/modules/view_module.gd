@@ -221,6 +221,31 @@ func rebind() -> void:
 	pass
 
 
+## taskblock-57 Pass H: **raw input, offered to modules in declaration order.**
+##
+## Returns true to consume the event, which stops the host offering it to any later module.
+##
+## ## Why the host walks rather than each module listening
+##
+## `ControlOverlay._unhandled_input` is deliberately the only `_unhandled_input` in the module
+## system — a module defining one would receive events wherever its host happened to parent it, and
+## a host that also forwarded would dispatch the same click twice. That was already true; what Pass
+## H adds is that **more than one module now wants raw input**, and the two have a genuine order.
+##
+## The gizmo's handles are drawn over the board, so a press that grabs one must not also reach the
+## board picker and author a placement on the cell underneath. The editor mode declares `gizmo`
+## before `board_inspect` and the gizmo consumes the press it used; every other event falls straight
+## through. **That is the module system's existing ordering rule** — a provider before its
+## dependants, `unit_input` before every display module — applied to input rather than to slots,
+## rather than a new priority field nobody would keep true.
+##
+## Consuming is deliberately narrow: a module must return true only for an event it actually acted
+## on. Returning true defensively is how a surface becomes unclickable in a way that looks like the
+## board being broken.
+func handle_input(_event: InputEvent) -> bool:
+	return false
+
+
 ## The per-frame draw tick, called by the host rather than by the engine.
 ##
 ## **Deliberately not `_process`.** A module is a `Node`, so `_process` would fire on every module

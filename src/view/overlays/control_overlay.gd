@@ -236,15 +236,25 @@ func _process(delta: float) -> void:
 		mounted.tick(delta)
 
 
-## The one engine input entry point, routed into whichever module owns board picking.
+## The one engine input entry point, offered to the mounted modules in declaration order.
 ##
 ## **Deliberately the only `_unhandled_input` in the module system.** A module defining one would
 ## receive events wherever its host happened to parent it, and a host that also forwarded would
 ## dispatch the same click twice. `CameraRig`'s independent handler (orbit/pan/zoom) is untouched.
+##
+## **taskblock-57 Pass H: a walk, not a named module.** This used to reach for `board_inspect`
+## specifically, which was honest while exactly one module wanted raw input. The gizmo wants it too,
+## and it wants it *first* — its handles are drawn over the board, so a press that grabs one must
+## not also reach the picker and author on the cell underneath. Declaration order settles that,
+## which is the rule the mode table already lives under; the alternative was a second hardcoded
+## name here and a comment explaining which of the two wins.
+##
+## The first module to return true stops the walk. `ViewModule.handle_input` returns false by
+## default, so every module that does not want input is unaffected.
 func _unhandled_input(event: InputEvent) -> void:
-	var picking: BoardInspectModule = module(&"board_inspect") as BoardInspectModule
-	if picking != null:
-		picking.handle_input(event)
+	for mounted: ViewModule in modules:
+		if mounted.handle_input(event):
+			return
 
 
 ## The ONE shared "auto-advance AI turns" loop. Auto-resolves consecutive units this surface does
