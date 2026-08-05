@@ -22,8 +22,12 @@ extends ViewModule
 ## Display: it renders a subject. It queues nothing.
 
 ## How the viewer's frame is drawn. Starting positions, not decisions.
+##
+## **The padding IS the border.** The follow-up review corrected the first reading: *"I mean the
+## panel needs to be oversized AS a border, not add a border. You can remove the thin gray line."*
+## So the frame is a filled panel a little larger than the view it holds, and the band of background
+## showing around the edge is what reads as the border — no stroke.
 const FRAME_ALPHA := 0.82
-const FRAME_BORDER := 1
 const FRAME_PADDING := 8.0
 
 var viewer: BotViewer = null
@@ -44,6 +48,18 @@ func preferred_slot() -> StringName:
 	return ModuleSlots.INSPECT_VIEWER
 
 
+## **Inspect's own button governs this surface, so the cluster must not build a second one.**
+##
+## The UI review: *"IV is redundant, both inspect and the viewer should show up with INS."* They are
+## one inspector as far as a player is concerned — `InspectPanel.open` shows this viewer and `close`
+## hides it — so a separate `IV` toggle was a control for half of one thing.
+##
+## A2's rule that every side-pinned surface must be reclaimable still holds: pressing `INS` takes
+## this with it. The rule asks for an affordance, not for one per module.
+func provides_own_button() -> bool:
+	return true
+
+
 func _mount() -> void:
 	viewer = BotViewer.new()
 	# Hidden until Inspect opens something. `InspectPanel.open`/`close` own this flag, because the
@@ -60,19 +76,14 @@ func _mount() -> void:
 	# **A frame around it, not a bare subview.** The UI review: *"INSPECT VIEWER in Player view —
 	# Just a loose window, it needs a border of some sort, likely embedded in a panel so it can be
 	# padded."* A `SubViewportContainer` over the board with nothing around it reads as a hole in
-	# the screen rather than as a panel showing something.
+	# the screen rather than as a panel showing something. **The frame's own padding is the border**
+	# — see `FRAME_PADDING`; there is deliberately no stroke.
 	frame = PanelContainer.new()
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(
 		HulkTheme.BACKGROUND.r, HulkTheme.BACKGROUND.g, HulkTheme.BACKGROUND.b, FRAME_ALPHA
 	)
-	style.border_color = HulkTheme.DIM
-	var border: int = int(UiLayout.scaled(FRAME_BORDER))
-	style.border_width_left = border
-	style.border_width_right = border
-	style.border_width_top = border
-	style.border_width_bottom = border
 	for side: String in [
 		"content_margin_left", "content_margin_right", "content_margin_top", "content_margin_bottom"
 	]:

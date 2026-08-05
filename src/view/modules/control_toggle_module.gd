@@ -59,7 +59,8 @@ func preferred_slot() -> StringName:
 func _mount() -> void:
 	button = Button.new()
 	button.text = watch_label
-	button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	# Left-aligned, matching the turn verbs it sits above — see `TurnControlsModule`.
+	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	button.pressed.connect(_on_pressed)
 
 	var gap := Control.new()

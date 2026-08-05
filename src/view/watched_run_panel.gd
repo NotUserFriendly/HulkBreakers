@@ -40,11 +40,6 @@ var battle: BattleScene = null
 ## Set by the host before `on_bout_finished`, since the runner belongs to the overlay.
 var turns_taken: int = 0
 
-## The `[?]` whose tooltip carries the completion criteria. Public so a test reads the words back.
-var criteria_button: UiButton = null
-## Set by whoever mounts this if the mode has a shared renderer; null means no hover text.
-var tooltip_view: TooltipView = null
-
 var _notice_label: Label = null
 var _table_label: Label = null
 
@@ -105,21 +100,15 @@ func bind(p_battle: BattleScene, p_run: WatchedRun) -> void:
 	if _notice_label == null:
 		_notice_label = Label.new()
 		add_child(_notice_label)
-	if criteria_button == null:
-		# **The criteria moved from a wall of text into a `[?]` button's tooltip.** The UI review:
-		# *"The white text ... needs to be within a tooltip, on a [?] button, in the existing
-		# run_tests module."* It is five lines explaining what a pass means — read once, then noise
-		# on every frame of every run. The words are unchanged and still come from
-		# `WatchedRun.describe_criteria`, which is logic and is tested there.
-		criteria_button = UiButton.build(
-			"?",
-			"Completion criteria",
-			"\n".join(WatchedRun.describe_criteria(CompletionSampler.TURN_CAP, 0.35)),
-			tooltip_view
-		)
-		add_child(criteria_button)
-		# Deliberately plain `Label`s: this is a debug surface and the information is
-		# the product, not the presentation.
+	if _table_label == null:
+		# **The criteria live on the run box's own `[?]` now.** The UI review: *"The white text and
+		# the [?] should be a single item with the run_test box."* They were five lines printed under
+		# this table, then a `[?]` of this panel's own — either way a second surface explaining what
+		# the box beside it was measuring. `SuiteRunPanel.set_criteria` is the one place, and the
+		# words are still `WatchedRun.describe_criteria`'s, in logic, tested there.
+		#
+		# Deliberately a plain `Label`: this is a debug surface and the information is the product,
+		# not the presentation.
 		_table_label = Label.new()
 		add_child(_table_label)
 	refresh()

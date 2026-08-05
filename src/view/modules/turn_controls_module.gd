@@ -71,7 +71,10 @@ func _mount() -> void:
 func _button(text: String, handler: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	# Left-aligned, from the UI review: *"TURN ORDER MANAGEMENT — Left align the buttons if you
+	# can."* They used to hug the right edge of a column that is itself right of the bar, which put
+	# three different left edges within one narrow strip.
+	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	button.pressed.connect(handler)
 	# `BR31.01`: a stale tooltip from the board is dismissed when the cursor crosses onto a Button,
 	# because `TacticsController`'s hover tracking cannot see over one.

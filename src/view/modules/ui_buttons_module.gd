@@ -79,7 +79,6 @@ func link() -> void:
 		)
 		debug_button.pressed.connect(_on_debug_pressed)
 		row.add_child(debug_button)
-		_refresh_debug_border()
 
 
 ## A readable label from the module's own id, so no module is named here. `unit_resources` reads as
@@ -102,16 +101,27 @@ func _toggle(id: StringName, module: ViewModule) -> UiButton:
 	# **A press flips it**, which is the summon/dismiss feel the review asked every button in this
 	# row to share. `collapsed` stays the module's own inverse-sense field; nothing about what it
 	# means changed, only how it is reached.
-	button.active = not module.collapsed
-	button.pressed.connect(
-		func() -> void:
-			module.collapsed = not module.collapsed
-			# **The border follows the module, not the press.** A button that lit itself would go on
-			# claiming a panel is up after anything else closed it.
-			button.active = not module.collapsed
-	)
+	button.active = module.is_showing()
+	# **The press only flips the flag.** The border is re-read every frame from `is_showing()` — see
+	# `tick` — because a button that lit itself would go on claiming a panel is up after anything
+	# else closed it.
+	button.pressed.connect(func() -> void: module.collapsed = not module.collapsed)
 	row.add_child(button)
 	return button
+
+
+## Re-reads every border from what is actually on screen.
+##
+## **Per frame, not per press**, which is the UI review's *"the button highlight should only appear
+## if the window is visible, even if it's launched some other way."* Inspect opens from a board
+## click, the keybindings sheet from the H key, and the debug menu from its own close control —
+## none of which go through the button that claims to own them.
+func tick(_delta: float) -> void:
+	for id: StringName in toggles:
+		var module: ViewModule = context.module(id)
+		if module != null:
+			(toggles[id] as UiButton).active = module.is_showing()
+	_refresh_debug_border()
 
 
 ## The one shared tooltip renderer, if this mode declared it. Null is a legal answer and means the
@@ -121,12 +131,10 @@ func _tooltip_view() -> TooltipView:
 	return (module as TooltipModule).view if module != null else null
 
 
-## Opens or closes the debug menu, then re-reads whether it is up.
 func _on_debug_pressed() -> void:
 	var debug: ViewModule = context.module(&"debug_panel")
 	if debug != null:
 		(debug as DebugPanelModule).toggle()
-	_refresh_debug_border()
 
 
 func _refresh_debug_border() -> void:

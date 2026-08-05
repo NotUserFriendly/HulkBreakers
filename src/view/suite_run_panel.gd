@@ -27,6 +27,10 @@ extends VBoxContainer
 ## Emitted once a launched run reaches its exit marker. **The panel does not reach
 ## into the replay panel** — the overlay owns both and wires them, which is what keeps
 ## this a status surface rather than a coordinator.
+## Emitted when the `[x]` is pressed, so whoever mounted this dismisses it the same way its button
+## in the UI-buttons cluster does — one piece of state, two surfaces to reach it.
+signal dismissed
+
 signal run_completed(finished_run: SuiteRun)
 
 ## taskblock-51: **the run panels are spectator-only for the duration of the bug hunt.**
@@ -40,6 +44,10 @@ signal run_completed(finished_run: SuiteRun)
 ## this constant and nothing else. `test_debug_panel_layout.gd` asserts the split in both
 ## directions, so flipping this without updating the test fails loudly rather than
 ## quietly restoring a panel nobody wanted back yet.
+## What the box calls itself. The UI review asked for *"a descriptive name"* — "Suite Run" says what
+## it is doing rather than what it is made of.
+const TITLE := "Suite Run"
+
 const SHOW_IN_PLAYER_VIEW := false
 
 ## taskblock-50 Pass F: **a run finishes into a window nobody is looking at.**
@@ -86,6 +94,11 @@ var run: SuiteRun = null
 ## Set by the host overlay so a launch can clear the board.
 var battle: BattleScene = null
 
+## The `[?]` carrying the completion criteria, and the `[x]` that dismisses the whole box. Public so
+## a test reads back what they say.
+var criteria_button: UiButton = null
+var close_button: Button = null
+
 var _force_failure: CheckBox = null
 
 var _body: PanelContainer = null
@@ -112,6 +125,26 @@ func _ready() -> void:
 
 	var column := VBoxContainer.new()
 	_body.add_child(column)
+
+	# **A title bar with `[?]` and `[x]`, like the other menus.** The UI review: *"The box should
+	# have a title bar, with a descriptive name, with a [?] and a [x] beside each other like we've
+	# done for other menus."* Without one this panel was an unlabelled block of status text in a
+	# corner, and the criteria it explains were a separate loose paragraph beside it.
+	var bar := HBoxContainer.new()
+	column.add_child(bar)
+	var title := Label.new()
+	title.text = TITLE
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_child(title)
+	# Filled by whoever mounts this — see `set_criteria`. The `[?]` carries the words that used to
+	# be printed under the table.
+	criteria_button = UiButton.build("?", TITLE, "", null)
+	bar.add_child(criteria_button)
+	close_button = Button.new()
+	close_button.text = "[x]"
+	close_button.focus_mode = Control.FOCUS_NONE
+	close_button.pressed.connect(_on_close_pressed)
+	bar.add_child(close_button)
 
 	_status = Label.new()
 	_status.clip_text = true
@@ -306,3 +339,19 @@ func _refresh() -> void:
 	for key: String in counts:
 		parts.append("%s %d" % [key, int(counts[key])])
 	_counts.text = "  ".join(parts)
+
+
+## Puts the completion criteria on the `[?]`, and points it at the shared tooltip renderer.
+##
+## **Set from outside rather than read here**, because what the criteria say is
+## `WatchedRun.describe_criteria`'s — logic, tested there — and this panel does not know what a
+## completion sample is.
+func set_criteria(text: String, view: TooltipView) -> void:
+	if criteria_button == null:
+		return
+	criteria_button.description = text
+	criteria_button.tooltip_view = view
+
+
+func _on_close_pressed() -> void:
+	dismissed.emit()

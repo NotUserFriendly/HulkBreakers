@@ -60,6 +60,11 @@ func _mount() -> void:
 	]:
 		style.set(side, UiLayout.scaled(PANEL_PADDING))
 	panel.add_theme_stylebox_override("panel", style)
+	# **It blocks scrolls as well as clicks.** The UI review: *"Keybindings pop-up currently blocks
+	# clicks and should block clicks and scrolls."* A `PanelContainer` defaults to `STOP`, which
+	# takes the click — but a wheel event it does not *accept* still reaches `_unhandled_input`, and
+	# `CameraRig` zooms the board underneath a sheet that is covering it.
+	panel.gui_input.connect(_on_sheet_input)
 
 	var sheet := VBoxContainer.new()
 	panel.add_child(sheet)
@@ -144,3 +149,19 @@ func _parent_into(parent: Control, child: Control) -> void:
 func _tooltip_view() -> TooltipView:
 	var module: ViewModule = context.module(&"tooltip") if context != null else null
 	return (module as TooltipModule).view if module != null else null
+
+
+## Swallows the wheel over the sheet, so scrolling a reference panel does not zoom the board behind
+## it. Only the wheel: everything else the panel is already `STOP` for.
+func _on_sheet_input(event: InputEvent) -> void:
+	var button := event as InputEventMouseButton
+	if button == null:
+		return
+	var wheel: Array[int] = [
+		MOUSE_BUTTON_WHEEL_UP,
+		MOUSE_BUTTON_WHEEL_DOWN,
+		MOUSE_BUTTON_WHEEL_LEFT,
+		MOUSE_BUTTON_WHEEL_RIGHT,
+	]
+	if wheel.has(button.button_index):
+		panel.accept_event()

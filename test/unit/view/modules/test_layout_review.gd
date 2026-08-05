@@ -559,21 +559,26 @@ func test_the_run_tests_panels_are_off_by_default_and_have_a_button() -> void:
 
 
 ## **THE REVIEW POINT**: *"The white text... needs to be within a tooltip, on a [?] button, in the
-## existing run_tests module."* The words are unchanged and still come from logic.
-func test_the_completion_criteria_moved_onto_a_question_mark_button() -> void:
+## existing run_tests module."*
+##
+## **The `[?]` moved again in the next pass** — *"The white text and the [?] should be a single item
+## with the run_test box"* — so it lives on `SuiteRunPanel`'s own title bar beside the `[x]`, rather
+## than on the watched-run panel below it. The words are unchanged and still come from logic.
+func test_the_completion_criteria_live_on_the_run_boxs_question_mark() -> void:
 	var overlay: ControlOverlay = await _overlay(ViewModes.spectator())
 	var replay: ReplayModule = overlay.module(&"replay") as ReplayModule
-	if replay.watched_run_panel == null:
+	if replay.suite_run_panel == null:
 		pass_test("release build: the run panels are not constructed")
 		return
 
-	var help: UiButton = replay.watched_run_panel.criteria_button
+	var help: UiButton = replay.suite_run_panel.criteria_button
 	assert_not_null(help, "the criteria have no [?] to live on")
 	assert_eq(help.text, "?")
 	assert_true(
 		help.description.contains("completion over its sample"),
 		"the [?] does not carry the words it replaced"
 	)
+	assert_not_null(replay.suite_run_panel.close_button, "and the box has no [x] beside it")
 
 
 ## **THE REVIEW POINT**: *"Top left buttons need to be put somewhere... 'watch' can be moved in with

@@ -55,6 +55,12 @@ func provides_own_button() -> bool:
 	return with_button
 
 
+## The panel's own visibility, so its button lights whenever the inspector is up — including when a
+## board click opened it, which is how it is opened in the spectator view.
+func is_showing() -> bool:
+	return panel != null and panel.visible
+
+
 func _mount() -> void:
 	panel = InspectPanel.new()
 	# taskblock-57 Pass C3: **the 3D view may be somewhere else on the screen.** If this mode
@@ -213,8 +219,13 @@ func _on_button_pressed() -> void:
 	refresh_border()
 
 
-## Lights the button while the panel is up. Public because the panel can close from its own `[x]`
-## and from a board click, and neither of those goes through the button.
+## Lights the button while the panel is up. Called every frame from `tick` as well as on the edges,
+## because the panel opens and closes from board clicks and from its own control — neither of which
+## goes through this button.
 func refresh_border() -> void:
 	if button != null:
-		button.active = panel != null and panel.visible
+		button.active = is_showing()
+
+
+func tick(_delta: float) -> void:
+	refresh_border()
