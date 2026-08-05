@@ -94,6 +94,10 @@ var _controls_row: HBoxContainer
 ## apart — a tooltip says what a control will DO, this says what a line
 ## already SAYS — and only the 1.5 s dwell is common.
 var _dwell := HoverDwell.new()
+## The line offsets `_line_offsets` last computed, and the line count they were computed at. See
+## that function — this exists because it was being rebuilt on every mouse-motion event.
+var _cached_offsets := PackedFloat32Array()
+var _cached_line_count: int = -1
 var _body: PanelContainer
 var _minimized := false
 var _dragging := false
@@ -316,10 +320,28 @@ func _reveal_hovered_line() -> void:
 	overflow_preview.visible = true
 
 
+## Every visible line's y offset, **cached between text changes**.
+##
+## **This ran on every mouse-motion event over the log**, walking the whole label and calling
+## `get_line_offset(i)` once per line — on a long log that is hundreds of engine calls per motion,
+## and a camera pan generates a motion event per frame. Reported as *"Player view is dropping FPS
+## when panning. It might be in the current combat log."*
+##
+## The offsets only change when the text or the wrap does, so they are computed once and reused. The
+## line count is the invalidation key: `UiLogSink` rewrites `log_label.text` wholesale on a dirty
+## frame, and any rewrite that changes what is on screen changes how many lines are on screen.
+##
+## **Not a cache with a manual invalidate**, deliberately — a caller that forgot to invalidate would
+## produce a preview pointing at the wrong line, which is far harder to notice than a slow pan.
 func _line_offsets() -> PackedFloat32Array:
+	var count: int = log_label.get_line_count()
+	if count == _cached_line_count and _cached_offsets.size() == count:
+		return _cached_offsets
 	var offsets := PackedFloat32Array()
-	for i in range(log_label.get_line_count()):
+	for i in range(count):
 		offsets.append(log_label.get_line_offset(i))
+	_cached_offsets = offsets
+	_cached_line_count = count
 	return offsets
 
 

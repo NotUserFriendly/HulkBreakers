@@ -403,3 +403,58 @@ func test_the_preview_camera_gets_more_ambient_than_the_board() -> void:
 		0.001,
 		"the default must stay the board's, or raising the preview raised the battle"
 	)
+
+
+## **THE REVIEW POINT**: *"Performance monitor doesn't stay open when switching overlays and it
+## should."* `set_overlay` rebuilds every module, so a panel that always came back hidden lost the
+## state — and swapping to the spectator is exactly what you do to watch a framerate you just turned
+## on in the player view.
+func test_the_perf_readout_survives_an_overlay_swap() -> void:
+	var battle := BattleScene.new()
+	add_child_autofree(battle)
+	battle.set_overlay(ControlOverlay.new())
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
+	var monitor: PerfMonitorModule = battle.overlay.module(&"perf_monitor") as PerfMonitorModule
+	assert_false(monitor.panel.visible, "sanity: it starts off")
+
+	# Through the real debug-menu signal, which is the only thing that turns it on.
+	monitor._on_ui_element_toggled(DebugUiElements.PERF_PANEL, true)
+	assert_true(monitor.panel.visible)
+
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.spectator()))
+	var after: PerfMonitorModule = battle.overlay.module(&"perf_monitor") as PerfMonitorModule
+	assert_ne(after, monitor, "sanity: the swap really did rebuild the module")
+	assert_true(after.panel.visible, "the readout did not survive the swap")
+
+	# And off survives too, or the state is only sticky in one direction.
+	after._on_ui_element_toggled(DebugUiElements.PERF_PANEL, false)
+	battle.set_overlay(ControlOverlay.for_mode(ViewModes.player()))
+	assert_false(
+		(battle.overlay.module(&"perf_monitor") as PerfMonitorModule).panel.visible,
+		"turning it off must survive a swap as well"
+	)
+
+
+## **THE REVIEW POINT**: *"Player view is dropping FPS when panning. It might be in the current
+## combat log."* The lead was good: the log's hover probe rebuilt every line's y offset on **every
+## mouse-motion event**, and a pan produces one per frame.
+##
+## Asserted as "the same array comes back rather than a fresh one", which is the property that makes
+## it cheap — a test that timed it would be measuring this machine.
+func test_the_logs_line_offsets_are_not_rebuilt_on_every_mouse_motion() -> void:
+	var panel := CombatLogPanel.new()
+	add_child_autofree(panel)
+	panel.log_label.text = "one\ntwo\nthree\nfour"
+	await get_tree().process_frame
+
+	var first: PackedFloat32Array = panel._line_offsets()
+	assert_gt(first.size(), 0, "sanity: there are lines to measure")
+	assert_true(
+		panel._line_offsets() == first, "the offsets were recomputed for an unchanged label"
+	)
+
+	# **And it still follows the text.** A cache that never invalidates would point the hover preview
+	# at the wrong line, which is far harder to notice than a slow pan.
+	panel.log_label.text = "one\ntwo\nthree\nfour\nfive\nsix"
+	await get_tree().process_frame
+	assert_gt(panel._line_offsets().size(), first.size(), "a longer log must produce more offsets")
