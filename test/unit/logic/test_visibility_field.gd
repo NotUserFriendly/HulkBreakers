@@ -67,7 +67,7 @@ func test_every_cell_shot_plane_calls_clear_is_set_in_the_field() -> void:
 	var shooter: Unit = _armed_unit(&"shooter", Vector2i(1, 1), 0)
 	var target: Unit = _armed_unit(&"target", Vector2i(17, 6), 1)
 	var state := CombatState.new(grid, [shooter, target])
-	var field: VisibilityField = VisibilityField.build(state, target.cell)
+	var field: VisibilityField = VisibilityField.build(state.grid, target.cell)
 
 	var clear_cells := 0
 	for y in range(grid.rows):
@@ -90,12 +90,12 @@ func test_every_cell_shot_plane_calls_clear_is_set_in_the_field() -> void:
 	assert_gt(clear_cells, 0, "sanity: the fixture has cells with a real line")
 
 
-## A destroyed wall is the case where an opacity-only field would be WRONG rather
-## than merely coarse: `Grid.opacity` is never cleared when a wall dies, but
-## `BodyProjector` stops projecting it, so shots pass through a cell that still
-## reads opaque. Under-inclusion is the one failure mode that matters, and this
-## is where it would come from.
-func test_a_destroyed_wall_stops_occluding_even_though_it_stays_opaque() -> void:
+## A destroyed wall used to be the case where an opacity-only field was WRONG rather than merely
+## coarse: `Grid.opacity` was never cleared when a wall died, so shots passed through a cell that
+## still read opaque. taskblock-58 Pass C retires the array, and with it the disagreement — there
+## is no second claim about this cell left to contradict `BodyProjector.projects`. The property is
+## kept under test because it is the one that mattered, not because the trap still exists.
+func test_a_destroyed_wall_stops_occluding() -> void:
 	var grid: Grid = GridFixture.flat(14, 8)
 	var wall: Part = GridFixture.place_wall(grid, Vector2i(7, 4))
 	var shooter: Unit = _armed_unit(&"shooter", Vector2i(2, 4), 0)
@@ -103,17 +103,14 @@ func test_a_destroyed_wall_stops_occluding_even_though_it_stays_opaque() -> void
 	var state := CombatState.new(grid, [shooter, target])
 
 	assert_false(
-		VisibilityField.build(state, target.cell).allows(shooter.cell),
+		VisibilityField.build(state.grid, target.cell).allows(shooter.cell),
 		"sanity: the standing wall does occlude"
 	)
 
 	wall.hp = 0
 
-	assert_almost_eq(
-		grid.get_opacity(Vector2i(7, 4)), 1.0, 0.001, "opacity is deliberately NOT cleared"
-	)
 	assert_true(
-		VisibilityField.build(state, target.cell).allows(shooter.cell),
+		VisibilityField.build(state.grid, target.cell).allows(shooter.cell),
 		"a dead wall no longer projects, so the field must stop occluding on it"
 	)
 
@@ -133,7 +130,7 @@ func test_cover_does_not_occlude_the_field() -> void:
 	var target: Unit = _armed_unit(&"target", Vector2i(12, 4), 1)
 	var state := CombatState.new(grid, [_armed_unit(&"shooter", Vector2i(2, 4), 0), target])
 
-	assert_true(VisibilityField.build(state, target.cell).allows(Vector2i(2, 4)))
+	assert_true(VisibilityField.build(state.grid, target.cell).allows(Vector2i(2, 4)))
 
 
 # --- the case the pass exists for --------------------------------------------
@@ -154,7 +151,7 @@ func test_a_walled_off_target_costs_exactly_zero_shot_plane_builds() -> void:
 	for y in range(3, 8):
 		for x in range(1, 8):
 			reachable.append(Vector2i(x, y))
-	var field: VisibilityField = VisibilityField.build(state, target.cell)
+	var field: VisibilityField = VisibilityField.build(state.grid, target.cell)
 
 	assert_true(field.allows_none(reachable), "the wall spans the board, so nothing has a line")
 
@@ -181,7 +178,7 @@ func test_the_field_actually_eliminates_candidates() -> void:
 		GridFixture.place_wall(grid, Vector2i(10, y))
 	var target: Unit = _armed_unit(&"target", Vector2i(17, 5), 1)
 	var state := CombatState.new(grid, [_armed_unit(&"shooter", Vector2i(3, 5), 0), target])
-	var field: VisibilityField = VisibilityField.build(state, target.cell)
+	var field: VisibilityField = VisibilityField.build(state.grid, target.cell)
 
 	var allowed := 0
 	var rejected := 0
@@ -210,7 +207,7 @@ func test_a_cell_one_level_up_is_always_allowed() -> void:
 	GridFixture.place_floor(grid, Vector2i(3, 4), 1.0)
 	var target: Unit = _armed_unit(&"target", Vector2i(13, 4), 1)
 	var state := CombatState.new(grid, [_armed_unit(&"shooter", Vector2i(3, 4), 0), target])
-	var field: VisibilityField = VisibilityField.build(state, target.cell)
+	var field: VisibilityField = VisibilityField.build(state.grid, target.cell)
 
 	assert_true(field.allows(Vector2i(3, 4)), "raised cell, behind a wall, still allowed")
 	assert_false(field.allows(Vector2i(4, 4)), "its ground-level neighbour is not")
@@ -223,7 +220,7 @@ func test_a_cell_one_level_down_is_always_allowed() -> void:
 	GridFixture.place_floor(grid, Vector2i(3, 4), 0.0)
 	var target: Unit = _armed_unit(&"target", Vector2i(13, 4), 1)
 	var state := CombatState.new(grid, [_armed_unit(&"shooter", Vector2i(3, 4), 0), target])
-	var field: VisibilityField = VisibilityField.build(state, target.cell)
+	var field: VisibilityField = VisibilityField.build(state.grid, target.cell)
 
 	assert_true(field.allows(Vector2i(3, 4)))
 	assert_false(field.allows(Vector2i(4, 4)))
@@ -237,7 +234,7 @@ func test_the_targets_own_cell_is_allowed() -> void:
 	var target: Unit = _armed_unit(&"target", Vector2i(5, 5), 1)
 	var state := CombatState.new(grid, [target])
 
-	assert_true(VisibilityField.build(state, target.cell).allows(target.cell))
+	assert_true(VisibilityField.build(state.grid, target.cell).allows(target.cell))
 
 
 ## Out of bounds reads true: a caller asking about a cell off the board is asking
@@ -245,7 +242,7 @@ func test_the_targets_own_cell_is_allowed() -> void:
 func test_out_of_bounds_is_allowed_rather_than_rejected() -> void:
 	var grid: Grid = GridFixture.flat(10, 10)
 	var state := CombatState.new(grid, [_armed_unit(&"target", Vector2i(5, 5), 1)])
-	var field: VisibilityField = VisibilityField.build(state, Vector2i(5, 5))
+	var field: VisibilityField = VisibilityField.build(state.grid, Vector2i(5, 5))
 
 	assert_true(field.allows(Vector2i(-1, 5)))
 	assert_true(field.allows(Vector2i(99, 5)))

@@ -456,12 +456,12 @@ func set_passable(cell: Vector2i, passable: bool) -> bool:
 		return _refuse(&"set_passable", &"out_of_bounds", {"cell": cell})
 	if Surface.first_walkable(state.grid.surfaces_at(cell)) == null:
 		GridPlacement.place(state.grid, cell, DataLibrary.get_part(&"ship_floor"), 0.0)
+	# taskblock-58 Pass C: the blocker is the whole of it. The paired opacity write retired with
+	# `Grid.opacity` — a wall blocks sight by being a wall.
 	if passable:
 		state.grid.blockers.erase(cell)
-		state.grid.set_opacity(cell, 0.0)
 	else:
 		state.grid.blockers[cell] = DataLibrary.get_part(&"wall")
-		state.grid.set_opacity(cell, 1.0)
 	_log_injection(
 		&"set_passable",
 		{"cell": cell, "passable": passable},

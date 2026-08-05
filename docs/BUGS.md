@@ -943,6 +943,12 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   or behind but close) satisfies both conditions by geometric coincidence, so walls that aren't
   actually occluding get cut. Same root as the same-side over-cutting BR32.02 deferred (multiple
   adjacent walls cut at once in a corridor).
+- **2026-08-05 (tb58 Pass C) — noted, not fixed.** [CC `5b7ef20b-5059-45dd-bc08-da8dc537ad93`]
+  The first candidate fix below asks for a real ray/line-segment test against the camera-to-unit line.
+  A CPU one now exists (`RayCaster.obstructed`), which does **not** help a per-fragment shader test
+  but does make a per-unit CPU pre-pass possible — cut only the walls a real ray from the camera to
+  that unit actually meets, and hand the shader a shorter list. **A note about what became available,
+  not a proposal**: the shape of the fix is still the supervisor's call.
 - **Candidate fixes (from BR32.02's own analysis, not yet chosen):** a real per-fragment ray/line-
   segment test against the camera-to-unit line, or gate on the *angle* between camera→wall and
   camera→unit rather than screen-space pixel distance + a bare depth compare.
@@ -1143,6 +1149,13 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   resolved cell (or a real physics/geometry raycast against the wall meshes `BoardView` already
   builds) before trusting `BoardPicker`'s own result — a genuine new check, not a one-line guard, and
   risky to improvise without live verification.
+- **2026-08-05 (tb58 Pass C) — the primitive this needs now exists; the bug is untouched.**
+  [CC `5b7ef20b-5059-45dd-bc08-da8dc537ad93`] The stated fix is *"a real line-of-sight/geometry check
+  between the camera and the resolved cell"*, and there was none to call. `RayCaster.cast_geometry` /
+  `RayCaster.obstructed` are exactly that: analytic ray-vs-box against blockers, placed surfaces and
+  field items, no scene tree, no physics server. **Recorded so the next attempt does not re-derive
+  the check**, not as progress on the entry — nothing in `SpectatorOverlay` calls it, and the entry's
+  own "do not fix this one individually" instruction still governs.
 - **2026-07-28 (review session `HBPaR3`) — promoted to `SUPERVISOR` ownership.**
 - **Do not fix this one individually.** It is the third of a set — with BR27.04 (lighting differs
   between the two views) and BR32.09 (spectator's current-unit indicator jumps early) — all of which
@@ -2235,3 +2248,60 @@ of the per-box test for exactly this reason, which is evidence that this path ha
 before. `PerfStats` and the perf monitor are the instruments; the readout now survives an overlay
 swap, so it can be turned on in one view and read in another.
 
+
+### BR58.01 — Active — owner: `CC`
+**Geometric sight raised per-turn planning cost by 1.38x, and the pacer's wall-clock budget turns that into a different bout**
+- **Source:** `CC`  ·  **CC session:** `5b7ef20b-5059-45dd-bc08-da8dc537ad93`
+- **Found:** 2026-08-05 (taskblock-58 Pass C), by `test_ai_batch_yield.gd::
+  test_a_yielding_batch_produces_the_identical_bout` going red. **Green at the Pass B commit,
+  red at Pass C** — checked by running that one file at both commits, not inferred.
+
+**The measurement**, twelve `BoutRunner` steps on the 32x24 bout board, seed 4242, same machine,
+same run of the suite harness:
+
+| | mean per turn | slowest turn |
+|---|---|---|
+| Pass B (opacity array) | **412 ms** | 563 ms |
+| Pass C (geometry) | **569 ms** | 1197 ms |
+
+`PlanPacer.DEFAULT_BUDGET_MSEC` is **400**.
+
+**Whole-suite cost, re-taken after the optimisations below landed:** `master` at Pass B runs the
+full gate in **682 s** (3149 of 3149), the Pass C branch in **770 s** (3156 of 3157) — **1.13x**,
+with the single failure being the test this entry is about. An earlier mid-block figure of 2.2x was
+wrong in both directions: it compared a stale profile baseline from an older commit against a run
+taken before the optimisations.
+
+**So the budget was already being exceeded before this pass** — 412 ms mean against a 400 ms
+ceiling — and the test passed anyway, which means an abort alone did not change the outcome. Pass C
+made aborts earlier and more frequent, and that does.
+
+**The underlying cost, measured on a 32x24 generated board:**
+- `LoS.has_los` **3.8 usec -> 152 usec**. It stopped being an array lookup and became a real march.
+  Optimised down from 999 usec within the pass (an any-hit loop with early exit, a ground-plane
+  reject before the per-cell height lookup, and a vertical-band reject before building a surface's
+  box placements); 152 usec is where it stands.
+- `VisibilityField.build` **3.7 ms -> 7.4 ms**, halved back toward parity for the AI by deriving
+  `SightSpans` once per planning ply and sharing it across every field that ply builds.
+- `field.allows` **0.46 -> 0.49 usec**. Still a bit test, which was the pass's own stop condition.
+
+**What is actually broken is bigger than the number.** `PlanPacer`'s abort is a **wall-clock**
+guarantee — its own header calls it "the hard stop that makes the promise keepable". A bout driven
+through the viewed path therefore stops being reproducible from its seed the moment planning
+exceeds the budget, which contradicts CLAUDE.md's standing rule that the same seed is the same
+battle, always. `test_ai_batch_yield` is the thing that notices, and its own claim — *"yielding must
+not change the sim at all"* — is comparing a **budgeted** run against an **unbudgeted** one, so it
+was only ever going to hold while planning was fast enough. **That fragility predates this pass;
+this pass is what walked it off the edge.**
+
+**Deliberately not done, because each is a decision rather than a fix:**
+- Raising `DEFAULT_BUDGET_MSEC`. It is flagged in its own comment as "a guarantee that the turn
+  ends, not a balance figure", and tuning a constant so a test passes is not a fix.
+- Changing the test to compare like with like (both paths budgeted, or neither). Defensible, and it
+  would hide the fact that the AI now searches less on real hardware.
+- Making the pacer count candidates instead of milliseconds, which would make the abort
+  deterministic and the viewed path seed-reproducible again. **This is probably the right answer**
+  and it is a design change to the AI's own guarantee, not a taskblock-58 edit.
+- Having `AttackAction.is_legal` read a `VisibilityField` rather than call `LoS.has_los`. It is the
+  remaining per-candidate caller, but `is_legal` is documented as the one true check and handing it
+  a field would give it a second, weaker answer.

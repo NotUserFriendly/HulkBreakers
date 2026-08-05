@@ -72,7 +72,8 @@ const TOOLS: Array[StringName] = [
 	&"spawn_a",
 	&"spawn_b",
 	&"spawn_none",
-	&"sight_blocking",
+	# taskblock-58 Pass C: `sight_blocking` retired with `Grid.opacity`. Sight is geometry, so a
+	# wall already says everything the tool used to author and there is nothing left to flag.
 	&"claim",
 	&"chance",
 	# taskblock-57 Pass H: **the manipulation gizmo, armed like every other verb.** A click with
@@ -296,9 +297,6 @@ func apply_tool_at(cell: Vector2i) -> bool:
 			applied = true
 		&"spawn_none":
 			controller.set_spawn_marker(cell, Enums.SpawnMarker.NONE)
-			applied = true
-		&"sight_blocking":
-			controller.set_opacity(cell, 0.0 if controller.opacity.has(cell) else 1.0)
 			applied = true
 		&"claim":
 			controller.add_claim(selected_claim_kind, _cell_claim_box(cell))

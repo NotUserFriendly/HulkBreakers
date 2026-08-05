@@ -76,10 +76,9 @@ func _initialize() -> void:
 		for x: int in range(WIDTH):
 			var cell := Vector2i(x, y)
 			if _is_border(cell):
-				# A wall is a blocker with no walkable surface under it, and it blocks sight.
+				# A wall is a blocker with no walkable surface under it. taskblock-58 Pass C: it
+				# blocks sight by being there, so there is no longer a paired opacity entry.
 				map.placements.append(MapPlacement.new(cell, MapPlacement.KIND_BLOCKER, &"wall"))
-				map.opacity_cells.append(cell)
-				map.opacity_values.append(1.0)
 				continue
 			if cell in RAMP_CELLS:
 				# A ramp's facing points up-slope: +X, toward the platform it serves.
@@ -124,8 +123,8 @@ func _initialize() -> void:
 		return
 	print(
 		(
-			"wrote %s — %d placements, %d spawns, %d opacity cells"
-			% [OUT_PATH, map.placements.size(), map.spawn_cells.size(), map.opacity_cells.size()]
+			"wrote %s — %d placements, %d spawns"
+			% [OUT_PATH, map.placements.size(), map.spawn_cells.size()]
 		)
 	)
 	quit(0)

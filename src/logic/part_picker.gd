@@ -110,6 +110,36 @@ static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> 
 ## **rejected outright** for any ray passing above ~3.0 — the exact failure this reject's own doc
 ## comment says must never happen. Found by a test that fired at a raised wall at the height
 ## `BoardView` draws it and got nothing back.
+## taskblock-58 Pass C: **the same reject with the height taken out**, as a first filter in front
+## of `near_ray` itself.
+##
+## `near_ray` needs the cell's own real elevation (`BR52.01`), and getting it costs a
+## `Surface.first_walkable` scan per cell — measured at **142 usec across a generated board's 218
+## blockers**, paid on every sight line whether or not the cell was anywhere near it. This answers
+## the same question in the ground plane only, so the height is not needed to ask it.
+##
+## **Provably weaker, which is the only property that matters.** The XZ-plane perpendicular
+## distance minimised over the line is at most the 3D perpendicular distance to any point on that
+## column, so a cell this rejects is one `near_ray` would reject at every height. It may admit
+## cells the real test then rejects — which costs time — and can never do the reverse, which would
+## be a shot through a wall. The behind-the-shooter half is deliberately not repeated here: it
+## needs the same height, and leaving it out only admits more.
+static func near_ray_flat(cell: Vector2i, from: Vector3, dir: Vector3) -> bool:
+	var to_centre := Vector2(
+		float(cell.x) * UnitGeometry.CELL_SIZE - from.x,
+		float(cell.y) * UnitGeometry.CELL_SIZE - from.z
+	)
+	var flat := Vector2(dir.x, dir.z)
+	var flat_length_squared: float = flat.length_squared()
+	if flat_length_squared < 0.000001:
+		# A vertical ray has no ground-plane direction to project onto; the distance from the
+		# column to the ray is just the distance from the column to the ray's own foot.
+		return to_centre.length() <= SKIP_RADIUS * UnitGeometry.CELL_SIZE
+	var along: float = to_centre.dot(flat) / flat_length_squared
+	var perpendicular: Vector2 = to_centre - flat * along
+	return perpendicular.length() <= SKIP_RADIUS * UnitGeometry.CELL_SIZE
+
+
 static func near_ray(cell: Vector2i, from: Vector3, dir: Vector3, height: float = 0.0) -> bool:
 	var centre := Vector3(
 		float(cell.x) * UnitGeometry.CELL_SIZE, height, float(cell.y) * UnitGeometry.CELL_SIZE
