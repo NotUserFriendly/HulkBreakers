@@ -85,15 +85,24 @@ func _editor(overlay: ControlOverlay) -> EditorModule:
 	return overlay.module(&"editor") as EditorModule
 
 
+func _bar(overlay: ControlOverlay) -> EditorBarModule:
+	return overlay.module(&"editor_bar") as EditorBarModule
+
+
 # ---------------------------------------------------------------- the acceptance
 
 
-## **THE CENTRAL CLAIM.** Everything the editor mode declares already existed except one module —
-## so the editor cost a module set plus one authoring module, exactly as the block predicted.
+## **THE CENTRAL CLAIM, and taskblock-57 Pass G1 moves it by exactly one module.**
 ##
-## Counted rather than stated: if a second authoring module were added, or if the editor started
-## needing a bespoke version of an existing panel, this reports the real number and fails.
-func test_the_editor_is_a_module_set_plus_exactly_one_new_module() -> void:
+## Pass F's answer was "a module set plus one authoring module". G1's whole subject is that the
+## editor needs a bar of its own shape — *"three action bars, not one with three contents"* — so the
+## answer is now a module set plus **two**, and the second one is named here rather than allowed to
+## arrive as a nameless increment.
+##
+## **Still counted rather than stated.** A third editor-only module, or a bespoke copy of an
+## existing panel, reports the real number and fails — which is the property that made this test
+## worth writing and is unchanged by the number being two.
+func test_the_editor_is_a_module_set_plus_exactly_two_new_modules() -> void:
 	var written_for_the_editor: Array[StringName] = []
 	for id: StringName in ViewModes.editor().modules:
 		if not MODULES_BEFORE_PASS_F.has(id):
@@ -103,8 +112,8 @@ func test_the_editor_is_a_module_set_plus_exactly_one_new_module() -> void:
 	gut.p("written for it: %s" % ", ".join(written_for_the_editor))
 	assert_eq(
 		written_for_the_editor,
-		[&"editor"] as Array[StringName],
-		"one authoring module, and no more"
+		[&"editor_bar", &"editor"] as Array[StringName],
+		"the authoring module and the editor's own bar, and no more"
 	)
 
 
@@ -231,8 +240,8 @@ func test_the_editor_key_is_listed_in_the_bindings_legend() -> void:
 ## module adds** — the verb it calls is `EditorController`'s, which is tested with no scene at all.
 func test_a_board_click_authors_through_the_active_tool() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.tool_dropdown.selected = EditorModule.TOOLS.find(&"place")
-	editor.part_dropdown.selected = editor._part_ids.find(&"ship_floor")
+	editor.active_tool = &"place"
+	editor.selected_part = &"ship_floor"
 
 	assert_true(editor.apply_tool_at(Vector2i(2, 2)))
 
@@ -241,33 +250,33 @@ func test_a_board_click_authors_through_the_active_tool() -> void:
 	assert_eq(editor.last_cell, Vector2i(2, 2))
 
 
-func test_every_tool_the_dropdown_offers_is_one_the_router_answers() -> void:
+func test_every_tool_the_bar_offers_is_one_the_router_answers() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.part_dropdown.selected = editor._part_ids.find(&"ship_floor")
+	editor.selected_part = &"ship_floor"
 	# A floor first, so the tools that need a surface under them have one.
-	editor.tool_dropdown.selected = EditorModule.TOOLS.find(&"place")
+	editor.active_tool = &"place"
 	editor.apply_tool_at(Vector2i(1, 1))
 
 	for tool: StringName in EditorModule.TOOLS:
-		editor.tool_dropdown.selected = EditorModule.TOOLS.find(tool)
-		assert_eq(editor.active_tool(), tool, "the dropdown and the router agree on %s" % tool)
+		editor.active_tool = tool
+		assert_eq(editor.active_tool, tool, "the bar and the router agree on %s" % tool)
 		assert_true(editor.apply_tool_at(Vector2i(1, 1)), "%s did nothing at all" % tool)
 
 
 func test_the_spawn_tools_mark_and_unmark_a_cell() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.tool_dropdown.selected = EditorModule.TOOLS.find(&"spawn_a")
+	editor.active_tool = &"spawn_a"
 	editor.apply_tool_at(Vector2i(1, 1))
 	assert_eq(editor.controller.spawn_markers.get(Vector2i(1, 1)), Enums.SpawnMarker.SPAWN_A)
 
-	editor.tool_dropdown.selected = EditorModule.TOOLS.find(&"spawn_none")
+	editor.active_tool = &"spawn_none"
 	editor.apply_tool_at(Vector2i(1, 1))
 	assert_false(editor.controller.spawn_markers.has(Vector2i(1, 1)))
 
 
 func test_the_sight_blocking_tool_toggles_rather_than_only_setting() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.tool_dropdown.selected = EditorModule.TOOLS.find(&"sight_blocking")
+	editor.active_tool = &"sight_blocking"
 	editor.apply_tool_at(Vector2i(1, 1))
 	assert_almost_eq(float(editor.controller.opacity.get(Vector2i(1, 1), 0.0)), 1.0, 0.0001)
 	editor.apply_tool_at(Vector2i(1, 1))
@@ -290,7 +299,7 @@ func test_the_edge_button_declares_the_selected_side() -> void:
 
 func test_undo_from_the_panel_walks_the_controller_back() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.part_dropdown.selected = editor._part_ids.find(&"ship_floor")
+	editor.selected_part = &"ship_floor"
 	editor.apply_tool_at(Vector2i(1, 1))
 	assert_eq(editor.controller.placements.size(), 1)
 	assert_true(editor.undo())
@@ -310,8 +319,8 @@ func test_authoring_a_claim_draws_it_through_the_claim_module() -> void:
 	assert_not_null(volumes, "the editor mode mounts the claim module")
 	assert_eq(volumes.boxes.size(), 0, "sanity: nothing drawn before anything is authored")
 
-	editor.tool_dropdown.selected = EditorModule.TOOLS.find(&"claim")
-	editor.claim_kind_dropdown.selected = EditorModule.CLAIM_KINDS.find(SectionClaim.KIND_INTERIOR)
+	editor.active_tool = &"claim"
+	editor.selected_claim_kind = SectionClaim.KIND_INTERIOR
 	editor.apply_tool_at(Vector2i(3, 2))
 
 	assert_eq(volumes.boxes.size(), 1, "the authored claim is drawn")
@@ -324,7 +333,7 @@ func test_removing_the_claim_stops_drawing_it() -> void:
 	var overlay: ControlOverlay = _editor_overlay()
 	var editor: EditorModule = _editor(overlay)
 	var volumes: ClaimVolumeModule = overlay.module(&"claim_volumes") as ClaimVolumeModule
-	editor.tool_dropdown.selected = EditorModule.TOOLS.find(&"claim")
+	editor.active_tool = &"claim"
 	editor.apply_tool_at(Vector2i(1, 1))
 	assert_eq(volumes.boxes.size(), 1)
 
@@ -433,7 +442,7 @@ func test_a_board_that_fails_navigability_still_launches_and_still_warns() -> vo
 	assert_true(
 		editor.warnings_label.text.contains("walked into and not back out of"), "the author is told"
 	)
-	assert_false(editor.run_bout_button.disabled, "and is not stopped")
+	assert_false(_bar(overlay).file_buttons["Run Test Bout"].disabled, "and is not stopped")
 	assert_eq(editor.run_test_bout()["error"], "", "the broken board launches, as F4 requires")
 
 

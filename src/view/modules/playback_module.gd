@@ -48,7 +48,11 @@ func module_id() -> StringName:
 
 
 func _mount() -> void:
-	var row: Control = context.slot(ModuleSlots.TOP_LEFT, null)
+	# taskblock-57 Pass G1: **the row moved and this module did not.** `PACING_ROW` was `TOP_LEFT`
+	# until the spectator's bar folded the transport controls in; the chrome published it at the
+	# top-left corner and `SpectatorBarModule` publishes it inside the bar. Which of those is true is
+	# the mode's business, which is the whole premise the slot vocabulary exists for.
+	var row: Control = context.slot(ModuleSlots.PACING_ROW, null)
 	play_button = _button(row, "Play", _on_play_button_pressed)
 	step_button = _button(row, "Step", step_once)
 	speed_button = _button(row, "1x", cycle_speed)

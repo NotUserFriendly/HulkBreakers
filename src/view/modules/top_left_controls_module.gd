@@ -13,6 +13,15 @@ extends ViewModule
 ## `SquadControlOverlay` had no such row and anchored the cluster itself. Anchoring unconditionally
 ## here would fight whichever parent already owns real positioning — `TopLeftControls`' own header
 ## says so, and it stays true.
+##
+## ## taskblock-57 Pass G1: this cluster is in the spectator's bar now, and this file did not change
+##
+## Pass D's last unlanded line was *"`top_left_controls_module` → the spectator action bar"*, which
+## had nowhere to go until `SpectatorBarModule` existed. It exists, it publishes `PACING_ROW`, and
+## the move cost this module one renamed constant. **The name is now historical**: the cluster is
+## bottom-centre in every mode that still declares it. The id is kept because it is what a mode
+## table, a catalog row and several tests name it by, and renaming an identity to describe a
+## position is what put this module in the wrong place to begin with.
 
 const ANCHOR_MARGIN := Vector2(16, 16)
 
@@ -32,7 +41,7 @@ func module_id() -> StringName:
 
 func _mount() -> void:
 	controls = TopLeftControls.new()
-	var row: Control = context.slot(ModuleSlots.TOP_LEFT, null)
+	var row: Control = context.slot(ModuleSlots.PACING_ROW, null)
 	if row != null:
 		row.add_child(controls)
 	elif context.ui_root != null:

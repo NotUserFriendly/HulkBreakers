@@ -76,11 +76,15 @@ func test_any_module_can_publish_a_slot_not_just_the_action_bar() -> void:
 
 
 ## Publishing nothing is the default, and the overwhelming majority stay that way.
+##
+## **taskblock-57 Pass G1: the exceptions are the three bars**, checked by class rather than by a
+## list of ids — a fourth mode's bar is covered the day it is written, and a module that starts
+## publishing without being a bar still fails this.
 func test_a_module_publishes_nothing_by_default() -> void:
 	for id: StringName in ModuleCatalog.IDS:
 		var module: ViewModule = ModuleCatalog.build(id)
 		var published: Dictionary = module.published_slots()
-		if id != &"action_bar":
+		if module is not BarModule:
 			assert_eq(published.size(), 0, "%s publishes slots and nothing said so" % id)
 		module.free()
 

@@ -820,38 +820,61 @@ func test_resizing_the_spectator_log_actually_changes_its_size() -> void:
 ## Growing must extend the TOP upward and leave the bottom where it is. Setting
 ## `size.y` alone pins the top and pushes the bottom down off the corner, which
 ## is what the supervisor saw as "the bottom of the panel changes shape".
+##
+## **taskblock-57 Pass G1: read off the GLOBAL rect, and that is the whole change.** The log is
+## inside the spectator's bar now rather than anchored to a screen corner, so `position` is measured
+## against a margin container whose own origin moves — and the old assertions were reading a local y
+## that had stopped meaning "where it is on screen". They reported the bottom edge moving 100 px
+## down while the panel was in fact still hard against the bottom of the bar.
+##
+## The rule itself is unchanged and still holds, and it holds for a *different* reason than it used
+## to: `BarModule` anchors its root to the bottom of the action row and grows it upward
+## (`GROW_DIRECTION_BEGIN`), so a taller log makes the whole bar taller upward. The corner-anchored
+## version got the same result from its own negative offset. Same promise, one owner instead of two.
 func test_resizing_keeps_the_bottom_edge_pinned_and_grows_upward() -> void:
 	var overlay: ControlOverlay = _spectate(await _bout())
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var panel: CombatLogPanel = overlay.module(&"combat_log").panel
-	var bottom_before: float = panel.position.y + panel.size.y
-	var top_before: float = panel.position.y
+	var before: Rect2 = panel.get_global_rect()
 
 	panel._apply_height(panel.size.y + 100.0)
 	await get_tree().process_frame
+	await get_tree().process_frame
 
-	assert_almost_eq(
-		panel.position.y + panel.size.y, bottom_before, 1.0, "the bottom edge does not move"
-	)
-	assert_almost_eq(panel.position.y, top_before - 100.0, 1.0, "the top edge is what rises")
+	var after: Rect2 = panel.get_global_rect()
+	# `%v` formats a Vector2 but NOT a Rect2 — passing the rect itself fails the format call, which
+	# lands as an engine error and reads as a mysterious assertion failure three lines later. The
+	# same lesson `test_battle_placements.gd` records; learned again here.
+	gut.p("log grew from %s to %s" % [str(before), str(after)])
+	assert_almost_eq(after.end.y, before.end.y, 1.0, "the bottom edge does not move")
+	assert_almost_eq(after.position.y, before.position.y - 100.0, 1.0, "the top edge is what rises")
 
 
-## Both views put the log hard into the bottom-left corner; a margin in one and
-## not the other made them sit in visibly different places for no reason.
-func test_the_spectator_log_sits_flush_in_the_bottom_left_corner() -> void:
+## **taskblock-57 Pass G1: both views put the log immediately left of the bar, and that is now the
+## same sentence rather than two placements that happened to agree.**
+##
+## The old claim was "hard into the bottom-left corner", which both views reached by different
+## means — the player's through the action-bar slot, the spectator's through its own corner anchor,
+## because the spectator had no bar to pin against. It has one now, so the log resolves
+## `ACTION_BAR_LEFT` in this mode exactly as it does in the player's, and the assertion is ancestry
+## through the bar rather than a screen coordinate: that is the property that makes it follow the
+## bar when the bar moves.
+func test_the_spectator_log_sits_left_of_the_bar_exactly_as_the_players_does() -> void:
 	var overlay: ControlOverlay = _spectate(await _bout())
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var panel: CombatLogPanel = overlay.module(&"combat_log").panel
+	var bar: SpectatorBarModule = overlay.module(&"spectator_bar") as SpectatorBarModule
 
-	# `position` is in PARENT coordinates, not relative to the anchor it hangs
-	# from — so "flush to the bottom" means the panel's bottom edge equals the
-	# viewport's height, not zero.
-	assert_eq(panel.position.x, 0.0, "flush left")
+	assert_not_null(bar, "the spectator mode declares a bar of its own")
+	assert_true(
+		bar.left_slot.is_ancestor_of(panel),
+		"the log is anchored to the screen -- moving the bar would leave it behind"
+	)
 	assert_almost_eq(
-		panel.position.y + panel.size.y,
-		panel.get_viewport_rect().size.y,
-		1.0,
-		"and flush to the bottom of the screen"
+		panel.get_global_rect().end.x,
+		bar.content_column.get_global_rect().position.x,
+		float(UiLayout.scaled(BattleLayout.PADDING)) + 1.0,
+		"and it abuts the bar's own content, padded"
 	)
