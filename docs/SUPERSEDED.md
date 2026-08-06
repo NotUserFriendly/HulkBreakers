@@ -408,3 +408,52 @@ per tier as well as mixed.
 meaning** — a figure from before taskblock-59 Pass E and one after are not comparable, whatever the
 seed. Nothing on disk pinned one (`BoutCorpus` draws from the clock), so there is no artifact to
 regenerate, only past figures to distrust.
+
+## A stranded unit is hidden and comes back when the board can seat it (tb57 / tb59 B → tb59 follow-up)
+**Was:** `EditorModule` hid the unit views the authored board could not place, and taskblock-57's
+own test asserted the complement — *"they come back once the board can seat them, so the fix is not
+'hide the units'."*
+**Now:** **no bout unit is drawn in the editor at any stage.** `run_test_bout` is what brings them
+back.
+**Why:** `BoardSwap.swap_board` seats every living unit on the **first free walkable cell**, so the
+author's very first floor tile put a bout unit on the board — visible, and feeding the wall-cutout
+shader a porthole to punch through nearby walls. Reported twice and as two defects (*"a random unit
+stuck around in the editor from the prior map, a squad 0 unit 0"* and *"something is causing a
+cutout or culling sphere on wall parts"*, both noted as coming and going as more was placed):
+**one unit, both symptoms.** The old rule covered only the units the board could *not* seat, which
+is the half that was already invisible. The editor authors a board; it does not play one.
+
+## A drag applies `amount_at` to the value it currently holds (tb57 H → tb59 follow-up)
+**Was:** `GizmoModule._drag_claim` and the placement-size drag both added
+`Gizmo.amount_at(...)` — a delta measured **from the grab** — to the subject's **current** value.
+**Now:** every drag computes from a snapshot taken when the handle was grabbed
+(`Gizmo.drag_start_state`), reached through the single `GizmoModule.begin_drag` entry point.
+**Why:** the old form re-applied the whole drag on every mouse-motion event. Reported as *"the scale
+handles move independently of the mouse cursor, flying off huge with the smallest movement"*;
+measured at six events against a **stationary** pointer taking a wall from 3.4 to 8.4. `Gizmo.
+value_at` had always stated the rule the callers were breaking — *"a pure function of these two and
+the current pointer, never an accumulation of per-frame deltas."* The claim drags had the identical
+defect with no report against them.
+
+## The editor's verbs address a cell (tb56 F1 → tb59 follow-up)
+**Was:** `EditorController`'s own note — *"addressing is by **cell**, never by a held `MapPlacement`
+reference"* — and every editor verb followed it: `remove_top(cell)`, `placements_at(cell)`'s last
+entry for the gizmo, `FacePlacement.span_of` over the whole cell.
+**Now:** the verbs address **the placement the click struck**, resolved from the world point
+`PartPicker.hit` now reports. The cell-addressed forms remain as the fallback for a click that
+resolved off the ground plane.
+**Why:** a cell can hold a column, and each verb reached for a different member of it — the whole
+stack's span when placing, the last-authored when deleting, the topmost when selecting. Reported as
+*"clicking the side of a stacked ship_floor places a ship_floor back at zero"*, *"clicking the
+bottom item in the stack instead deletes the top item"* and *"selecting the floor under a wall
+selects the wall."* The original reasoning still holds for **held references across an undo**, which
+is why the struck point is resolved to a placement per gesture rather than cached.
+
+## A UI-buttons toggle flips `collapsed` (tb57 C → tb59 follow-up)
+**Was:** `UiButtonsModule` pressed a toggle with `module.collapsed = not module.collapsed`.
+**Now:** `module.collapsed = module.is_showing()`.
+**Why:** `collapsed` drifts — nothing updates it when a surface is opened by something other than
+its button, which `is_showing`'s own note already acknowledged for the *border* (*"the cluster reads
+this every frame rather than remembering what it did"*). The press was still remembering. Reported
+as *"it takes two clicks of the PL UI button to actually dismiss the pick-a-thing pop up"*, and it
+was also reachable from a fresh mount, where the first press closed an already-closed list.
