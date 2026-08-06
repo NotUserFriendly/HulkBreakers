@@ -48,7 +48,7 @@ extends ViewModule
 ##
 ## | inherited | where it lived | cleared by |
 ## |---|---|---|
-## | units at their last cells | `CombatState.units` | `_hide_stranded` (`BR57.01`) |
+## | units at their last cells | `CombatState.units` | `_hide_bout_units` (`BR57.01`, and see it) |
 ## | movement tiles and ghosts | `BoardView`'s overlay layers | `clear_overlays` in `_mount` |
 ## | extraction markers | `BoardView`'s statics, from `MissionState` | building with no mission |
 ##
@@ -56,6 +56,14 @@ extends ViewModule
 ## above is right on its own terms — do not draw what is not there — and none of them touches the
 ## cause, so expect a fourth. The entry point that builds a world with no bout in it is the fix;
 ## clearing things one at a time is the interim.
+##
+## **The fourth arrived, and then a fifth wearing the same clothes.** taskblock-59 Pass B found the
+## wall cutout still keyed on the previous bout's units. The report came back: it was still
+## happening, *"goes away after placing more walls or just more items"*, alongside *"a random unit
+## stuck around in the editor from the prior map."* One unit, both symptoms — `BoardSwap.swap_board`
+## seats on the **first free walkable cell**, so the author's first floor tile put it on the board.
+## `_hide_bout_units` stops treating this a symptom at a time: **no bout unit is drawn in the editor
+## at all.**
 
 ## taskblock-57 Pass G2: **the active tool changed.** *"Current tool shows on the cursor — a small
 ## icon of what is being placed — **or** is carried by the action bar's own highlight. Either is
@@ -113,6 +121,11 @@ var controller := EditorController.new()
 ## against, and what the readout names.
 var last_cell: Variant = null
 
+## **True while this is a board being authored rather than a bout being played.** Cleared by
+## `run_test_bout`, which is the moment the author stops authoring and starts watching. What reads
+## it is `_hide_bout_units`; see that for why the editor shows no units at all.
+var authoring: bool = true
+
 # --- what a click means, as state rather than as a widget's index -----------------------------
 #
 # **taskblock-57 Pass G1: these were four `OptionButton`s and are four fields.** The tool, the
@@ -136,6 +149,7 @@ var active_tool: StringName = &"place_terrain":
 		if active_tool == value:
 			return
 		active_tool = value
+		_release_gizmo()
 		tool_changed.emit(value)
 ## Which of `PLACEMENT_KINDS` a placed part becomes.
 ##
@@ -159,6 +173,12 @@ var selected_map_thing: StringName = &"claim"
 ## and set by the hover path while a ghost is being drawn — which is what makes the ghost and the
 ## click take the same branch of `placement_target`.
 var struck_normal: Variant = null
+
+## taskblock-59 follow-up: **the world point the pick struck**, or null. What tells the editor
+## *which* of a cell's stacked placements was clicked — a column of floors is one cell, and every
+## verb that resolved a click to the cell then acted on the wrong one of them. Set and cleared
+## beside `struck_normal`, by the same two paths, for the same reason.
+var struck_point: Variant = null
 
 ## The last surface part the author placed, so a wall dropped on bare ground brings that floor with
 ## it rather than a named default. See `_ensure_a_tile_under`.
@@ -258,7 +278,10 @@ func apply_tool_at(cell: Vector2i) -> bool:
 		&"place_terrain", &"place_big_part", &"place_part":
 			applied = _place_with(cell, active_tool)
 		&"delete":
-			applied = controller.remove_top(cell)
+			# taskblock-59 follow-up: **the one that was clicked, not the one authored last.**
+			# Reported as *"clicking the bottom item in the stack instead deletes the top item"* —
+			# `remove_top` is cell-addressed and a stack is one cell.
+			applied = controller.remove_placement(struck_placement(cell))
 		&"place_map_thing":
 			applied = _place_map_thing(cell)
 		&"select", &"scale":
@@ -303,7 +326,40 @@ func _place_with(cell: Vector2i, tool: StringName) -> bool:
 		grown.size = veneer["size"]
 		return true
 	_ensure_a_tile_under(at)
-	return controller.place(at, selected_part, selected_kind, target["height"], facing()) != null
+	var placed: MapPlacement = controller.place(
+		at, selected_part, selected_kind, target["height"], facing()
+	)
+	if placed == null:
+		return false
+	_seat_on_the_struck_deck(placed, at, float(target["height"]))
+	return true
+
+
+## **A blocker or a loose item lands on the deck that was clicked, not on the bottom of the stack.**
+##
+## taskblock-59 follow-up: *"cover items also don't land atop a set of stacked ship floors."*
+## `BoardView` draws a blocker at `UnitGeometry.true_height_for_cell`, which is
+## `Surface.first_walkable` — **the first authored**, so on a column of floors it is the lowest one.
+## That is correct of the grid (`first_walkable` is a documented rule the pathfinder reads) and
+## wrong for an author who clicked the top of a stack.
+##
+## **`MapPlacement.offset` is what reconciles them**, and it is why Pass C's field earns its keep a
+## second time: the grid still says the cell's walkable height is the bottom floor, and the
+## placement carries the difference. Nothing about `first_walkable` moves, so no gameplay rule
+## changes.
+##
+## A no-op for a surface — its own `height` already says where it is — and for a cell whose drawn
+## ground is where the click landed anyway, which is every unstacked cell.
+func _seat_on_the_struck_deck(placed: MapPlacement, cell: Vector2i, wanted: float) -> void:
+	if placed.kind == MapPlacement.KIND_SURFACE:
+		return
+	var battle: BattleScene = context.battle if context != null else null
+	if battle == null or battle.board_view == null or battle.board_view.grid == null:
+		return
+	var drawn: float = UnitGeometry.true_height_for_cell(cell, battle.board_view.grid)
+	if is_equal_approx(drawn, wanted):
+		return
+	placed.offset = Vector3(placed.offset.x, wanted - drawn, placed.offset.z)
 
 
 ## **The span a ledge veneer takes**, as `{height, size}`, or `{}` when the armed part is not one.
@@ -363,6 +419,29 @@ func _tell_the_author(sentence: String) -> void:
 	EditorLog.report(state, [sentence], [])
 
 
+## **Arming a different tool lets go of whatever the gizmo was holding.** taskblock-59 follow-up.
+##
+## Reported as *"clicking to a different tool needs to clean up gizmos attached to other parts.
+## Can't have something with the scale handles visible while trying to place something."* Exactly
+## right, and it is the same *do not draw what is not there* rule the rest of this module runs on: a
+## handle set is a claim that something is selected, and arming *Place Terrain* is saying it is not.
+##
+## **`select` and `scale` keep it**, because those are the two tools the gizmo belongs to — swapping
+## between them is changing which handles you want on the same subject, not letting go of it.
+##
+## The ghost is released with it: `reassert_ghost` reads the gizmo's own focus, so clearing the one
+## clears the other and there is no second place that remembers what was selected.
+func _release_gizmo() -> void:
+	if EditorTools.arms_the_gizmo(active_tool):
+		return
+	var handles: GizmoModule = context.module(&"gizmo") as GizmoModule if context != null else null
+	if handles == null:
+		return
+	handles.gizmo.clear()
+	handles.reassert_ghost()
+	handles.redraw()
+
+
 ## **Where the next placement lands**, given the cell under the cursor or the click.
 ##
 ## taskblock-58 Pass E: **the one answer, called by the ghost and by the click.** A preview that
@@ -370,7 +449,35 @@ func _tell_the_author(sentence: String) -> void:
 ## two answers to one question — so *"what appears is what the ghost showed"* is structural rather
 ## than something a test has to keep true.
 func placement_target(cell: Vector2i) -> Dictionary:
-	return FacePlacement.target_from(controller.placements_at(cell), cell, struck_normal, height())
+	return FacePlacement.target_from(
+		struck_placements(cell), cell, struck_normal, height(), DataLibrary.get_part(selected_part)
+	)
+
+
+## **The placement the click struck**, or the topmost at `cell` when the pick reported no point.
+##
+## taskblock-59 follow-up. Reported three ways — *"clicking the side of a stacked ship_floor places
+## a ship_floor back at zero"*, *"clicking the bottom item in the stack instead deletes the top
+## item"*, and *"selecting the floor under a wall selects the wall"* — and they are one thing: the
+## editor addressed a **cell** where the author had clicked a **thing**, and a cell can hold a
+## column.
+func struck_placement(cell: Vector2i) -> MapPlacement:
+	if struck_point is Vector3:
+		var found: MapPlacement = controller.placement_at(cell, (struck_point as Vector3).y)
+		if found != null:
+			return found
+	var here: Array[MapPlacement] = controller.placements_at(cell)
+	return here[here.size() - 1] if not here.is_empty() else null
+
+
+## The struck placement as a one-entry list, for `FacePlacement`, which measures a span. **The
+## struck thing's own span, not the cell's** — that is what stops the side of an upper floor
+## reporting the bottom of the stack.
+func struck_placements(cell: Vector2i) -> Array[MapPlacement]:
+	var one: MapPlacement = struck_placement(cell)
+	if one == null:
+		return controller.placements_at(cell)
+	return [one] as Array[MapPlacement]
 
 
 ## *Place Map Thing* — everything the player never sees, put down by one verb with its own
@@ -472,8 +579,13 @@ func run_test_bout() -> Dictionary:
 		return {"error": "no bout to load this board into"}
 	if not battle.bout_injector.load_map_file(controller.to_map_file()):
 		return {"error": "the injector refused the board — see the combat log"}
+	# **Cleared before the redraw**, so the `refresh()` below does not immediately hide the units the
+	# injector has just seated.
+	authoring = false
 	battle.sync_board_view()
 	battle.refresh_unit_views()
+	for view: HitVolumeView in battle.unit_views:
+		view.visible = true
 	_frame_content()
 	refresh()
 	return {"error": ""}
@@ -568,9 +680,7 @@ func _refresh_board() -> void:
 		# stranded unit rather than putting it somewhere plausible.
 		battle.board_view.build(Grid.new(1, 1), battle.combat_state.material_table, {})
 		return
-	var stranded: Array[int] = BoardSwap.swap_board(
-		battle.combat_state, result["grid"] as Grid, true
-	)
+	BoardSwap.swap_board(battle.combat_state, result["grid"] as Grid, true)
 	# **Built without the mission's decoration, not through `sync_board_view`.**
 	#
 	# That helper passes `mission.team_extraction_cells`, so every editor redraw re-stamped the
@@ -580,7 +690,7 @@ func _refresh_board() -> void:
 	# **An authored board has no mission**, so it has no extraction cells. Passing an empty dictionary
 	# is not a workaround; it is the honest argument for a board nobody is playing.
 	battle.board_view.build(battle.combat_state.grid, battle.combat_state.material_table, {})
-	_hide_stranded(battle, stranded)
+	_hide_bout_units(battle)
 	# taskblock-59 Pass B: **the rebuild just freed every mesh, including the ghosted one.** The
 	# gizmo holds what is focused, so it re-states it against the meshes that now exist, rather than
 	# this module keeping a second record of the selection to restore from.
@@ -589,58 +699,39 @@ func _refresh_board() -> void:
 		handles.reassert_ghost()
 
 
-## **A unit the authored board has nowhere to put is not drawn.**
+## **The editor draws no bout units at all**, and none of them cuts a hole in a wall.
 ##
-## Reported by the supervisor as *"some units spawn in edit mode at the places they were in the
-## last bout"*, and that is exactly what it was. The editor installs over whatever bout
-## `BattleScene`
-## already built, and `BoardSwap.swap_board` relocates every living unit onto the authored
-## board —
-## but it **returns the ones it could not place** and this module was discarding that list.
-## A board
-## with no floor on it yet strands all of them, so every unit kept its cell from the
-## previous bout
-## and was still rendered there, standing on nothing.
+## taskblock-59 follow-up, and it **supersedes taskblock-59 Pass B's own fix rather than adding to
+## it.** Pass B hid the units the authored board could not seat (`BR57.01`) and excluded those from
+## the wall cutout. That covered the wrong half: `BoardSwap.swap_board` seats every living unit on
+## **the first free walkable cell**, so the author's very first floor tile puts a bout unit on the
+## board — visible, and feeding the cutout shader a porthole to punch through nearby walls.
 ##
-## Hiding rather than moving, and that is deliberately not a design decision: a stranded
-## unit has
-## no cell on this board, so drawing it somewhere is the view inventing a fact. It is the
-## same rule
-## this project has applied to risers and to the ground quad — **do not draw what is not
-## there.** The
-## units are untouched and `run_test_bout` relocates them onto the finished board down the
-## ordinary
-## injector path, which is when they come back.
+## Reported twice and as two defects: *"something is causing a cutout or culling sphere on wall
+## parts in the editor"* and *"a random unit stuck around in the editor from the prior map, a squad
+## 0 unit 0 looks like"* — both with the note that they came and went together as more was placed.
+## **They are one unit.** It appeared with the first floor and vanished whenever the board stopped
+## being able to seat it, which is what made it read as intermittent.
 ##
-## **The real answer is an entry point that builds a world with no bout in it**, which is
-## `PLAN.md`'s
-## *Main menu* and is flagged in this module's own header as a known limit. This makes the
-## editor
-## honest in the meantime.
-## taskblock-59 Pass B: **and a unit that is not drawn does not cut a hole in a wall.**
+## **Hiding all of them is not a bigger hammer, it is the correct statement**: the editor authors a
+## board, it does not play one, so no unit has a place on it until a bout is launched. That is the
+## same *do not draw what is not there* rule Pass B applied to stranded units, applied to the
+## premise instead of to a symptom. `run_test_bout` clears `authoring` and the units come back
+## through the ordinary injector path.
 ##
-## Reported as *"cutout or culling is affecting walls in the editor"*, with the taskblock's own
-## reading: *"the editor has no unit to cut around, so either the cutout should be off in editor
-## modes or it is keying off something stale."* **Stale, and it is this module's fourth inheritance
-## from the bout it installed over** — the header above predicted a fourth and this is it.
-## `BattleScene` feeds `board_view.wall_cutout_units = combat_state.units`, the editor never
-## replaces that list, and the wall-cutout shader goes on punching portholes at the last bout's
-## cells whether or not anything is standing there.
-##
-## **Expressed as "not drawn, so not cut around" rather than as "off in the editor".** The
-## exclusion set is the mechanism that already exists for this exact statement — the debug *vanish*
-## verb uses it — and a rule keyed on visibility needs no mode named in `BoardView`, holds for any
-## other surface that hides a unit, and cannot drift out of step with what `_hide_stranded` decided,
-## because it is the same decision. `BoardView.build` clears the set and `_refresh_board` calls it
-## immediately before this, so the set is rebuilt every redraw rather than accumulating.
-func _hide_stranded(battle: BattleScene, stranded: Array[int]) -> void:
+## The real answer is still upstream and still queued — an entry point that builds a world with no
+## bout in it (`PLAN.md`, *Main menu*). This makes the editor honest in the meantime, and unlike the
+## interim fixes above it does not depend on what the author has placed.
+func _hide_bout_units(battle: BattleScene) -> void:
+	if not authoring:
+		return
 	for view: HitVolumeView in battle.unit_views:
 		if view.unit == null:
 			continue
-		var seated: bool = not stranded.has(view.unit.id)
-		view.visible = seated
-		if not seated:
-			battle.board_view.exclude_unit_from_occlusion(view.unit.id)
+		view.visible = false
+		# A unit that is not drawn has no body to see round, so it cuts nothing. The exclusion set is
+		# the mechanism that already says exactly that, and `BoardView.build` clears it every redraw.
+		battle.board_view.exclude_unit_from_occlusion(view.unit.id)
 
 
 ## **This is what `ClaimVolumeModule` was built for.** Pass E left it tested and mounted by no
@@ -741,8 +832,11 @@ func _on_board_clicked(hit: Dictionary) -> void:
 		return
 	var normal: Variant = hit.get("normal")
 	struck_normal = normal if normal is Vector3 else null
+	var point: Variant = hit.get("point")
+	struck_point = point if point is Vector3 else null
 	apply_tool_at(cell as Vector2i)
 	struck_normal = null
+	struck_point = null
 
 
 func _board_inspect() -> BoardInspectModule:

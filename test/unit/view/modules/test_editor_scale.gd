@@ -90,7 +90,7 @@ func test_dragging_a_face_writes_the_size_and_the_readout_agrees() -> void:
 	assert_eq(before, Vector3.ZERO, "sanity: an unsized placement is the part's own")
 
 	# Grab the top face and drag it up. The struck normal is what makes Y the perpendicular axis.
-	handles.gizmo.begin_drag(Gizmo.AXIS_Y, 1.0, 0.0, Vector2(400.0, 400.0))
+	handles.begin_drag(Gizmo.AXIS_Y, 1.0, Vector2(400.0, 400.0))
 	handles._drag_placement_size(editor, Vector2(400.0, 340.0), Vector2(0.0, -60.0))
 
 	var placement: MapPlacement = editor.controller.placements_at(Vector2i(3, 3))[1]
@@ -113,7 +113,7 @@ func test_a_top_face_drag_leaves_the_base_where_it_was() -> void:
 	var editor: EditorModule = _scaled_wall(overlay)
 	var base_before: float = handles.placement_volume().position.y
 
-	handles.gizmo.begin_drag(Gizmo.AXIS_Y, 1.0, 0.0, Vector2(400.0, 400.0))
+	handles.begin_drag(Gizmo.AXIS_Y, 1.0, Vector2(400.0, 400.0))
 	handles._drag_placement_size(editor, Vector2(400.0, 340.0), Vector2(0.0, -60.0))
 
 	var after: AABB = handles.placement_volume()

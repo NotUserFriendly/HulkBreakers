@@ -45,6 +45,10 @@ extends ViewModule
 ## Where the readout sits and how big it is, before UI scale. Starting positions.
 const READOUT_SIZE := Vector2(220, 28)
 
+## How far from the pointer the readout floats, before UI scale. Up and to the right, so the cursor
+## never sits on top of its own number. A starting position, not a decision.
+const READOUT_OFFSET := Vector2(18, -30)
+
 ## Arrow colours by axis, so an author can tell which one they are dragging. Red/green/blue on
 ## X/Y/Z is the CAD convention this is named after, and matching it is worth more than a
 ## palette.
@@ -62,8 +66,12 @@ const AXIS_COLORS: Array[Color] = [
 ## or *Scale* says which set you want up front, because those are different intentions and a mode
 ## reached by re-clicking is a mode left by accident. `TOOL` remains the translate one, so a caller
 ## that just wants "the gizmo" still has a name for it.
-const TOOL: StringName = &"select"
-const TOOL_SCALE: StringName = &"scale"
+## taskblock-59 follow-up: **read out of `EditorTools`, not spelled again here.** The tool
+## vocabulary is logic and this file is what draws handles for it; two copies of the same two names
+## is the drift centralising the vocabulary was meant to stop. Kept as named constants because the
+## tests and the bar refer to them by name rather than by position.
+const TOOL: StringName = EditorTools.GIZMO_TOOLS[0]
+const TOOL_SCALE: StringName = EditorTools.GIZMO_TOOLS[1]
 
 ## The tool over the selection. **Public and constructed here**, because it is the module's
 ## whole state and a test drives it directly rather than through meshes.
@@ -119,6 +127,10 @@ func focus_at(cell: Vector2i) -> bool:
 		gizmo.focus_claim(index)
 	elif not _placements_at(cell).is_empty():
 		gizmo.focus_placement(cell)
+		# taskblock-59 follow-up: **which of the cell's placements**, from the point the click
+		# struck. Held on the gizmo so a later drag addresses the same one the author grabbed.
+		var editor: EditorModule = _editor()
+		gizmo.focused_placement = editor.struck_placement(cell) if editor != null else null
 	else:
 		gizmo.clear()
 	reassert_ghost()
@@ -212,14 +224,21 @@ func _on_button(button: InputEventMouseButton) -> bool:
 	)
 	if struck.is_empty():
 		return false
-	gizmo.begin_drag(
-		struck["axis"] as int,
-		struck["sign"] as float,
-		_value_of(struck["axis"] as int),
-		button.position
-	)
-	_show_readout(gizmo.start_value())
+	begin_drag(struck["axis"] as int, struck["sign"] as float, button.position)
+	_show_readout(gizmo.start_value(), button.position)
 	return true
+
+
+## **Starts a drag, and snapshots what it started from.** taskblock-59 follow-up.
+##
+## The one entry point, because the snapshot is not optional: every motion event computes from it
+## and the pointer, so a caller that began a drag without one would silently get the accumulating
+## behaviour back — *"the handles move independently of the mouse cursor, flying off huge with the
+## smallest movement."* Making it a method rather than two lines at the press site is what stops
+## that being a thing anyone has to remember, tests included.
+func begin_drag(axis: int, sign_of: float, screen_pos: Vector2) -> void:
+	gizmo.begin_drag(axis, sign_of, _value_of(axis), screen_pos)
+	gizmo.drag_start_state = _subject_state()
 
 
 ## Applies the drag at `screen_pos` to whatever is focused.
@@ -237,14 +256,54 @@ func _drag_to(screen_pos: Vector2) -> void:
 		if gizmo.handles == Gizmo.Handles.RESIZE:
 			_drag_placement_size(editor, screen_pos, on_screen)
 			return
+		if axis != Gizmo.AXIS_Y:
+			_drag_placement_across(editor, screen_pos, on_screen)
+			return
 		var height: float = gizmo.value_at(screen_pos, on_screen)
-		# Only the up arrow means anything on a placement: a placement's cell is where it is, and
-		# dragging it sideways would be a move the tool does not offer.
-		if axis == Gizmo.AXIS_Y and editor.controller.set_height(gizmo.cell, height):
-			_show_readout(height)
+		# taskblock-59 follow-up: **the placement the handles are drawn on**, which is not what
+		# `set_height` used to write to — see `EditorController.move_top_placement`.
+		if editor.controller.move_top_placement(gizmo.cell, height, _ground_at(gizmo.cell)):
+			_show_readout(height, screen_pos)
+			# taskblock-59 follow-up: **and the board is redrawn, which it was not.** Reported as
+			# *"moving an item doesn't update the visual until something else happens."* `redraw()`
+			# below rebuilds the **handles**; the board comes from `EditorModule.refresh`, which
+			# `_drag_claim` has always called and this branch never did. So the model moved, the
+			# handles moved, and the thing being dragged stayed where it was until the next click
+			# happened to refresh.
+			editor.refresh()
 		redraw()
 		return
 	_drag_claim(editor, screen_pos, on_screen)
+
+
+## **A horizontal drag moves the placement to another cell.** taskblock-59 follow-up.
+##
+## *"The horizontal drags for the move gizmo should move the item. Currently they should snap by
+## cell, but later they may be fully offsetable."* So this is whole cells, and the sub-cell half
+## stays `MapPlacement.offset`'s job for when it is wanted.
+##
+## The gizmo follows the placement rather than the cell it started on, which is what stops it
+## *"becoming detached from the part it is moving"*: `gizmo.cell` is re-pointed at the destination
+## the moment the move lands, so the handles are rebuilt around where the thing now is.
+func _drag_placement_across(editor: EditorModule, screen_pos: Vector2, on_screen: Vector2) -> void:
+	var axis: int = gizmo.dragging_axis
+	var steps: int = int(round(gizmo.amount_at(screen_pos, on_screen) / UnitGeometry.CELL_SIZE))
+	if steps == 0:
+		return
+	var start: Vector2i = gizmo.drag_start_state.get("cell", gizmo.cell)
+	var moved: Vector2i = start
+	if axis == Gizmo.AXIS_X:
+		moved.x += steps
+	else:
+		moved.y += steps
+	if moved == gizmo.cell:
+		return
+	if not editor.controller.move_placement(gizmo.cell, moved):
+		return
+	gizmo.cell = moved
+	_show_readout(float(steps), screen_pos)
+	editor.refresh()
+	redraw()
 
 
 ## **The Scale tool, at the size it authors.** taskblock-59 Pass C.
@@ -263,17 +322,21 @@ func _drag_to(screen_pos: Vector2) -> void:
 ## is — moving one face and not its opposite moves the centre, and without a field for that the
 ## opposite face has to move too.
 func _drag_placement_size(editor: EditorModule, screen_pos: Vector2, on_screen: Vector2) -> void:
-	var here: Array[MapPlacement] = _placements_at(gizmo.cell)
-	if here.is_empty():
+	var placement: MapPlacement = _focused()
+	if placement == null:
 		return
-	var placement: MapPlacement = here[here.size() - 1]
 	var part: Part = DataLibrary.get_part(placement.part_id)
 	if part == null:
 		return
+	# **From the size the drag started at, never the current one.** See `Gizmo.drag_start_state`:
+	# `amount_at` is a delta from the grab, so applying it to an already-grown size compounds it
+	# every motion event. The fallbacks are only reachable if the subject vanished mid-drag, which
+	# `begin_drag` cannot produce.
+	var start: Dictionary = gizmo.drag_start_state
 	var grown: Dictionary = GizmoDrag.grow(
 		PlacedVolume.natural_bounds(part),
-		placement.size,
-		placement.offset,
+		start.get("size", placement.size),
+		start.get("offset", placement.offset),
 		gizmo.dragging_axis,
 		gizmo.dragging_sign,
 		gizmo.amount_at(screen_pos, on_screen),
@@ -281,7 +344,7 @@ func _drag_placement_size(editor: EditorModule, screen_pos: Vector2, on_screen: 
 	)
 	if not editor.controller.set_placement_size(gizmo.cell, grown["size"], grown["offset"]):
 		return
-	_show_readout((grown["size"] as Vector3)[gizmo.dragging_axis])
+	_show_readout((grown["size"] as Vector3)[gizmo.dragging_axis], screen_pos)
 	editor.refresh()
 	redraw()
 
@@ -309,18 +372,43 @@ func _drag_claim(editor: EditorModule, screen_pos: Vector2, on_screen: Vector2) 
 		return
 	var axis: int = gizmo.dragging_axis
 	var amount: float = gizmo.amount_at(screen_pos, on_screen)
+	# **From the box the drag started at**, for the reason `Gizmo.drag_start_state` gives — this had
+	# the identical accumulation the scale handles were reported for, and no report against it.
+	var from_box: Box = gizmo.drag_start_state.get("box", claim.box)
 	var box: Box = null
 	if gizmo.handles == Gizmo.Handles.TRANSLATE:
-		box = Gizmo.translated_box(claim.box, axis, amount)
+		box = Gizmo.translated_box(from_box, axis, amount)
 	else:
-		box = Gizmo.resized_box(claim.box, axis, gizmo.dragging_sign, amount)
+		box = Gizmo.resized_box(from_box, axis, gizmo.dragging_sign, amount)
 	if box == null:
 		return
 	if not editor.controller.resize_claim(gizmo.claim_index, box):
 		return
-	_show_readout(box.size[axis] if gizmo.handles == Gizmo.Handles.RESIZE else box.center[axis])
+	_show_readout(
+		box.size[axis] if gizmo.handles == Gizmo.Handles.RESIZE else box.center[axis], screen_pos
+	)
 	editor.refresh()
 	redraw()
+
+
+## The focused subject's own state, for `Gizmo.drag_start_state`. `{}` when nothing is focused,
+## which is the honest answer and is what makes the readers' `get(..., current)` fallbacks safe.
+##
+## **The claim's box is copied.** It is a live resource the drag is about to replace, and a snapshot
+## that changed under the drag would be no snapshot at all.
+func _subject_state() -> Dictionary:
+	if gizmo.subject == Gizmo.SUBJECT_PLACEMENT:
+		var here: Array[MapPlacement] = _placements_at(gizmo.cell)
+		if here.is_empty():
+			return {}
+		var placement: MapPlacement = here[here.size() - 1]
+		return {"size": placement.size, "offset": placement.offset, "cell": gizmo.cell}
+	if gizmo.subject == Gizmo.SUBJECT_CLAIM:
+		var claim: SectionClaim = _claim()
+		if claim == null or claim.box == null:
+			return {}
+		return {"box": claim.box.duplicate(true)}
+	return {}
 
 
 ## **How many pixels one world unit along `axis` covers, right now.** The one thing `GizmoDrag`
@@ -351,11 +439,25 @@ func gizmo_origin() -> Vector3:
 		if claim != null and claim.box != null:
 			return ClaimVolumeModule.world_aabb(claim, Vector2i.ZERO).get_center()
 		return Vector3.ZERO
-	return Vector3(
-		float(gizmo.cell.x) * UnitGeometry.CELL_SIZE,
-		_value_of(Gizmo.AXIS_Y),
-		float(gizmo.cell.y) * UnitGeometry.CELL_SIZE
-	)
+	# taskblock-59 follow-up: the **drawn** top of what is focused, so the handles cannot sit away
+	# from the thing they move. `placement_volume` reads the same boxes the board does.
+	var volume: AABB = placement_volume()
+	if volume.size == Vector3.ZERO:
+		return Vector3(
+			float(gizmo.cell.x) * UnitGeometry.CELL_SIZE,
+			_value_of(Gizmo.AXIS_Y),
+			float(gizmo.cell.y) * UnitGeometry.CELL_SIZE
+		)
+	return Vector3(volume.get_center().x, volume.end.y, volume.get_center().z)
+
+
+## The walkable height of `cell` on the board as drawn, which is what a blocker's `offset` is
+## measured from.
+func _ground_at(cell: Vector2i) -> float:
+	var battle: BattleScene = context.battle if context != null else null
+	if battle == null or battle.board_view == null or battle.board_view.grid == null:
+		return 0.0
+	return UnitGeometry.true_height_for_cell(cell, battle.board_view.grid)
 
 
 ## Rebuilds the drawn handles from whatever is focused. **Rebuilt, never patched**: what is on
@@ -404,10 +506,9 @@ func _current_handles() -> Array[Dictionary]:
 ## **Built from the same `PlacedVolume.boxes_for` the loader bakes into the part**, so the handles
 ## sit on the faces the author can see rather than on the part's authored dimensions.
 func placement_volume() -> AABB:
-	var here: Array[MapPlacement] = _placements_at(gizmo.cell)
-	if here.is_empty():
+	var placement: MapPlacement = _focused()
+	if placement == null:
 		return AABB()
-	var placement: MapPlacement = here[here.size() - 1]
 	var part: Part = DataLibrary.get_part(placement.part_id)
 	if part == null:
 		return AABB()
@@ -440,17 +541,46 @@ func _value_of(axis: int) -> float:
 			if gizmo.handles == Gizmo.Handles.RESIZE
 			else claim.box.center[axis]
 		)
-	var here: Array[MapPlacement] = _placements_at(gizmo.cell)
-	return here[here.size() - 1].height if not here.is_empty() else 0.0
+	var focused: MapPlacement = _focused()
+	return focused.height if focused != null else 0.0
 
 
 ## **The numeric readout the taskblock names.** One decimal, because one decimal is the whole
 ## grid: a readout showing 0.30000000000000004 would say the snap had failed when it had not.
-func _show_readout(value: float) -> void:
+## **The number, next to the pointer that is producing it.** taskblock-59 follow-up.
+##
+## Reported as *"the hovering size indicator for scaling something is in the action bar, but not
+## purposefully. It should attach to the control being dragged, or the mouse cursor, whichever is
+## cleaner/simpler."* The cursor is the simpler of the two by a distance: the handle is a 3D box
+## that would have to be projected every frame, where the pointer position is already the argument
+## every drag handler receives.
+##
+## It was anchored centre-bottom above the bar, which was a starting position taskblock-57 Pass H
+## flagged as one — it happened to land where the action bar is.
+func _show_readout(value: float, at: Variant = null) -> void:
 	if readout == null:
 		return
 	readout.text = "%.1f" % value
 	readout.visible = true
+	if at is Vector2 and readout.get_parent() != null:
+		# Offset up and right of the cursor so the pointer never covers its own number.
+		readout.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		readout.position = (at as Vector2) + UiLayout.scaled_size(READOUT_OFFSET)
+
+
+## **The placement the gizmo is actually on.** taskblock-59 follow-up: reported as *"selecting the
+## floor under a wall selects the wall. Scale does this as well."* This took `placements_at(cell)`'s
+## last entry, so a cell holding a floor and a wall always answered the wall whichever the author
+## clicked. `EditorModule.struck_placement` resolves it from the point the pick struck; `gizmo.cell`
+## remains the address the handles are drawn around.
+func _focused() -> MapPlacement:
+	var editor: EditorModule = _editor()
+	if editor == null:
+		return null
+	if gizmo.focused_placement != null and gizmo.focused_placement.cell == gizmo.cell:
+		return gizmo.focused_placement
+	var here: Array[MapPlacement] = _placements_at(gizmo.cell)
+	return here[here.size() - 1] if not here.is_empty() else null
 
 
 func _placements_at(cell: Vector2i) -> Array[MapPlacement]:

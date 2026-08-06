@@ -15,15 +15,23 @@ func after_each() -> void:
 	DataLibrary.reset()
 
 
-func _placement(part_id: StringName, cell: Vector2i, height: float) -> MapPlacement:
-	return MapPlacement.new(cell, MapPlacement.KIND_SURFACE, part_id, height)
+## taskblock-59 follow-up: **the kind is a parameter now, and it was hardcoded to `KIND_SURFACE`.**
+## That was inert while nothing read a placement's kind here, and stopped being inert when
+## `FacePlacement.ground_of` began distinguishing a deck from a thing standing on one — a `wall`
+## authored as a surface then *was* the ground, so a side placement landed on top of it.
+func _placement(
+	part_id: StringName, cell: Vector2i, height: float, kind: StringName = MapPlacement.KIND_SURFACE
+) -> MapPlacement:
+	return MapPlacement.new(cell, kind, part_id, height)
 
 
 ## **THE PASS'S OWN LINE.** A top face places above; a side face places beside.
 func test_a_top_face_places_above_and_a_side_face_places_beside() -> void:
 	var cell := Vector2i(4, 4)
-	# A wall: a 1.0-wide cell cube 2.4 tall, sitting on the deck.
-	var standing: Array[MapPlacement] = [_placement(&"wall", cell, 0.0)]
+	# A wall: a 1.0-wide cell cube 2.4 tall, sitting on the deck. **A blocker, which is what a wall
+	# is** — authored as a surface it would be the ground, and a thing placed beside it would stand
+	# on its roof.
+	var standing: Array[MapPlacement] = [_placement(&"wall", cell, 0.0, MapPlacement.KIND_BLOCKER)]
 	var span: Dictionary = FacePlacement.span_of(standing)
 	gut.p("  the struck wall spans %.2f to %.2f" % [span["bottom"], span["top"]])
 

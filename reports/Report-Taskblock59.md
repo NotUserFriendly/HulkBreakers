@@ -1,6 +1,9 @@
 # Taskblock 59 Report — the editor stops lying, and the tiers reach a bout
 
-**All six passes landed — A through F — in order, on `master`, full gate green (3274 of 3274).**
+**All six passes landed — A through F — in order, on `master`, full gate green (3274 of 3274).
+Fourteen supervisor reports were then worked after the block closed** — see *After the block* at the
+end, which is where the most interesting corrections in this report are. **That work is not yet
+gated**; the supervisor asked for the gate to be held until they call it.
 
 **The block's own framing held everywhere it was applied**: *something authored a capability and
 nothing authored the way in.* Five of the six passes are that shape, and Pass A turned out to be the
@@ -166,3 +169,128 @@ question, that is what to compare, not the clock.
 format cannot express, and the author's route to a taller wall is Pass C's Scale drag — which is the
 better verb. What is still unreachable is stacking *distinct* things: a crate on a pillar. The
 geometry is expressible today (`MapPlacement.offset`), the grid's idea of it is not. Queued.
+
+**The supervisor re-asked this after the block and it is now scoped rather than merely queued** —
+84 sites across 28 files, with the breakdown and the design question in `PLAN.md`. See *After the
+block* below.
+
+
+---
+
+# After the block
+
+Fourteen reports across four rounds of review, all against the editor. **Three of them corrected me
+rather than the code**, and those are the entries worth reading.
+
+## What was reported, and what it turned out to be
+
+| # | reported | cause |
+|---|---|---|
+| 1 | Moving an item does not redraw until something else happens | The translate branch called `redraw()` (handles) and never `editor.refresh()` (the board). `_drag_claim` always had. |
+| 2 | Scale handles fly off with the smallest movement | `amount_at` is a delta **from the grab**, applied to the **current** value — every motion event re-applied the whole drag. |
+| 3 | "PL" takes two clicks to dismiss the parts list | The button's *border* reads `is_showing()` every frame; the *press* flipped `collapsed`, which nothing updates when the bar opens the list. |
+| 4 | Terrain should stack | Scoped and **not started** — supervisor's call. |
+| 5 | Side placement preview one tile low | The board draws a blocker at the cell's true height; the ghost drew at the target height. |
+| 6 | Cutout/culling sphere on editor walls | One bout unit, seated on the board, feeding the shader a porthole. |
+| 7 | A stale squad-0 unit 0 in the editor | **The same unit.** |
+| 8 | Scale readout sits in the action bar | An anchor taskblock-57 flagged as a starting position; it happened to land on the bar. |
+| 9 | Switching tools leaves gizmos attached | Nothing released the subject when a different tool was armed. |
+| 10 | Horizontal drags should move the item | Never implemented; and unimplementable until 11 was fixed. |
+| 11 | Moving a pillar moves the floor beneath | **The gizmo addressed a cell, not a placement.** |
+| 12 | The move gizmo detaches from its part | The same defect as 11. |
+| 13 | Floors can be placed in a tile that has one | `PartPicker.hit` has never considered surfaces. |
+| 14 | Things placed 0.2 low after the fix for 5 | **I fixed the wrong side of it.** |
+
+## The three corrections
+
+**1. I changed the logic when the ghost was what was wrong (5, then 14).** The supervisor's words:
+*"we needed to make the ghost match the logic, not make the logic match the ghost."* `BoardView`
+draws a blocker at the cell's **true walkable height**, ignoring the placement's authored height —
+which is correct, because `MapPlacement.height` is documented surfaces-only — while the ghost drew
+at the target height. So the preview was lying and the placement was right. My first fix changed
+`FacePlacement.target_for`, **the shared answer the click uses**, and so moved where things were
+authored. Reverted in full; `PlacementGhostModule` now derives the height *and the facing* the board
+will actually use. Ghost and board measured identical afterwards.
+
+**2. I refused co-planar floors, which breaks a design rule with a named test (13).** Two floors in
+a cell **can** be expressed — `Grid` holds an ordered surface stack and `MapSerializer` adds both —
+so refusing is a *legality opinion*, which is exactly the line Pass A drew and stayed behind. It
+also broke `test_an_illegal_placement_is_still_placed_and_only_warned_about`, a taskblock-56 F4
+acceptance for *warn, never block*. Reverted. **The supervisor then reframed it and the reframing
+was the answer**: *"it's not that floors in the same place is a problem, it's that I'm able to place
+one there with a click."* `PartPicker.hit` has only ever considered units, blockers and field items —
+its own header lists *"unit parts, scatter cover, walls, downed bots, field objects"* and floors are
+in none of them — so a click on a tile struck **nothing**, the editor read that as "no face", and the
+placement fell back into the cell just clicked. The author was not stacking floors; they were
+clicking a floor and hitting empty space.
+
+**3. Pass B's cutout fix covered the wrong half (6, 7).** It hid the units the authored board could
+not **seat**. `BoardSwap.swap_board` seats every living unit on the *first free walkable cell*, so
+the author's very first floor tile put a bout unit on the board — visible, and cutting the porthole.
+Both symptoms were one unit, which is why they came and went together as more was placed, exactly as
+reported. The editor now draws **no** bout unit at all: a statement about what the editor is, rather
+than a fourth symptom cleared. Recorded against `BR57.01`, whose earlier fix this supersedes.
+
+## Decisions made without asking
+
+**The drag anchor is one entry point, not a convention.** `Gizmo.drag_start_state` snapshots the
+subject when a handle is grabbed, and `GizmoModule.begin_drag` is the only way to start a drag — so a
+caller cannot begin one without a snapshot and silently get the accumulating behaviour back. Making
+it a method rather than two lines at the press site is what stops that being something anyone has to
+remember, tests included. **The same defect was in the claim drags with no report against it**; six
+motion events at a stationary pointer took a wall from 3.4 to 8.4.
+
+**The toggle fix went in the shared button, not in the parts list.** Every module in the cluster
+whose surface can be opened by other means had the same desync, and `is_showing` already exists to be
+the one answer to *"is it up"*. It was also reachable from a fresh mount, where the first press closed
+an already-closed list and looked like nothing happened.
+
+**A placement moves by `height` if it is a surface and by `offset` otherwise.** Not a workaround —
+it is what the two fields mean, and Pass C's `offset` is what made a blocker movable at all. This is
+what stops a pillar's arrow moving the floor under it.
+
+**Surfaces are picked opt-in.** `TacticsController` resolves aim through the same `PartPicker.hit`,
+and making the ground targetable there is a change to *targeting* rather than a fix to the editor.
+Off by default, pinned by a test asserting the aim path still cannot pick a floor.
+
+**Terrain stacking was scoped and not started**, on the supervisor's call. Measured: `grid.blockers`
+is read at **84 sites across 28 files**, 41 in production logic. The count is not the obstacle —
+most readers need *every* blocker (`RayCaster` marches geometry, `SightSpans` derives occlusion)
+while `DamageResolver` and `Detonation` do identity checks needing list semantics. The breakdown is
+in `PLAN.md`, along with the design question to answer first: **what distinguishes a blocker from a
+field item** once a cell can hold several of either, given `field_items` already stacks and draws and
+only lacks blocking.
+
+## Tests that failed, then were corrected
+
+**Two, both fixtures holding assumptions that had stopped being true.**
+
+1. **`test_face_placement.gd` authored a `wall` as `KIND_SURFACE`** — its helper hardcoded the kind.
+   Inert until `FacePlacement` began distinguishing a deck from a thing standing on one, at which
+   point the wall *was* the ground and a side placement landed on its roof. The test's claim was
+   right; its fixture was not.
+2. **`test_gizmo_drag_fidelity.gd` read the floor's height** to check a move had happened. Once the
+   drag correctly moved the *topmost* placement, the floor stopped changing — which is the fix, not a
+   regression.
+
+**And a self-inflicted one worth recording.** A scripted edit meant to revert the co-planar refusal
+sliced out five functions from `EditorController` — `placements_at`, `remove_top`, `clear_cell`,
+`set_height`, `set_placement_size`. Caught immediately by a parse failure, restored from the commit,
+re-applied surgically. **Scripted surgery on a file by text markers is how that happens**; the edit
+was a range delete whose end marker sat past four functions I meant to keep.
+
+## Open questions
+
+**1. The gate has not been run on any of this.** Targeted runs across every editor, gizmo, picker and
+placement file are green, and the fast and full gates are held at the supervisor's request. Nothing
+here is committed.
+
+**2. `EditorTools` had reached into `GizmoModule`** for the two tool names — a `src/logic/` file
+depending on `src/view/`, which is the golden rule this project is built on. Found and fixed while
+adding `arms_the_gizmo`; the vocabulary now lives in logic and the module reads it. Worth a look at
+whether anything else has drifted the same way.
+
+**3. Horizontal moves snap to whole cells**, which is what was asked for — *"currently they should
+snap by cell, but later they may be fully offsetable."* The machinery for the later half already
+exists: `MapPlacement.offset` carries a sub-cell displacement and the board draws it. What is missing
+is only the decision to let the drag write it.
