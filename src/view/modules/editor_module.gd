@@ -290,8 +290,45 @@ func _place_with(cell: Vector2i, tool: StringName) -> bool:
 		return false
 	var target: Dictionary = placement_target(cell)
 	var at: Vector2i = target["cell"]
+	# taskblock-59 Pass D: **a veneer is grown, not placed at a height.** Asked before the tile goes
+	# in, because the span reads what is already at the landing cell and an auto-placed floor would
+	# be a surface the author never authored, arriving in time to be snapped to.
+	var veneer: Dictionary = _veneer_at(cell, at)
+	if not veneer.is_empty():
+		var grown: MapPlacement = controller.place(
+			at, selected_part, selected_kind, veneer["height"], facing()
+		)
+		if grown == null:
+			return false
+		grown.size = veneer["size"]
+		return true
 	_ensure_a_tile_under(at)
 	return controller.place(at, selected_part, selected_kind, target["height"], facing()) != null
+
+
+## **The span a ledge veneer takes**, as `{height, size}`, or `{}` when the armed part is not one.
+##
+## taskblock-59 Pass D: `LedgeVeneer` computed the span, `ledge_veneer` was an authored part, and
+## the hp followed volume — all landed in taskblock-58 Pass F. **Nothing called `span_at` from a
+## click**, so a veneer could not be placed on a board without hand-authoring a `.tres`. This is the
+## call.
+##
+## **Recognised by the part carrying a rise to compute rather than by an id in a list.** A veneer is
+## the one terrain part whose height is a question about the board instead of a number the author
+## types, and `LedgeVeneer.PART_ID` names the single part that is true of today — but the check is
+## one place, so a second facing part is an entry there rather than a branch here.
+func _veneer_at(struck_cell: Vector2i, landing: Vector2i) -> Dictionary:
+	if selected_part != LedgeVeneer.PART_ID:
+		return {}
+	var part: Part = DataLibrary.get_part(selected_part)
+	if part == null:
+		return {}
+	return LedgeVeneer.placement_for(
+		part,
+		controller.placements_at(struck_cell),
+		controller.placements_at(landing),
+		struck_normal
+	)
 
 
 ## **Why a click here would author nothing**, or `""` when it would author something.
