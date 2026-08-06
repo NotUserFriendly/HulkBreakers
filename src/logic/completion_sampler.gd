@@ -90,6 +90,25 @@ const TURN_CAP := 100
 ## twice. The cap only catches an AI that has stopped finishing missions at all.
 const FIRST_WIN_CAP := 9
 
+## taskblock-59 Pass E: **the roster is mixed across intelligence tiers, and it used to be one
+## labourer against another.**
+##
+## Every completion figure this project has ever recorded was an all-`TRAINED` figure, because
+## `Unit.intelligence_tier` defaulted to `TRAINED` and nothing set it. With tiers authored on the
+## combat-tester presets, the bout the gate measures contains three of them — and that is the
+## supervisor's call over the alternative of tiering the labourers, which would have made the
+## measured bout a walkover between one unit that can shoot and one that cannot.
+##
+## **Every recorded seed changes meaning**, and that is stated rather than absorbed: a number from
+## before this pass and a number after it are not comparable, whatever the seed. Nothing on disk
+## pins one — `BoutCorpus` draws from the clock — so there is no artifact to regenerate, only past
+## report figures to distrust.
+const MIXED_ROSTER: Array[StringName] = [
+	&"combat_tester_chaingun",
+	&"combat_tester_pump_shotgun",
+	&"combat_tester_sniper_rifle",
+]
+
 ## How many times `sample()` has fallen below its floor since the process started.
 ## Diagnostics only; never read by a decision.
 static var escalations: int = 0
@@ -103,15 +122,48 @@ static var escalations: int = 0
 ## path must build the *same* bout from the same seed, and two call sites assembling
 ## the same roster by hand is how they would stop doing that.
 static func build_for_seed(map_seed: int) -> Dictionary:
-	var profile_a: BotPreset = DataLibrary.get_preset(&"a_brand_laborer")
-	var profile_b: BotPreset = DataLibrary.get_preset(&"a_brand_laborer_battery_mods")
-	if profile_a == null or profile_b == null:
+	return build_roster(MIXED_ROSTER, MIXED_ROSTER, map_seed)
+
+
+## **One tier against itself**, for the per-tier breakdown Pass F reports.
+##
+## *"A single number across a mixed roster hides which row moved it."* So the mixed figure is what
+## the gate uses and this is what the report is built from — the same map, the same roster size,
+## the same everything except what the units are capable of thinking.
+##
+## The tier is applied over the preset rather than by picking presets that carry it, so every tier
+## fights with the identical weapons and the difference measured is the intelligence and nothing
+## else.
+static func build_at_tier(tier: StringName, map_seed: int) -> Dictionary:
+	return build_roster(MIXED_ROSTER, MIXED_ROSTER, map_seed, tier)
+
+
+## The shared builder. `tier` of `&""` leaves every preset's own authored tier alone.
+static func build_roster(
+	names_a: Array[StringName], names_b: Array[StringName], map_seed: int, tier: StringName = &""
+) -> Dictionary:
+	var roster_a: Array[BoutRosterEntry] = _roster(names_a, tier)
+	var roster_b: Array[BoutRosterEntry] = _roster(names_b, tier)
+	if roster_a.size() != names_a.size() or roster_b.size() != names_b.size():
 		return {"error": "presets not loaded"}
-	return BoutSetup.build_bout(
-		[BoutRosterEntry.new(profile_a, &"aggressive")] as Array[BoutRosterEntry],
-		[BoutRosterEntry.new(profile_b, &"aggressive")] as Array[BoutRosterEntry],
-		map_seed
-	)
+	return BoutSetup.build_bout(roster_a, roster_b, map_seed)
+
+
+## **Copies the preset before overriding its tier.** `DataLibrary.get_preset` hands back the
+## registry's own resource, and writing a tier onto it would leave every later bout in the process
+## fighting at whichever tier was measured last — the kind of shared-fixture bug that surfaces
+## nowhere near its cause.
+static func _roster(names: Array[StringName], tier: StringName) -> Array[BoutRosterEntry]:
+	var built: Array[BoutRosterEntry] = []
+	for name: StringName in names:
+		var preset: BotPreset = DataLibrary.get_preset(name)
+		if preset == null:
+			continue
+		if tier != &"":
+			preset = preset.duplicate(true)
+			preset.intelligence_tier = tier
+		built.append(BoutRosterEntry.new(preset, &"aggressive"))
+	return built
 
 
 ## One bout. Returns the outcome name and the turns it took, or an empty dictionary

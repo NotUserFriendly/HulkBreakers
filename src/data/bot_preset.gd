@@ -36,6 +36,26 @@ const PRESET_DIR := "user://presets"
 ## gets carried and then moved into place.
 @export var kit: Kit = null
 
+## taskblock-59 Pass E: **which intelligence tier this preset's units think with.**
+##
+## `Unit.intelligence_tier` has existed since the AI's world model was built and **nothing ever set
+## it** — no preset, no matrix, no roster entry — so every unit in every bout this project has ever
+## run has been `TRAINED`. The tiers are not stubs: a `MINDLESS` unit has no memory and no
+## blackboard and **cannot shoot, take cover or overwatch**, which makes it a different bout rather
+## than a weaker one.
+##
+## **Authored here because this is where a unit is authored.** The alternative homes were the matrix
+## (which is the mind, and would be the better place if matrices were authored as data — they are
+## not) and `BoutRosterEntry` (which already carries `ai_profile`, but that is *how* a bot fights
+## and this is *what it is capable of*: a preset that reads as a labourer should not become an
+## elite because of the row it was dropped into).
+##
+## An open `StringName`, matching every other tier reference in the codebase — `WorldView`'s three
+## capability lists and `UtilityActionDef.tiers` are all open, because a fifth tier must be data.
+## Defaults to `TRAINED`, which is what `Unit` already defaulted to, so a preset that says nothing
+## behaves exactly as it did before this field existed.
+@export var intelligence_tier: StringName = &"TRAINED"
+
 
 func _init(
 	p_preset_name: String = "",
@@ -44,7 +64,8 @@ func _init(
 	p_pose_id: StringName = &"IDLE",
 	p_profile_family: StringName = &"",
 	p_variant_label: String = "",
-	p_kit: Kit = null
+	p_kit: Kit = null,
+	p_intelligence_tier: StringName = &"TRAINED"
 ) -> void:
 	preset_name = p_preset_name
 	template_id = p_template_id
@@ -53,6 +74,7 @@ func _init(
 	profile_family = p_profile_family
 	variant_label = p_variant_label
 	kit = p_kit
+	intelligence_tier = p_intelligence_tier
 
 
 static func _path_for(preset_name: String) -> String:

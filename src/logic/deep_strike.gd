@@ -250,6 +250,11 @@ static func assemble_from_preset(
 	)
 	if unit != null:
 		unit.pose = Poses.by_id(preset.pose_id)
+		# taskblock-59 Pass E: **the one line that lets a tier reach a bout.** Every other assembly
+		# path leaves `Unit.intelligence_tier` at its own default, which is correct — this is the
+		# only path that has a preset to read it from, and it is the path every generated bout and
+		# every roster takes.
+		unit.intelligence_tier = preset.intelligence_tier
 	return unit
 
 
