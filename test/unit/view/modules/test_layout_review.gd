@@ -469,9 +469,8 @@ func test_the_tiles_button_offers_only_ground_attaching_parts() -> void:
 func test_placing_cover_on_bare_ground_brings_a_floor_with_it() -> void:
 	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
 	var editor: EditorModule = overlay.module(&"editor") as EditorModule
-	editor.selected_kind = MapPlacement.KIND_BLOCKER
 	editor.selected_part = &"barrel"
-	editor.active_tool = &"place"
+	editor.active_tool = &"place_big_part"
 
 	editor.apply_tool_at(Vector2i(2, 2))
 
@@ -487,12 +486,11 @@ func test_placing_cover_on_bare_ground_brings_a_floor_with_it() -> void:
 func test_a_floor_is_not_doubled_up() -> void:
 	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
 	var editor: EditorModule = overlay.module(&"editor") as EditorModule
-	editor.selected_kind = MapPlacement.KIND_SURFACE
 	editor.selected_part = editor.surface_part_ids()[0]
-	editor.active_tool = &"place"
+	editor.active_tool = &"place_terrain"
 	editor.apply_tool_at(Vector2i(1, 1))
 
-	editor.selected_kind = MapPlacement.KIND_BLOCKER
+	editor.active_tool = &"place_big_part"
 	editor.selected_part = &"barrel"
 	editor.apply_tool_at(Vector2i(1, 1))
 

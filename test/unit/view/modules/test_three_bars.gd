@@ -228,22 +228,24 @@ func _editor_overlay() -> ControlOverlay:
 	return _mount(ViewModes.editor())
 
 
-## *"Labelled buttons, not squares."* Every verb in the tool vocabulary is reachable, which is the
-## coverage half — the editor could author nine things before this pass and must still author nine.
+## *"Labelled buttons, not squares."* Every verb in the tool vocabulary is reachable.
+##
+## taskblock-58 Pass D: **no skip, which is the assertion getting stronger.** This used to exempt
+## `place`, whose buttons were three placement kinds rather than the tool itself; the three placing
+## verbs are tools now, so every entry in the vocabulary has exactly one button and the loop can say
+## so without an exception in it.
 func test_the_editor_bar_offers_a_labelled_button_for_every_tool() -> void:
 	var overlay: ControlOverlay = _editor_overlay()
 	var bar: EditorBarModule = overlay.module(&"editor_bar") as EditorBarModule
 
-	for tool: StringName in EditorModule.TOOLS:
-		if tool == &"place":
-			# `place` is the per-kind buttons; asserted below rather than skipped silently.
-			continue
+	for tool: StringName in EditorTools.TOOLS:
 		assert_true(bar.tool_buttons.has(tool), "no button reaches the %s tool" % tool)
 		assert_ne((bar.tool_buttons[tool] as Button).text, "", "%s's button has no label" % tool)
-	for kind: StringName in EditorModule.PLACEMENT_KINDS:
-		assert_true(bar.kind_buttons.has(kind), "no button places a %s" % kind)
-	assert_eq((bar.kind_buttons[MapPlacement.KIND_SURFACE] as Button).text, "Tiles")
-	assert_eq((bar.kind_buttons[MapPlacement.KIND_FIELD_ITEM] as Button).text, "Place Items")
+	assert_eq(
+		bar.tool_buttons.size(),
+		EditorTools.TOOLS.size(),
+		"and no button reaches a tool the vocabulary does not have"
+	)
 
 
 func test_pressing_a_tool_button_arms_that_tool() -> void:
@@ -251,10 +253,10 @@ func test_pressing_a_tool_button_arms_that_tool() -> void:
 	var bar: EditorBarModule = overlay.module(&"editor_bar") as EditorBarModule
 	var editor: EditorModule = overlay.module(&"editor") as EditorModule
 
-	(bar.tool_buttons[&"remove"] as Button).pressed.emit()
-	assert_eq(editor.active_tool, &"remove")
-	(bar.tool_buttons[&"claim"] as Button).pressed.emit()
-	assert_eq(editor.active_tool, &"claim")
+	(bar.tool_buttons[&"delete"] as Button).pressed.emit()
+	assert_eq(editor.active_tool, &"delete")
+	(bar.tool_buttons[&"place_map_thing"] as Button).pressed.emit()
+	assert_eq(editor.active_tool, &"place_map_thing")
 
 
 ## **THE STATED ACCEPTANCE**: *"the place-items list is searchable and offers every placeable
@@ -264,34 +266,36 @@ func test_the_place_items_list_offers_every_placeable_part_and_searches_it() -> 
 	var bar: EditorBarModule = overlay.module(&"editor_bar") as EditorBarModule
 	var editor: EditorModule = overlay.module(&"editor") as EditorModule
 
-	(bar.kind_buttons[MapPlacement.KIND_FIELD_ITEM] as Button).pressed.emit()
+	# taskblock-58 Pass D: the list is opened by the place tool now, and offers that tool's own
+	# parts rather than the whole pool — `Place Terrain` gets the terrain-tagged ones.
+	(bar.tool_buttons[&"place_terrain"] as Button).pressed.emit()
 
 	assert_true(bar.list.visible, "the button opened nothing")
-	assert_eq(
-		bar.list.shown_ids(),
-		editor.placeable_part_ids(),
-		"the list must offer every placeable part"
+	var offered: Array[StringName] = EditorTools.part_ids_for(
+		&"place_terrain", editor.placeable_part_ids()
 	)
-	assert_false(editor.placeable_part_ids().is_empty(), "sanity: there are parts to offer")
+	assert_eq(bar.list.shown_ids(), offered, "the list must offer this tool's parts")
+	assert_false(offered.is_empty(), "sanity: there are terrain parts to offer")
 
 	bar.list.apply_filter("ship_floor")
 	gut.p("filtered to: %s" % ", ".join(bar.list.shown_ids()))
 	assert_true(bar.list.shown_ids().has(&"ship_floor"), "searching lost the thing searched for")
-	assert_lt(bar.list.shown_ids().size(), editor.placeable_part_ids().size(), "it did not narrow")
+	assert_lt(bar.list.shown_ids().size(), offered.size(), "it did not narrow")
 
 
-## Picking arms the tool with that part **and** the kind the button carried, which is the whole
-## reason there is a button per kind rather than one "Place".
+## Picking arms the tool with that part, and the kind is **derived from the part** rather than
+## carried by the button — taskblock-58 Pass D, which is what makes a wall-authored-as-a-field-item
+## unreachable rather than merely unlikely.
 func test_picking_from_the_list_arms_the_place_tool_with_that_part_and_kind() -> void:
 	var overlay: ControlOverlay = _editor_overlay()
 	var bar: EditorBarModule = overlay.module(&"editor_bar") as EditorBarModule
 	var editor: EditorModule = overlay.module(&"editor") as EditorModule
-	editor.active_tool = &"remove"
+	editor.active_tool = &"delete"
 
-	(bar.kind_buttons[MapPlacement.KIND_SURFACE] as Button).pressed.emit()
+	(bar.tool_buttons[&"place_terrain"] as Button).pressed.emit()
 	bar.list.chosen.emit(&"ship_floor")
 
-	assert_eq(editor.active_tool, &"place")
+	assert_eq(editor.active_tool, &"place_terrain")
 	assert_eq(editor.selected_part, &"ship_floor")
 	assert_eq(editor.selected_kind, MapPlacement.KIND_SURFACE)
 	# And the arming really authors: a click places what was picked, through the unchanged router.
@@ -299,19 +303,26 @@ func test_picking_from_the_list_arms_the_place_tool_with_that_part_and_kind() ->
 	assert_eq(editor.controller.placements_at(Vector2i(2, 2))[0].part_id, &"ship_floor")
 
 
-## Opening the list changes nothing on its own. An author who opens it and closes it again has not
-## silently switched tools underneath themselves.
-func test_opening_the_list_and_closing_it_leaves_the_tool_alone() -> void:
+## taskblock-58 Pass D: **this reverses, and the reversal is the design.** It used to assert that
+## opening the parts list armed nothing, because the opener was a placement-kind button and arming
+## on a mere open would have switched tools under the author. A place tool is a *tool* now — its
+## button arms it, and the list answers "which part", not "whether to place at all". Closing the
+## list still leaves that armed tool alone, which is the half worth keeping.
+func test_closing_the_list_leaves_the_place_tool_it_armed() -> void:
 	var overlay: ControlOverlay = _editor_overlay()
 	var bar: EditorBarModule = overlay.module(&"editor_bar") as EditorBarModule
 	var editor: EditorModule = overlay.module(&"editor") as EditorModule
-	editor.active_tool = &"height"
+	editor.active_tool = &"delete"
 
-	(bar.kind_buttons[MapPlacement.KIND_BLOCKER] as Button).pressed.emit()
+	(bar.tool_buttons[&"place_part"] as Button).pressed.emit()
 	bar.list.close()
 
 	assert_false(bar.list.visible)
-	assert_eq(editor.active_tool, &"height", "opening a list must not arm anything")
+	assert_eq(
+		editor.active_tool,
+		&"place_part",
+		"taskblock-58 Pass D: a place tool IS armed by its button — the list says which part, not whether"
+	)
 
 
 ## **Load is the second caller of the one list.** The taskblock puts save, load, run-a-bout and undo
@@ -356,7 +367,7 @@ func test_the_file_row_reaches_the_verbs_the_editor_module_already_owned() -> vo
 	var bar: EditorBarModule = overlay.module(&"editor_bar") as EditorBarModule
 	var editor: EditorModule = overlay.module(&"editor") as EditorModule
 	editor.selected_part = &"ship_floor"
-	editor.active_tool = &"place"
+	editor.active_tool = &"place_terrain"
 	editor.apply_tool_at(Vector2i(1, 1))
 	assert_eq(editor.controller.placements.size(), 1, "sanity: something to undo")
 

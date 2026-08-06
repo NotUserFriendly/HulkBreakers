@@ -13,6 +13,7 @@ script = ExtResource("1_wallpt")
 id = &"wall"
 display_name = "Wall"
 material = &"steel"
+tags = Array[StringName]([&"terrain"])
 volume = Array[ExtResource("2_wallbx")]([SubResource("Resource_wallvol")])
 hp = 60
 max_hp = 60

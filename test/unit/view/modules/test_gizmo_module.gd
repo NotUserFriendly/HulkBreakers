@@ -47,7 +47,7 @@ func _authored(overlay: ControlOverlay) -> EditorModule:
 	var editor: EditorModule = _editor(overlay)
 	editor.selected_part = &"ship_floor"
 	editor.selected_kind = MapPlacement.KIND_SURFACE
-	editor.active_tool = &"place"
+	editor.active_tool = &"place_terrain"
 	for y: int in range(3):
 		for x: int in range(3):
 			editor.apply_tool_at(Vector2i(x, y))
@@ -79,7 +79,7 @@ func _move(overlay: ControlOverlay, to: Vector2) -> void:
 func test_a_click_with_another_tool_active_does_not_focus_the_gizmo() -> void:
 	var overlay: ControlOverlay = _overlay()
 	var editor: EditorModule = _authored(overlay)
-	editor.active_tool = &"remove"
+	editor.active_tool = &"delete"
 
 	editor.apply_tool_at(Vector2i(1, 1))
 
@@ -127,20 +127,34 @@ func test_a_claim_over_the_cell_is_what_gets_focused() -> void:
 	assert_eq(gizmo.handles, Gizmo.Handles.TRANSLATE)
 
 
-## **The two handle sets, end to end.** A second click on the same claim swaps them, and the drawn
-## handles change with it — six faces rather than three arrows.
-func test_a_second_click_on_a_claim_swaps_the_drawn_handles() -> void:
+## **The two handle sets, end to end, and which one you get is which tool you armed.**
+##
+## taskblock-58 Pass D: this used to assert that a *second click on the same claim* swapped the
+## sets. That is what changed — arming `Select` or `Scale` says which handles you want up front,
+## because they are different intentions and a mode you enter by clicking twice is one you leave by
+## accident. **Clicking again with the same tool armed now leaves the handles alone**, which is the
+## half worth pinning: the swap is gone rather than merely relocated.
+func test_which_handles_are_drawn_is_which_tool_is_armed() -> void:
 	var overlay: ControlOverlay = _overlay()
 	var editor: EditorModule = _authored(overlay)
 	editor.controller.add_claim(SectionClaim.KIND_INTERIOR, Box.new(Vector3(1, 1, 1), Vector3.ONE))
 
 	editor.apply_tool_at(Vector2i(1, 1))
-	assert_eq(_gizmo(overlay).meshes.size(), 3, "translate arrows first")
+	assert_eq(_gizmo(overlay).gizmo.handles, Gizmo.Handles.TRANSLATE)
+	assert_eq(_gizmo(overlay).meshes.size(), 3, "translate arrows under Select")
 
+	editor.apply_tool_at(Vector2i(1, 1))
+	assert_eq(
+		_gizmo(overlay).gizmo.handles,
+		Gizmo.Handles.TRANSLATE,
+		"a second click with the same tool armed must not swap the set underneath the author"
+	)
+
+	editor.active_tool = GizmoModule.TOOL_SCALE
 	editor.apply_tool_at(Vector2i(1, 1))
 
 	assert_eq(_gizmo(overlay).gizmo.handles, Gizmo.Handles.RESIZE)
-	assert_eq(_gizmo(overlay).meshes.size(), 6, "one handle per face")
+	assert_eq(_gizmo(overlay).meshes.size(), 6, "one handle per face under Scale")
 
 
 # ---------------------------------------------------------------- the drag, against a real camera

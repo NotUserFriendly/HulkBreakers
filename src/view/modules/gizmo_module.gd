@@ -54,9 +54,16 @@ const AXIS_COLORS: Array[Color] = [
 	Color("#3A7BD5"),
 ]
 
-## The tool that arms the gizmo. A row in `EditorModule.TOOLS` like every other verb, so the
-## bar grows its button with no edit there.
-const TOOL: StringName = &"gizmo"
+## The tools that arm the gizmo. Rows in `EditorTools.TOOLS` like every other verb, so the bar
+## grows their buttons with no edit there.
+##
+## taskblock-58 Pass D: **two of them, one per handle set.** The single `gizmo` verb showed
+## translate handles and swapped to resize on a second click of the same subject; arming *Select*
+## or *Scale* says which set you want up front, because those are different intentions and a mode
+## reached by re-clicking is a mode left by accident. `TOOL` remains the translate one, so a caller
+## that just wants "the gizmo" still has a name for it.
+const TOOL: StringName = &"select"
+const TOOL_SCALE: StringName = &"scale"
 
 ## The tool over the selection. **Public and constructed here**, because it is the module's
 ## whole state and a test drives it directly rather than through meshes.

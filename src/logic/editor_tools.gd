@@ -1,0 +1,109 @@
+class_name EditorTools
+extends RefCounted
+
+## **What a board click can mean, and what each meaning authors.** taskblock-58 Pass D.
+##
+## The vocabulary lived on `EditorModule` while it was a list of verbs the bar read back. It is
+## logic: which tools exist, and what `MapPlacement` kind each one produces for a given part, are
+## questions with no widget in them — and `EditorModule` was over its 1000-line limit, the same
+## split `InspectPanel` took when `BotViewer` came out of it.
+##
+## ## Ten became seven, grouped by what a click MEANS
+##
+## The old list was grouped by what a click *touched* — a verb per marker, a verb per flag — which
+## is why it needed ten entries for what an author experiences as three gestures: put something
+## down, take something away, grab something.
+##
+## | was | is |
+## |---|---|
+## | `place`, plus a separate kind choice | the three `place_*` tools; the kind is **derived** |
+## | `spawn_a`/`b`/`none`, `chance`, `claim` | `place_map_thing`, with which thing a selection |
+## | `remove` | `delete` |
+## | `gizmo`, `height` | `select` and `scale` — the gizmo's two handle sets, armed separately |
+## | `sight_blocking` | retired in Pass C along with `Grid.opacity` |
+##
+## **`height` folding into `select` loses nothing**, and that was checked rather than assumed:
+## `GizmoModule._drag_to` already calls `EditorController.set_height` on a Y-axis drag of a
+## placement, so the verb's whole behaviour is what the translate handles do — by direct
+## manipulation instead of a spinbox and a click.
+##
+## **The two handle sets become two tools** rather than a click that toggles between them. Arming
+## *Scale* and arming *Select* are different intentions, and a mode you reach by clicking the same
+## thing twice is a mode you leave by accident.
+
+## Every meaning a board click can carry. Open `StringName`s, and the bar generates a button per
+## entry, so the buttons and the router cannot disagree about which tools exist.
+const TOOLS: Array[StringName] = [
+	&"select",
+	&"place_terrain",
+	&"scale",
+	&"delete",
+	&"place_map_thing",
+	&"place_big_part",
+	&"place_part",
+]
+
+## The placing tools whose kind is fixed by the tool itself.
+##
+## **`place_terrain` is absent on purpose.** Terrain spans two kinds — `ship_floor` is a surface,
+## `wall` is a blocker — so its kind is derived per part by `kind_for`. The other two *are* their
+## kind, which is what makes them separate tools at all.
+const PLACE_TOOL_KINDS: Dictionary = {
+	&"place_big_part": MapPlacement.KIND_BLOCKER,
+	&"place_part": MapPlacement.KIND_FIELD_ITEM,
+}
+
+## Everything *Place Map Thing* can put down — the things a player never sees. Open, so a later
+## scripted-tile marker is an entry here rather than an eighth tool.
+const MAP_THINGS: Array[StringName] = [
+	&"claim",
+	&"spawn_a",
+	&"spawn_b",
+	&"spawn_none",
+	&"chance",
+]
+
+
+## True when `tool` puts a `Part` on the board, as opposed to a marker or a manipulation.
+static func is_place_tool(tool: StringName) -> bool:
+	return tool == &"place_terrain" or PLACE_TOOL_KINDS.has(tool)
+
+
+## The `MapPlacement` kind `tool` authors for `part_id`.
+##
+## **Terrain is the case that needs the part**, because it spans two kinds: a terrain part that
+## attaches to `GROUND` is the ground, and one that does not is standing on it. That is the rule
+## `GridPlacement` already enforces, asked here rather than restated — offering a wall as a surface
+## would author a placement the loader refuses.
+static func kind_for(tool: StringName, part_id: StringName) -> StringName:
+	if PLACE_TOOL_KINDS.has(tool):
+		return PLACE_TOOL_KINDS[tool]
+	var part: Part = DataLibrary.get_part(part_id)
+	if part != null and GridPlacement.GROUND in part.attaches_to:
+		return MapPlacement.KIND_SURFACE
+	return MapPlacement.KIND_BLOCKER
+
+
+## The subset of `pool` that `tool` offers.
+##
+## **Terrain is answerable from the data and the rest is not**, which is the honest state of this
+## and is worth stating at the filter rather than in a report. `MapPlacement.TERRAIN_TAG` is a real
+## tag on a real part, so *Place Terrain* offers exactly the parts that carry it. *Place Big Part*
+## and *Place Part* get everything else — which is still every arm, head and battery in
+## `DataLibrary.parts_pool()`, because nothing in the data says which parts belong on a board
+## rather than on a body. **Pass D split the verbs; it did not close that gap**, and pretending
+## otherwise by inventing a second content tag is the thing the standing rule forbids.
+static func part_ids_for(tool: StringName, pool: Array[StringName]) -> Array[StringName]:
+	if not is_place_tool(tool):
+		return [] as Array[StringName]
+	var offered: Array[StringName] = []
+	for id: StringName in pool:
+		if is_terrain(id) == (tool == &"place_terrain"):
+			offered.append(id)
+	return offered
+
+
+## Whether the part with this id is board rather than something standing on it.
+static func is_terrain(part_id: StringName) -> bool:
+	var part: Part = DataLibrary.get_part(part_id)
+	return part != null and MapPlacement.TERRAIN_TAG in part.tags

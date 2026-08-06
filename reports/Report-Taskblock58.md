@@ -1,7 +1,7 @@
 # Taskblock 58 Report — Faces, locations, one answerer, and the editor's real tools
 
-**Passes A, B, C and C.2 landed, in order; D, E and F are not started.** All four are on `master`
-and the suite is green. C was reviewed on a branch and merged on the supervisor's call; C.2 is the
+**Passes A, B, C, C.2 and D landed, in order; E and F are not started.** All five are on `master`
+and the suite is green (3165 of 3165). C was reviewed on a branch and merged on the supervisor's call; C.2 is the
 addendum written after that review, which merges C, takes the wall-clock budget out of
 `test_ai_batch_yield`, and files the pacer defect as its own `PLAN.md` item rather than building it.
 
@@ -84,6 +84,23 @@ mutate a guarantee that is meant to be one.
 **Ten minutes as the raised budget.** Far past any turn, so if it is ever reached that is a real
 defect rather than a slow machine — which is what the companion assertion is for.
 
+**Pass D: `height` folded into `select`, which the taskblock's table does not mention at all.** Ten
+tools had to become seven and the table names six retirements; `height` was the tenth and had
+nowhere obvious to go. Folded into `select` after checking rather than assuming — `GizmoModule.
+_drag_to` already calls `EditorController.set_height` on a Y-axis drag, so the verb's whole
+behaviour is what the translate handles do. **Had that not been true it would have been a verb
+deleted for nothing**, which is why it was checked first.
+
+**Pass D: `terrain` authored as a real tag on four real parts.** The taskblock says "anything tagged
+terrain", so the vocabulary is authorised rather than invented — but the tag did not exist and I
+added it to `wall`, `ship_floor`, `ramp` and `ladder`. It is what lets *Place Terrain* derive its
+placement kind per part instead of the author choosing one alongside it.
+
+**Pass D: the tool vocabulary moved to `src/logic/editor_tools.gd`, which was forced rather than
+chosen.** `EditorModule` went over the repo's 1000-line gate. The split follows `InspectPanel`'s
+precedent and lands the vocabulary somewhere headlessly testable, but the trigger was a lint gate,
+not a design insight.
+
 ## Tests that failed, then were corrected
 
 **Six failing before correction across two gates**, four of them the useful kind — the change was
@@ -104,7 +121,15 @@ right and the fixture held an assumption that had stopped being true.
    step — wasteful when a restricted view answered it with an array lookup per unit, and expensive
    once it answered with a real sight line. Hoisted out of the loop.
 4. **`test_void_vocabulary_guard.gd`.** I used a retired word in a new doc comment. Reworded.
-5. **`test_ai_batch_yield.gd` — not corrected, still red.** See below.
+5. **Pass D's editor tests, which is the interesting entry.** Renaming the tools left
+   `test_editor_mode.gd` arming `&"place"`, so nothing was placed and the test indexed `[0]` on an
+   empty array. **Under `-d` that runtime error opens a Debugger Break, which hangs the run rather
+   than failing it** — `run_tests.sh`'s own header warns about exactly this, and a test process sat
+   at 0% CPU for hours before it was noticed. Every test run since is wrapped in `timeout`, which
+   is what caught the second instance minutes later. **Three further tests reversed rather than
+   moved**, each recorded in `SUPERSEDED.md`: opening the parts list now arms a tool, a second
+   gizmo click no longer swaps handle sets, and the highlight test's hard case became unreachable
+   by construction rather than merely fixed.
 
 **Pass C.2's instruction extended to a second site the addendum did not name.**
 `test_watched_run.gd`'s watched-vs-headless comparison has the identical shape — a pacer'd run

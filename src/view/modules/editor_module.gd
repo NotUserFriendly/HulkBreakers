@@ -63,25 +63,10 @@ extends ViewModule
 ## bar follow a tool set from anywhere — its buttons, a pick from the parts list, or a test.
 signal tool_changed(tool: StringName)
 
-## Every meaning a board click can carry. Open `StringName`s and generated into the dropdown from
-## this list, so the panel and the router cannot disagree about which tools exist.
-const TOOLS: Array[StringName] = [
-	&"place",
-	&"remove",
-	&"height",
-	&"spawn_a",
-	&"spawn_b",
-	&"spawn_none",
-	# taskblock-58 Pass C: `sight_blocking` retired with `Grid.opacity`. Sight is geometry, so a
-	# wall already says everything the tool used to author and there is nothing left to flag.
-	&"claim",
-	&"chance",
-	# taskblock-57 Pass H: **the manipulation gizmo, armed like every other verb.** A click with
-	# this tool focuses the handles on whatever is at the cell instead of authoring — which is what
-	# keeps the gizmo a tool over a click the one router already resolved, rather than a second
-	# picking path with its own idea of what is selected.
-	&"gizmo",
-]
+## taskblock-58 Pass D: **the tool vocabulary moved to `EditorTools`.** Which tools exist and what
+## kind each authors are questions with no widget in them, and this file was over its 1000-line
+## limit — the same split `InspectPanel` took when `BotViewer` came out of it. Referenced as
+## `EditorTools.TOOLS` everywhere, never re-listed here, so there is one vocabulary.
 
 ## The placement kinds the part dropdown can author. `MapPlacement`'s own three, read from its
 ## constants rather than respelled.
@@ -155,20 +140,28 @@ var last_cell: Variant = null
 ## route that changes it goes through here, which is the same "one emitter, not one per
 ## call site"
 ## reasoning `QueueLog` is built on.
-var active_tool: StringName = &"place":
+var active_tool: StringName = &"place_terrain":
 	set(value):
 		if active_tool == value:
 			return
 		active_tool = value
 		tool_changed.emit(value)
 ## Which of `PLACEMENT_KINDS` a placed part becomes.
+##
+## taskblock-58 Pass D: **derived from the tool and the part now, not chosen beside them.** It is
+## still the field the placement reads, so nothing downstream changed; what went away is the author
+## picking a kind and a part separately and being able to pick a pair that does not exist.
 var selected_kind: StringName = MapPlacement.KIND_SURFACE
-## The part the `place` tool places. Defaulted at mount to the first placeable id, so a
+## The part the place tools place. Defaulted at mount to the first placeable id, so a
 ## fresh editor
 ## can place something without visiting the list first.
 var selected_part: StringName = &""
-## Which of `CLAIM_KINDS` the `claim` tool authors.
+## Which of `CLAIM_KINDS` a placed claim authors.
 var selected_claim_kind: StringName = SectionClaim.KIND_INTERIOR
+## taskblock-58 Pass D: which of `MAP_THINGS` the *Place Map Thing* tool puts down. One tool, one
+## selection — the same shape the place tools have with `selected_part`, rather than a verb per
+## marker.
+var selected_map_thing: StringName = &"claim"
 
 ## The last surface part the author placed, so a wall dropped on bare ground brings that floor with
 ## it rather than a named default. See `_ensure_a_tile_under`.
@@ -280,42 +273,64 @@ func apply_tool_at(cell: Vector2i) -> bool:
 	last_cell = cell
 	var applied: bool = false
 	match active_tool:
-		&"place":
-			_ensure_a_tile_under(cell)
-			applied = (
-				controller.place(cell, selected_part, selected_kind, height(), facing()) != null
-			)
-		&"remove":
+		&"place_terrain", &"place_big_part", &"place_part":
+			applied = _place_with(cell, active_tool)
+		&"delete":
 			applied = controller.remove_top(cell)
-		&"height":
-			applied = controller.set_height(cell, height())
-		&"spawn_a":
-			controller.set_spawn_marker(cell, Enums.SpawnMarker.SPAWN_A)
-			applied = true
-		&"spawn_b":
-			controller.set_spawn_marker(cell, Enums.SpawnMarker.SPAWN_B)
-			applied = true
-		&"spawn_none":
-			controller.set_spawn_marker(cell, Enums.SpawnMarker.NONE)
-			applied = true
-		&"claim":
-			controller.add_claim(selected_claim_kind, _cell_claim_box(cell))
-			applied = true
-		&"gizmo":
+		&"place_map_thing":
+			applied = _place_map_thing(cell)
+		&"select", &"scale":
 			# **The gizmo is told, and it does not look.** This is the one router every board click
 			# in the editor goes through, so handing it the cell here is what stops the gizmo
 			# growing a second click path. A mode with no gizmo module answers false, which is the
 			# honest report that the tool did nothing.
 			applied = _focus_gizmo(cell)
+	refresh()
+	return applied
+
+
+## The three placing tools, which differ only in what kind of thing they put down.
+##
+## taskblock-58 Pass D: **the kind is derived, not chosen alongside the part.** `selected_kind` is
+## still what the placement reads — nothing downstream changed — but it is now answered by
+## `kind_for(tool, part)` rather than by a separate dropdown an author could set to a pair that
+## does not exist (a `wall` authored as a field item, say).
+func _place_with(cell: Vector2i, tool: StringName) -> bool:
+	selected_kind = EditorTools.kind_for(tool, selected_part)
+	_ensure_a_tile_under(cell)
+	return controller.place(cell, selected_part, selected_kind, height(), facing()) != null
+
+
+## *Place Map Thing* — everything the player never sees, put down by one verb with its own
+## selection rather than by a verb apiece.
+##
+## taskblock-58 Pass D: `spawn_a`, `spawn_b`, `spawn_none`, `chance` and `claim` were five entries
+## in the tool vocabulary and are five entries in `MAP_THINGS`. **The calls into `EditorController`
+## are unchanged**, which is the point — this reorganises what a click means, not what it does.
+func _place_map_thing(cell: Vector2i) -> bool:
+	match selected_map_thing:
+		&"claim":
+			controller.add_claim(selected_claim_kind, _cell_claim_box(cell))
+			return true
+		&"spawn_a":
+			controller.set_spawn_marker(cell, Enums.SpawnMarker.SPAWN_A)
+			return true
+		&"spawn_b":
+			controller.set_spawn_marker(cell, Enums.SpawnMarker.SPAWN_B)
+			return true
+		&"spawn_none":
+			controller.set_spawn_marker(cell, Enums.SpawnMarker.NONE)
+			return true
 		&"chance":
-			applied = (
+			# **A chance is a thing you place**, not a verb — a generic "this could be any cover"
+			# item with defaults, whose categories and value are the widgets beside it.
+			return (
 				controller.set_cell_chance(
 					cell, SectionSpawn.KIND_CLUTTER, chance_tag(), chance_value()
 				)
 				!= null
 			)
-	refresh()
-	return applied
+	return false
 
 
 ## **A wall placed on bare ground brings its own floor.**
@@ -656,7 +671,19 @@ func _board_inspect() -> BoardInspectModule:
 ## as the tool having done something.
 func _focus_gizmo(cell: Vector2i) -> bool:
 	var handles: GizmoModule = context.module(&"gizmo") as GizmoModule if context != null else null
-	return handles.focus_at(cell) if handles != null else false
+	if handles == null:
+		return false
+	# taskblock-58 Pass D: **which handle set is the tool, not a second click.** `Select` and
+	# `Scale` are two intentions, so arming one of them is how you choose — where a toggle on
+	# re-click is a mode you leave by accident. `focus_at` still decides *what* was grabbed;
+	# this only says which handles it comes up wearing.
+	var focused: bool = handles.focus_at(cell)
+	if focused and handles.gizmo.subject != Gizmo.SUBJECT_NONE:
+		handles.gizmo.handles = (
+			Gizmo.Handles.RESIZE if active_tool == &"scale" else Gizmo.Handles.TRANSLATE
+		)
+		handles.redraw()
+	return focused
 
 
 func _claim_volumes() -> ClaimVolumeModule:
