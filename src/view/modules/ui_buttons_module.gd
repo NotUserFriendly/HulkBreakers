@@ -116,10 +116,24 @@ func _toggle(id: StringName, module: ViewModule, scale: float = 1.0) -> UiButton
 	# row to share. `collapsed` stays the module's own inverse-sense field; nothing about what it
 	# means changed, only how it is reached.
 	button.active = module.is_showing()
-	# **The press only flips the flag.** The border is re-read every frame from `is_showing()` — see
-	# `tick` — because a button that lit itself would go on claiming a panel is up after anything
-	# else closed it.
-	button.pressed.connect(func() -> void: module.collapsed = not module.collapsed)
+	# **A press flips what is on screen, not what the flag last said.**
+	#
+	# taskblock-59 follow-up: it was `collapsed = not collapsed`, and `collapsed` drifts — nothing
+	# updates it when a surface is opened by something that is not this button. `is_showing`'s own
+	# note already draws that distinction for the *border* ("the cluster reads this every frame
+	# rather than remembering what it did"); the press was still remembering.
+	#
+	# Reported as *"it takes two clicks of the PL UI button to actually dismiss the pick-a-thing pop
+	# up"*: dismiss once and `collapsed` is true; open the list from a tool button and the flag stays
+	# true; the next press flips it to false, which is a summon, and only the press after that
+	# dismisses. **The same desync was reachable from a fresh mount** — the list starts closed with
+	# `collapsed` false, so the first press closed an already-closed list and looked like nothing
+	# happened.
+	#
+	# Fixed here rather than in `PartsListModule`, because the defect is not the parts list's: it
+	# belongs to every module whose surface can be opened by other means, and `is_showing` exists
+	# precisely to be the one answer to *"is it up"*.
+	button.pressed.connect(func() -> void: module.collapsed = module.is_showing())
 	row.add_child(button)
 	return button
 

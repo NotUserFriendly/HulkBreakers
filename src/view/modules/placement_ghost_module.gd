@@ -90,12 +90,15 @@ func _on_hovered_pick(pick: Dictionary) -> void:
 	# takes the identical branch it takes on a click. Restored afterwards rather than left set: a
 	# hover must not change what a later click without a face would do.
 	var was: Variant = editor.struck_normal
+	var was_point: Variant = editor.struck_point
 	editor.struck_normal = pick.get("normal")
+	editor.struck_point = pick.get("point")
 	var at: Dictionary = editor.placement_target(cell as Vector2i)
 	# taskblock-59 Pass A: **asked while the struck face is still set**, because the refusal is about
 	# where the placement would land and that is what the face decides.
 	var refusal: String = editor.placement_refusal(cell as Vector2i)
 	editor.struck_normal = was
+	editor.struck_point = was_point
 	if refusal != "":
 		# **Nothing previewed is the honest preview of a click that authors nothing.** A ghost drawn
 		# where the placement will be refused is worse than no ghost: it is the surprise this module
@@ -131,7 +134,7 @@ func _draw(editor: EditorModule, at: Dictionary) -> void:
 	if part == null or _root == null:
 		return
 	var placements: Array[BoxPlacement] = UnitGeometry.assembly_placements(
-		part, at["cell"], editor.facing(), null, at["height"]
+		part, at["cell"], _drawn_facing(editor), null, _drawn_height(editor, at)
 	)
 	for placement: BoxPlacement in placements:
 		var mesh := MeshInstance3D.new()
@@ -145,6 +148,52 @@ func _draw(editor: EditorModule, at: Dictionary) -> void:
 		_root.add_child(mesh)
 		mesh.transform = placement.transform.translated_local(placement.box.center)
 		meshes.append(mesh)
+
+
+## **The height `BoardView` will actually draw this at**, which is not always the target's.
+##
+## taskblock-59 follow-up, and the supervisor's own framing: *"we needed to make the ghost match the
+## logic, not make the logic match the ghost."* The first attempt at *"the preview sits one tile
+## thickness low"* changed `FacePlacement` — the shared answer the **click** uses — and so moved
+## where things were authored. That was backwards. The logic was right; this was wrong.
+##
+## `BoardView` draws the two kinds differently, and the ghost only ever drew one of them:
+##
+## | kind | the board draws it at |
+## |---|---|
+## | `KIND_SURFACE` | the placement's own `height` — what `at["height"]` carries |
+## | `KIND_BLOCKER` / `KIND_FIELD_ITEM` | `_height_for(cell)`, the cell's **true walkable height** |
+##
+## That is correct of the board: `MapPlacement.height` is documented *"surfaces only... ignored for
+## blockers and field items, which sit on whatever surface the cell already has."* So a wall placed
+## beside a wall lands on the neighbour cell's floor whatever the target height said, and a ghost
+## drawn at the target height was showing a position the board would never use.
+##
+## **An empty landing cell is predicted rather than guessed**: `EditorModule._ensure_a_tile_under`
+## will put a floor there at the editor's authored height, so that is the height the blocker will
+## end up standing on.
+func _drawn_height(editor: EditorModule, at: Dictionary) -> float:
+	if EditorTools.kind_for(editor.active_tool, editor.selected_part) == MapPlacement.KIND_SURFACE:
+		return float(at["height"])
+	var grid: Grid = _grid()
+	var cell: Vector2i = at["cell"]
+	if grid != null and Surface.first_walkable(grid.surfaces_at(cell)) != null:
+		return UnitGeometry.true_height_for_cell(cell, grid)
+	return editor.height()
+
+
+## The facing `BoardView` will draw this at. **Zero for a blocker or a loose item**, because
+## `_spawn_blocker` passes `0.0` — the authored facing reaches a `Surface` and nothing else.
+func _drawn_facing(editor: EditorModule) -> float:
+	if EditorTools.kind_for(editor.active_tool, editor.selected_part) == MapPlacement.KIND_SURFACE:
+		return editor.facing()
+	return 0.0
+
+
+func _grid() -> Grid:
+	if context == null or context.battle == null or context.battle.board_view == null:
+		return null
+	return context.battle.board_view.grid
 
 
 func _board_inspect() -> BoardInspectModule:

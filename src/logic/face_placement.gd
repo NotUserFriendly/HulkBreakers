@@ -85,12 +85,50 @@ static func _side_step(normal: Vector3) -> Vector2i:
 ## resolved off the ground plane rather than off geometry. That is the editor's authored height,
 ## and it is what the editor did before faces existed.
 static func target_from(
-	placements: Array[MapPlacement], cell: Vector2i, normal: Variant, fallback_height: float
+	placements: Array[MapPlacement],
+	cell: Vector2i,
+	normal: Variant,
+	fallback_height: float,
+	placed: Part = null
 ) -> Dictionary:
 	if normal is not Vector3:
 		return {"cell": cell, "height": fallback_height}
 	var span: Dictionary = span_of(placements)
-	return target_for(cell, normal as Vector3, span["top"], span["bottom"])
+	var at: Dictionary = target_for(cell, normal as Vector3, span["top"], span["bottom"])
+	at["height"] = seated_height(placed, normal as Vector3, float(at["height"]))
+	return at
+
+
+## **The height that puts `placed`'s own geometry against the struck face**, rather than putting its
+## *origin* there. `plane` unchanged when there is no part to seat.
+##
+## taskblock-59 follow-up: reported as *"clicking the side of a floor places the newly placed
+## floor down by 0.2 again"* and *"clicking the top face of a floor places the new floor inside
+## the clicked floor."* Both are one thing. `target_for` answers **where the face is**, and the
+## caller used that as the placement's `height` — but a placement's height is its *origin*, and a
+## part's geometry is not centred on its origin. `ship_floor` authors its box at
+## `center.y = -0.1, size.y = 0.2`, so it hangs **entirely below** its own height: a floor placed
+## at the struck plane occupies the 0.2 under it, which is the space the clicked thing is in.
+##
+## So the part is seated against the face instead:
+##
+## | struck face | what meets the plane |
+## |---|---|
+## | top | the new part's **bottom** — it stands on what was clicked |
+## | side | its **bottom** again — it stands on the same ground as what was clicked |
+## | bottom | its **top** — it hangs under what was clicked |
+##
+## A `wall` is unaffected because its box starts at its own origin, which is why this only ever
+## showed up on floors.
+static func seated_height(placed: Part, normal: Vector3, plane: float) -> float:
+	if placed == null:
+		return plane
+	var bounds: AABB = PlacedVolume.natural_bounds(placed)
+	if bounds.size == Vector3.ZERO:
+		return plane
+	if normal.y <= -AXIS_EPSILON:
+		return plane - (bounds.position.y + bounds.size.y)
+	return plane - bounds.position.y
 
 
 ## The world Y extent of a cell's authored placements, as `{top, bottom}`.

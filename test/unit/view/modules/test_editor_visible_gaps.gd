@@ -75,6 +75,45 @@ func test_a_pick_that_found_no_part_still_reports_the_cell() -> void:
 	)
 
 
+## **A cell holding something the ray missed is a cell the cursor is not on.** taskblock-59
+## follow-up: the fallback was unconditional, and `BoardPicker.cell_at_ray` resolves against the
+## board's terrain plane — so a ray passing above a tile, or over a wall at something behind it,
+## still yielded that cell and drew a ghost on it.
+##
+## Reported as *"pointing at where the side of a floor would be if it were ~1.7 units higher up
+## highlights it"* and *"it's almost like I can click things behind the actual object I'm aiming
+## at."* One cause; nothing phantom.
+func test_a_cell_with_geometry_the_ray_missed_is_not_reported() -> void:
+	var grid := Grid.new(6, 6)
+	grid.add_surface(Vector2i(2, 2), Surface.new(DataLibrary.get_part(&"ship_floor"), 0.0, 0.0))
+
+	var over_a_tile: Dictionary = BoardInspectModule._pick_or_bare_cell({}, Vector2i(2, 2), grid)
+
+	assert_true(
+		over_a_tile.is_empty(),
+		"the ray missed the tile's boxes, so the cursor is above or behind it, not on it"
+	)
+
+
+## And a genuinely empty cell still reports, which is the whole reason the fallback exists.
+func test_an_empty_cell_is_still_reported_when_the_grid_is_known() -> void:
+	var grid := Grid.new(6, 6)
+	grid.add_surface(Vector2i(2, 2), Surface.new(DataLibrary.get_part(&"ship_floor"), 0.0, 0.0))
+
+	var bare: Dictionary = BoardInspectModule._pick_or_bare_cell({}, Vector2i(5, 5), grid)
+
+	assert_false(bare.is_empty(), "an empty tile is where an author most needs the preview")
+	assert_eq(bare["cell"], Vector2i(5, 5))
+
+
+## A blocker counts too — pointing over a wall at the board behind it must not report the wall.
+func test_a_cell_holding_a_blocker_is_not_reported_either() -> void:
+	var grid := Grid.new(6, 6)
+	grid.blockers[Vector2i(3, 3)] = DataLibrary.get_part(&"wall")
+
+	assert_true(BoardInspectModule._pick_or_bare_cell({}, Vector2i(3, 3), grid).is_empty())
+
+
 # ------------------------------------------------- the parts-list toggle
 
 

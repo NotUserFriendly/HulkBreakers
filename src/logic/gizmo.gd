@@ -67,6 +67,11 @@ const RESIZE_HANDLE_SIZE := 0.28
 var subject: StringName = SUBJECT_NONE
 ## The cell, for a `SUBJECT_PLACEMENT`.
 var cell: Vector2i = Vector2i.ZERO
+
+## taskblock-59 follow-up: **which placement at that cell**, when the click could tell. Null falls
+## back to the topmost, which is what every caller did before a cell could hold a column the author
+## meant to pick through. Held rather than re-resolved per drag so a grab stays on what was grabbed.
+var focused_placement: MapPlacement = null
 ## The index into the controller's claims, for a `SUBJECT_CLAIM`.
 var claim_index: int = -1
 ## Which set is showing. Always `TRANSLATE` on a freshly focused subject.
@@ -77,6 +82,21 @@ var dragging_axis: int = -1
 ## Which face of a resize box is being dragged: +1 for the positive side, -1 for the negative.
 ## Meaningless while translating, and left at +1 there.
 var dragging_sign: float = 1.0
+
+## **The subject's own state when the handle was grabbed.** taskblock-59 follow-up.
+##
+## `value_at` has always been anchored — *"the drag is a pure function of these two and the current
+## pointer, never an accumulation of per-frame deltas"* — but the two callers that use `amount_at`
+## were not: they added a delta measured **from the drag start** to the **current** value, so every
+## mouse-motion event re-applied the whole drag. Reported as *"the scale handles move independently
+## of the mouse cursor, flying off huge with the smallest movement"*; the claim path had the same
+## defect and no report against it. Six events at a stationary pointer took a wall from 3.4 to 8.4.
+##
+## **A dictionary because what a subject's state IS differs** — a claim has a `Box`, a placement has
+## a size and an offset — and this class deliberately does not know. The caller fills it at
+## `begin_drag` and reads it back; `cancel_drag` clears it, so a stale snapshot cannot outlive the
+## drag it belongs to.
+var drag_start_state: Dictionary = {}
 
 ## Where the pointer was when the handle was grabbed, and what the value was then. **The drag
 ## is a pure function of these two and the current pointer**, never an accumulation of
@@ -223,6 +243,7 @@ func focus_claim(index: int) -> void:
 ## A click landed on nothing the gizmo can drive. **Forgetting, not deselecting** — this class
 ## has no opinion about what else is selected and never touches it.
 func clear() -> void:
+	focused_placement = null
 	subject = SUBJECT_NONE
 	claim_index = -1
 	cell = Vector2i.ZERO
@@ -253,6 +274,7 @@ func is_dragging() -> bool:
 func cancel_drag() -> void:
 	dragging_axis = -1
 	dragging_sign = 1.0
+	drag_start_state = {}
 
 
 ## The value the pointer currently means, snapped. `axis_on_screen` is the screen-space vector

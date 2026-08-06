@@ -23,7 +23,7 @@ extends RefCounted
 ## | `sight_blocking` | retired in Pass C along with `Grid.opacity` |
 ##
 ## **`height` folding into `select` loses nothing**, and that was checked rather than assumed:
-## `GizmoModule._drag_to` already calls `EditorController.set_height` on a Y-axis drag of a
+## `GizmoModule._drag_to` already moves a placement on a Y-axis drag of a
 ## placement, so the verb's whole behaviour is what the translate handles do — by direct
 ## manipulation instead of a spinbox and a click.
 ##
@@ -52,6 +52,10 @@ const PLACE_TOOL_KINDS: Dictionary = {
 	&"place_big_part": MapPlacement.KIND_BLOCKER,
 	&"place_part": MapPlacement.KIND_FIELD_ITEM,
 }
+
+## The two tools the manipulation gizmo answers to — its translate set and its resize set. Rows of
+## `TOOLS` like every other verb; `GizmoModule` reads these rather than declaring its own.
+const GIZMO_TOOLS: Array[StringName] = [&"select", &"scale"]
 
 ## Everything *Place Map Thing* can put down — the things a player never sees. Open, so a later
 ## scripted-tile marker is an entry here rather than an eighth tool.
@@ -105,6 +109,19 @@ static func map_thing_choice(choice: StringName) -> Dictionary:
 ## True when `tool` puts a `Part` on the board, as opposed to a marker or a manipulation.
 static func is_place_tool(tool: StringName) -> bool:
 	return tool == &"place_terrain" or PLACE_TOOL_KINDS.has(tool)
+
+
+## True when `tool` is one the manipulation gizmo belongs to.
+##
+## taskblock-59 follow-up: **the two that keep a subject when you swap between them.** Arming
+## anything else lets go of it — a handle set left over a part while the author is placing is a
+## claim that something is selected when nothing is (`EditorModule._release_gizmo`).
+##
+## **Named from `GIZMO_TOOLS` here rather than from `GizmoModule`'s own constants**, which was the
+## first cut and is a `src/logic/` class reaching into `src/view/` — the golden rule this project is
+## built on. The vocabulary is logic; the module that draws handles for it is not.
+static func arms_the_gizmo(tool: StringName) -> bool:
+	return GIZMO_TOOLS.has(tool)
 
 
 ## True when `tool` picks what it places from a list. The place tools and *Place Map Thing*, which

@@ -291,7 +291,7 @@ func test_a_resize_that_would_collapse_the_claim_leaves_it_untouched() -> void:
 	var before: Vector3 = editor.controller.claims[0].box.size
 
 	# Grab the top face and drag it far below the bottom one.
-	handles.gizmo.begin_drag(Gizmo.AXIS_Y, 1.0, before.y, Vector2(500.0, 500.0))
+	handles.begin_drag(Gizmo.AXIS_Y, 1.0, Vector2(500.0, 500.0))
 	var up: Vector2 = handles.axis_on_screen(Gizmo.AXIS_Y)
 	handles._drag_to(Vector2(500.0, 500.0) - up * 5.0)
 

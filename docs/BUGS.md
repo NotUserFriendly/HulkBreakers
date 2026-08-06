@@ -2189,8 +2189,17 @@ bout's units at all; that wants an entry point which builds a world without a bo
 makes the editor honest in the meantime rather than closing that gap.
 
 **To see it work:** open the editor with a bout on screen (`E`). Before, the previous bout's units
-stood on the empty grid; now the board is empty until you author floor and spawn markers, and the
-units return when *Run Test Bout* seats them.
+stood on the empty grid; now no bout unit is drawn at all until *Run Test Bout* seats them.
+
+**taskblock-59 follow-up: the fix above was the wrong half, and this entry stays `Pending` on the
+stronger one.** Hiding the *stranded* units left the **seated** ones alone — and
+`BoardSwap.swap_board` seats on the first free walkable cell, so the author's very first floor tile
+put a bout unit on the board. Reported again as two defects (*"a random unit stuck around in the
+editor from the prior map, a squad 0 unit 0"* and *"something is causing a cutout or culling sphere
+on wall parts"*, both noted as coming and going as more was placed) — **one unit, both symptoms.**
+`EditorModule._hide_bout_units` now draws **no** bout unit in the editor and excludes every one of
+them from the wall cutout, which does not depend on what has been placed. Pinned by
+`test_editor_isolation.gd`.
 
 ### BR57.02 — Active — owner: `SUPERVISOR`
 **Units in the inspect viewer render with no directional contribution — every face identically lit**

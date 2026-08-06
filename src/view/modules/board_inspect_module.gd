@@ -139,8 +139,12 @@ func handle_input(event: InputEvent) -> bool:
 func _click_at(screen_pos: Vector2, camera: Camera3D, battle: BattleScene) -> void:
 	var from: Vector3 = camera.project_ray_origin(screen_pos)
 	var dir: Vector3 = camera.project_ray_normal(screen_pos)
+	# taskblock-59 follow-up: **surfaces included, so a click on a floor strikes the floor.** Without
+	# it a plain tile answered `{}` and the editor placed into the cell it had just clicked rather
+	# than against a face of what was there. `input_capture_mode` is the editor's own mode, and the
+	# inspector benefits identically: clicking a floor should inspect the floor.
 	var hit: Dictionary = PartPicker.hit(
-		battle.combat_state.units, battle.combat_state.grid, from, dir
+		battle.combat_state.units, battle.combat_state.grid, from, dir, true
 	)
 	var target: SelectionTarget = SelectionTarget.from_pick(hit)
 	if input_capture_mode:
@@ -220,7 +224,11 @@ func _update_hover(screen_pos: Vector2) -> void:
 	if hovered_pick.get_connections().size() > 0:
 		hovered_pick.emit(
 			_pick_or_bare_cell(
-				PartPicker.hit(battle.combat_state.units, battle.combat_state.grid, from, dir), cell
+				PartPicker.hit(
+					battle.combat_state.units, battle.combat_state.grid, from, dir, true
+				),
+				cell,
+				battle.combat_state.grid
 			)
 		)
 	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
@@ -257,10 +265,37 @@ func _emit_hovered_cell(from: Vector3, dir: Vector3, grid: Grid) -> Variant:
 ## The bare-cell form carries a `null` normal, which is exactly what `FacePlacement.target_from`
 ## already reads as *"no struck face, use the authored height"*. So nothing downstream learns a new
 ## case; the branch that handles a click off the ground plane handles this too.
-static func _pick_or_bare_cell(pick: Dictionary, cell: Variant) -> Dictionary:
+##
+## ## Only when the cell really is empty, and that was a regression
+##
+## taskblock-59 follow-up. `BoardPicker.cell_at_ray` resolves against the board's own terrain plane,
+## so **any** ray that eventually crosses the board yields a cell — including one passing well above
+## a tile, or over a wall at something behind it. Substituting that whenever the box test missed
+## reported geometry the cursor was not on.
+##
+## Reported as *"pointing at where the side of a floor would be if it were ~1.7 units higher up
+## highlights it... almost like there's an invisible copy higher up"* and *"it's almost like I can
+## click things behind the actual object I'm aiming at."* One cause, and it is the fallback being
+## unconditional rather than anything phantom: point above a tile and the ray still meets the plane
+## at that tile's cell, so a ghost drew there.
+##
+## **A cell holding something the ray missed is a cell the cursor is not on.** The fallback exists
+## for the empty tile — *"where an author most needs to know what a click will do"* — and that is
+## exactly the case it is now limited to.
+static func _pick_or_bare_cell(pick: Dictionary, cell: Variant, grid: Grid = null) -> Dictionary:
 	if not pick.is_empty() or cell == null:
 		return pick
+	if grid != null and _holds_anything(grid, cell as Vector2i):
+		return {}
 	return {"unit": null, "part": null, "cell": cell, "t": INF, "normal": null}
+
+
+## Whether `cell` has any geometry on it at all. **Anything the picker could have struck** — if the
+## box test missed all of it, the ray is passing over or behind rather than pointing at it.
+static func _holds_anything(grid: Grid, cell: Vector2i) -> bool:
+	if grid.blockers.has(cell) or not grid.surfaces_at(cell).is_empty():
+		return true
+	return not (grid.field_items.get(cell, []) as Array).is_empty()
 
 
 func _inspect() -> InspectModule:

@@ -405,6 +405,43 @@ on this game has been an all-Trained rate.
 rate per tier; a Mindless unit and an Elite unit on the same seed visibly do different things in the
 combat log.
 
+### Blockers need a real transform, and the veneer's facing waits on it
+**Needs:** a blocker's placement carrying an orientation through `Grid` to `BoardView`. **Unblocks:**
+ledge veneers facing the edge they hang off; ladders on any side of a cell; any terrain part whose
+meaning depends on which way it points.
+
+**Supervisor's call, 2026-08-06: blockers need a real transform** — not quarter-turn rotation baked
+into the boxes.
+
+**Reported as a veneer defect**: *"veneers don't respect the facing of the clicked side of a thing.
+They also always place on one edge of a top face, and should align their facing to the edge. They're
+already getting the 'grow to' height from a piece, so they should face it as well. Ladders may need
+this behavior as well."* All true, and the cause is one layer below the veneer.
+
+**A blocker's facing does not survive being placed.** `MapPlacement.facing` is documented *"Surfaces
+only: radians... What makes a ramp directional"*, `MapSerializer.to_grid` stores a blocker as
+`grid.blockers[cell] = part` with no orientation anywhere, and `BoardView._spawn_blocker` draws it
+at facing `0.0`. So a `ledge_veneer` — which authors its box against **+Z** and is a `KIND_BLOCKER`
+— can only ever appear on one edge of a cell, whichever edge the author meant.
+
+**The deriving half was built and then reverted, deliberately.** A side click can face the veneer
+back at the ledge it hangs from, and a top click can read the struck point to pick the nearest cell
+edge — both landed and tested. **They were backed out because the drawing half does not exist**, and
+a placement carrying a facing that nothing renders is precisely the visual/logic disagreement this
+project spent taskblock-59 removing. *Both halves need to be possible first.* The derivation is
+small and can be rebuilt in an afternoon; it is not the work.
+
+- **Why not bake rotation into the boxes**, which is how `size` and `offset` already reach the
+  board: a `Box` is axis-aligned, so that buys quarter turns only. Enough for four cell edges and
+  wrong as a foundation — the supervisor's answer is a real transform, which also serves a ladder on
+  an arbitrary face and anything later that is not axis-aligned.
+- **`Grid.blockers` is `Vector2i -> Part`**, so there is nowhere to put an orientation today. That
+  is the same storage limit as *A cell holds one blocker*, and the two want doing together: both
+  need the blocker entry to become something richer than a bare `Part`.
+- **`UnitGeometry.assembly_placements` already takes an orientation** and `RayCaster`, `SightSpans`
+  and `PartPicker` all read the boxes it produces — so once a blocker can carry one, geometry,
+  picking and sight follow with no further change. It is the storage that is missing, not the maths.
+
 ### A cell holds one blocker, so nothing stacks vertically
 **Needs:** `Grid.blockers` becoming a list per cell, or a placement carrying enough position to be
 addressed below another. **Unblocks:** stacking a pillar on a pillar; a wall taller than its part.
@@ -425,6 +462,34 @@ distinct things*: a crate on a pillar, a barrel on a crate.
   on one cell while covering nine, and an offset placement blocks the cell it was authored at
   whatever its geometry overlaps. Stated in `MapPlacement.offset`'s own note rather than left to be
   found.
+
+**Re-asked by the supervisor after taskblock-59 and scoped rather than started** — *"pillars and
+other terrain features should stack atop each other. This might be a big ask, so check before
+implementing."* It is. **Measured 2026-08-06: `grid.blockers` is read at 84 sites across 28 files**,
+41 of them in production logic:
+
+| pattern | sites | difficulty |
+|---|---|---|
+| `blockers.has(cell)` guards | 14 | mechanical — becomes *"is anything here"* |
+| `for cell in blockers` iteration | 14 | mechanical, but it is the ray marcher, sight spans and detonation |
+| `blockers[cell] = part` writes | 13 | mostly `MapGen` and `BoutInjector` |
+| `blockers[cell]` indexed reads | 5 | **the real decisions** — *which* one? |
+| `size`/`erase`/`keys` | 7 | mechanical |
+
+**The count is not the hard part.** Most readers genuinely need **every** blocker rather than the
+first — `RayCaster` marches geometry, `SightSpans` derives occlusion, `ShotPlane` projects, `Cover`
+and `VisibilityField` ask about blocking — while `DamageResolver` and `Detonation` do *identity*
+checks (`blockers[cell] == part`) that need list semantics to stay correct. `Grid.shootable_part_at`
+and `cell_of_blocker` both assume one.
+
+**Two cheaper things already work and should be weighed before starting.** A *taller* pillar is
+authorable now — Pass C's Scale drag on the top face gives one part at the authored height with
+proportional hp, which is better than two parts pretending. And `Grid.field_items` already holds an
+ordered array per cell and `BoardView` draws it through `_spawn_blocker`'s own geometry, so several
+parts in one cell already **draw**; what they do not do is block, because `Pathfinder` and
+`ShotPlane` never read `field_items`. **The open design question is therefore what distinguishes a
+blocker from a field item** once a cell can hold several of either — answer that before the
+refactor, not during it.
 
 ### A veneer grown upward can never snap to anything
 **Needs:** a pick that reports **which** surface of a stack was struck, rather than the stack's own

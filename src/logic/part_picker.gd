@@ -41,7 +41,25 @@ const SKIP_RADIUS := 3.0
 ##
 ## **A miss returns `{}` and therefore carries no normal**, rather than reporting
 ## `Vector3.ZERO` — a zero vector survives a `dot` and reads as an answer.
-static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> Dictionary:
+## taskblock-59 follow-up: **`include_surfaces` lets a click strike a floor.**
+##
+## This has only ever considered units, `Grid.blockers` and `Grid.field_items` — its own header
+## lists *"unit parts, scatter cover, walls, downed bots, field objects"* and floors are in none of
+## them. So a click on a plain tile returned `{}`, the editor read that as *"no face"*, and
+## `FacePlacement` fell back to the authored height in the **same cell** — which is the reported
+## *"it looks like floors can be placed in a tile with a floor already there."* The author had
+## clicked a floor and struck nothing.
+##
+## **Off by default, because the aim path shares this call.** `TacticsController` uses `hit` to
+## resolve what a shot is pointed at, and making the ground a target there is a real change to
+## targeting rather than a fix. The editor's own picking asks for it; nothing else does.
+##
+## `RayCaster._consider_surface` already marches exactly this geometry — same
+## `UnitGeometry.assembly_placements`, same boxes — so this is that question asked by the picker,
+## not a second surface model.
+static func hit(
+	units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3, include_surfaces: bool = false
+) -> Dictionary:
 	var nearest_unit: Unit = null
 	var nearest_part: Part = null
 	var nearest_cell: Vector2i = Vector2i.ZERO
@@ -80,6 +98,19 @@ static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> 
 					nearest_cell = cell
 					nearest_normal = box_hit["normal"]
 
+	if include_surfaces:
+		for surface: Surface in grid.placements():
+			if not near_ray(surface.cell, from, dir, surface.height):
+				continue
+			var surface_hit: Dictionary = _nearest_surface_hit(surface, from, dir)
+			if surface_hit.is_empty() or float(surface_hit["t"]) >= nearest_t:
+				continue
+			nearest_t = surface_hit["t"]
+			nearest_unit = null
+			nearest_part = surface.part
+			nearest_cell = surface.cell
+			nearest_normal = surface_hit["normal"]
+
 	if nearest_part == null:
 		return {}
 	return {
@@ -88,7 +119,33 @@ static func hit(units: Array[Unit], grid: Grid, from: Vector3, dir: Vector3) -> 
 		"cell": nearest_cell,
 		"t": nearest_t,
 		"normal": nearest_normal,
+		# taskblock-59 follow-up: **the world point struck**, so a caller can tell *which* of a cell's
+		# stacked placements it hit. The cell alone cannot: a column of floors is one cell, and every
+		# editor verb that resolved a click to "the cell" then acted on the wrong one of them —
+		# placing against the bottom of the stack, deleting the top, selecting the wall over a floor.
+		# Derived from `t` rather than recomputed, so it is the same hit the normal came from.
+		"point": from + dir.normalized() * nearest_t,
 	}
+
+
+## The nearest box of `surface`'s own assembly the ray strikes, as `{t, normal}`, or `{}`.
+##
+## The same shape `_nearest_hit` produces for a blocker, against the same
+## `UnitGeometry.assembly_placements` call `BoardView` draws a tile from — *render is hitbox*
+## (`docs/10`), which is what makes a struck face a real answer rather than an approximation.
+static func _nearest_surface_hit(surface: Surface, from: Vector3, dir: Vector3) -> Dictionary:
+	var best: Dictionary = {}
+	var best_t: float = INF
+	var placements: Array[BoxPlacement] = UnitGeometry.assembly_placements(
+		surface.part, surface.cell, surface.facing, null, surface.height
+	)
+	for placement: BoxPlacement in placements:
+		var box_hit: Dictionary = UnitPicker.ray_box_hit(placement, from, dir)
+		if box_hit.is_empty() or float(box_hit["t"]) >= best_t:
+			continue
+		best_t = box_hit["t"]
+		best = {"t": best_t, "normal": box_hit["normal"]}
+	return best
 
 
 ## `BR35.01`: **a cheap reject before the per-box test.** `hit` ran a full assembly ray test

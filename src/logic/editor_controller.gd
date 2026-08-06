@@ -169,6 +169,42 @@ func blocks_placement(cell: Vector2i, kind: StringName) -> String:
 	return ""
 
 
+## **The placement at `cell` whose own geometry contains `world_y`**, or null.
+##
+## taskblock-59 follow-up: **which of a stack was clicked.** A cell can hold a column of floors and
+## every verb that took a cell then acted on the wrong one of them — the side of an upper floor
+## reported the bottom of the stack, `remove_top` deleted the top whatever was clicked, and the
+## gizmo focused the topmost regardless. The struck point is what distinguishes them, and it comes
+## from the same pick the struck normal does.
+##
+## **Nearest by containment, then by distance to the span**, so a point exactly on a shared face
+## resolves rather than falling through: two stacked floors meet at a plane, and a click there
+## belongs to one of them.
+func placement_at(cell: Vector2i, world_y: float) -> MapPlacement:
+	var best: MapPlacement = null
+	var best_gap: float = INF
+	for placement: MapPlacement in placements_at(cell):
+		var span: Dictionary = FacePlacement.span_of([placement] as Array[MapPlacement])
+		var gap: float = maxf(
+			maxf(float(span["bottom"]) - world_y, world_y - float(span["top"])), 0.0
+		)
+		if gap < best_gap:
+			best_gap = gap
+			best = placement
+	return best
+
+
+## Removes exactly `placement`. False when it is not in the model — which is a caller holding
+## something stale, never an authoring opinion.
+func remove_placement(placement: MapPlacement) -> bool:
+	var index: int = placements.find(placement)
+	if index < 0:
+		return false
+	_push_undo()
+	placements.remove_at(index)
+	return true
+
+
 ## Every placement at `cell`, in authored order. A read, so it takes no undo step.
 func placements_at(cell: Vector2i) -> Array[MapPlacement]:
 	var found: Array[MapPlacement] = []
@@ -245,6 +281,60 @@ func set_placement_size(cell: Vector2i, size: Vector3, offset: Vector3 = Vector3
 	top.size = size
 	top.offset = offset
 	return true
+
+
+## taskblock-59 follow-up: **moves the topmost placement at `cell` vertically — the one the gizmo
+## is drawn on.** False when the cell is empty.
+##
+## Reported as *"moving a pillar moves the floor beneath. This may be intentional, so check first."*
+## **It is not intentional.** The gizmo draws its handles from the topmost placement and
+## `set_height` writes to the topmost *surface*, so grabbing a pillar's arrow moved the floor under
+## it — two different placements answering to one cell.
+##
+## **A surface moves by its `height`; anything else moves by its `offset`.** That is not a
+## workaround, it is what the two fields mean: `MapPlacement.height` is documented *"surfaces
+## only... ignored for blockers and field items, which sit on whatever surface the cell already
+## has"*, and `offset` (Pass C) is the displacement of a placement from where its cell would put it.
+## A pillar lifted half a metre is a pillar with an offset, and the board already draws that.
+##
+## `set_height` is left exactly as it was: it is the surface verb, it is what the height field and
+## the panel's spinbox mean, and other callers rely on it.
+func move_top_placement(cell: Vector2i, height: float, ground: float = 0.0) -> bool:
+	var here: Array[MapPlacement] = placements_at(cell)
+	if here.is_empty():
+		return false
+	_push_undo()
+	var top: MapPlacement = placements_at(cell)[here.size() - 1]
+	if top.kind == MapPlacement.KIND_SURFACE:
+		top.height = height
+	else:
+		top.offset = Vector3(top.offset.x, height - ground, top.offset.z)
+	return true
+
+
+## **Moves the topmost placement at `from` to `to`.** False when there is nothing there, or when the
+## destination is where it already is.
+##
+## taskblock-59 follow-up: *"the horizontal drags for the move gizmo should move the item. Currently
+## they should snap by cell, but later they may be fully offsetable."* Whole cells, so the sub-cell
+## half stays `MapPlacement.offset`'s job for when it is wanted.
+##
+## **Removed and appended rather than edited in place**, which puts the moved thing on top of its
+## new cell — where a fresh click would have put it, and the same authored-order rule `placements`
+## is built on.
+func move_placement(from: Vector2i, to: Vector2i) -> bool:
+	if from == to:
+		return false
+	for index: int in range(placements.size() - 1, -1, -1):
+		var placement: MapPlacement = placements[index]
+		if placement != null and placement.cell == from:
+			_push_undo()
+			var moved: MapPlacement = placements[index]
+			placements.remove_at(index)
+			moved.cell = to
+			placements.append(moved)
+			return true
+	return false
 
 
 ## The facing half of the same. What makes a ramp directional.
