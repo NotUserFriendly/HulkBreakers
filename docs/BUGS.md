@@ -103,6 +103,31 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+## Framerate: the bar, and why these entries sit
+
+**The release bar is 120 fps at 4K.** Anything below that is not acceptable at ship; this is a
+turn-based game with a handful of units and it should not struggle. **Resolution is part of the bar** —
+120 at 4K is roughly 160 on the supervisor's display, so a number taken at 1080p is not a number
+against the bar and should say which it is.
+
+**The working tolerance right now is far looser, deliberately.** A **1% low above 40** and **no frame
+over roughly 100 ms** is acceptable for the moment. Framerate is a *chase it if it is severe* problem
+until the game is closer to done, and severe means below that tolerance — not below the release bar.
+
+**Judge on the 1% low and the worst frame, never on an average.** The perf panel reports five figures
+and they disagree by design; an average is the one that hid a stutter for five blocks.
+
+**So the framerate entries below stay `Active` and are not hunted.** They are real defects measured
+against the release bar and none is severe against the working tolerance. **This is written here so a
+triage does not re-derive it every time** — the question *"is 100 out of 160 a bug?"* has been asked and
+answered, and the answer is *yes, and not yet.*
+
+**`BR58.01` is not one of them.** It is measured in milliseconds and reads as a performance entry, but
+the defect is that planning aborts on wall-clock and therefore varies by machine. That is a determinism
+bug and it is chased on its own terms.
+
+---
+
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
