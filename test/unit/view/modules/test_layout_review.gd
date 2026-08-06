@@ -373,8 +373,20 @@ func test_a_unit_the_authored_board_cannot_seat_is_not_drawn() -> void:
 	assert_eq(visible_views, 0, "a unit with nowhere to stand is still being drawn")
 
 
-## And they come back once the board can seat them, so the fix is not "hide the units".
-func test_a_unit_the_board_can_seat_is_drawn_again() -> void:
+## **They do NOT come back when the board can seat them, and that claim is reversed on purpose.**
+##
+## This read *"they come back once the board can seat them, so the fix is not 'hide the units'"* —
+## which was taskblock-57's intent and turned out to be the defect. `BoardSwap.swap_board` seats on
+## the **first free walkable cell**, so the author's very first floor tile put a bout unit on the
+## board: visible, and feeding the wall-cutout shader a porthole. The supervisor reported it twice,
+## as *"a random unit stuck around in the editor from the prior map"* and as *"something is causing
+## a cutout or culling sphere on wall parts"* — one unit, both symptoms, coming and going with
+## whatever had been placed.
+##
+## **The editor authors a board; it does not play one.** So no bout unit is drawn in it at any
+## stage, and `run_test_bout` is what brings them back — which the test below asserts, so the pair
+## still covers "the fix is not merely hiding them."
+func test_a_unit_is_not_drawn_even_once_the_board_could_seat_it() -> void:
 	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
 	var editor: EditorModule = overlay.module(&"editor") as EditorModule
 	editor.refresh()
@@ -389,7 +401,28 @@ func test_a_unit_the_board_can_seat_is_drawn_again() -> void:
 	for view: HitVolumeView in overlay.battle.unit_views:
 		if view.visible:
 			visible_views += 1
-	assert_gt(visible_views, 0, "the authored floor seats them and they must be drawn again")
+	assert_eq(visible_views, 0, "a bout unit is standing on the board being authored")
+
+
+## **And they come back when a test bout is launched**, which is where the units belong — the half
+## that keeps the rule above from being "hide them and forget them".
+func test_launching_a_test_bout_brings_the_units_back() -> void:
+	var overlay: ControlOverlay = await _overlay(ViewModes.editor())
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	editor.controller.set_size(6, 6)
+	for y: int in range(6):
+		for x: int in range(6):
+			editor.controller.place(Vector2i(x, y), &"ship_floor")
+	editor.controller.set_spawn_marker(Vector2i(0, 0), Enums.SpawnMarker.SPAWN_A)
+	editor.refresh()
+
+	assert_eq(editor.run_test_bout()["error"], "", "the board launched")
+
+	var visible_views: int = 0
+	for view: HitVolumeView in overlay.battle.unit_views:
+		if view.visible:
+			visible_views += 1
+	assert_gt(visible_views, 0, "the bout launched and nobody is on the board")
 
 
 # ================================================================ second review pass

@@ -1,5 +1,84 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 59 follow-up — fourteen editor reports across four review rounds
+
+**Full gate green: 339 scripts, 3322 tests, 0 failures, 1396.6 s.**
+
+### The gizmo
+
+**A drag is a pure function of where it started and where the pointer is now.** `Gizmo.amount_at`
+is a delta measured from the grab and both callers applied it to the **current** value, so every
+mouse-motion event re-applied the whole drag — six events at a **stationary** pointer took a wall
+from 3.4 to 8.4. `Gizmo.drag_start_state` snapshots the subject and `GizmoModule.begin_drag` is the
+only way to start one, so a caller cannot begin a drag without a snapshot. **The claim drags had the
+identical defect and no report against them.**
+
+**The gizmo addressed a cell, so the handles sat on a pillar while the drag moved the floor under
+it** — the handles came from the topmost placement and `set_height` wrote to the topmost *surface*.
+A surface now moves by its `height` and anything else by its `offset`, which is what the two fields
+already mean. The detachment report is the same defect: after a drag the handles and the moved thing
+disagreed.
+
+**Horizontal drags move the placement by whole cells**, and `gizmo.cell` re-points at the
+destination so the handles follow. Sub-cell movement stays `offset`'s job. **The readout follows the
+cursor** instead of sitting where the action bar happens to be. **Arming a non-gizmo tool releases
+the subject and its ghost**; swapping Select↔Scale keeps it.
+
+### A cell can hold a column
+
+`PartPicker.hit` reports the **world point struck**, so the editor can tell which of a stack was
+clicked. Place, delete, select and scale all address the struck placement; the cell-addressed forms
+remain as the fallback for a click that resolved off the ground plane. **Cover lands on the deck
+that was clicked** via `MapPlacement.offset`, rather than by changing `Surface.first_walkable` — a
+documented grid rule the pathfinder reads, and a test pins that it did not move.
+
+### Three corrections
+
+**The ghost was wrong, not the logic.** `BoardView` draws a blocker at the cell's true walkable
+height, ignoring the authored height — correct, because `MapPlacement.height` is surfaces-only —
+while the ghost drew at the target height. My first fix changed `FacePlacement`, the shared answer
+the *click* uses, and so moved where things were authored. Reverted; the ghost derives the height
+**and the facing** the board will use.
+
+**A placement is seated against the face it was clicked on.** `ship_floor` authors its box at
+`center.y = -0.1, size.y = 0.2`, so it hangs entirely below its own height — placing it at the
+struck plane put it in the 0.2 the clicked floor already occupied. Top face now seats the new part's
+bottom, bottom face seats its top, side face seats its bottom. A `wall` is unaffected, which is why
+this only showed on floors.
+
+**The bare-cell fallback was unconditional.** `BoardPicker.cell_at_ray` resolves against the board's
+terrain plane, so *any* ray crossing the board yields a cell — pointing above a tile, or over a wall
+at something behind it, still drew a ghost there. Reported as *"an invisible copy higher up"* and
+*"I can click things behind the actual object I'm aiming at"*: one cause, nothing phantom. Limited
+to genuinely empty cells, which was its purpose.
+
+### And the rest
+
+- **The editor draws no bout units at all.** taskblock-59 Pass B covered only the units the board
+  could not seat; `swap_board` seats on the first free walkable cell, so the first floor tile put
+  one on the board. The stale unit and the wall cutout were **one unit**.
+- **The "PL" toggle reads what is on screen.** Fixed in `UiButtonsModule`, because the desync
+  belonged to every module in the cluster whose surface can open by other means.
+- **`PartPicker` can strike surfaces**, opt-in — clicking a floor struck nothing before, which is
+  why a click placed into the cell rather than against a face. Off by default because
+  `TacticsController` resolves aim through the same call.
+- **`EditorTools` had reached into `GizmoModule`** for two tool names: `src/logic/` depending on
+  `src/view/`. The vocabulary now lives in logic.
+
+### Reverted, and worth recording
+
+- **Refusing co-planar floors.** Tried, then backed out: two floors in a cell *can* be expressed, so
+  refusing is a legality opinion — the line taskblock-59 Pass A drew — and it broke
+  `test_an_illegal_placement_is_still_placed_and_only_warned_about`, a taskblock-56 F4 acceptance.
+  The supervisor's reframing was the real answer and is the `PartPicker` change above.
+- **The ledge veneer's derived facing.** Built and tested — a side click faces it back at the ledge,
+  a top click reads the struck point for the nearest edge — then **reverted on the supervisor's
+  call**, because `BoardView` draws a blocker at facing `0.0` and `MapSerializer` drops a blocker's
+  facing entirely. A placement carrying a facing nothing renders is the visual/logic disagreement
+  this block spent its time removing. *Both halves need to be possible first*; **blockers need a
+  real transform**, which is queued.
+
+
 ## Taskblock 59 — the editor stops lying, and the tiers reach a bout
 
 ### Pass F — the completion rate, per tier, and it inverted

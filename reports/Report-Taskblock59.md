@@ -2,8 +2,8 @@
 
 **All six passes landed — A through F — in order, on `master`, full gate green (3274 of 3274).
 Fourteen supervisor reports were then worked after the block closed** — see *After the block* at the
-end, which is where the most interesting corrections in this report are. **That work is not yet
-gated**; the supervisor asked for the gate to be held until they call it.
+end, which is where the most interesting corrections in this report are. That work is gated and
+pushed too: full gate green, 339 scripts, 3322 tests, 0 failures.
 
 **The block's own framing held everywhere it was applied**: *something authored a capability and
 nothing authored the way in.* Five of the six passes are that shape, and Pass A turned out to be the
@@ -281,9 +281,13 @@ was a range delete whose end marker sat past four functions I meant to keep.
 
 ## Open questions
 
-**1. The gate has not been run on any of this.** Targeted runs across every editor, gizmo, picker and
-placement file are green, and the fast and full gates are held at the supervisor's request. Nothing
-here is committed.
+**1. One test had to be reversed rather than fixed, and it is the block's own.**
+`test_layout_review.gd::test_a_unit_the_board_can_seat_is_drawn_again` asserted *"they come back
+once the board can seat them, so the fix is not 'hide the units'"* — taskblock-57's intent, and
+exactly what the supervisor reported twice as a defect. It now asserts the opposite, paired with a
+new test that launching a bout brings them back, so the pair still covers "the fix is not merely
+hiding them". Recorded in `SUPERSEDED.md`. **It was caught by the full gate and by nothing else**,
+which is the argument for the full gate on a change that touches a shared surface.
 
 **2. `EditorTools` had reached into `GizmoModule`** for the two tool names — a `src/logic/` file
 depending on `src/view/`, which is the golden rule this project is built on. Found and fixed while
