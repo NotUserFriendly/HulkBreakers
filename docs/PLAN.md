@@ -1276,63 +1276,42 @@ why it should be a decision rather than a side effect.
 `test_placement_position.gd::test_ground_still_refuses_a_second_placement_on_an_occupied_cell` pins
 the current reading, so the change has to be a deliberate edit to a named test.
 
-### The editor's tool set, reorganised
-**Needs:** *The UI layout* (landed). **Unblocks:** authoring without knowing which of ten verbs does
-what.
+### The editor's Scale tool does not yet author a size
+**Needs:** nothing. **Unblocks:** an author actually making the 3 x 3 x 0.5 wall the data model now
+supports.
 
-Ten tools become **seven**, grouped by what a click *means* rather than by what it touches.
+**The data model landed and the authoring gesture did not.** taskblock-58 Pass F gave
+`MapPlacement` a `size`, made `MapSerializer` apply it, and made hp follow volume — measured, tested
+and reaching the board. **Nothing in the editor sets it.** `scale` exists as one of the seven tools
+(Pass D) and arms the gizmo's resize handles, which today resize a *claim*; `GizmoModule._drag_to`
+has no placement branch for a size the way it has one for a height.
 
-| tool | a click |
-|---|---|
-| **Select** | Click to inspect; move with the gizmo. **X and Y movement snap to one-tile increments and auto-connect to the new neighbours.** |
-| **Place Terrain** | Walls, floors and anything tagged terrain. **Attaches to the highlighted face** of whatever is aimed at, with a **ghost** so the result is never a surprise. |
-| **Scale** | Anything scaleable. The gizmo attaches to the **face clicked** and drags it; a top face scales X and Y **mirrored**. Numeric readout while dragging. |
-| **Delete** | Highlights on hover, deletes on click. Works on everything — map things, tiles, parts. |
-| **Place Map Thing** | Claims, extract zones, spawn tiles, later scripted tiles. **Everything the player never sees.** |
-| **Place Big Part** | Cover and cover spawners — anything that stops a unit entering a cell without being terrain. |
-| **Place Part** | Everything else. |
+So a sized wall is currently reachable only by authoring a `.tres` by hand or building a `MapFile`
+in code. **That is a real gap rather than a nicety** — the taskblock's own framing is that map
+failure should be *"something an author shapes"*, and an author cannot yet shape it.
 
-**Retired as verbs:** `spawn_a`/`spawn_b`/`spawn_none` and `chance` fold into *Place Map Thing*;
-`sight_blocking` retires with the opacity array above.
+- **The gizmo already has the shape of the answer.** Its resize handles drag one face and derive the
+  rest (`Gizmo.resized_box`, and the taskblock-57 H finding that snapping the *dragged face* rather
+  than the extent is what keeps the opposite face still). A placement's size wants the same handles
+  pointed at a different subject.
+- **`Scale`'s stated behaviour is unbuilt too**: *"the gizmo attaches to the face clicked; a top face
+  scales X and Y mirrored. Numeric readout while dragging."* Pass A's struck normal is what tells it
+  which face, and it is already threaded to the click path.
 
-**A chance becomes a thing you place**, not a verb — a generic *this could be any cover* item with
-defaults, and selecting it lets you change them: which categories, what chance.
+### The ledge veneer is not placeable from the editor
+**Needs:** *The editor's Scale tool* is adjacent but not required. **Unblocks:** using the veneer at
+all.
 
-**Every Place tool opens a parts list on the right**, in the Inspect slot, toggleable from UI buttons.
-**It goes where Inspect goes because while placing you cannot be selecting** — the two are mutually
-exclusive by construction, so they can share a slot without a conflict.
+`LedgeVeneer` computes the span, `ledge_veneer` is an authored part tagged terrain, and the hp
+follows volume like everything else — all landed and tested in taskblock-58 Pass F. **What is
+missing is the gesture**: nothing calls `span_at` from a click, so a veneer cannot be placed on a
+board without hand-authoring.
 
-#### Faces define connections
-
-**Attachment becomes face-to-face rather than cell-to-cell**, which is what *Place Terrain*'s
-face-highlighting needs and what a grid-agnostic world needs anyway. `RayCaster` already solves the
-angle of incidence at each hit, so **which face was struck is derivable rather than new** — but it has
-to be *reported*, and nothing reads it today.
-
-This composes with the tb58 B placement inversion and *Grids are not unbreakable*: once a thing's
-position is its own and grids are plural, **a face is the only thing left that two placements can agree
-about.**
-
-### Parts get real dimensions, and HP follows volume
-**Needs:** *The editor's tool set* for authoring them. **Unblocks:** designed structural failure.
-
-- **Walls resize on X, Y and Z.** A 3 x 3 x 0.5 wall exists as one part, and **destroying it leaves a
-  hole of a designed size** — which is the point: map failure becomes something an author shapes rather
-  than something that emerges a cell at a time.
-- **HP scales by volume.** The alternative is three walls pretending to be one, and this keeps a big
-  wall meaningfully tougher than a small one without authoring a number per size.
-- **Support pillar upgrades from cover to a terrain part**, since it holds things up.
-
-#### The ledge veneer
-
-A flat wall attaching to a tile's top edge and sideways to tiles above it. **Name is provisional.**
-
-- **It grows both ways and snaps to what it meets.** Clicking a ledge's side grows it **down**; it can
-  also grow **up**; and **if it connects at both ends it snaps to both.**
-- **Defaults when it connects to nothing:** growing up from an edge, **0.8** — deliberately odd so it
-  reads as a default rather than as intent. Clicking the side of a tile with nothing under it,
-  **match the picked floor tile's own height**.
-- **HP by volume, like everything above.**
+The wiring is small and named: *Place Terrain* offers the part already (it is terrain-tagged), and
+what it needs is to recognise a veneer, ask `LedgeVeneer.span_at` for the rise instead of taking the
+authored height, and carry the result as the placement's `size`. **Growing up versus growing down**
+is the one thing the click has to decide, and Pass A's struck normal is what decides it — a top face
+grows up, a side face grows down.
 
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
