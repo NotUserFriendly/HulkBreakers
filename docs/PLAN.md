@@ -175,6 +175,10 @@ that one number replaces five separate checks:
 **Five categorical checks become one continuous comparison**, and it is the better rule: *can this unit
 step up that far* rather than *is this thing labelled a ramp*.
 
+**The editor's auto-placed terrain places ramps, not `ship_floor`.** Observed 2026-08-06: many items
+auto-place terrain under themselves and the terrain they place is a ramp. Almost certainly the same
+constant, and it retires with everything else here rather than being fixed first.
+
 **`Surface.facing` never reaches the pathfinder**, so a ramp is already traversable from any direction —
 you can walk up its side. The directionality that would be the strongest argument for keeping ramps is
 not implemented, which also means **`BR56.01` is a visual defect on a field nothing reads.** Do not fix
@@ -2150,6 +2154,31 @@ no on-screen wind-up. `ShotScatter.for_shot` is now the one place range→radius
 ready-made primitive to drive an enemy-side draw. The real work is *when* the beat plays, how long it holds,
 and how it interacts with other AI units resolving in the same batch.
 
+
+### Animation, and the promise that what you see is what you get
+**Needs:** commissioned models and animation work — **neither of which is on this list yet**, which is
+why this sits where it does. **Unblocks:** units reading as inhabited rather than as posed boxes.
+
+**Units get idle movement that depends on their shape and their parts.** A spindly frame sways
+differently from a squat one; an arm that is gone does not idle.
+
+**And that collides with the transparency pillar** (`docs/08`, `docs/10`): *what the player sees is what
+they get*. If a unit's parts are visibly swaying, then **the frame the player is looking at has to be
+the frame the resolver used** — for aiming, for the shot plane's projection, and for detonation
+geometry. An idle that moves a torso two inches while the dartboard says otherwise is the doctrine
+breaking in the most visible possible way.
+
+- **Not everything needs frame accuracy.** Line-of-sight and similar coarse queries can run against
+  **frame 1 or a mid-frame pose** — a stable reference — as long as the choice is stated and the sway
+  is small relative to the question being asked. **Aim and detonation cannot**; those resolve against
+  what is drawn.
+- **Slow-motion while aiming is the reconciliation.** Idles keep playing, the player has time to read
+  the pose, and the frame the shot resolves against is one the player actually saw. It makes the
+  determinism cost feel like a deliberate effect rather than an impediment.
+- **The shot plane already projects from a real pose** — `Poses` and `assembly_placements` are pose-aware
+  — so this is a question of *which* pose, not of adding pose-awareness. That is the good news.
+- **Animation frames must be addressable and deterministic.** A frame index that advances on wall-clock
+  reintroduces exactly the machine-dependence `PlanPacer` is being fixed for.
 
 ### Commission real art
 **Needs:** a vocabulary freeze — a stretch of taskblocks in which **no socket type or part kind is
