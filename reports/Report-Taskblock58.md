@@ -1,9 +1,19 @@
 # Taskblock 58 Report — Faces, locations, one answerer, and the editor's real tools
 
-**Passes A, B, C, C.2, D and E landed, in order; F is not started.** All six are on `master` and
-the suite is green (3180 of 3180). C was reviewed on a branch and merged on the supervisor's call; C.2 is the
-addendum written after that review, which merges C, takes the wall-clock budget out of
-`test_ai_batch_yield`, and files the pacer defect as its own `PLAN.md` item rather than building it.
+**All seven passes landed — A, B, C, C.2, D, E, F — in order, on `master`, suite green (3198 of
+3198).**
+
+**Two things the block built the model for and did not build the gesture for**, both now queued in
+`PLAN.md` rather than left implied: the editor's `Scale` tool does not yet author a
+`MapPlacement.size`, and the ledge veneer is not placeable from a click. The data models, the hp
+maths and the span rules are landed and tested; what is missing in both cases is the wiring from a
+gesture, and an author currently reaches either only by hand-authoring a `.tres`. **That is a real
+gap rather than polish** — the taskblock's own framing is that map failure should be *"something an
+author shapes."*
+
+C was reviewed on a branch and merged on the supervisor's call; C.2 is the addendum written after
+that review, which merges C, takes the wall-clock budget out of `test_ai_batch_yield`, and files the
+pacer defect as its own `PLAN.md` item rather than building it.
 
 **Two measurements are in play and they are not the same number.** Per-turn planning cost rose
 **1.38x** (412 ms -> 569 ms, twelve steps at seed 4242); whole-suite cost rose **1.13x** (682 s ->
@@ -116,6 +126,23 @@ vocabulary to `EditorTools`; this pass moved `target_from` to `FacePlacement`. B
 than they left, and both moves were **triggered by a lint gate rather than by noticing** — worth
 recording as a pattern, since a third one is likely and the file is near the limit again.
 
+**Pass F: HP linear in volume, which was the supervisor's call rather than mine.** I offered
+linear, linear-with-authored-density, and sub-linear; the answer was *"diminishing returns on more
+mass is the opposite of how armor works in real life."* What I chose unilaterally is that it is
+**opt-in** — `hp_per_volume` defaults to zero, meaning "keep the authored hp at any size" — and that
+`wall`'s density is the number reproducing its existing 60 hp exactly rather than a round figure.
+**Both were chosen so that turning this on rebalanced nothing.**
+
+**Pass F: the veneer name stays.** The taskblock calls it provisional and asks for better if one
+turns up while building. None did. *Skirt* reads as decoration and undersells a thing with hp that
+stops shots; *facade* carries "false front", which is exactly what this is not.
+
+**Pass F: `MapSerializer` applies the size at load, rather than the geometry threading it.** A sized
+placement becomes a part whose `volume` *is* the scaled boxes — so every consumer works on the real
+size with no change. The alternative was widening `UnitGeometry.assembly_placements` and everything
+holding a `Part`, including `Grid.blockers`, which would have put a size parameter in a dozen
+signatures to express something a part can just *be*.
+
 ## Tests that failed, then were corrected
 
 **Six failing before correction across two gates**, four of them the useful kind — the change was
@@ -145,6 +172,15 @@ right and the fixture held an assumption that had stopped being true.
    moved**, each recorded in `SUPERSEDED.md`: opening the parts list now arms a tool, a second
    gizmo click no longer swaps handle sets, and the highlight test's hard case became unreachable
    by construction rather than merely fixed.
+6. **Pass F's veneer, which caught a wrong model rather than a typo.** `span_between(from, above,
+   below)` collapsed both authoring gestures into one call, and a veneer grown *down* from a 2.5
+   tile with nothing under it came out **zero tall** — "the tile I hang from" and "the anchor above
+   me" were the same number. Split into `span_up`/`span_down`, at which point *"snaps to both"*
+   turned out not to be a third case at all. The wrong model is recorded in the class note.
+7. **Pass F: a test claimed the loader shares the library's part for an unsized placement.** It
+   never did — `DataLibrary.get_part` returns a fresh `duplicate(true)` on every call. **The
+   assertion was wrong, not the code**, and it now asserts the narrower true thing: `_sized` does
+   not duplicate a second time and does not touch what it was given.
 
 **Pass C.2's instruction extended to a second site the addendum did not name.**
 `test_watched_run.gd`'s watched-vs-headless comparison has the identical shape — a pacer'd run
