@@ -58,6 +58,7 @@ const IDS: Array[StringName] = [
 	&"editor_coords",
 	# taskblock-57 Pass H: the CAD handle set. Editor-only, and armed by the `gizmo` tool.
 	&"gizmo",
+	&"parts_list",
 ]
 
 
@@ -120,4 +121,6 @@ static func build(id: StringName) -> ViewModule:
 			return EditorCoordsModule.new()
 		&"gizmo":
 			return GizmoModule.new()
+		&"parts_list":
+			return PartsListModule.new()
 	return null

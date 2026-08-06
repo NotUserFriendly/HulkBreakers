@@ -212,6 +212,12 @@ const EDITOR_MODULES: Array[StringName] = [
 	&"camera_framing",
 	&"claim_volumes",
 	&"inspect",
+	# taskblock-58 Pass E: **declared AFTER `inspect`, and that is the z-order.** `Control` draw
+	# order is child order, so the parts list draws over the inspector when both are in the slot —
+	# the same rule `SuiteRunPanel` lands on. They are never both visible in practice
+	# (`PartsListModule` closes Inspect when it opens), but declaring the order makes the shared
+	# slot's outcome stated rather than incidental.
+	&"parts_list",
 	&"gizmo",
 	&"board_inspect",
 	&"combat_log",

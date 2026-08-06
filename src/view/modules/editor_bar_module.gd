@@ -85,9 +85,13 @@ var tool_buttons: Dictionary = {}
 var file_buttons: Dictionary = {}
 var load_button: Button = null
 
-## The one centred, searchable list, shared by `Place Items` and `Load`. Public so a test reads
-## back what it offers instead of re-deriving it.
-var list: SearchableList = null
+## taskblock-58 Pass E: **`PartsListModule`'s widget, reached through it.** A property rather than a
+## field, so the many existing readers — the bar's own handlers and every test that inspects what
+## was offered — keep the name they had while the widget itself lives in the Inspect slot.
+var list: SearchableList:
+	get:
+		var parts: PartsListModule = _parts_list()
+		return parts.list if parts != null else null
 
 ## Which place tool the next pick from `list` arms, or `&""` when the list is picking a board to
 ## load. **Set by the button that opened the list**, which is the whole of how one widget serves two
@@ -112,11 +116,18 @@ func module_id() -> StringName:
 ##
 ## Driven off `tool_changed` rather than polled, so a tool set by a pick from the parts list — or by
 ## anything else — highlights identically to one set by pressing the button.
+## taskblock-58 Pass E: **the pick is connected here rather than where the list is built**, because
+## the list is no longer built here — `PartsListModule` owns the widget and this bar is one of its
+## two callers. `link()` is the right seam for it: it runs once every module in the mode exists,
+## which is exactly the condition for reaching another module's widget at all.
 func link() -> void:
 	var editor: EditorModule = _editor()
 	if editor != null:
 		editor.tool_changed.connect(_on_tool_changed)
 		_on_tool_changed(editor.active_tool)
+	var parts: PartsListModule = _parts_list()
+	if parts != null and parts.list != null and not parts.list.chosen.is_connected(_on_list_chosen):
+		parts.list.chosen.connect(_on_list_chosen)
 
 
 ## Highlights whichever button arms `tool`, and dims the rest.
@@ -154,30 +165,20 @@ func _fill_bar(column: VBoxContainer) -> void:
 		file_buttons[label] = _button(files, label, _on_file_pressed.bind(verb))
 	load_button = _button(files, "Load", _on_load_pressed)
 
-	_build_list()
+
+## taskblock-58 Pass E: **the list is `PartsListModule`'s now, and this bar borrows it.**
+##
+## It used to be built here and parented to `ui_root`, centred, because the bar is 96 px tall and
+## the panel is 520 — a child of the bar would have drawn off the bottom of the display. The
+## taskblock puts it in the Inspect slot instead, so the widget moved to a module that can claim
+## one. **One widget, two callers still**: the place verbs and Load open the same list.
+##
+## Null when the mode declares no `parts_list`, which is every mode but the editor. A bar with no
+## list simply cannot open one, the same degradation `link()` already takes for the picker.
+func _parts_list() -> PartsListModule:
+	return context.module(&"parts_list") as PartsListModule if context != null else null
 
 
-## The searchable list, centred on the surface rather than inside the bar. **Parented to `ui_root`,
-## not to the bar** — the bar is 96 px tall at the bottom of the screen and this is a 520 px panel;
-## a child of the bar would be drawn off the bottom of the display.
-func _build_list() -> void:
-	list = SearchableList.new()
-	list.chosen.connect(_on_list_chosen)
-	var root: Control = context.ui_root if context != null else null
-	if root == null:
-		# The stand-alone case taskblock-56 Pass C's acceptance requires: the list is real and can
-		# still be opened and read back; it simply has nowhere of its own to be drawn.
-		add_child(list)
-		return
-	root.add_child(list)
-	list.set_anchors_preset(Control.PRESET_CENTER)
-	list.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	list.grow_vertical = Control.GROW_DIRECTION_BOTH
-	list.position = root.size * 0.5 - SearchableList.PANEL_SIZE * 0.5
-
-
-## Opens the parts list for `kind`. The pick is what actually arms the tool — opening the list
-## changes nothing, so an author who opens it and closes it again has not silently switched tools.
 ## Arming a tool, and — for the three that put a part down — opening the list of what it can put.
 ##
 ## taskblock-58 Pass D: **the tool is armed either way**, which is the difference from the old kind
@@ -190,8 +191,11 @@ func _on_tool_pressed(tool: StringName) -> void:
 	editor.active_tool = tool
 	if not EditorTools.is_place_tool(tool):
 		return
+	var parts: PartsListModule = _parts_list()
+	if parts == null:
+		return
 	_pending_tool = tool
-	list.open(
+	parts.open(
 		"%s — pick a part" % _label_for(tool),
 		EditorTools.part_ids_for(tool, editor.placeable_part_ids())
 	)
@@ -201,10 +205,13 @@ func _on_tool_pressed(tool: StringName) -> void:
 ## view — they picked a board, not a schema — which is exactly what `EditorModule.open` already
 ## assumes on the way in.
 func _on_load_pressed() -> void:
+	var parts: PartsListModule = _parts_list()
+	if parts == null:
+		return
 	_pending_tool = &""
 	var boards: Array[StringName] = MapCatalog.names()
 	boards.append_array(SectionCatalog.names())
-	list.open("Load a board", boards)
+	parts.open("Load a board", boards)
 
 
 func _on_list_chosen(id: StringName) -> void:
