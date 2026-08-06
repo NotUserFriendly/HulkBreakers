@@ -451,19 +451,34 @@ static func _stack(a: SectionFile, side: StringName, b: SectionFile) -> Dictiona
 ## A copy of `placement` moved in Y. A copy rather than a mutation, for the same reason `_shifted`
 ## makes one: the sections are loaded resources and stacking one must not edit the file it came
 ## from.
+## taskblock-59 Pass C: **carries `size` and `offset`, which it did not.** Both are trailing
+## defaulted parameters, so a copy that named neither silently reset a sized placement to the part's
+## own dimensions — a stacked section's 3 x 3 wall came back one cell wide. `size` landed in
+## taskblock-58 and this call site was never updated; the offset would have joined it.
 static func _lifted(placement: MapPlacement, lift: float) -> MapPlacement:
 	return MapPlacement.new(
-		placement.cell, placement.kind, placement.part_id, placement.height + lift, placement.facing
+		placement.cell,
+		placement.kind,
+		placement.part_id,
+		placement.height + lift,
+		placement.facing,
+		placement.size,
+		placement.offset
 	)
 
 
 ## A copy of `placement` moved by `offset`. A copy rather than a mutation, because the sections
 ## are loaded resources and stitching one must not edit the file it came from.
-static func _shifted(placement: MapPlacement, offset: Vector2i) -> MapPlacement:
+## `cell_offset` rather than `offset`: `MapPlacement.offset` is now a real field and a sub-cell
+## displacement, where this one is a whole-cell move of the section being stitched. Two different
+## things, so two different words.
+static func _shifted(placement: MapPlacement, cell_offset: Vector2i) -> MapPlacement:
 	return MapPlacement.new(
-		placement.cell + offset,
+		placement.cell + cell_offset,
 		placement.kind,
 		placement.part_id,
 		placement.height,
-		placement.facing
+		placement.facing,
+		placement.size,
+		placement.offset
 	)

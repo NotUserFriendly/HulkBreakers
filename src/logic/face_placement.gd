@@ -42,7 +42,7 @@ extends RefCounted
 ## receives come from `UnitPicker.ray_box_hit`, which reports exact axis normals for an unrotated
 ## box and a rotated one for a yawed placement, so the only thing in the gap is a genuinely
 ## diagonal surface — which nothing authors yet.
-const _AXIS_EPSILON := 0.5
+const AXIS_EPSILON := 0.5
 
 
 ## `{cell, height}` for a part placed against the face `normal` on whatever was struck at `cell`.
@@ -54,9 +54,9 @@ const _AXIS_EPSILON := 0.5
 static func target_for(
 	cell: Vector2i, normal: Vector3, struck_top: float, struck_bottom: float
 ) -> Dictionary:
-	if normal.y >= _AXIS_EPSILON:
+	if normal.y >= AXIS_EPSILON:
 		return {"cell": cell, "height": struck_top}
-	if normal.y <= -_AXIS_EPSILON:
+	if normal.y <= -AXIS_EPSILON:
 		return {"cell": cell, "height": struck_bottom}
 	return {"cell": cell + _side_step(normal), "height": struck_bottom}
 

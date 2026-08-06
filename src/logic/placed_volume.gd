@@ -34,33 +34,51 @@ extends RefCounted
 ## `BodyProjector` composes a socket chain rather than scaling through it.
 
 
-## The boxes `part` occupies when placed at `size`, in part-local space.
+## The boxes `part` occupies when placed at `size`, shifted by `offset`, in part-local space.
 ##
-## Returns the part's own boxes untouched when `size` is `Vector3.ZERO`, which is both the common
-## case and the one every pre-existing map takes.
-static func boxes_for(part: Part, size: Vector3) -> Array[Box]:
+## Returns the part's own boxes untouched when both are zero, which is both the common case and the
+## one every pre-existing map takes.
+##
+## taskblock-59 Pass C: **the offset is applied after the scale, not before.** It is a displacement
+## of the finished thing, not of the shape being scaled — so scaling a wall does not multiply how
+## far it has been nudged, and the two are independent in the way an author expects when they drag
+## one face and then another.
+static func boxes_for(part: Part, size: Vector3, offset: Vector3 = Vector3.ZERO) -> Array[Box]:
 	if part == null:
 		return [] as Array[Box]
-	if size.is_zero_approx():
+	if size.is_zero_approx() and offset.is_zero_approx():
 		return part.volume
 	var natural: Vector3 = natural_size(part)
 	if natural.is_zero_approx():
 		return part.volume
 	var scale := Vector3(
-		size.x / natural.x if natural.x > 0.0 else 1.0,
-		size.y / natural.y if natural.y > 0.0 else 1.0,
-		size.z / natural.z if natural.z > 0.0 else 1.0
+		size.x / natural.x if natural.x > 0.0 and size.x > 0.0 else 1.0,
+		size.y / natural.y if natural.y > 0.0 and size.y > 0.0 else 1.0,
+		size.z / natural.z if natural.z > 0.0 and size.z > 0.0 else 1.0
 	)
 	var scaled: Array[Box] = []
 	for box: Box in part.volume:
-		scaled.append(Box.new(box.center * scale, box.size * scale))
+		scaled.append(Box.new(box.center * scale + offset, box.size * scale))
 	return scaled
 
 
 ## The part's own overall extent, from its authored boxes. `Vector3.ZERO` for a part with no volume.
 static func natural_size(part: Part) -> Vector3:
+	return natural_bounds(part).size
+
+
+## The part's own bounds in part-local space — **where its geometry sits, not just how big it is.**
+##
+## taskblock-59 Pass C: the Scale tool needs the position as well as the extent, and the difference
+## is not academic. `boxes_for` scales each box about the part's **origin**, so where a face ends up
+## depends on where the part authored its boxes: `wall` sits with its base at y=0, so scaling Y
+## grows it upward and leaves the base put, while its X boxes straddle zero and scale symmetrically.
+## **That is content, not a rule** — a part authored around its own centre would behave differently
+## on every axis — so the tool computes the offset that produces the face movement it intends rather
+## than assuming the content anchors the way `wall` happens to.
+static func natural_bounds(part: Part) -> AABB:
 	if part == null or part.volume.is_empty():
-		return Vector3.ZERO
+		return AABB()
 	var low := Vector3(INF, INF, INF)
 	var high := Vector3(-INF, -INF, -INF)
 	for box: Box in part.volume:
@@ -75,11 +93,13 @@ static func natural_size(part: Part) -> Vector3:
 			maxf(high.y, box.center.y + half.y),
 			maxf(high.z, box.center.z + half.z)
 		)
-	return high - low
+	return AABB(low, high - low)
 
 
 ## The cubic volume of `part` at `size` — the sum of its boxes, not its bounding extent, so a part
 ## authored as several boxes around a gap does not get credit for the gap.
+## **The offset is not a parameter here on purpose**: moving a thing does not change how much of it
+## there is, so hp cannot depend on where it was nudged to.
 static func cubic_volume(part: Part, size: Vector3) -> float:
 	var total: float = 0.0
 	for box: Box in boxes_for(part, size):
