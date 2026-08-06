@@ -67,11 +67,27 @@ static func to_map_file(grid: Grid, map_name: String = "") -> MapFile:
 	return map
 
 
-## `{"grid": Grid, "error": ""}` on success, `{"error": "<reason>"}` with no `grid` key on a
-## file that does not describe a board. **Never crashes and never invents** — the same
-## posture `BoutSetup.build_bout` already takes, and the reason a malformed map is a readable
+## `{"grid": Grid, "error": "", "skipped": Array[String]}` on success, `{"error": "<reason>"}` with
+## no `grid` key on a file that does not describe a board. **Never crashes and never invents** — the
+## same posture `BoutSetup.build_bout` already takes, and the reason a malformed map is a readable
 ## sentence rather than a stack trace in a headless run.
-static func to_grid(map: MapFile) -> Dictionary:
+##
+## ## taskblock-59 Pass A: `lenient` builds what it can and names what it could not
+##
+## **A load must refuse a file it cannot honestly turn into a board; an editor's live preview must
+## not.** The editor redraws from this call after every click, and a model it refused left the
+## previous board standing — so one unbuildable placement made every later edit invisible, deletes
+## included. That is the state corruption Pass A exists to delete, and the cure is that the render
+## is **total**: every placement that can be drawn is drawn, and the rest come back as sentences the
+## author reads.
+##
+## **It is one traversal and one set of rules, not a second loader.** Strict is exactly *"build
+## leniently, and refuse at the first thing that had to be skipped"* — there is no branch here that
+## only one caller exercises, which is what would drift.
+##
+## What is a hard failure in **both** modes is a file with no board in it at all: a null resource,
+## non-positive dimensions, spawn arrays of different lengths. There is no partial grid to return.
+static func to_grid(map: MapFile, lenient: bool = false) -> Dictionary:
 	if map == null:
 		return {"error": "no map resource"}
 	if map.width <= 0 or map.rows <= 0:
@@ -88,66 +104,76 @@ static func to_grid(map: MapFile) -> Dictionary:
 			)
 		}
 
+	var skipped: Array[String] = []
 	var grid := Grid.new(map.width, map.rows)
 	for index: int in range(map.placements.size()):
-		var placement: MapPlacement = map.placements[index]
-		if placement == null:
-			return {"error": "placement %d is empty" % index}
-		if not grid.in_bounds(placement.cell):
-			return {
-				"error":
-				(
-					"placement %d ('%s') sits at %s, outside a %dx%d map"
-					% [index, placement.part_id, placement.cell, map.width, map.rows]
-				)
-			}
-		var part: Part = DataLibrary.get_part(placement.part_id)
-		if part == null:
-			return {
-				"error":
-				(
-					"placement %d names part '%s', which DataLibrary does not have"
-					% [index, placement.part_id]
-				)
-			}
-		# taskblock-58 Pass F: **a sized placement becomes a part with those boxes.**
-		#
-		# *"A 3 x 3 x 0.5 wall exists as one part, and destroying it leaves a hole of a designed
-		# size."* Applied here rather than threaded through the geometry: a map references a part
-		# id and the grid holds real `Part` objects, so a resized placement is simply an instance
-		# whose `volume` **is** the scaled boxes and whose `hp` is the volume-scaled number.
-		# Everything downstream — what `BoardView` draws, what `RayCaster` marches, what
-		# `SightSpans` derives, what `DamageResolver` destroys — then works on the real size with
-		# **no change at all**, because there is nothing special about it to know.
-		part = _sized(part, placement.size)
-		match placement.kind:
-			MapPlacement.KIND_SURFACE:
-				grid.add_surface(
-					placement.cell, Surface.new(part, placement.height, placement.facing)
-				)
-			MapPlacement.KIND_BLOCKER:
-				if grid.blockers.has(placement.cell):
-					return {
-						"error":
-						(
-							"placement %d puts a second blocker at %s; a cell holds one"
-							% [index, placement.cell]
-						)
-					}
-				grid.blockers[placement.cell] = part
-			MapPlacement.KIND_FIELD_ITEM:
-				if not grid.field_items.has(placement.cell):
-					grid.field_items[placement.cell] = []
-				(grid.field_items[placement.cell] as Array).append(part)
-			_:
-				return {"error": "placement %d has unknown kind '%s'" % [index, placement.kind]}
+		var refusal: String = _add_placement(grid, map, index)
+		if refusal == "":
+			continue
+		if not lenient:
+			return {"error": refusal}
+		skipped.append(refusal)
 
 	for i: int in range(map.spawn_cells.size()):
 		if not grid.in_bounds(map.spawn_cells[i]):
-			return {"error": "spawn %d sits at %s, outside the map" % [i, map.spawn_cells[i]]}
+			var stray: String = "spawn %d sits at %s, outside the map" % [i, map.spawn_cells[i]]
+			if not lenient:
+				return {"error": stray}
+			skipped.append(stray)
+			continue
 		grid.set_spawn_marker(map.spawn_cells[i], map.spawn_markers[i])
 
-	return {"grid": grid, "error": ""}
+	return {"grid": grid, "error": "", "skipped": skipped}
+
+
+## Puts placement `index` onto `grid`, or returns the sentence saying why it could not. `""` means
+## it is on the board.
+##
+## **The refusals here are all "the board cannot hold this"**, never "an author would not have meant
+## this" — a second blocker on one cell is not an authoring opinion, it is a fact `Grid.blockers`
+## has nowhere to put. Authoring opinions are `describe_problems` and `EditorController.warnings`.
+static func _add_placement(grid: Grid, map: MapFile, index: int) -> String:
+	var placement: MapPlacement = map.placements[index]
+	if placement == null:
+		return "placement %d is empty" % index
+	if not grid.in_bounds(placement.cell):
+		return (
+			"placement %d ('%s') sits at %s, outside a %dx%d map"
+			% [index, placement.part_id, placement.cell, map.width, map.rows]
+		)
+	var part: Part = DataLibrary.get_part(placement.part_id)
+	if part == null:
+		return (
+			"placement %d names part '%s', which DataLibrary does not have"
+			% [index, placement.part_id]
+		)
+	# taskblock-58 Pass F: **a sized placement becomes a part with those boxes.**
+	#
+	# *"A 3 x 3 x 0.5 wall exists as one part, and destroying it leaves a hole of a designed
+	# size."* Applied here rather than threaded through the geometry: a map references a part
+	# id and the grid holds real `Part` objects, so a resized placement is simply an instance
+	# whose `volume` **is** the scaled boxes and whose `hp` is the volume-scaled number.
+	# Everything downstream — what `BoardView` draws, what `RayCaster` marches, what
+	# `SightSpans` derives, what `DamageResolver` destroys — then works on the real size with
+	# **no change at all**, because there is nothing special about it to know.
+	part = _sized(part, placement.size)
+	match placement.kind:
+		MapPlacement.KIND_SURFACE:
+			grid.add_surface(placement.cell, Surface.new(part, placement.height, placement.facing))
+		MapPlacement.KIND_BLOCKER:
+			if grid.blockers.has(placement.cell):
+				return (
+					"placement %d puts a second blocker at %s; a cell holds one"
+					% [index, placement.cell]
+				)
+			grid.blockers[placement.cell] = part
+		MapPlacement.KIND_FIELD_ITEM:
+			if not grid.field_items.has(placement.cell):
+				grid.field_items[placement.cell] = []
+			(grid.field_items[placement.cell] as Array).append(part)
+		_:
+			return "placement %d has unknown kind '%s'" % [index, placement.kind]
+	return ""
 
 
 ## The part a placement actually puts on the board, at the size it was authored at.

@@ -356,9 +356,9 @@ func test_the_sight_blocking_tool_is_gone_from_the_vocabulary() -> void:
 
 func test_the_edge_button_declares_the_selected_side() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.edge_side_dropdown.selected = EditorModule.EDGE_SIDES.find(SectionEdge.SIDE_EAST)
-	editor.edge_kind_dropdown.selected = 1  # KIND_OPEN
-	editor.join_tag_field.text = "corridor_2w"
+	editor.panel.edge_side_dropdown.selected = EditorPanel.EDGE_SIDES.find(SectionEdge.SIDE_EAST)
+	editor.panel.edge_kind_dropdown.selected = 1  # KIND_OPEN
+	editor.panel.join_tag_field.text = "corridor_2w"
 
 	editor.apply_edge()
 
@@ -419,7 +419,7 @@ func test_removing_the_claim_stops_drawing_it() -> void:
 
 
 func _authored_board(editor: EditorModule) -> void:
-	editor.name_field.text = "Editor Mode Board"
+	editor.panel.name_field.text = "Editor Mode Board"
 	editor.controller.set_size(4, 3)
 	for y: int in range(3):
 		for x: int in range(4):
@@ -433,7 +433,7 @@ func _authored_board(editor: EditorModule) -> void:
 func test_a_board_saved_as_a_map_opens_again_as_the_board_that_was_authored() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
 	_authored_board(editor)
-	editor.name_field.text = SAVED_MAP
+	editor.panel.name_field.text = SAVED_MAP
 	var saved: Dictionary = editor.save_as_map()
 	assert_eq(saved["error"], "", "it wrote")
 
@@ -446,12 +446,12 @@ func test_a_board_saved_as_a_map_opens_again_as_the_board_that_was_authored() ->
 	# into the model: the load set it from the file and the next redraw overwrote it with whatever
 	# the widget still held.
 	assert_eq(reopened.controller.board_name, SAVED_MAP, "the board kept its own name")
-	assert_eq(reopened.name_field.text, SAVED_MAP, "and the field shows what was loaded")
+	assert_eq(reopened.panel.name_field.text, SAVED_MAP, "and the field shows what was loaded")
 
 
 func test_saving_without_a_name_refuses_and_says_why() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.name_field.text = "   "
+	editor.panel.name_field.text = "   "
 	assert_ne(editor.save_as_map()["error"], "", "an unnamed board is one nobody can find again")
 
 
@@ -503,7 +503,7 @@ func test_a_board_that_fails_navigability_still_launches_and_still_warns() -> vo
 	var editor: EditorModule = _editor(overlay)
 	var sink := MemorySink.new()
 	overlay.battle.combat_state.combat_log.add_sink(sink)
-	editor.name_field.text = "Pit"
+	editor.panel.name_field.text = "Pit"
 	editor.controller.set_size(5, 5)
 	for y: int in range(5):
 		for x: int in range(5):
@@ -551,8 +551,8 @@ func test_authoring_replaces_the_live_board_with_what_was_authored() -> void:
 ## the authored section with its categories and its value intact.
 func test_a_chance_placed_as_a_map_thing_round_trips_its_tag_and_value() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.chance_tag_field.text = "barrel"
-	editor.chance_field.value = 0.35
+	editor.panel.chance_tag_field.text = "barrel"
+	editor.panel.chance_field.value = 0.35
 	editor.active_tool = &"place_map_thing"
 	editor.selected_map_thing = &"chance"
 

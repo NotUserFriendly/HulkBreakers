@@ -409,11 +409,18 @@ func test_the_target_decides_which_formats_opinion_is_reported() -> void:
 
 ## The three things `MapSerializer.to_grid` treats as errors rather than authoring opinions. Without
 ## these the author's only symptom is a board that refuses to load with nothing naming the cause.
+##
+## taskblock-59 Pass A: **the sentence is the render's now, not a second one written here.** It read
+## `"outside the board's own 3x3"` while `EditorController` re-derived the check beside the
+## serializer's; the two agreed by hand and had no reason to keep agreeing. What is asserted is the
+## fact — the cell, the bounds, and that it is called out — rather than the phrasing.
 func test_a_placement_outside_the_board_is_named() -> void:
 	var editor := EditorController.new()
 	editor.set_size(3, 3)
 	editor.place(Vector2i(9, 9), &"ship_floor")
-	assert_true("\n".join(editor.warnings()).contains("outside the board's own 3x3"))
+	var said: String = "\n".join(editor.warnings())
+	assert_true(said.contains("(9, 9)"), "the placement is named by where it sits: %s" % said)
+	assert_true(said.contains("outside") and said.contains("3x3"), said)
 
 
 func test_a_placement_naming_a_part_nobody_has_is_named() -> void:
@@ -506,3 +513,68 @@ func _describe_section(section: SectionFile) -> String:
 	for name: StringName in EditorController.declaration_fields():
 		lines.append("%s = %s" % [name, str(section.get(name))])
 	return "\n".join(lines)
+
+
+# ---------------------------------------------------------------- what the board cannot hold
+
+
+## taskblock-59 Pass A: **a second blocker on one cell is refused at the verb**, because there is no
+## board on which the click could be honoured — `Grid.blockers` holds one part per cell, and the
+## model accepting one anyway is what froze the editor's view for the rest of a session.
+func test_a_second_blocker_on_one_cell_is_refused_and_says_why() -> void:
+	var editor := EditorController.new()
+	assert_not_null(editor.place(Vector2i(1, 1), &"pillar", MapPlacement.KIND_BLOCKER))
+
+	assert_null(
+		editor.place(Vector2i(1, 1), &"pillar", MapPlacement.KIND_BLOCKER),
+		"the model took a placement the board has nowhere to put"
+	)
+	assert_eq(editor.placements_at(Vector2i(1, 1)).size(), 1)
+	var why: String = editor.blocks_placement(Vector2i(1, 1), MapPlacement.KIND_BLOCKER)
+	gut.p("refusal: %s" % why)
+	assert_true(why.contains("blocker"), "the refusal has to be readable, not a bare false")
+
+
+## **And the refusal costs no undo step.** A verb that pushed a snapshot and then changed nothing
+## makes the author's next undo land a click short of where they are looking.
+func test_a_refused_placement_does_not_consume_an_undo_step() -> void:
+	var editor := EditorController.new()
+	editor.place(Vector2i(1, 1), &"pillar", MapPlacement.KIND_BLOCKER)
+	var depth: int = editor.undo_depth()
+
+	editor.place(Vector2i(1, 1), &"crate", MapPlacement.KIND_BLOCKER)
+
+	assert_eq(editor.undo_depth(), depth, "a refusal is not an edit")
+
+
+## **A stack of surfaces stays legal**, which is the line this refusal must not cross: a catwalk
+## over a floor is two surfaces at one cell and `Grid` holds an ordered list for exactly that. The
+## `GROUND` one-per-cell rule is an authoring opinion and stays a warning.
+func test_a_second_surface_on_one_cell_is_still_placed_and_still_only_warned() -> void:
+	var editor := EditorController.new()
+	editor.set_size(3, 3)
+	editor.place(Vector2i(1, 1), &"ship_floor")
+
+	assert_not_null(editor.place(Vector2i(1, 1), &"ship_floor", MapPlacement.KIND_SURFACE, 2.5))
+
+	assert_eq(editor.placements_at(Vector2i(1, 1)).size(), 2, "the stack was refused")
+	var said: String = "\n".join(editor.warnings())
+	gut.p("warnings: %s" % said)
+	assert_true(said.contains("already has a surface"), "and it is still reported as an opinion")
+
+
+## The model always has a board to draw, so the editor's redraw can never be handed nothing.
+func test_the_render_survives_a_model_it_cannot_fully_draw() -> void:
+	var editor := EditorController.new()
+	editor.set_size(3, 3)
+	editor.place(Vector2i(1, 1), &"ship_floor")
+	editor.place(Vector2i(9, 9), &"ship_floor")
+
+	var result: Dictionary = editor.to_grid()
+
+	assert_true(result.has("grid"), "one undrawable placement took the whole board away")
+	assert_not_null(
+		Surface.first_walkable((result["grid"] as Grid).surfaces_at(Vector2i(1, 1))),
+		"and the drawable one is on it"
+	)
+	assert_eq((result["skipped"] as Array).size(), 1, "with the one it dropped named")

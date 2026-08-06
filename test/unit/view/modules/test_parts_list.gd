@@ -138,6 +138,14 @@ func _picking(overlay: ControlOverlay) -> BoardInspectModule:
 ## than re-derived. It cannot fail while the wiring is real, because `EditorModule.placement_target`
 ## is the single answer both of them ask — which is the point: the test checks the wiring, not that
 ## two formulas agree.
+##
+## **taskblock-59 Pass A: this was hovering the wall's TOP face, and that case never worked.** The
+## ghost drew a wall stacked on a wall, the model accepted it, and the board refused it — a second
+## blocker on one cell, which `Grid.blockers` cannot hold. The test passed throughout because it
+## compared the ghost against `EditorController.placements`, which is the model, and never against
+## the board. **The acceptance is "what appears", and nothing appeared.** It hovers a SIDE face now,
+## which lands in the neighbouring cell and is a placement the board really draws; the top face has
+## its own test below, asserting the ghost declines to promise it.
 func test_what_the_ghost_showed_is_what_gets_placed() -> void:
 	var overlay: ControlOverlay = _overlay()
 	var editor: EditorModule = overlay.module(&"editor") as EditorModule
@@ -149,9 +157,10 @@ func test_what_the_ghost_showed_is_what_gets_placed() -> void:
 	editor.struck_normal = null
 	editor.controller.place(Vector2i(3, 3), &"wall", MapPlacement.KIND_BLOCKER, 0.0)
 
-	# Hover its top face: the pick the board picker would report.
+	# Hover its east face: the pick the board picker would report. A side normal lands the placement
+	# in the neighbouring cell, which is empty and can hold it.
 	_picking(overlay).hovered_pick.emit(
-		{"unit": null, "part": null, "cell": Vector2i(3, 3), "t": 1.0, "normal": Vector3.UP}
+		{"unit": null, "part": null, "cell": Vector2i(3, 3), "t": 1.0, "normal": Vector3.RIGHT}
 	)
 
 	assert_true(ghost.is_showing(), "nothing was previewed")
@@ -169,7 +178,7 @@ func test_what_the_ghost_showed_is_what_gets_placed() -> void:
 				"unit": null,
 				"part": null,
 				"cell": Vector2i(3, 3),
-				"normal": Vector3.UP,
+				"normal": Vector3.RIGHT,
 			}
 		)
 	)
@@ -234,3 +243,36 @@ func test_no_ghost_under_a_tool_that_places_nothing() -> void:
 			{"unit": null, "part": null, "cell": Vector2i(2, 2), "t": 1.0, "normal": Vector3.UP}
 		)
 		assert_false(ghost.is_showing(), "%s previewed a placement it will not make" % tool)
+
+
+## taskblock-59 Pass A: **the ghost does not promise a placement the board cannot hold.**
+##
+## Clicking the top face of a wall reads as "stack another one on it" and is not expressible — a
+## cell holds one blocker, and `MapPlacement.height` is a surface's field. The preview drew it
+## anyway, which is how *"clicking a support pillar on top of another support pillar makes an
+## invisible pillar"* looked from the author's side: the editor showed them the thing, took the
+## click, and then drew nothing ever again.
+##
+## **Both halves are asserted**, because either alone would be a half-fixed lie: nothing is
+## previewed, and nothing is authored.
+func test_no_ghost_where_the_placement_would_be_refused() -> void:
+	var overlay: ControlOverlay = _overlay()
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	var ghost: PlacementGhostModule = _ghost(overlay)
+	editor.active_tool = &"place_terrain"
+	editor.selected_part = &"wall"
+	editor.controller.place(Vector2i(3, 3), &"wall", MapPlacement.KIND_BLOCKER, 0.0)
+
+	_picking(overlay).hovered_pick.emit(
+		{"unit": null, "part": null, "cell": Vector2i(3, 3), "t": 1.0, "normal": Vector3.UP}
+	)
+
+	gut.p("refusal: %s" % editor.placement_refusal(Vector2i(3, 3)))
+	assert_false(ghost.is_showing(), "the ghost promised a wall the board has nowhere to put")
+	assert_eq(
+		editor.controller.placements_at(Vector2i(3, 3)).size(),
+		1,
+		"sanity: nothing was authored by the hover itself"
+	)
+	assert_false(editor.apply_tool_at(Vector2i(3, 3)), "and the click that follows authors nothing")
+	assert_eq(editor.controller.placements_at(Vector2i(3, 3)).size(), 1, "the model took it anyway")

@@ -197,6 +197,68 @@ func test_two_blockers_on_one_cell_is_rejected_rather_than_silently_keeping_the_
 	assert_true(String(result["error"]).contains("second blocker"))
 
 
+# ------------------------------------------------------- taskblock-59 Pass A: the lenient build
+
+
+## **A load refuses; a live preview must not.** The editor redraws from this call after every click,
+## and a strict refusal left the previous board on screen while the model went on accepting edits —
+## which made every later placement invisible. Leniently, everything drawable is drawn.
+func test_a_lenient_build_keeps_every_placement_it_can_draw() -> void:
+	var map: MapFile = _one_placement_map(
+		MapPlacement.new(Vector2i(1, 1), MapPlacement.KIND_BLOCKER, &"wall")
+	)
+	map.placements.append(MapPlacement.new(Vector2i(1, 1), MapPlacement.KIND_BLOCKER, &"wall"))
+	map.placements.append(
+		MapPlacement.new(Vector2i(2, 2), MapPlacement.KIND_SURFACE, &"ship_floor")
+	)
+
+	var result: Dictionary = MapSerializer.to_grid(map, true)
+
+	assert_true(result.has("grid"), "one undrawable placement took the whole board away")
+	var grid: Grid = result["grid"]
+	assert_true(grid.blockers.has(Vector2i(1, 1)), "the first blocker is on the board")
+	assert_not_null(
+		Surface.first_walkable(grid.surfaces_at(Vector2i(2, 2))),
+		"and so is the placement that came AFTER the one it could not draw"
+	)
+
+
+## **What it dropped comes back in the author's own words.** A lenient build that skipped silently
+## would be the same lie the frozen board was, one layer down.
+func test_a_lenient_build_names_what_it_could_not_draw() -> void:
+	var map: MapFile = _one_placement_map(
+		MapPlacement.new(Vector2i(1, 1), MapPlacement.KIND_BLOCKER, &"wall")
+	)
+	map.placements.append(MapPlacement.new(Vector2i(1, 1), MapPlacement.KIND_BLOCKER, &"wall"))
+	map.placements.append(
+		MapPlacement.new(Vector2i(9, 9), MapPlacement.KIND_SURFACE, &"ship_floor")
+	)
+
+	var skipped: Array = MapSerializer.to_grid(map, true)["skipped"]
+
+	gut.p("skipped: %s" % ", ".join(PackedStringArray(skipped)))
+	assert_eq(skipped.size(), 2, "both undrawable placements are accounted for")
+	assert_true(String(skipped[0]).contains("second blocker"))
+	assert_true(String(skipped[1]).contains("outside"))
+
+
+## **Strict is lenient plus a refusal**, which is what keeps it from being a second loader: a clean
+## map has nothing to skip, so the two modes must agree cell for cell on every map that loads.
+func test_strict_and_lenient_agree_on_a_map_with_nothing_to_skip() -> void:
+	var grid: Grid = _generated_grid(4242)
+	var map: MapFile = MapSerializer.to_map_file(grid, "agreement")
+
+	var strict: Dictionary = MapSerializer.to_grid(map)
+	var lenient: Dictionary = MapSerializer.to_grid(map, true)
+
+	assert_eq((lenient["skipped"] as Array).size(), 0, "a generated map skips nothing")
+	assert_eq(
+		_differences(strict["grid"] as Grid, lenient["grid"] as Grid),
+		[] as Array[String],
+		"the two modes built different boards from one file"
+	)
+
+
 func test_non_positive_dimensions_are_rejected() -> void:
 	var map := MapFile.new()
 	map.width = 0
