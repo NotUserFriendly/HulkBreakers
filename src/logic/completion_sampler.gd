@@ -173,8 +173,14 @@ static func _roster(names: Array[StringName], tier: StringName) -> Array[BoutRos
 ## for a few turns instead of a whole mission. That is not the same move as picking a
 ## seed whose map happens to be cheap, which would quietly make the fixture
 ## unrepresentative; the map is whatever the seed says, the run just stops earlier.
-static func run_seed(map_seed: int, cap: int = TURN_CAP) -> Dictionary:
-	var built: Dictionary = build_for_seed(map_seed)
+## taskblock-59 Pass F: `tier` of `&""` plays the mixed roster; a named tier plays the same roster
+## with every unit held at it. **One runner, both questions** — a second play loop for the per-tier
+## breakdown is how the mixed figure and the per-tier figures would start disagreeing about what a
+## completion is.
+static func run_seed(map_seed: int, cap: int = TURN_CAP, tier: StringName = &"") -> Dictionary:
+	var built: Dictionary = (
+		build_at_tier(tier, map_seed) if tier != &"" else build_for_seed(map_seed)
+	)
 	if built.get("error", "") != "":
 		return {}
 	var runner := BoutRunner.new(built["state"], built["mission"], cap)
@@ -182,6 +188,7 @@ static func run_seed(map_seed: int, cap: int = TURN_CAP) -> Dictionary:
 	var outcome: int = built["mission"].outcome
 	return {
 		"seed": map_seed,
+		"tier": tier,
 		"outcome": outcome,
 		"outcome_name": Enums.MissionOutcome.keys()[outcome],
 		"turns": runner.turns_taken,
@@ -191,13 +198,13 @@ static func run_seed(map_seed: int, cap: int = TURN_CAP) -> Dictionary:
 
 ## Runs `seeds` and summarises. `rows` carries every per-seed outcome, because the
 ## aggregate is what hid which seeds mattered — `BR45.03`'s whole lesson.
-static func run_seeds(seeds: Array[int], cap: int = TURN_CAP) -> Dictionary:
+static func run_seeds(seeds: Array[int], cap: int = TURN_CAP, tier: StringName = &"") -> Dictionary:
 	var rows: Array[Dictionary] = []
 	var completed := 0
 	var turns_when_completed := 0
 	var tally: Dictionary = {}
 	for map_seed: int in seeds:
-		var row: Dictionary = await run_seed(map_seed, cap)
+		var row: Dictionary = await run_seed(map_seed, cap, tier)
 		if row.is_empty():
 			continue
 		rows.append(row)
@@ -209,6 +216,7 @@ static func run_seeds(seeds: Array[int], cap: int = TURN_CAP) -> Dictionary:
 	var counted: int = rows.size()
 	return {
 		"seeds": seeds,
+		"tier": tier,
 		"rows": rows,
 		"completed": completed,
 		"counted": counted,
@@ -391,4 +399,48 @@ static func describe(result: Dictionary) -> Array[String]:
 			)
 		)
 	)
+	return lines
+
+
+## **The per-tier breakdown Pass F reports, plus the mixed figure, over one seed window.**
+##
+## *"Report per tier and for the mixed bout. A single number across a mixed roster hides which row
+## moved it."* So this returns one row per entry of `tiers` and one for the mixed roster, all over
+## the **same seeds** — a per-tier figure taken on a different window would be comparing maps as
+## much as intelligence.
+##
+## `tiers` is the caller's list rather than a constant here, because `intelligence_tier` is an open
+## vocabulary and this file has no business declaring which ones exist.
+static func per_tier(
+	tiers: Array[StringName], seeds: Array[int], cap: int = TURN_CAP
+) -> Array[Dictionary]:
+	var reported: Array[Dictionary] = []
+	for tier: StringName in tiers:
+		reported.append(await run_seeds(seeds, cap, tier))
+	reported.append(await run_seeds(seeds, cap))
+	return reported
+
+
+## One line per row of `per_tier`. **The mixed row is labelled `mixed`**, not left blank, because a
+## blank cell in a report reads as a number nobody took.
+static func describe_per_tier(rows: Array[Dictionary]) -> Array[String]:
+	var lines: Array[String] = ["tier      completed  rate   mean turns  outcomes"]
+	for row: Dictionary in rows:
+		var tier: String = String(row.get("tier", &""))
+		(
+			lines
+			. append(
+				(
+					"%-9s %4d/%-4d  %5.1f%%  %10.1f  %s"
+					% [
+						tier if tier != "" else "mixed",
+						int(row.get("completed", 0)),
+						int(row.get("counted", 0)),
+						float(row.get("rate", 0.0)) * 100.0,
+						float(row.get("mean_turns", 0.0)),
+						str(row.get("tally", {})),
+					]
+				)
+			)
+		)
 	return lines

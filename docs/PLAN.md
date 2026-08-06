@@ -175,9 +175,13 @@ that one number replaces five separate checks:
 **Five categorical checks become one continuous comparison**, and it is the better rule: *can this unit
 step up that far* rather than *is this thing labelled a ramp*.
 
-**The editor's auto-placed terrain places ramps, not `ship_floor`.** Observed 2026-08-06: many items
-auto-place terrain under themselves and the terrain they place is a ramp. Almost certainly the same
-constant, and it retires with everything else here rather than being fixed first.
+**The editor's auto-placed terrain places ramps, not `ship_floor`.** Observed 2026-08-06.
+**Closed at taskblock-59 Pass B, and it was not a ramp defect at all**: the editor's default floor
+was `surface_part_ids()[0]`, the GROUND-attaching parts sort `[ramp, ship_floor]`, so "the first
+surface part" has meant `ramp` since taskblock-56 — whose own comment said the intent was
+`ship_floor`. Naming the default closed this and the *"warnings appear when placing `ship_floor`"*
+report together: the warning was **correct**, about a surface the editor had silently authored on
+the author's behalf.
 
 **`Surface.facing` never reaches the pathfinder**, so a ramp is already traversable from any direction —
 you can walk up its side. The directionality that would be the strongest argument for keeping ramps is
@@ -382,7 +386,7 @@ of the 16:9 safe width — 480 px at 1x — while `DebugControlPanel` carries a 
 overhangs its slot by 40. Positioned by the slot and sized by its own content today; either number
 can move in the tuning pass.
 
-### Author the intelligence tiers onto units
+### Author the intelligence tiers onto units — **LANDED (taskblock-59 Passes E and F)**
 **Needs:** the tier table, which landed as taskblock-46. **Unblocks:** intelligence reading as
 character rather than as difficulty; any completion measurement that includes a tier other than Trained.
 
@@ -400,6 +404,55 @@ on this game has been an all-Trained rate.
 **Acceptance:** a generated bout contains units of at least three tiers; the completion sample reports a
 rate per tier; a Mindless unit and an Elite unit on the same seed visibly do different things in the
 combat log.
+
+### A cell holds one blocker, so nothing stacks vertically
+**Needs:** `Grid.blockers` becoming a list per cell, or a placement carrying enough position to be
+addressed below another. **Unblocks:** stacking a pillar on a pillar; a wall taller than its part.
+
+taskblock-59 Pass A refused the gesture rather than letting it corrupt the editor: `Grid.blockers` is
+`Vector2i -> Part` and `MapPlacement.height` is documented as a surface's field, so a second blocker
+on a cell is a thing the format cannot express. The click now says so and the ghost declines to
+preview it.
+
+**The author's route to a taller wall is the Scale tool** (Pass C), which is the better verb for it —
+one part at a designed size rather than two pretending. What is genuinely missing is *stacking
+distinct things*: a crate on a pillar, a barrel on a crate.
+
+- `MapPlacement.offset` (Pass C) already carries a sub-cell displacement, so the **geometry** of a
+  stack is expressible today. What is not is the **grid's** idea of it: `blockers[cell]` holds one
+  part, and the pathfinder and `Grid.blockers` sweeps ask in whole cells.
+- **That limit is already live and is not new here.** A 3 x 3 wall authored by Pass C is one blocker
+  on one cell while covering nine, and an offset placement blocks the cell it was authored at
+  whatever its geometry overlaps. Stated in `MapPlacement.offset`'s own note rather than left to be
+  found.
+
+### A veneer grown upward can never snap to anything
+**Needs:** a pick that reports **which** surface of a stack was struck, rather than the stack's own
+top. **Unblocks:** the anchored half of *"it grows both ways and snaps to what it meets"*.
+
+taskblock-59 Pass D landed the veneer's click and found this while testing it. `LedgeVeneer.span_up`
+handles an anchor above and taskblock-58 tested it — but through a click it is unreachable. A
+top-face pick strikes the top of whatever is at that cell **by definition**, and the placement lands
+on that same cell, so "the nearest surface strictly above the face you struck" is empty every time.
+Growing up therefore always takes `UNANCHORED_RISE`.
+
+**Growing down is unaffected and does snap**, to the deck under the landing cell — which is the
+common gesture and the one the feature was described by. This is the other half.
+
+Pinned by a named test (`test_growing_up_always_takes_the_default_because_nothing_is_ever_above`) so
+it is a recorded limit rather than a rediscovery.
+
+### `overwatch` starts at TRAINED, and the tier table says GRUNT
+**Needs:** a balance decision. **Unblocks:** nothing; it is a disagreement to resolve, not a gap.
+
+taskblock-59 Pass E found the description and the content disagree. `docs/11`'s table and
+taskblock-59's own summary both describe `GRUNT` as *"memory and the shoot/cover/overwatch set"*, but
+`data/utility_actions/overwatch.tres` has read `tiers = [TRAINED, ELITE]` since taskblock-45. **The
+content is what runs**, so a `GRUNT` today shoots and takes cover and does not overwatch.
+
+Left as authored: which tier gains overwatch is a decision about how capable a second-rung enemy is,
+and moving it because a summary table said so would be an invented balance number. Pinned by a named
+test so the disagreement stays visible.
 
 ### Multi-level cleanup
 **Needs:** nothing. **Unblocks:** vertical movement being as legible and as interruptible as
@@ -1280,7 +1333,7 @@ why it should be a decision rather than a side effect.
 `test_placement_position.gd::test_ground_still_refuses_a_second_placement_on_an_occupied_cell` pins
 the current reading, so the change has to be a deliberate edit to a named test.
 
-### The editor's Scale tool does not yet author a size
+### The editor's Scale tool does not yet author a size — **LANDED (taskblock-59 Pass C)**
 **Needs:** nothing. **Unblocks:** an author actually making the 3 x 3 x 0.5 wall the data model now
 supports.
 
@@ -1302,7 +1355,7 @@ failure should be *"something an author shapes"*, and an author cannot yet shape
   scales X and Y mirrored. Numeric readout while dragging."* Pass A's struck normal is what tells it
   which face, and it is already threaded to the click path.
 
-### The ledge veneer is not placeable from the editor
+### The ledge veneer is not placeable from the editor — **LANDED (taskblock-59 Pass D)**
 **Needs:** *The editor's Scale tool* is adjacent but not required. **Unblocks:** using the veneer at
 all.
 

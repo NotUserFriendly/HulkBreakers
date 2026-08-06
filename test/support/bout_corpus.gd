@@ -130,9 +130,15 @@ static func canned_sample(completed: int, failed: int) -> Dictionary:
 	}
 
 
+## taskblock-59 Pass F: **`tier` joined the real record and this fixture had to follow.**
+## `test_canned_records_match_the_shape_of_real_ones` caught it on the full gate, which is exactly
+## what that test is for — a canned record that has drifted from the real one moves every test built
+## on it onto a fiction. `&""` is the mixed roster, which is what a record from `run_seed`'s default
+## path carries.
 static func _row(map_seed: int, outcome: int, turns: int) -> Dictionary:
 	return {
 		"seed": map_seed,
+		"tier": &"",
 		"outcome": outcome,
 		"outcome_name": Enums.MissionOutcome.keys()[outcome],
 		"turns": turns,
