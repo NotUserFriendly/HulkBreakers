@@ -17,3 +17,4 @@ preset_name = "combat_tester_chaingun"
 loadout = SubResource("Resource_xt6x7")
 profile_family = &"combat_tester"
 variant_label = "Chaingun"
+intelligence_tier = &"GRUNT"

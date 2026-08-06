@@ -17,3 +17,4 @@ preset_name = "combat_tester_sniper_rifle"
 loadout = SubResource("Resource_dbmd4")
 profile_family = &"combat_tester"
 variant_label = "Sniper Rifle"
+intelligence_tier = &"ELITE"
