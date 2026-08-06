@@ -20,9 +20,9 @@ extends ViewModule
 ##   file-reading half taken off |
 ##
 ## **The scene gets no logic.** Every verb below is a call into `EditorController`, which is a
-## `RefCounted` in `src/logic/` and is tested with no scene at all. What is here is widgets, the
-## routing of a click to a verb, and redrawing after one — `BuilderController`'s split, applied
-## again.
+## `RefCounted` in `src/logic/` and is tested with no scene at all. What is here is the routing of a
+## click to a verb and the redraw after one — `BuilderController`'s split, applied again. The
+## widgets went one step further out in taskblock-59 Pass A and are `EditorPanel`'s.
 ##
 ## ## Display, not input
 ##
@@ -85,14 +85,9 @@ const CLAIM_KINDS: Array[StringName] = [
 	SectionClaim.KIND_MERGE,
 ]
 
-const EDGE_SIDES: Array[StringName] = [
-	SectionEdge.SIDE_NORTH,
-	SectionEdge.SIDE_SOUTH,
-	SectionEdge.SIDE_EAST,
-	SectionEdge.SIDE_WEST,
-	SectionEdge.SIDE_UP,
-	SectionEdge.SIDE_DOWN,
-]
+## taskblock-59 Pass A: **the widgets moved to `EditorPanel`.** Which sides an edge can be declared
+## on is a dropdown's contents, and the panel that draws it owns it — referenced as
+## `EditorPanel.EDGE_SIDES` everywhere rather than re-listed here.
 
 ## Where a save lands when the author names a file rather than a path. The two authored
 ## directories the catalogs already scan, so a saved board appears in the load dropdown
@@ -104,14 +99,6 @@ const SECTION_DIR := "res://data/sections"
 ## A claim authored by clicking one cell covers that cell from the deck to here. Flagged and
 ## tunable; resizing afterwards is `EditorController.resize_claim`'s job.
 const DEFAULT_CLAIM_HEIGHT := 2.4
-
-## How much of a row a field's own name takes before the control gets the rest. A starting position,
-## not a decision — see `_labelled`, which clips rather than widens.
-const LABEL_WIDTH := 96.0
-
-## How far the details panel's content sits inside its own border, before UI scale. A starting
-## position, from the UI review's *"Panel needs some padding all around it."*
-const PANEL_PADDING := 10.0
 
 ## The editing model. **Public and constructed here**, because the controller is the
 ## module's whole
@@ -173,19 +160,9 @@ var struck_normal: Variant = null
 ## it rather than a named default. See `_ensure_a_tile_under`.
 var last_surface_part: StringName = &""
 
-# Widgets, held as real references rather than re-found by node path — the same convention
-# `BoutSetupModule` uses and for the same reason: the tests read them back directly.
-var panel: PanelContainer = null
-var layout: VBoxContainer = null
-var name_field: LineEdit = null
-var height_field: SpinBox = null
-var facing_field: SpinBox = null
-var edge_side_dropdown: OptionButton = null
-var edge_kind_dropdown: OptionButton = null
-var join_tag_field: LineEdit = null
-var chance_tag_field: LineEdit = null
-var chance_field: SpinBox = null
-var status_label: Label = null
+## Every widget the editor draws. Held as a real reference rather than re-found by node path — the
+## same convention `BoutSetupModule` uses and for the same reason: the tests read it back directly.
+var panel: EditorPanel = null
 
 var _part_ids: Array[StringName] = []
 ## The warnings already put in the combat log, so a redraw does not repeat them. See
@@ -303,10 +280,51 @@ func apply_tool_at(cell: Vector2i) -> bool:
 ## does not exist (a `wall` authored as a field item, say).
 func _place_with(cell: Vector2i, tool: StringName) -> bool:
 	selected_kind = EditorTools.kind_for(tool, selected_part)
+	# taskblock-59 Pass A: **a refusal the author can read.** Asked before the floor goes in, so a
+	# click that cannot land does not leave an auto-placed tile behind it as its only trace — and the
+	# sentence reaches the combat log, where every other authoring complaint already goes. A click
+	# that silently does nothing is indistinguishable from a broken editor, which is how the original
+	# report arrived.
+	var refusal: String = placement_refusal(cell)
+	if refusal != "":
+		_tell_the_author(refusal)
+		return false
 	var target: Dictionary = placement_target(cell)
 	var at: Vector2i = target["cell"]
 	_ensure_a_tile_under(at)
 	return controller.place(at, selected_part, selected_kind, target["height"], facing()) != null
+
+
+## **Why a click here would author nothing**, or `""` when it would author something.
+##
+## taskblock-59 Pass A: **the ghost asks this and so does the click** — the same structure
+## `placement_target` already has, and for the same reason. A preview that decided on its own
+## whether a placement was possible would be a second answer to the question the click asks, and the
+## one that is wrong is the one nobody exercises.
+##
+## **This is what stops the ghost promising something the board cannot hold.** Clicking the top face
+## of a wall previews a wall stacked on it, which reads as obviously correct and is not expressible:
+## `Grid.blockers` holds one part per cell and `MapPlacement.height` is a surface's field. The
+## preview drew it, the model took it, the board refused the model, and everything after was
+## invisible — the pillar-on-a-pillar report, with the ghost as its accomplice rather than its
+## victim. **Stacking blockers vertically is a real capability and it is queued**, not deleted; what
+## is deleted is the editor pretending it already has it.
+func placement_refusal(cell: Vector2i) -> String:
+	if not EditorTools.is_place_tool(active_tool):
+		return ""
+	var kind: StringName = EditorTools.kind_for(active_tool, selected_part)
+	return controller.blocks_placement(placement_target(cell)["cell"], kind)
+
+
+## One authoring sentence into the combat log, through the same `EditorLog` the validation warnings
+## use. **Not** routed through `_report_warnings`: that one diffs against a list recomputed whole so
+## a persistent warning is said once, and a refused click is an event rather than a state — an
+## author who clicks the same illegal cell three times should be told three times.
+func _tell_the_author(sentence: String) -> void:
+	var state: CombatState = (
+		context.battle.combat_state if context != null and context.battle != null else null
+	)
+	EditorLog.report(state, [sentence], [])
 
 
 ## **Where the next placement lands**, given the cell under the cursor or the click.
@@ -344,7 +362,7 @@ func _place_map_thing(cell: Vector2i) -> bool:
 			# item with defaults, whose categories and value are the widgets beside it.
 			return (
 				controller.set_cell_chance(
-					cell, SectionSpawn.KIND_CLUTTER, chance_tag(), chance_value()
+					cell, SectionSpawn.KIND_CLUTTER, panel.chance_tag(), panel.chance_value()
 				)
 				!= null
 			)
@@ -378,7 +396,7 @@ func _ensure_a_tile_under(cell: Vector2i) -> void:
 
 ## Declares an edge on the selected side from the edge widgets.
 func apply_edge() -> void:
-	controller.set_edge(selected_edge_side(), selected_edge_kind(), join_tag())
+	controller.set_edge(panel.selected_edge_side(), panel.selected_edge_kind(), panel.join_tag())
 	refresh()
 
 
@@ -443,50 +461,21 @@ func open(path_or_name: String) -> Dictionary:
 		if as_section["error"] != &"":
 			return {"error": "nothing on disk called '%s'" % path_or_name}
 		controller.load_section(as_section["section"] as SectionFile)
-	_show_name()
+	panel.show_name(controller.board_name)
 	refresh()
 	_frame_content()
 	return {"error": ""}
 
 
-## Puts the model's own name into the field after a load. The other direction of the
-## one-way pair
-## `refresh()`'s note describes.
-func _show_name() -> void:
-	if name_field != null:
-		name_field.text = controller.board_name
-
-
-# --- what the widgets currently say ----------------------------------------------------------
-
-
-func selected_edge_side() -> StringName:
-	return _selected_of(edge_side_dropdown, EDGE_SIDES, SectionEdge.SIDE_NORTH)
-
-
-func selected_edge_kind() -> StringName:
-	var kinds: Array[StringName] = [SectionEdge.KIND_EXTERIOR, SectionEdge.KIND_OPEN]
-	return _selected_of(edge_kind_dropdown, kinds, SectionEdge.KIND_EXTERIOR)
-
-
+## The height a new placement is authored at. Kept on the module because `placement_target` and the
+## auto-placed tile beneath a blocker both read it, and `PlacementGhostModule` reads `facing()` from
+## outside — a widget question the rest of the editor asks in view-agnostic words.
 func height() -> float:
-	return height_field.value if height_field != null else 0.0
+	return panel.height() if panel != null else 0.0
 
 
 func facing() -> float:
-	return facing_field.value if facing_field != null else 0.0
-
-
-func join_tag() -> StringName:
-	return StringName(join_tag_field.text) if join_tag_field != null else &""
-
-
-func chance_tag() -> StringName:
-	return StringName(chance_tag_field.text) if chance_tag_field != null else &""
-
-
-func chance_value() -> float:
-	return chance_field.value if chance_field != null else 1.0
+	return panel.facing() if panel != null else 0.0
 
 
 # --- redraw ------------------------------------------------------------------------------------
@@ -512,16 +501,36 @@ func refresh() -> void:
 
 ## Rebuilds the live board from the model, through `MapSerializer` exactly as a load would.
 ##
-## **A board that cannot be built is left standing and reported**, never half-applied: the
-## author
-## sees the last good board plus a warning naming the placement that broke it, which is far more
-## use than an empty grid.
+## ## taskblock-59 Pass A: **this function is where the editor's state corruption lived**
+##
+## It used to read *"a board that cannot be built is left standing and reported, never
+## half-applied: the author sees the last good board plus a warning naming the placement that broke
+## it, which is far more use than an empty grid."* **That was wrong on both halves, and it is the
+## defect rather than a contributing factor.**
+##
+## - *Reported*: nothing reported it. `MapSerializer.to_grid`'s refusals were errors nobody
+##   surfaced, and `describe_problems` — the list the author actually reads — has never had a word
+##   to say about a second blocker on a cell.
+## - *Left standing*: a stale board that keeps accepting edits is not a conservative fallback, it is
+##   a view lying about the model. One unbuildable placement froze the screen for the rest of the
+##   session, so **everything placed afterwards was invisible and so was every delete** — the two
+##   reports Pass A was opened for, which are one defect seen from either side.
+##
+## The build is `to_grid`'s lenient one now, so there is a board to draw whatever the model holds:
+## every placement that can be drawn is, and the ones that cannot arrive through `warnings()` with
+## the author's name for them. The half-applied board the old note feared is the *honest* one — it
+## is what the model describes, minus exactly what it says it dropped.
 func _refresh_board() -> void:
 	var battle: BattleScene = context.battle if context != null else null
 	if battle == null or battle.combat_state == null:
 		return
 	var result: Dictionary = controller.to_grid()
 	if not result.has("grid"):
+		# **A board with no cells in it, which the lenient build cannot rescue.** Drawing the
+		# previous one is what this pass exists to stop, so the surface is emptied instead and
+		# `_refresh_readout` says why — *do not draw what is not there*, the same rule that hides a
+		# stranded unit rather than putting it somewhere plausible.
+		battle.board_view.build(Grid.new(1, 1), battle.combat_state.material_table, {})
 		return
 	var stranded: Array[int] = BoardSwap.swap_board(
 		battle.combat_state, result["grid"] as Grid, true
@@ -582,19 +591,8 @@ func _refresh_claims() -> void:
 
 
 func _refresh_readout() -> void:
-	if status_label != null:
-		status_label.text = (
-			"%dx%d | %d placed | %d claim(s) | %d edge(s) | cell %s | undo %d"
-			% [
-				controller.width,
-				controller.rows,
-				controller.placements.size(),
-				controller.claims.size(),
-				controller.edges.size(),
-				str(last_cell) if last_cell != null else "-",
-				controller.undo_depth(),
-			]
-		)
+	if panel != null:
+		panel.show_readout(controller, last_cell)
 	# **Warnings are a list the author reads, not a gate** (F4). Both save buttons stay enabled
 	# whatever is in here, and so does Run Test Bout.
 	_report_warnings(controller.warnings())
@@ -654,7 +652,7 @@ func _cell_claim_box(cell: Vector2i) -> Box:
 
 
 func _save_into(directory: String) -> Dictionary:
-	var named: String = name_field.text if name_field != null else controller.board_name
+	var named: String = panel.board_name() if panel != null else controller.board_name
 	if named.strip_edges() == "":
 		return {"error": "name the board before saving it"}
 	controller.board_name = named
@@ -715,82 +713,18 @@ func _claim_volumes() -> ClaimVolumeModule:
 	return context.module(&"claim_volumes") as ClaimVolumeModule if context != null else null
 
 
-## The selected entry of `options`, or `fallback` when the dropdown is absent or
-## unselected. Every
-## dropdown here is populated from its own constant list in order, so index *is* identity.
-func _selected_of(
-	dropdown: OptionButton, options: Array[StringName], fallback: StringName
-) -> StringName:
-	if dropdown == null or options.is_empty():
-		return fallback
-	var index: int = dropdown.selected
-	if index < 0 or index >= options.size():
-		return fallback
-	return options[index]
-
-
 # --- the panel ---------------------------------------------------------------------------------
 
 
-## **taskblock-57 Pass G1: what is left after the bar took the verbs.**
-##
-## The tool, the placement kind, the part and the claim kind are the bar's buttons now;
-## save, load,
-## run-a-bout and undo are its second row. What remains here is the *declarations* — the board's
-## name, the numbers a placement carries, the section's edges and chance rolls, and the
-## readout —
-## which is what Pass G2 calls "section details".
-##
-## **It sits where the Inspect viewer sits**, which is G2's stated home for it. Landing it
-## here in
-## G1 rather than a pass later is not scope creep: the editor mode moves to `BATTLE_LAYOUT`
-## in this
-## pass, `LEFT_COLUMN` stops existing in it, and a panel asking for a slot no chrome
-## publishes falls
-## back to `ui_root` at (0,0) — on top of the debug menu's region and under the
-## announcement band.
-## The alternative was a temporary placement to be moved one pass later, which is churn on
-## the same
-## file for no gain. **The toggle that folds it away is still G2's**, and until it lands
-## the panel
-## is simply always shown.
+## **Puts `EditorPanel` where the Inspect viewer sits**, which is taskblock-57 Pass G2's stated home
+## for the section details. What the panel contains is its own file's business as of taskblock-59
+## Pass A; what is decided here is only *where it goes* — and the three-way fallback is why this is
+## not the panel's own job. A module asking for a slot no chrome publishes lands at `ui_root` (0,0),
+## on top of the debug menu and under the announcement band, and mounting against no context at all
+## is `test_view_modules_stand_alone.gd`'s acceptance.
 func _build_ui() -> void:
 	var host: Control = context.slots.get(ModuleSlots.INSPECT_VIEWER) if context != null else null
-	panel = PanelContainer.new()
-	# **Clipped and scrolled, so the slot's width is the panel's width.** The supervisor's review:
-	# *"it's too wide. Should be roughly half as wide as it is tall."* The slot already is — the
-	# layout gives it half the viewer's height in width — but a `PanelContainer` takes the largest
-	# minimum width of its content, and a column of labelled `SpinBox` rows asks for more than that.
-	# So the panel grew past its own slot and the rect the table describes was never what was drawn.
-	#
-	# Scrolling rather than shrinking the rows: the fields have to stay usable, and an authoring
-	# panel with more in it than fits is a scroll, not a squeeze.
-	panel.clip_contents = true
-	# **Padded all round**, which the UI review asked for: *"EDIT INSPECT VIEWER — Panel needs some
-	# padding all around it."* Same treatment `InspectPanel` gets, for the same reason: a
-	# `PanelContainer` hands its child the whole rect, so every labelled row ran into the border.
-	var style: StyleBox = panel.get_theme_stylebox("panel")
-	if style != null:
-		var padded: StyleBox = style.duplicate()
-		for side: String in [
-			"content_margin_left",
-			"content_margin_right",
-			"content_margin_top",
-			"content_margin_bottom"
-		]:
-			padded.set(side, UiLayout.scaled(PANEL_PADDING))
-		panel.add_theme_stylebox_override("panel", padded)
-	var scroll := ScrollContainer.new()
-	# **Horizontal scrolling ENABLED, which is what actually lets the panel be narrow.** A
-	# `ScrollContainer` reports its content's minimum size on any axis it cannot scroll, so with
-	# horizontal scrolling off the whole panel still grew to the widest labelled row it held — 516 px
-	# against a 360 px slot, measured. Allowing the axis to scroll drops that minimum to zero and the
-	# panel finally fits the rect the placement table gives it.
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	panel.add_child(scroll)
-	layout = VBoxContainer.new()
-	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(layout)
+	panel = EditorPanel.new()
 	if host != null:
 		host.add_child(panel)
 		panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -800,99 +734,9 @@ func _build_ui() -> void:
 		# The stand-alone case taskblock-56 Pass C's acceptance requires: every widget is real and
 		# every verb works; the panel simply has nowhere of its own to be drawn.
 		add_child(panel)
-
-	var title := Label.new()
-	title.text = "Editor"
-	layout.add_child(title)
-
-	name_field = LineEdit.new()
-	name_field.placeholder_text = "board name"
-	name_field.text_changed.connect(func(text: String) -> void: controller.board_name = text)
-	layout.add_child(name_field)
-
-	height_field = _number(0.0, -32.0, 32.0, 0.1)
-	layout.add_child(_labelled("height", height_field))
-	facing_field = _number(0.0, -TAU, TAU, 0.01)
-	layout.add_child(_labelled("facing", facing_field))
-
-	edge_side_dropdown = _dropdown(EDGE_SIDES)
-	layout.add_child(_labelled("edge side", edge_side_dropdown))
-	edge_kind_dropdown = _dropdown([SectionEdge.KIND_EXTERIOR, SectionEdge.KIND_OPEN])
-	layout.add_child(_labelled("edge kind", edge_kind_dropdown))
-	join_tag_field = LineEdit.new()
-	join_tag_field.placeholder_text = "join_tag"
-	layout.add_child(_labelled("join tag", join_tag_field))
-	var edge_button := Button.new()
-	edge_button.text = "Declare Edge"
-	edge_button.pressed.connect(apply_edge)
-	layout.add_child(edge_button)
-
-	chance_tag_field = LineEdit.new()
-	chance_tag_field.placeholder_text = "clutter tag"
-	layout.add_child(_labelled("chance tag", chance_tag_field))
-	chance_field = _number(1.0, 0.0, 1.0, 0.05)
-	layout.add_child(_labelled("chance", chance_field))
-
-	layout.add_child(_section_field_rows())
-
-	status_label = Label.new()
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	layout.add_child(status_label)
-
-
-## One row per whole-section declaration, **discovered from `SectionFile` rather than
-## listed**. A
-## new `@export` on that resource becomes an editable field here the day it is added, which
-## is the
-## open-vocabulary rule applied to an authoring surface.
-func _section_field_rows() -> VBoxContainer:
-	var rows := VBoxContainer.new()
-	for name: StringName in EditorController.declaration_fields():
-		var current: Variant = controller.section_field(name)
-		var row := HBoxContainer.new()
-		var label := Label.new()
-		label.text = String(name)
-		row.add_child(label)
-		if current is bool:
-			var check := CheckBox.new()
-			check.button_pressed = current
-			check.toggled.connect(
-				func(pressed: bool) -> void:
-					controller.set_section_field(name, pressed)
-					_refresh_readout()
-			)
-			row.add_child(check)
-		elif current is int:
-			var number := _number(float(current), -1.0, 999.0, 1.0)
-			number.value_changed.connect(
-				func(value: float) -> void:
-					controller.set_section_field(name, int(value))
-					_refresh_readout()
-			)
-			row.add_child(number)
-		else:
-			# An array field (`banned_clutter`, `encounter_types`) is a comma-separated list. Crude
-			# and honest — a real tag picker wants a content library, which does not exist.
-			var text := LineEdit.new()
-			text.placeholder_text = "comma separated"
-			text.text_submitted.connect(
-				func(value: String) -> void:
-					controller.set_section_field(name, _tag_list(value))
-					_refresh_readout()
-			)
-			row.add_child(text)
-		rows.add_child(row)
-	return rows
-
-
-static func _tag_list(text: String) -> Array[StringName]:
-	var tags: Array[StringName] = []
-	for piece: String in text.split(",", false):
-		var trimmed: String = piece.strip_edges()
-		if trimmed != "":
-			tags.append(StringName(trimmed))
-	return tags
+	# **Built after it is in the tree**, because the padding override reads the theme it inherits.
+	panel.build(controller)
+	panel.edge_declared.connect(apply_edge)
 
 
 ## Every part the board can hold, by id, sorted so the list is the same on two machines.
@@ -953,44 +797,3 @@ func placeable_part_ids(kind: StringName = &"") -> Array[StringName]:
 	for name: String in names:
 		_part_ids.append(StringName(name))
 	return _part_ids
-
-
-func _dropdown(options: Array[StringName]) -> OptionButton:
-	var dropdown := OptionButton.new()
-	for option: StringName in options:
-		dropdown.add_item(String(option))
-	if not options.is_empty():
-		dropdown.selected = 0
-	return dropdown
-
-
-func _number(value: float, minimum: float, maximum: float, step: float) -> SpinBox:
-	var box := SpinBox.new()
-	box.min_value = minimum
-	box.max_value = maximum
-	box.step = step
-	box.value = value
-	return box
-
-
-## One labelled field, sized to whatever width the panel currently has.
-##
-## **The row shrinks with the panel rather than setting its width**, which the UI review found it
-## doing: *"Looks like you just chopped the size of this panel, and the items within aren't set to
-## resize with panel size."* The label is given a clip and a fixed share so a long field name cannot
-## push the control it labels out of the panel, and the control expands into what is left.
-func _labelled(text: String, control: Control) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var label := Label.new()
-	label.text = text
-	label.custom_minimum_size = Vector2(LABEL_WIDTH, 0.0)
-	label.size_flags_horizontal = Control.SIZE_FILL
-	# Clipped rather than allowed to widen the row — a `Label` reports its full text as its minimum
-	# width otherwise, which is what made the panel wider than the slot it was given.
-	label.clip_text = true
-	row.add_child(label)
-	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	control.custom_minimum_size.x = 0.0
-	row.add_child(control)
-	return row

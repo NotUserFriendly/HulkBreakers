@@ -91,8 +91,19 @@ func _on_hovered_pick(pick: Dictionary) -> void:
 	# hover must not change what a later click without a face would do.
 	var was: Variant = editor.struck_normal
 	editor.struck_normal = pick.get("normal")
-	target = editor.placement_target(cell as Vector2i)
+	var at: Dictionary = editor.placement_target(cell as Vector2i)
+	# taskblock-59 Pass A: **asked while the struck face is still set**, because the refusal is about
+	# where the placement would land and that is what the face decides.
+	var refusal: String = editor.placement_refusal(cell as Vector2i)
 	editor.struck_normal = was
+	if refusal != "":
+		# **Nothing previewed is the honest preview of a click that authors nothing.** A ghost drawn
+		# where the placement will be refused is worse than no ghost: it is the surprise this module
+		# exists to prevent, wearing the module's own colours. Clicking the top of a wall is the case
+		# — it previews a stacked wall, which the board has nowhere to put.
+		clear()
+		return
+	target = at
 	_draw(editor, target)
 
 

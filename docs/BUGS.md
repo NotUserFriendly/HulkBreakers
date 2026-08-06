@@ -2337,3 +2337,76 @@ this pass is what walked it off the edge.**
 - Having `AttackAction.is_legal` read a `VisibilityField` rather than call `LoS.has_los`. It is the
   remaining per-candidate caller, but `is_legal` is documented as the one true check and handing it
   a field would give it a second, weaker answer.
+
+### BR59.01 — Pending — owner: `SUPERVISOR`
+**A refused placement freezes the editor's board: everything placed afterwards is invisible**
+- **Source:** `SUPERVISOR`, 2026-08-06, observed in-game ("clicking a support pillar on top of
+  another support pillar makes an invisible pillar. Other items trigger it too. After that,
+  everything placed was invisible").  ·  **CC session:**
+  `1f23a1e1-f577-43e7-b5d9-356cd12249f7`
+- **Reproduced, root-caused and fixed. Marked `Pending` because the entry is `SUPERVISOR`-owned —
+  CC may not close it.** `BR59.02` is the same defect from the other side and closes with it.
+
+**One site, and it was not a rendering fault.** `EditorModule._refresh_board` rebuilt the live board
+by asking `MapSerializer.to_grid` for the model, and **returned silently whenever the serializer
+refused it.** The model kept accepting edits; the view stayed frozen at the last board that built.
+So the invisible pillar was never the bug — it was the first symptom of a view that had stopped
+tracking the model *and would never start again for the rest of the session.*
+
+The function's own comment argued for that behaviour: *"a board that cannot be built is left
+standing and reported, never half-applied... far more use than an empty grid."* **Both halves were
+wrong.** Nothing reported it — the serializer's refusals were errors no author ever saw, and
+`describe_problems`, which is the list the editor actually shows, has never had a word to say about
+a duplicate blocker. And a stale board that keeps taking edits is not a conservative fallback; it is
+the view lying about the model.
+
+**Why a pillar.** `pillar` carries no `attaches_to`, so *Place Terrain* derives `KIND_BLOCKER` for
+it, and `Grid.blockers` is one part per cell. "Other items trigger it too" is exactly right: every
+blocker does, and so does any placement pushed out of bounds by a later board resize.
+
+**Three changes, and the first is the structural one.**
+- `MapSerializer.to_grid` gained a **lenient** mode: build every placement that can be drawn, return
+  the rest as sentences. Strict is now *"lenient, and refuse at the first thing skipped"* — one
+  traversal, one rule set, no branch that only one caller exercises. The editor renders leniently
+  and the bout path stays strict, so a test bout still refuses a board it cannot build rather than
+  playing a partial one.
+- `EditorController.place` refuses a second blocker on a cell and says why, so the model cannot hold
+  what the board has nowhere to put. **Deliberately narrow**: this is not the legality question the
+  editor's *warn, never block* rule covers — a stack of surfaces, an unwalkable board and a pit all
+  stay authorable and merely warned about. It is the line `MapSerializer` already drew for the load
+  path.
+- **The ghost was an accomplice.** Hovering a wall's top face previewed a wall stacked on it, which
+  is not expressible at all, and `test_parts_list.gd`'s *"what appears is what the ghost showed"*
+  acceptance passed throughout because it compared the ghost against the **model** and never against
+  the board. The ghost now asks the same refusal the click asks and declines to draw what will not
+  land.
+
+**Stacking blockers vertically is a real capability and it is queued, not deleted** (`PLAN.md`). The
+author's route to a taller wall in this block is Pass C's *Scale* drag, which is the right verb for
+it.
+
+**To see it work:** open the editor (`E`), place a pillar, click a second onto the same cell. Before,
+the pillar vanished and nothing you placed after it ever appeared again. Now the click authors
+nothing, the combat log says *"(x, y) already has a 'pillar' on it; a cell holds one blocker"*, no
+ghost is offered for that face, and every subsequent placement draws normally.
+
+### BR59.02 — Pending — owner: `SUPERVISOR`
+**`Delete` removes the record but not the mesh**
+- **Source:** `SUPERVISOR`, 2026-08-06, observed in-game ("Delete removes logically but not
+  visually").  ·  **CC session:** `1f23a1e1-f577-43e7-b5d9-356cd12249f7`
+- **The same defect as `BR59.01`, seen from the other side, and fixed by the same change. Marked
+  `Pending` because the entry is `SUPERVISOR`-owned.**
+
+`BoardView.build` clears its own statics, so a delete on a healthy board has always removed the node
+along with the record. What it could not do is run at all: **once the board was frozen, `refresh()`
+reached `_refresh_board`, the serializer refused the model, and the redraw returned before drawing
+anything** — so the record went and the mesh stayed. The sequence in the report is the ordinary one,
+because an author who cannot see what they just placed reaches for delete next.
+
+Filed as its own entry rather than folded into `BR59.01` because it was reported separately and
+because the two would have to be re-derived as one otherwise. **A model and a view that can disagree
+about what exists will keep producing symptoms in whichever direction is exercised next** — which is
+why the fix is at the disagreement rather than at either symptom.
+
+**To see it work:** with a board authored, place and then delete a pillar — the mesh goes with the
+record. Then repeat the `BR59.01` sequence and delete afterwards; the delete now draws.

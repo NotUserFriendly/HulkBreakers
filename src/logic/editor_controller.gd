@@ -124,6 +124,7 @@ static func declaration_fields() -> Array[StringName]:
 
 
 ## Appends a placement at `cell`. **Never refuses on a legality question** — see the class note.
+## Null only when the board has nowhere to put it; see `blocks_placement`.
 func place(
 	cell: Vector2i,
 	part_id: StringName,
@@ -131,10 +132,41 @@ func place(
 	height: float = 0.0,
 	facing: float = 0.0
 ) -> MapPlacement:
+	if blocks_placement(cell, kind) != "":
+		return null
 	_push_undo()
 	var placement := MapPlacement.new(cell, kind, part_id, height, facing)
 	placements.append(placement)
 	return placement
+
+
+## taskblock-59 Pass A: **why a placement is one the board cannot hold**, or `""` when it can.
+##
+## **This is not the legality question the class note refuses to ask.** A board with no walkable
+## surface, a pit nobody can climb out of, a floor whose grammar does not hold — those are authoring
+## opinions and `warnings()` states them without blocking anything. This is narrower and it is the
+## line `MapSerializer` already drew for the load path: *"two blockers on one cell... not authoring
+## opinions, they are files that do not describe a map."* `Grid.blockers` is one part per cell, so a
+## second one has nowhere to go — there is no board on which the author's click could be honoured.
+##
+## **Accepting it anyway is what produced the corruption Pass A deletes.** The model took the second
+## blocker, the serializer refused the model, and the view stayed frozen at the last board that
+## built — so every later placement was authored invisibly. Refusing at the verb keeps the model
+## inside what the board can draw, which is what makes *"the model and the view never disagree"* a
+## property of the code rather than of a redraw remembering to happen.
+##
+## Deliberately **not** extended to a second surface on one cell: `Grid` holds an ordered stack per
+## cell, a catwalk over a floor is exactly that, and `GridPlacement`'s one-per-cell `GROUND` rule is
+## an authoring opinion that `_grammar_warnings` already reports.
+func blocks_placement(cell: Vector2i, kind: StringName) -> String:
+	if kind != MapPlacement.KIND_BLOCKER:
+		return ""
+	for placement: MapPlacement in placements:
+		if placement != null and placement.cell == cell and placement.kind == kind:
+			return (
+				"%s already has a '%s' on it; a cell holds one blocker" % [cell, placement.part_id]
+			)
+	return ""
 
 
 ## Every placement at `cell`, in authored order. A read, so it takes no undo step.
@@ -436,13 +468,21 @@ func save_to(path: String) -> Dictionary:
 
 
 ## The board this model describes, through `MapSerializer` exactly as a loaded map would be.
-## `{"grid": Grid, "error": ""}` or `{"error": "<reason>"}`.
+## `{"grid": Grid, "error": "", "skipped": Array[String]}` or `{"error": "<reason>"}`.
 ##
 ## **This is the one route from the model to a board**, which is what makes "run a test bout on it"
 ## honest: the bout gets the board the serializer produces, not a second construction that happens
 ## to look the same.
+##
+## taskblock-59 Pass A: **built leniently, which is what stops a preview freezing.** A strict build
+## refuses the whole model over one placement it cannot hold, and the editor's redraw then had
+## nothing to draw and left the previous board on screen — the state corruption where every later
+## edit was authored invisibly. Leniently, everything drawable is drawn and the rest arrive in
+## `skipped`, which `warnings()` puts in front of the author. **The bout path is untouched and still
+## strict**: `run_test_bout` goes through `to_map_file` and the injector, which refuses a board it
+## cannot build rather than playing a partial one.
 func to_grid() -> Dictionary:
-	return MapSerializer.to_grid(to_map_file())
+	return MapSerializer.to_grid(to_map_file(), true)
 
 
 # --- warnings ------------------------------------------------------------------------------
@@ -456,7 +496,7 @@ func to_grid() -> Dictionary:
 ## defect is — see the class note.
 func warnings() -> Array[String]:
 	var found: Array[String] = []
-	found.append_array(_bounds_warnings())
+	found.append_array(_undrawn_warnings())
 	if target == TARGET_SECTION:
 		found.append_array(SectionSerializer.describe_problems(to_section_file()))
 	else:
@@ -487,35 +527,25 @@ func navigability_warnings() -> Array[String]:
 	]
 
 
-## Placements the loader could not honestly turn into a board, plus anything sitting outside the
-## board's own dimensions. Surfaced here because `MapSerializer.to_grid` treats these as errors
-## rather than as authoring opinions — so without this the author's only symptom is a board that
-## refuses to load with no indication which placement did it.
-func _bounds_warnings() -> Array[String]:
-	var found: Array[String] = []
+## **Everything in the model that is not on the board**, said in the render's own words.
+##
+## taskblock-59 Pass A: this used to be `_bounds_warnings`, a second sweep that re-derived
+## out-of-bounds and unknown-part from the same placements `MapSerializer` was about to reject —
+## two formulas answering *"is this placement drawable"*, which is the arrangement this project
+## keeps deleting. The lenient build already returns exactly that list, so asking it is both
+## shorter and **guaranteed to match what the author is looking at**: a warning that named a
+## placement the board was drawing anyway, or missed one it had silently dropped, is worse than no
+## warning at all.
+##
+## The board's own dimensions stay here, because a board with no cells has no render to ask.
+func _undrawn_warnings() -> Array[String]:
 	if width <= 0 or rows <= 0:
-		found.append("the board is %dx%d; nothing can be placed on it" % [width, rows])
-		return found
-	for index: int in range(placements.size()):
-		var placement: MapPlacement = placements[index]
-		if placement == null:
-			found.append("placement %d is empty" % index)
-			continue
-		var cell: Vector2i = placement.cell
-		if cell.x < 0 or cell.x >= width or cell.y < 0 or cell.y >= rows:
-			found.append(
-				(
-					"placement %d ('%s') sits at %s, outside the board's own %dx%d"
-					% [index, placement.part_id, cell, width, rows]
-				)
-			)
-		elif DataLibrary.get_part(placement.part_id) == null:
-			found.append(
-				(
-					"placement %d names part '%s', which DataLibrary does not have"
-					% [index, placement.part_id]
-				)
-			)
+		return ["the board is %dx%d; nothing can be placed on it" % [width, rows]]
+	var result: Dictionary = to_grid()
+	if not result.has("grid"):
+		return [str(result["error"])]
+	var found: Array[String] = []
+	found.assign(result["skipped"])
 	return found
 
 
