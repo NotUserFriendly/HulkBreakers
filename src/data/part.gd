@@ -72,6 +72,17 @@ extends Resource
 ## uses). Any alpha > 0 overrides it outright.
 @export var render_color_override: Color = Color(0, 0, 0, 0)
 
+## taskblock-58 Pass F: **hp per cubic metre, for a part an author can resize.**
+##
+## Zero means "not volume-scaled": the part keeps its authored `hp` at every size, which is what
+## every part did before this existed and what most still do. **Opt-in on purpose** — turning
+## volume-scaled hp on for the whole library would rebalance content nobody asked to rebalance.
+##
+## Linear, on the supervisor's call: *"diminishing returns on more mass is the opposite of how
+## armor works in real life."* Twice the wall is twice the hp. `PlacedVolume.hp_for` is the one
+## place it is applied.
+@export var hp_per_volume: float = 0.0
+
 @export var hp: int = 1
 @export var max_hp: int = 1
 @export var mass: float = 0.0

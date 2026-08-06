@@ -110,6 +110,16 @@ static func to_grid(map: MapFile) -> Dictionary:
 					% [index, placement.part_id]
 				)
 			}
+		# taskblock-58 Pass F: **a sized placement becomes a part with those boxes.**
+		#
+		# *"A 3 x 3 x 0.5 wall exists as one part, and destroying it leaves a hole of a designed
+		# size."* Applied here rather than threaded through the geometry: a map references a part
+		# id and the grid holds real `Part` objects, so a resized placement is simply an instance
+		# whose `volume` **is** the scaled boxes and whose `hp` is the volume-scaled number.
+		# Everything downstream — what `BoardView` draws, what `RayCaster` marches, what
+		# `SightSpans` derives, what `DamageResolver` destroys — then works on the real size with
+		# **no change at all**, because there is nothing special about it to know.
+		part = _sized(part, placement.size)
 		match placement.kind:
 			MapPlacement.KIND_SURFACE:
 				grid.add_surface(
@@ -138,6 +148,22 @@ static func to_grid(map: MapFile) -> Dictionary:
 		grid.set_spawn_marker(map.spawn_cells[i], map.spawn_markers[i])
 
 	return {"grid": grid, "error": ""}
+
+
+## The part a placement actually puts on the board, at the size it was authored at.
+##
+## **Untouched for an unsized placement**, which is every row in every map written before
+## taskblock-58 — `Vector3.ZERO` means "the part's own", so this returns the library's own instance
+## and nothing is duplicated. A sized one gets its own copy, because two placements of one part at
+## two sizes must not share a `volume`.
+static func _sized(part: Part, size: Vector3) -> Part:
+	if size.is_zero_approx():
+		return part
+	var resized: Part = part.duplicate(true)
+	resized.volume = PlacedVolume.boxes_for(part, size)
+	resized.max_hp = PlacedVolume.hp_for(part, size)
+	resized.hp = resized.max_hp
+	return resized
 
 
 ## **Authoring warnings, never load failures.** taskblock-53: an authored map may be broken

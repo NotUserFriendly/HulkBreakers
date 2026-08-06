@@ -15,6 +15,7 @@ display_name = "Wall"
 material = &"steel"
 tags = Array[StringName]([&"terrain"])
 volume = Array[ExtResource("2_wallbx")]([SubResource("Resource_wallvol")])
+hp_per_volume = 25.0
 hp = 60
 max_hp = 60
 salvage_yield = {
