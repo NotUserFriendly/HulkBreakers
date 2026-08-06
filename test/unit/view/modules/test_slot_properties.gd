@@ -54,6 +54,13 @@ extends GutTest
 ## itself collapsible and `UiButtonsModule` builds the toggle by sweeping for exactly that. **The
 ## taskblock asked for a toggle and the answer was a `preferred_slot()`**, with no line in either
 ## file naming the other.
+## **taskblock-58 Pass E adds `parts_list`, and it is the same derivation a fourth time.** The
+## taskblock asks for the parts list to be *"toggleable from UI buttons"*; it takes
+## `ModuleSlots.INSPECT_PANEL` — the slot it shares with `inspect`, because while placing you
+## cannot be selecting — and that slot is edge-pinned, so it reports itself collapsible and
+## `UiButtonsModule` builds the toggle by sweeping for exactly that. **Nothing in either file names
+## the other**, which is the property this list exists to keep visible: asking for a toggle is
+## still answered by a `preferred_slot()`.
 const EXPECTED_SIDE_PINNED: Array[StringName] = [
 	&"debug_panel",
 	&"inspect",
@@ -62,6 +69,7 @@ const EXPECTED_SIDE_PINNED: Array[StringName] = [
 	&"inspect_viewer",
 	&"spectator_bar",
 	&"editor_bar",
+	&"parts_list",
 ]
 
 

@@ -112,21 +112,31 @@ func _bar(overlay: ControlOverlay) -> EditorBarModule:
 # ---------------------------------------------------------------- the acceptance
 
 
-## **THE CENTRAL CLAIM, and taskblock-57 Passes G and H move it from one module to four.**
+## **THE CENTRAL CLAIM, and it has moved from one module to five.**
 ##
-## Pass F's answer was "a module set plus one authoring module". Pass G's subject is that the editor
-## needs surfaces of its own shape and Pass H's is the gizmo, and the taskblock names every one of
-## the three outright — *"three action bars, not one with three contents"* for `editor_bar`, *"a
-## coordinate readout replaces Unit Resources in editor mode"* for `editor_coords`, and *"a 3D
-## CAD-style handle set"* for `gizmo`. So the answer is a module set plus **four**, each named here
-## rather than allowed to arrive as a nameless increment.
+## Pass F's answer was "a module set plus one authoring module". taskblock-57 Passes G and H took it
+## to four and taskblock-58 Pass E takes it to five, and **every one of them is named outright by
+## the taskblock that added it** rather than arriving as a nameless increment:
+##
+## | module | the sentence that asked for it |
+## |---|---|
+## | `editor_bar` | *"three action bars, not one with three contents"* |
+## | `editor_coords` | *"a coordinate readout replaces Unit Resources in editor mode"* |
+## | `gizmo` | *"a 3D CAD-style handle set"* |
+## | `parts_list` | *"every Place tool opens a parts list on the right, in the Inspect slot"* |
+##
+## **The number going up is not the failure this guards against.** What it catches is a module
+## arriving *unnamed* — an editor-only surface nobody asked for, or a bespoke copy of a panel that
+## already exists. `parts_list` is neither: it is a widget that already existed, moved out of
+## `EditorBarModule` into a module that can claim a slot, which is why the count rose without
+## anything new being written.
 ##
 ## **Still counted rather than stated**, and against a denominator that stayed honest: `ui_buttons`
 ## and `announcements` also arrived after Pass F, and are excluded because they were built for the
-## battle surface — see `MODULES_BUILT_FOR_OTHER_SURFACES`. A fifth editor-only module, or a
-## bespoke copy of an existing panel, reports the real number and fails, which is the property that
-## made this test worth writing and is unchanged by the number being four.
-func test_the_editor_is_a_module_set_plus_exactly_four_new_modules() -> void:
+## battle surface — see `MODULES_BUILT_FOR_OTHER_SURFACES`. A sixth editor-only module reports the
+## real number and fails, which is the property that made this test worth writing and is unchanged
+## by the number being five.
+func test_the_editor_is_a_module_set_plus_exactly_five_new_modules() -> void:
 	var written_for_the_editor: Array[StringName] = []
 	for id: StringName in ViewModes.editor().modules:
 		if MODULES_BEFORE_PASS_F.has(id) or MODULES_BUILT_FOR_OTHER_SURFACES.has(id):
@@ -137,8 +147,8 @@ func test_the_editor_is_a_module_set_plus_exactly_four_new_modules() -> void:
 	gut.p("written for it: %s" % ", ".join(written_for_the_editor))
 	assert_eq(
 		written_for_the_editor,
-		[&"editor_bar", &"gizmo", &"editor", &"editor_coords"] as Array[StringName],
-		"the authoring module, the bar, the gizmo and the coordinate readout, and no more"
+		[&"editor_bar", &"parts_list", &"gizmo", &"editor", &"editor_coords"] as Array[StringName],
+		"the authoring module, the bar, the parts list, the gizmo and the readout, and no more"
 	)
 
 

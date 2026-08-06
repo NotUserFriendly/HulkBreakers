@@ -163,6 +163,12 @@ var selected_claim_kind: StringName = SectionClaim.KIND_INTERIOR
 ## marker.
 var selected_map_thing: StringName = &"claim"
 
+## taskblock-58 Pass E: **the face the last pick struck**, or null when the pick resolved off the
+## ground plane instead of off geometry. Set for the duration of one click by `_on_board_clicked`,
+## and set by the hover path while a ghost is being drawn — which is what makes the ghost and the
+## click take the same branch of `placement_target`.
+var struck_normal: Variant = null
+
 ## The last surface part the author placed, so a wall dropped on bare ground brings that floor with
 ## it rather than a named default. See `_ensure_a_tile_under`.
 var last_surface_part: StringName = &""
@@ -297,8 +303,20 @@ func apply_tool_at(cell: Vector2i) -> bool:
 ## does not exist (a `wall` authored as a field item, say).
 func _place_with(cell: Vector2i, tool: StringName) -> bool:
 	selected_kind = EditorTools.kind_for(tool, selected_part)
-	_ensure_a_tile_under(cell)
-	return controller.place(cell, selected_part, selected_kind, height(), facing()) != null
+	var target: Dictionary = placement_target(cell)
+	var at: Vector2i = target["cell"]
+	_ensure_a_tile_under(at)
+	return controller.place(at, selected_part, selected_kind, target["height"], facing()) != null
+
+
+## **Where the next placement lands**, given the cell under the cursor or the click.
+##
+## taskblock-58 Pass E: **the one answer, called by the ghost and by the click.** A preview that
+## worked out where a placement would go, and a placement that worked out where it goes, would be
+## two answers to one question — so *"what appears is what the ghost showed"* is structural rather
+## than something a test has to keep true.
+func placement_target(cell: Vector2i) -> Dictionary:
+	return FacePlacement.target_from(controller.placements_at(cell), cell, struck_normal, height())
 
 
 ## *Place Map Thing* — everything the player never sees, put down by one verb with its own
@@ -653,11 +671,18 @@ func _save_into(directory: String) -> Dictionary:
 	return result
 
 
+## taskblock-58 Pass E: **the struck face rides in on the hit dict** (Pass A), and a place verb
+## resolves it into where the placement lands. Held on `struck_normal` rather than threaded through
+## `apply_tool_at`, because every other tool's answer to "which face" is "it does not matter" and
+## widening the router's signature for one of seven would put the exception in every branch.
 func _on_board_clicked(hit: Dictionary) -> void:
 	var cell: Variant = hit.get("cell")
 	if cell == null:
 		return
+	var normal: Variant = hit.get("normal")
+	struck_normal = normal if normal is Vector3 else null
 	apply_tool_at(cell as Vector2i)
+	struck_normal = null
 
 
 func _board_inspect() -> BoardInspectModule:
