@@ -27,6 +27,20 @@ extends ViewModule
 ## oddity of the arrangement and is deliberate: a second list would be two widgets to keep in step
 ## for a board picker that behaves identically.
 
+## taskblock-59 Pass B: **the UI-buttons toggle asked for the list back and nothing answered.**
+##
+## `UiButtonsModule` builds a toggle for every collapsible module and presses it by flipping
+## `ViewModule.collapsed`, which calls `_on_collapsed`. This module overrode `is_showing()` — so the
+## button's border correctly followed the list — and never overrode `_on_collapsed`, so **the press
+## flipped a flag nothing read.** The button lit and dimmed against the list's real state while
+## doing nothing to it, which is the most convincing way for a control to be broken.
+##
+## Closing is this module's own business. **Re-opening is not**: what the list should contain
+## depends on which tool is armed and which pool it draws from, and `EditorBarModule` is where that
+## is decided for the two callers it already serves. So the summon is a signal and the bar answers
+## it, rather than a second derivation here that could offer a different list than the buttons do.
+signal summoned
+
 ## The one searchable list. Public because the bar drives it and the tests read back what it offers
 ## rather than re-deriving the filter.
 var list: SearchableList = null
@@ -75,6 +89,21 @@ func open(title: String, entries: Array[StringName]) -> void:
 func close() -> void:
 	if list != null:
 		list.close()
+
+
+## Dismisses the list, or asks for it back. See `summoned` for why only one direction is answered
+## here.
+##
+## **Guarded against re-entry**, because `open()` and `close()` do not touch `collapsed` and the
+## button reads `is_showing()` rather than the flag — so a summon that ends in the bar calling
+## `open()` must not look like a second toggle.
+func _on_collapsed(value: bool) -> void:
+	if list == null:
+		return
+	if value:
+		list.close()
+	elif not list.visible:
+		summoned.emit()
 
 
 ## **The exclusion, in one place.** Inspect is closed rather than merely drawn under, because two

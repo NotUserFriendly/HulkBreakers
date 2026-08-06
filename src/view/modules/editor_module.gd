@@ -100,6 +100,10 @@ const SECTION_DIR := "res://data/sections"
 ## tunable; resizing afterwards is `EditorController.resize_claim`'s job.
 const DEFAULT_CLAIM_HEIGHT := 2.4
 
+## **The ordinary floor**: what a fresh editor is armed with, and what goes under a wall dropped on
+## bare ground. See `default_floor` for why it is a named id.
+const DEFAULT_FLOOR: StringName = &"ship_floor"
+
 ## The editing model. **Public and constructed here**, because the controller is the
 ## module's whole
 ## state and a test drives it directly rather than through widgets.
@@ -199,13 +203,8 @@ func _mount() -> void:
 	# **A default the author does not have to supply.** The part dropdown used to select its first
 	# entry automatically; with the list on the bar, an editor opened and clicked immediately would
 	# otherwise place nothing at all and look broken.
-	# **A floor, not whatever sorts first.** The UI review: *"Default part is an ammo rack, it should
-	# probably be the `ship_floor` part."* It was `placeable_part_ids()[0]` — alphabetically first
-	# across the whole parts pool, which is `ammo_rack`. The first thing an author places on an empty
-	# board is ground, so the default is the first *surface* part and falls back to the pool only if
-	# the data has no floors at all.
-	if last_surface_part == &"" and not surface_part_ids().is_empty():
-		last_surface_part = surface_part_ids()[0]
+	if last_surface_part == &"":
+		last_surface_part = default_floor()
 	if selected_part == &"":
 		if last_surface_part != &"":
 			selected_part = last_surface_part
@@ -545,6 +544,12 @@ func _refresh_board() -> void:
 	# is not a workaround; it is the honest argument for a board nobody is playing.
 	battle.board_view.build(battle.combat_state.grid, battle.combat_state.material_table, {})
 	_hide_stranded(battle, stranded)
+	# taskblock-59 Pass B: **the rebuild just freed every mesh, including the ghosted one.** The
+	# gizmo holds what is focused, so it re-states it against the meshes that now exist, rather than
+	# this module keeping a second record of the selection to restore from.
+	var handles: GizmoModule = context.module(&"gizmo") as GizmoModule if context != null else null
+	if handles != null:
+		handles.reassert_ghost()
 
 
 ## **A unit the authored board has nowhere to put is not drawn.**
@@ -575,10 +580,30 @@ func _refresh_board() -> void:
 ## *Main menu* and is flagged in this module's own header as a known limit. This makes the
 ## editor
 ## honest in the meantime.
+## taskblock-59 Pass B: **and a unit that is not drawn does not cut a hole in a wall.**
+##
+## Reported as *"cutout or culling is affecting walls in the editor"*, with the taskblock's own
+## reading: *"the editor has no unit to cut around, so either the cutout should be off in editor
+## modes or it is keying off something stale."* **Stale, and it is this module's fourth inheritance
+## from the bout it installed over** — the header above predicted a fourth and this is it.
+## `BattleScene` feeds `board_view.wall_cutout_units = combat_state.units`, the editor never
+## replaces that list, and the wall-cutout shader goes on punching portholes at the last bout's
+## cells whether or not anything is standing there.
+##
+## **Expressed as "not drawn, so not cut around" rather than as "off in the editor".** The
+## exclusion set is the mechanism that already exists for this exact statement — the debug *vanish*
+## verb uses it — and a rule keyed on visibility needs no mode named in `BoardView`, holds for any
+## other surface that hides a unit, and cannot drift out of step with what `_hide_stranded` decided,
+## because it is the same decision. `BoardView.build` clears the set and `_refresh_board` calls it
+## immediately before this, so the set is rebuilt every redraw rather than accumulating.
 func _hide_stranded(battle: BattleScene, stranded: Array[int]) -> void:
 	for view: HitVolumeView in battle.unit_views:
-		if view.unit != null:
-			view.visible = not stranded.has(view.unit.id)
+		if view.unit == null:
+			continue
+		var seated: bool = not stranded.has(view.unit.id)
+		view.visible = seated
+		if not seated:
+			battle.board_view.exclude_unit_from_occlusion(view.unit.id)
 
 
 ## **This is what `ClaimVolumeModule` was built for.** Pass E left it tested and mounted by no
@@ -737,6 +762,36 @@ func _build_ui() -> void:
 	# **Built after it is in the tree**, because the padding override reads the theme it inherits.
 	panel.build(controller)
 	panel.edge_declared.connect(apply_edge)
+
+
+## **The floor the editor reaches for when the author has not chosen one**, or `&""` when the data
+## has no surfaces at all.
+##
+## taskblock-59 Pass B: **a named id, and that is the supervisor's call rather than mine.**
+##
+## This was `surface_part_ids()[0]` — "the first surface part" — which taskblock-56 chose over a
+## named default precisely to avoid hardcoding content. **It sorts alphabetically, and the parts
+## that attach to `GROUND` are `[ramp, ship_floor]`, so the ordinary floor of this game has been
+## `ramp` ever since.** Two reports come off that one line:
+##
+## - *"The editor's auto-placed terrain places ramps"* — `_ensure_a_tile_under` puts
+##   `last_surface_part` under a wall dropped on bare ground, and that was a ramp.
+## - *"Warnings appear when placing `ship_floor`"* — and **the warning was correct.** The author
+##   places a wall, the editor silently authors a ramp under it, the author then places their own
+##   floor on that cell and is told *"the cell already has a surface"* about a surface they never
+##   put there and cannot see they put there. A true statement about a state the editor created on
+##   their behalf reads exactly like a spurious warning.
+##
+## taskblock-56's own comment named the intent — *"it should probably be the `ship_floor` part"* —
+## and then implemented "first surface part", which is the same sentence only while the data
+## happens to sort that way. **Naming it is the smaller lie**: a fallback id in code is visible and
+## greppable, where an ordering dependency is neither. The sort order remains the fallback for data
+## that has no `ship_floor` in it at all.
+func default_floor() -> StringName:
+	var floors: Array[StringName] = surface_part_ids()
+	if floors.has(DEFAULT_FLOOR):
+		return DEFAULT_FLOOR
+	return floors[0] if not floors.is_empty() else &""
 
 
 ## Every part the board can hold, by id, sorted so the list is the same on two machines.

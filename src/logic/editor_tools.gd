@@ -63,10 +63,54 @@ const MAP_THINGS: Array[StringName] = [
 	&"chance",
 ]
 
+## taskblock-59 Pass B: **what *Place Map Thing* offers, as one flat list.**
+##
+## The tool had a selection (`MAP_THINGS`) and no way to make it, so every click came out as the
+## default — an `Interior` claim, which is what *"Map Thing places only lime-green volumes"* was:
+## not a missing feature but a missing picker in front of one. The taskblock: *"give it the same
+## selection the Place tools have — the claim kinds already exist as a vocabulary."*
+##
+## **`claim` expands into one entry per claim kind**, because picking *claim* and then picking
+## *which claim* is two questions where the author has one intention. The composed ids are the only
+## thing here that is not already a vocabulary elsewhere, and `map_thing_choice` is the single
+## place that composes or decodes them — so adding a claim kind or a map thing still needs no edit
+## in this file.
+const CLAIM_CHOICE_PREFIX := "claim_"
+
+
+## Every choice, in `MAP_THINGS` order with the claim kinds in `kinds`' order where `claim` sat.
+static func map_thing_choices(kinds: Array[StringName]) -> Array[StringName]:
+	var offered: Array[StringName] = []
+	for thing: StringName in MAP_THINGS:
+		if thing != &"claim":
+			offered.append(thing)
+			continue
+		for kind: StringName in kinds:
+			offered.append(StringName(CLAIM_CHOICE_PREFIX + String(kind)))
+	return offered
+
+
+## `{thing, claim_kind}` for one entry of `map_thing_choices`. `claim_kind` is `&""` for everything
+## that is not a claim.
+static func map_thing_choice(choice: StringName) -> Dictionary:
+	var text: String = String(choice)
+	if not text.begins_with(CLAIM_CHOICE_PREFIX):
+		return {"thing": choice, "claim_kind": &""}
+	return {
+		"thing": &"claim",
+		"claim_kind": StringName(text.substr(CLAIM_CHOICE_PREFIX.length())),
+	}
+
 
 ## True when `tool` puts a `Part` on the board, as opposed to a marker or a manipulation.
 static func is_place_tool(tool: StringName) -> bool:
 	return tool == &"place_terrain" or PLACE_TOOL_KINDS.has(tool)
+
+
+## True when `tool` picks what it places from a list. The place tools and *Place Map Thing*, which
+## differ in what they offer and not in whether they offer it.
+static func picks_from_a_list(tool: StringName) -> bool:
+	return is_place_tool(tool) or tool == &"place_map_thing"
 
 
 ## The `MapPlacement` kind `tool` authors for `part_id`.

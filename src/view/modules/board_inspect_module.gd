@@ -213,13 +213,15 @@ func _update_hover(screen_pos: Vector2) -> void:
 	# taskblock-57 Pass G2: the cell under the cursor, off the ray this handler already cast. Emitted
 	# before the highlight so a listener sees the move even in a mode with no unit views at all —
 	# which the editor is, until a board is loaded into it.
-	_emit_hovered_cell(from, dir, battle.combat_state.grid)
+	var cell: Variant = _emit_hovered_cell(from, dir, battle.combat_state.grid)
 	# taskblock-58 Pass E: the full pick, for a listener that needs the struck face. **Only when
 	# somebody is connected** — this is `PartPicker.hit` on every motion event, which `BR35.01`
 	# measured at 1 559 usec on a real board, and a mode with no ghost has no reason to pay it.
 	if hovered_pick.get_connections().size() > 0:
 		hovered_pick.emit(
-			PartPicker.hit(battle.combat_state.units, battle.combat_state.grid, from, dir)
+			_pick_or_bare_cell(
+				PartPicker.hit(battle.combat_state.units, battle.combat_state.grid, from, dir), cell
+			)
 		)
 	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
 	var hovered_unit: Unit = hit.unit as Unit if not hit.is_empty() else null
@@ -231,15 +233,34 @@ func _update_hover(screen_pos: Vector2) -> void:
 			view.clear_highlight()
 
 
-## Emits the cell the cursor is over, or null when the ray misses the board or lands off its edge.
+## Emits the cell the cursor is over, and returns it. Null when the ray misses the board or lands
+## off its edge.
 ##
 ## **Off-board is `null`, not the nearest cell.** The readout says what is under the cursor, and
 ## "the last cell before you left" is a different claim that reads as the cursor being stuck.
-func _emit_hovered_cell(from: Vector3, dir: Vector3, grid: Grid) -> void:
+func _emit_hovered_cell(from: Vector3, dir: Vector3, grid: Grid) -> Variant:
 	var cell: Variant = BoardPicker.cell_at_ray(from, dir, grid)
 	if cell != null and not grid.in_bounds(cell as Vector2i):
 		cell = null
 	hovered_cell.emit(cell)
+	return cell
+
+
+## taskblock-59 Pass B: **an empty cell is a pick too.**
+##
+## `PartPicker.hit` answers `{}` over bare board, because it found no part — which is true and is
+## the wrong answer for a listener asking *"what is under the cursor"*. The editor's ghost took it
+## as "nothing to preview" and drew nothing, so **the one place an author most needs to know what a
+## click will do — an empty tile, where there is nothing to infer it from — was the one place the
+## preview was silent.**
+##
+## The bare-cell form carries a `null` normal, which is exactly what `FacePlacement.target_from`
+## already reads as *"no struck face, use the authored height"*. So nothing downstream learns a new
+## case; the branch that handles a click off the ground plane handles this too.
+static func _pick_or_bare_cell(pick: Dictionary, cell: Variant) -> Dictionary:
+	if not pick.is_empty() or cell == null:
+		return pick
+	return {"unit": null, "part": null, "cell": cell, "t": INF, "normal": null}
 
 
 func _inspect() -> InspectModule:

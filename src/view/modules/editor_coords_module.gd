@@ -93,7 +93,32 @@ func refresh() -> void:
 		return
 	var at: Vector2i = cell as Vector2i
 	cell_label.text = "cell (%d,%d)  h %.1f" % [at.x, at.y, height_at(at)]
-	content_label.text = truncated(name_at(at))
+	content_label.text = "%s  →  %s" % [truncated(name_at(at)), truncated(placing())]
+
+
+## **What the next click puts down**, as the readout's own words.
+##
+## taskblock-59 Pass B: *"the coordinate readout does not say what is being placed. It shows the
+## cell and what is under the cursor; **add the active thing**, which is the one piece an author
+## needs and cannot infer."* Exactly right — the cell is on screen, what is under the cursor is on
+## screen, and the armed part is state carried between a visit to the parts list and a click that
+## might be a hundred clicks later. The bar highlights the armed *tool*; nothing named the *thing*.
+##
+## Asked of the editor rather than tracked here, so a tool or part set from anywhere — a button, a
+## pick, a test — reads back the same. A tool that places nothing says so rather than naming a stale
+## part: *Delete* is not holding a `ship_floor`, and a readout that said otherwise would be the
+## surprise this line exists to remove.
+func placing() -> StringName:
+	var editor: EditorModule = _editor()
+	if editor == null:
+		return &""
+	if EditorTools.is_place_tool(editor.active_tool):
+		return editor.selected_part
+	if editor.active_tool == &"place_map_thing":
+		if editor.selected_map_thing == &"claim":
+			return StringName("claim %s" % editor.selected_claim_kind)
+		return editor.selected_map_thing
+	return StringName(String(editor.active_tool).replace("_", " "))
 
 
 ## The elevation of `cell` on the live board. **Read off the grid the editor is drawing**, not
@@ -110,9 +135,7 @@ func height_at(at: Vector2i) -> float:
 ## model**, because that is what the author is editing — a cell they have just placed on and not yet
 ## redrawn should read as placed.
 func name_at(at: Vector2i) -> StringName:
-	var editor: EditorModule = (
-		context.module(&"editor") as EditorModule if context != null else null
-	)
+	var editor: EditorModule = _editor()
 	if editor == null:
 		return &""
 	var here: Array[MapPlacement] = editor.controller.placements_at(at)
@@ -138,6 +161,10 @@ static func truncated(id: StringName) -> String:
 func _on_collapsed(value: bool) -> void:
 	if column != null:
 		column.visible = not value
+
+
+func _editor() -> EditorModule:
+	return context.module(&"editor") as EditorModule if context != null else null
 
 
 func _grid() -> Grid:

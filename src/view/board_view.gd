@@ -209,6 +209,10 @@ var wall_cutout_units: Array[Unit] = []
 ## HitVolumeView to call that on directly.
 var aim_active_unit: Unit = null
 
+## taskblock-59 Pass B: which mesh stands at which cell, so the gizmo can make what it grabbed
+## see-through. Its own class — `CellGhosting` carries the seam and the merged-tile limit.
+var ghosting := CellGhosting.new()
+
 ## A unit whose own `HitVolumeView` was explicitly destroyed
 ## (`BattleScene.remove_unit_view()`, the debug-only "make it fully
 ## vanish" verb) never clears its stale `.cell` from `combat_state.units`
@@ -280,6 +284,7 @@ func build(
 	_last_cutout_fingerprint = ""
 	_clear(_static)
 	_wall_mesh_instances.clear()
+	ghosting.reset()
 	_wall_cutout_material = null
 	_excluded_from_occlusion.clear()
 
@@ -645,6 +650,7 @@ func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -
 			_dropped_transform(cell, height) * world_transform if dropped else world_transform
 		)
 		_static.add_child(instance)
+		ghosting.record(cell, instance)  # taskblock-59 Pass B — see `CellGhosting`.
 		# tb31 Pass C: tracked separately so `_process()` only re-evaluates
 		# legibility fading against walls specifically, not every box on
 		# the board.
