@@ -1,5 +1,152 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 59 — the editor stops lying, and the tiers reach a bout
+
+### Pass F — the completion rate, per tier, and it inverted
+
+**Every completion figure this project had recorded was an all-`TRAINED` figure**, because
+`Unit.intelligence_tier` defaulted to `TRAINED` and nothing set it (Pass E). Taken again with the
+tiers authored, over seeds 0–5, three units a side, 100-turn cap:
+
+| tier | completed | rate | mean turns | outcomes | cost |
+|---|---|---|---|---|---|
+| `MINDLESS` | 2/6 | **33.3%** | 26.0 | 2 extracted, 4 at the cap | 112 s |
+| `GRUNT` | 0/6 | 0.0% | — | 5 at the cap, 1 stranded | 230 s |
+| `TRAINED` | 0/6 | 0.0% | — | 6 at the cap | 343 s |
+| `ELITE` | 0/6 | 0.0% | — | 4 at the cap, 2 stranded | 466 s |
+| mixed | 0/6 | 0.0% | — | 6 at the cap | 324 s |
+
+**`MINDLESS` is the only tier that finished a mission, and that is the finding.** It cannot shoot,
+take cover or overwatch — so it walks to the extraction cells and extracts, in a mean of 26 turns.
+Every tier that *can* fight stops to fight and hits the 100-turn cap instead. `TERMINATED` here is
+`BoutRunner`'s own safety net, not a defeat: the combat-capable tiers do not lose, **they fail to
+converge.**
+
+**Cost rises monotonically with capability** — 112 s, 230 s, 343 s, 466 s — while completion does
+not. More thinking, more planning time, no more missions finished.
+
+**Suite wall-clock stopped being a comparable figure**, and that is a consequence of the wider
+roster rather than a measurement problem. `seeds_to_first_win` plays seeds until one completes, so
+the suite's cost scales inversely with the draw; at three units a side each seed is a much larger
+bout. Three full-gate runs on the same tree measured **1373.5 s, 1330.6 s and 978.9 s**, with the
+runner reporting *"seeds to first completion"* of 6 and then 1. The stable numbers are the work
+counters the runner already prints and the probe's per-row timings over a fixed window.
+
+**Reported, not tuned.** The taskblock's instruction was explicit: *"if the mixed rate drops below
+the floor, that is a finding about the floor as much as about the AI."* `FIRST_WIN_CAP`, `TURN_CAP`
+and `SAMPLE_SEEDS` are unchanged and pinned by a named test.
+
+**Two caveats that stop this being over-read.** Six seeds is a tiny sample, and seeds 0–11 is
+recorded in `CompletionSampler`'s own header as the *pessimistic* corner of the seed space — the
+window taskblock-46 removed for exactly that reason. The **relative ordering** is the result; the
+absolute rates are not a rate. The same build's `seeds_to_first_win`, drawing randomly, found a
+completion in 6 seeds on the full gate, so the mixed roster is not at 0% in general.
+
+**A prediction of mine that was wrong, stated plainly:** I expected an all-`MINDLESS` squad might
+never complete a mission and said so before measuring. It completes more often than any other tier.
+Extraction is a *movement* objective, and I had assumed it required winning a fight.
+
+### Pass E — the intelligence tiers reach a bout
+
+`Unit.intelligence_tier` existed since the AI's world model was built and **nothing ever set it**.
+
+**`BotPreset.intelligence_tier`**, authored where a unit is authored, defaulting to `TRAINED` so a
+preset that says nothing behaves as it always did. `DeepStrike.assemble_from_preset` applies it —
+the one path with a preset to read from. Tiers authored on the three combat testers: chaingun
+`GRUNT`, pump shotgun `MINDLESS`, sniper rifle `ELITE`; the labourers stay `TRAINED`.
+
+**`CompletionSampler` builds a mixed 3v3** instead of one labourer against another — the
+supervisor's call over tiering the labourers, which would have made the measured bout a walkover
+between a unit that can shoot and one that cannot. `build_at_tier` gives the per-tier breakdown over
+the same map and roster, so what is measured is intelligence and not weapons.
+
+**Every recorded seed changed meaning.** A figure from before this pass and one after are not
+comparable. Nothing on disk pinned one — `BoutCorpus` draws from the clock — so there was no
+artifact to regenerate, only past figures to distrust.
+
+**Superseded, not fixed:** the tier table describes `GRUNT` as *"memory and the shoot/cover/overwatch
+set"*, but `overwatch.tres` has read `[TRAINED, ELITE]` since taskblock-45. The content is what runs.
+
+### Pass D — the ledge veneer places from a click
+
+`LedgeVeneer` computed the span, the part was authored, hp followed volume — all taskblock-58. **No
+click called it**, so a veneer needed a hand-authored `.tres`.
+
+`span_among` takes a list of heights, so the rule has one implementation and two sources: a `Grid`
+for the loader, the authored placements for the editor — `FacePlacement` already refuses to build a
+`Grid` per hover and this follows it. The struck normal decides direction; the rise is carried as an
+ordinary `MapPlacement.size`, so it round-trips and gets volume-scaled hp with no special case.
+
+**A limit found while building it and pinned by a named test: growing *up* can never snap to
+anything through a click.** A top-face pick strikes the top of the stack by definition and the
+placement lands on that same cell, so "the nearest surface above the face you struck" is always
+empty and growing up always takes the 0.8 default. Growing **down** snaps exactly as specified.
+
+### Pass C — the Scale tool authors a size
+
+`MapPlacement.size` landed in taskblock-58 and **nothing wrote it but a hand-authored `.tres`**. The
+gesture existed too — the Scale tool, the gizmo and face picking — and was never connected.
+
+**The tool's definition**, as the supervisor stated it: the handle perpendicular to the face grabbed
+moves that face alone; the handles parallel to it grow mirrored. That makes the inherited spec line
+*"a top face scales X and Y mirrored"* consistent — a top face's perpendicular axis is Y, so its
+parallel pair is the grid's X and Y, which are the world's X and Z.
+
+**`MapPlacement.offset`** records the shift an asymmetric face move makes. It rides `size`'s path
+exactly: `PlacedVolume.boxes_for` displaces the boxes and `MapSerializer` bakes them into the part's
+volume, so `BoardView`, `RayCaster`, `SightSpans` and `DamageResolver` needed no change at all.
+
+**`GizmoDrag.grow` solves for the offset from where the faces should end up**, rather than adding a
+fixed half-drag — and that distinction was found by a failing test rather than by reasoning.
+`boxes_for` scales about the part's origin, so `wall`, with its base at y=0, already grows upward on
+its own; the first cut assumed and lifted the wall off its own floor by half the drag.
+
+**Found in passing:** `SectionSerializer._lifted` and `_shifted` rebuild placements without `size`,
+so a stacked or stitched section reset a sized wall to the part's own dimensions. A taskblock-58 gap,
+fixed here.
+
+### Pass B — seven gaps where the capability existed and the way in did not
+
+- **The ghost appears over an empty tile.** `PartPicker.hit` answers `{}` over bare board — true, and
+  the wrong answer to *"what is under the cursor"* — so the one place an author cannot infer what a
+  click will do was the one place the preview was silent.
+- **The parts-list button toggles the list.** It flipped `collapsed`, which `PartsListModule` never
+  read; the border followed the list correctly while the press did nothing to it.
+- **Map Thing gets its picker.** The selection existed and had no way in, so every click authored the
+  default `Interior` claim.
+- **The readout names the active placement** — the one piece an author needs and cannot infer.
+- **The gizmo's handles were always clickable inside a part** (`Gizmo.hit` has no occlusion in it and
+  the gizmo takes the input walk first); what was missing is that you cannot aim at what you cannot
+  see, so the focused part now draws see-through. `CellGhosting` carries it.
+- **The wall cutout stops keying off the last bout's units**, expressed as *"not drawn, so not cut
+  around"* — which names no mode in `BoardView`.
+- **The default floor is `ship_floor`, not whatever sorts first.** Supervisor's call.
+
+**The last one closed two reports at once.** `surface_part_ids()` is alphabetical and the
+GROUND-attaching parts are `[ramp, ship_floor]`, so the ordinary floor of this game had been `ramp`
+since taskblock-56 — whose own comment said the intent was `ship_floor`. That is both *"auto-placed
+terrain places ramps"* and *"warnings appear when placing `ship_floor`"*: **the warning was correct**,
+about a surface the editor had silently authored on the author's behalf.
+
+### Pass A — the editor's model and view stop disagreeing
+
+Two reports, one defect. `EditorModule._refresh_board` returned silently whenever
+`MapSerializer.to_grid` refused the model, so the view froze at the last board that built while the
+model went on accepting edits — **every later placement invisible, every later delete too.**
+
+- **`to_grid` gains a lenient mode**: draw everything drawable, name the rest. Strict is now
+  *"lenient, refuse at the first skip"* — one traversal, one rule set. The editor renders leniently;
+  the bout path stays strict.
+- **`EditorController.place` refuses a second blocker** on a cell and says why, so the model cannot
+  hold what the board has nowhere to put. Surfaces still stack and broken boards are still
+  authorable — this is the format's limit, not an authoring opinion.
+- **The ghost asks the same refusal the click asks.** Hovering a wall's top face previewed a stacked
+  wall that could never exist, and taskblock-58's *"what appears is what the ghost showed"* test
+  passed throughout **because it compared the ghost against the model and never against the board.**
+- **`EditorPanel`** takes the widgets out of `editor_module.gd`, which hit the 1000-line gate for the
+  third time — predicted in taskblock-58's own report.
+
+
 ### Pass F — parts get real dimensions, and HP follows volume
 
 **`MapPlacement.size` is the size a placement was authored at**, `Vector3.ZERO` meaning "the part's

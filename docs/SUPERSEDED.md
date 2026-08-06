@@ -347,3 +347,64 @@ reversal, not a bug.)*
 `TargetingMode.NONE` → `ActionCatalog.build_untargeted_action` → `OverwatchAction`), so it's no longer
 a stranded, UI-less mechanic — but `_fire`'s self-contained resolver is **still unchanged**. The
 parallel-resolver reversal above remains pending; only reachability changed, not resolution.
+
+## The editor keeps the last good board when the model cannot be built (taskblock-56 F → taskblock-59 A)
+**Was:** `EditorModule._refresh_board`'s own comment argued for it — *"a board that cannot be built
+is left standing and reported, never half-applied: the author sees the last good board plus a
+warning naming the placement that broke it, which is far more use than an empty grid."*
+**Now:** the render is **total**. `MapSerializer.to_grid` gained a lenient mode that draws every
+placement it can and returns the rest as sentences, and the editor uses it; a board that genuinely
+cannot be built empties the surface rather than leaving a stale one.
+**Why:** both halves of the old argument were false. Nothing reported it — the serializer's refusals
+were errors no author ever saw, and `describe_problems`, the list the editor shows, has never had a
+word to say about a duplicate blocker. And a stale board that keeps accepting edits is not a
+conservative fallback, it is the view lying about the model: one unbuildable placement froze the
+screen for the rest of the session, so everything placed afterwards was invisible and so was every
+delete. Recorded as `BR59.01` / `BR59.02`.
+
+## `MapSerializer.to_grid` is strict for every caller (taskblock-53 B → taskblock-59 A)
+**Was:** one strictness. *"What load does reject is a file it cannot honestly turn into a board at
+all... those are not authoring opinions, they are files that do not describe a map."*
+**Now:** two modes over **one traversal**. Strict is exactly *"build leniently, and refuse at the
+first thing that had to be skipped"*, so there is no second loader and no branch only one caller
+exercises. The load and bout paths are unchanged and still strict; the editor's live preview is not.
+**Why:** a load must refuse a file it cannot honestly turn into a board; a preview redrawn after
+every click must not. The strictness was right for the caller it was written for and wrong for the
+one that arrived later.
+
+## The editor's default floor is "the first surface part" (taskblock-56 F → taskblock-59 B)
+**Was:** `last_surface_part = surface_part_ids()[0]`, chosen over naming a part id so no content was
+hardcoded. Its own comment recorded the intent: *"Default part is an ammo rack, it should probably
+be the `ship_floor` part."*
+**Now:** `EditorModule.DEFAULT_FLOOR` names `ship_floor`, falling back to the sort order only when
+the data has no such part.
+**Why:** `surface_part_ids()` is alphabetical and the GROUND-attaching parts are `[ramp,
+ship_floor]`, so "the first surface part" **has meant `ramp` since taskblock-56** — the same sentence
+as the stated intent only while the data happened to sort that way. Two reports came off that one
+line: *"the editor's auto-placed terrain places ramps"*, and *"warnings appear when placing
+`ship_floor`"* — where the warning was **correct**, about a surface the editor had silently authored
+on the author's behalf. Supervisor's call between naming the id, waiting for ramps to retire, and
+tagging it in data.
+
+## A veneer "grows both ways and snaps to what it meets" (taskblock-58 F → taskblock-59 D, partial)
+**Was:** the stated behaviour, and the rule implements it — `span_up` handles an anchor above and
+taskblock-58 tested it.
+**Now:** through a **click**, growing up can never snap. A top-face pick strikes the top of whatever
+is at that cell by definition, and the placement lands on that same cell, so "the nearest surface
+strictly above the face you struck" is empty every time; growing up always takes `UNANCHORED_RISE`.
+Growing **down** is unaffected and snaps exactly as described.
+**Status:** a limit of the gesture, not of the rule — pinned by a named test and queued in
+`PLAN.md`. Reaching the anchored-up case wants a pick that reports *which* surface of a stack was
+struck, which is a picking change with its own consequences, so it is recorded rather than invented
+around.
+
+## Every completion figure this project has recorded (taskblock-46 onward → taskblock-59 F)
+**Was:** the completion rate, `seeds_to_first_win`, `MIN_COMPLETION_RATE` and every number quoted in
+every report since taskblock-46 — all taken on a bout of one labourer against another, both
+`TRAINED`, because `Unit.intelligence_tier` defaulted to `TRAINED` and **nothing set it**.
+**Now:** the measured bout is a mixed 3v3 across three intelligence tiers, and the sampler reports
+per tier as well as mixed.
+**Why:** the tiers were authored capabilities nothing reached. **Every recorded seed changed
+meaning** — a figure from before taskblock-59 Pass E and one after are not comparable, whatever the
+seed. Nothing on disk pinned one (`BoutCorpus` draws from the clock), so there is no artifact to
+regenerate, only past figures to distrust.
