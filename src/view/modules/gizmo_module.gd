@@ -234,6 +234,9 @@ func _drag_to(screen_pos: Vector2) -> void:
 	var axis: int = gizmo.dragging_axis
 	var on_screen: Vector2 = axis_on_screen(axis)
 	if gizmo.subject == Gizmo.SUBJECT_PLACEMENT:
+		if gizmo.handles == Gizmo.Handles.RESIZE:
+			_drag_placement_size(editor, screen_pos, on_screen)
+			return
 		var height: float = gizmo.value_at(screen_pos, on_screen)
 		# Only the up arrow means anything on a placement: a placement's cell is where it is, and
 		# dragging it sideways would be a move the tool does not offer.
@@ -242,6 +245,56 @@ func _drag_to(screen_pos: Vector2) -> void:
 		redraw()
 		return
 	_drag_claim(editor, screen_pos, on_screen)
+
+
+## **The Scale tool, at the size it authors.** taskblock-59 Pass C.
+##
+## The tool's own definition, as the supervisor stated it: *"the handle perpendicular to the face
+## grabbed affects only that face, moving it regardless of its opposite. The handles parallel to the
+## face grow the mirrored way."* So which of the two a drag is depends on the face that was
+## **struck**, not on the handle alone — a Y drag on a top face moves the top, and a Y drag started
+## from a side face grows the thing about its middle.
+##
+## That is what makes the spec sentence *"a top face scales X and Y mirrored"* consistent: a top
+## face's perpendicular axis is Y, so its two **parallel** axes are the grid's X and Y (the world's
+## X and Z), and those are the mirrored pair.
+##
+## **Asymmetric growth needs somewhere to record the shift**, which is what `MapPlacement.offset`
+## is — moving one face and not its opposite moves the centre, and without a field for that the
+## opposite face has to move too.
+func _drag_placement_size(editor: EditorModule, screen_pos: Vector2, on_screen: Vector2) -> void:
+	var here: Array[MapPlacement] = _placements_at(gizmo.cell)
+	if here.is_empty():
+		return
+	var placement: MapPlacement = here[here.size() - 1]
+	var part: Part = DataLibrary.get_part(placement.part_id)
+	if part == null:
+		return
+	var grown: Dictionary = GizmoDrag.grow(
+		PlacedVolume.natural_bounds(part),
+		placement.size,
+		placement.offset,
+		gizmo.dragging_axis,
+		gizmo.dragging_sign,
+		gizmo.amount_at(screen_pos, on_screen),
+		_struck_axis()
+	)
+	if not editor.controller.set_placement_size(gizmo.cell, grown["size"], grown["offset"]):
+		return
+	_show_readout((grown["size"] as Vector3)[gizmo.dragging_axis])
+	editor.refresh()
+	redraw()
+
+
+## Which axis the face the author grabbed faces, or -1 when the click did not resolve off geometry.
+## **The editor's own struck normal**, which Pass A of taskblock-58 already threads to every click —
+## so the Scale tool reads the face the same way the placement path does rather than picking its
+## own.
+func _struck_axis() -> int:
+	var editor: EditorModule = _editor()
+	if editor == null or editor.struck_normal is not Vector3:
+		return -1
+	return Gizmo.axis_of(editor.struck_normal as Vector3)
 
 
 ## The claim half: translate moves the whole box, resize moves one face.
@@ -332,12 +385,44 @@ func redraw() -> void:
 
 
 func _current_handles() -> Array[Dictionary]:
-	if gizmo.handles == Gizmo.Handles.RESIZE:
-		var claim: SectionClaim = _claim()
-		if claim == null or claim.box == null:
-			return [] as Array[Dictionary]
-		return Gizmo.resize_handles(ClaimVolumeModule.world_aabb(claim, Vector2i.ZERO))
-	return Gizmo.translate_handles(gizmo_origin())
+	if gizmo.handles != Gizmo.Handles.RESIZE:
+		return Gizmo.translate_handles(gizmo_origin())
+	if gizmo.subject == Gizmo.SUBJECT_PLACEMENT:
+		# taskblock-59 Pass C: **the Scale tool finally has something to scale.** The handles, the
+		# face picking and `MapPlacement.size` all landed in taskblock-58 and were never connected;
+		# a placement asked for resize handles and got the translate set, so the tool was armed and
+		# inert.
+		return Gizmo.resize_handles(placement_volume())
+	var claim: SectionClaim = _claim()
+	if claim == null or claim.box == null:
+		return [] as Array[Dictionary]
+	return Gizmo.resize_handles(ClaimVolumeModule.world_aabb(claim, Vector2i.ZERO))
+
+
+## The world-space box of the focused placement, as it is currently drawn.
+##
+## **Built from the same `PlacedVolume.boxes_for` the loader bakes into the part**, so the handles
+## sit on the faces the author can see rather than on the part's authored dimensions.
+func placement_volume() -> AABB:
+	var here: Array[MapPlacement] = _placements_at(gizmo.cell)
+	if here.is_empty():
+		return AABB()
+	var placement: MapPlacement = here[here.size() - 1]
+	var part: Part = DataLibrary.get_part(placement.part_id)
+	if part == null:
+		return AABB()
+	var origin := Vector3(
+		float(gizmo.cell.x) * UnitGeometry.CELL_SIZE,
+		placement.height,
+		float(gizmo.cell.y) * UnitGeometry.CELL_SIZE
+	)
+	var volume := AABB()
+	var first: bool = true
+	for box: Box in PlacedVolume.boxes_for(part, placement.size, placement.offset):
+		var one := AABB(origin + box.center - box.size * 0.5, box.size)
+		volume = one if first else volume.merge(one)
+		first = false
+	return volume
 
 
 ## What a drag on `axis` starts from: a placement's height, a translating claim's centre on

@@ -74,6 +74,33 @@ const TERRAIN_TAG: StringName = &"terrain"
 ## `PlacedVolume` is where it is applied, to the boxes and to the hp alike.
 @export var size: Vector3 = Vector3.ZERO
 
+## taskblock-59 Pass C: **how far this placement sits from its cell's centre**, in world units, or
+## `Vector3.ZERO` for "centred where the cell says".
+##
+## **What it is for.** The Scale tool's own definition is that *the handle perpendicular to the face
+## grabbed moves only that face, regardless of its opposite*. Moving one face and not the other
+## moves the thing's centre, and without somewhere to record that shift the opposite face has to
+## move too — which is the mirrored behaviour wearing the asymmetric one's name. This is that
+## somewhere.
+##
+## Zero rather than a sentinel so every map authored before this loads byte-identically — an absent
+## field reads as zero, which reads as unchanged. The same choice `size` made one taskblock earlier
+## and for the same reason.
+##
+## **It rides `size`'s path exactly.** `PlacedVolume.boxes_for` shifts the boxes and `MapSerializer`
+## bakes the result into the part's own `volume`, so every consumer — what `BoardView` draws, what
+## `RayCaster` marches, what `SightSpans` derives, what `DamageResolver` destroys — works on the
+## real geometry with no idea an offset was involved.
+##
+## ## What it deliberately does NOT move
+##
+## **The cell.** `Grid.blockers` is keyed by cell and the pathfinder asks in whole cells, so an
+## offset placement blocks the cell it was authored at whatever its geometry overlaps. That is the
+## identical limit `size` already carries — a 3 x 3 wall is one blocker on one cell while covering
+## nine — and it is stated here rather than left to be discovered, because the two together make it
+## reachable by ordinary authoring rather than only by a hand-written `.tres`.
+@export var offset: Vector3 = Vector3.ZERO
+
 ## Surfaces only: radians, the same convention `Surface.facing` and `Unit.orientation` use.
 ## What makes a ramp directional.
 @export var facing: float = 0.0
@@ -85,7 +112,8 @@ func _init(
 	p_part_id: StringName = &"",
 	p_height: float = 0.0,
 	p_facing: float = 0.0,
-	p_size: Vector3 = Vector3.ZERO
+	p_size: Vector3 = Vector3.ZERO,
+	p_offset: Vector3 = Vector3.ZERO
 ) -> void:
 	cell = p_cell
 	kind = p_kind
@@ -93,3 +121,4 @@ func _init(
 	height = p_height
 	facing = p_facing
 	size = p_size
+	offset = p_offset

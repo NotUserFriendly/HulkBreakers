@@ -218,6 +218,35 @@ func set_height(cell: Vector2i, height: float) -> bool:
 	return true
 
 
+## taskblock-59 Pass C: **the size and offset of the last thing authored at `cell`.** False when the
+## cell is empty.
+##
+## `MapPlacement.size` landed in taskblock-58 — tested, serialised, hp following volume — and
+## **nothing wrote it except a hand-authored `.tres`.** The Scale tool, the gizmo and face picking
+## all landed too; they were simply not connected to the field. This is the connection.
+##
+## **The top placement, not the top surface.** `set_height` deliberately takes only surfaces,
+## because height is a surface's own field and a blocker sits on whatever the cell has. Size is not
+## like that: a wall, a crate and a floor can all be authored at a size, and the thing an author
+## just clicked is the thing they mean.
+##
+## Refuses a size with a non-positive component rather than clamping it. A placement thinner than
+## nothing is not a smaller placement, and `Gizmo.resized_box` already established that a drag which
+## would collapse a volume is refused rather than silently clamped — an author can tell a refusal
+## from a laggy drag, and cannot tell a clamp from one.
+func set_placement_size(cell: Vector2i, size: Vector3, offset: Vector3 = Vector3.ZERO) -> bool:
+	if size.x <= 0.0 or size.y <= 0.0 or size.z <= 0.0:
+		return false
+	var placements_here: Array[MapPlacement] = placements_at(cell)
+	if placements_here.is_empty():
+		return false
+	_push_undo()
+	var top: MapPlacement = placements_at(cell)[placements_here.size() - 1]
+	top.size = size
+	top.offset = offset
+	return true
+
+
 ## The facing half of the same. What makes a ramp directional.
 func set_facing(cell: Vector2i, facing: float) -> bool:
 	var surface: MapPlacement = _top_surface(cell)

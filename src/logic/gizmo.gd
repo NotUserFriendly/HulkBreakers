@@ -286,3 +286,21 @@ static func _placement_at(centre: Vector3, size: Vector3) -> BoxPlacement:
 	# own box in world space — which is exactly what `ray_box_t` reduces to when the basis is
 	# identity.
 	return BoxPlacement.new(null, Box.new(centre, size), Transform3D.IDENTITY)
+
+
+## The axis `normal` points along, or -1 when it points along none of them clearly.
+##
+## taskblock-59 Pass C: **the Scale tool needs to know which face was grabbed**, because the handle
+## perpendicular to that face behaves differently from the ones parallel to it. Shares
+## `FacePlacement`'s own epsilon rather than choosing a second one: the normals both receive come
+## from the same `UnitPicker.ray_box_hit`, so a disagreement about what counts as "along X" would be
+## two answers to one question.
+static func axis_of(normal: Vector3) -> int:
+	var best: int = -1
+	var best_dot: float = FacePlacement.AXIS_EPSILON
+	for axis: int in [AXIS_X, AXIS_Y, AXIS_Z]:
+		var dot: float = absf(normal[axis])
+		if dot > best_dot:
+			best_dot = dot
+			best = axis
+	return best
