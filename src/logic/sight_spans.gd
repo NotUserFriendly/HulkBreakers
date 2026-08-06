@@ -140,6 +140,13 @@ func _absorb(placements: Array[BoxPlacement], root: Part) -> void:
 		# The cells this box FULLY covers on X and Z — never the ones it merely touches. See the
 		# header: a partial cover failing open is the safe direction.
 		#
+		# **taskblock-58 Pass F gave this rule its first real content.** A resized wall can be
+		# thinner than a cell — the taskblock's own example is 3 x 3 x 0.5 — and such a wall blocks
+		# the real march while not registering here. That is the safe direction working as designed,
+		# and it means the field's pre-filter gets weaker as authors use thin geometry. The measure
+		# to watch is how much work the field still saves; the fix, if it stops saving enough, is a
+		# finer occupancy than "fully covers a cell".
+		#
 		# **`_EPSILON` is on the inside of the `ceil`/`floor`, and it is load-bearing.** A wall's
 		# box is exactly one cell across, so both bounds land exactly on an integer — where a
 		# float a hair the wrong side of it flips `ceil` by a whole cell and the wall covers

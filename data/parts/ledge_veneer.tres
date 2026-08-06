@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_lvpart"]
+[ext_resource type="Script" path="res://src/data/box.gd" id="2_lvbox"]
+
+[sub_resource type="Resource" id="Resource_lvvol"]
+script = ExtResource("2_lvbox")
+center = Vector3(0, 0.4, 0.45)
+size = Vector3(1.0, 0.8, 0.1)
+
+[resource]
+script = ExtResource("1_lvpart")
+id = &"ledge_veneer"
+display_name = "Ledge Veneer"
+material = &"steel"
+tags = Array[StringName]([&"terrain"])
+hp_per_volume = 25.0
+volume = Array[ExtResource("2_lvbox")]([SubResource("Resource_lvvol")])
+hp = 2
+max_hp = 2
+is_destructible = true
+salvage_yield = {
+&"metals": 1
+}

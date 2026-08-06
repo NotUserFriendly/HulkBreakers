@@ -1,5 +1,68 @@
 # CHANGELOG.md — What's Been Built
 
+### Pass F — parts get real dimensions, and HP follows volume
+
+**`MapPlacement.size` is the size a placement was authored at**, `Vector3.ZERO` meaning "the part's
+own" — so every map written before this loads byte-identically, because an absent field reads as
+zero and zero reads as unchanged.
+
+**`MapSerializer` applies it at load, and that is the whole integration.** A sized placement becomes
+a `Part` whose `volume` *is* the scaled boxes and whose `hp` is the volume-scaled number, so
+`BoardView`, `RayCaster`, `SightSpans` and `DamageResolver` all work on the real size **with no
+change at all** — there is nothing special about it for them to know. That is what makes *"a
+3 x 3 x 0.5 wall exists as one part"* literally true rather than a convention.
+
+#### HP is linear in volume, and the density is authored
+
+**Linear, on the supervisor's call** against a sub-linear alternative: *"diminishing returns on more
+mass is the opposite of how armor works in real life."* Twice the wall is twice the hp.
+
+**`Part.hp_per_volume` is the knob, in data, and it is opt-in.** A part authoring none keeps its
+`hp` at every size, so nothing in the existing library rebalanced. `wall` authors **25.0**, which is
+exactly its own 60 hp over its own 2.4 m³ — **the default wall is unchanged to the hitpoint**, which
+is what made this safe to turn on. Measured: 60 at natural size, 120 doubled, 30 halved; the
+taskblock's 3 x 3 x 0.5 wall is one box, 4.5 m³, 113 hp.
+
+**Volume sums the boxes, not the bounding extent**, so a part authored as several boxes around a gap
+gets no credit for the gap — `docs/02`'s shield-with-an-eyehole, applied to hp.
+
+#### The support pillar is terrain
+
+It holds things up, and `terrain` became a real tag in Pass D — so this is two lines of data plus a
+density that likewise reproduces its authored 10 hp exactly.
+
+#### The ledge veneer
+
+A flat wall hung off a tile's edge, **sized by what it reaches rather than by an authored height**.
+
+**Two gestures, not one, and the first model was wrong.** Collapsing them into a single
+`span_between(from, above, below)` made a veneer grown *down* from a 2.5 tile with nothing under it
+come out **zero tall**, because "the tile I am hanging from" and "the anchor above me" were the same
+number. The taskblock states two sentences and they are two gestures: grown **up** from a top edge
+(default `UNANCHORED_RISE`, 0.8), grown **down** from a side (falls to the deck, so its height is
+the tile's own). **"Snaps to both" turned out not to be a third case** — it is what growing in a
+direction does when that direction finds something. The wrong model is recorded in the class note so
+it is not re-derived.
+
+**0.8 is deliberately odd and flagged rather than designed.** A veneer coming up at 1.0 would be
+indistinguishable from one an author sized to a level; 0.8 announces itself as a default. The real
+answer is authored ledge art whose own box height should drive it.
+
+**The name stays.** The taskblock calls it provisional and asks for better if one turns up; none
+did. *Skirt* reads as decoration and undersells something with hp that stops shots, and *facade*
+carries "false front", which is exactly what this is not.
+
+#### A Pass C interaction this pass is the first to exercise
+
+**A resized wall can be thinner than a cell, and `SightSpans` only counts boxes that fully cover
+one.** So a 0.5-thick wall blocks the real march and does **not** register in the visibility field's
+pre-filter. That is Pass C's fail-open rule working as designed — the field must never report "no
+line" where one exists — and Pass F is the first content that reaches it. Recorded at the rule
+itself: the consequence is that the pre-filter weakens as authors use thin geometry, the measure to
+watch is how much work it still saves, and the fix if it stops saving enough is a finer occupancy
+than "fully covers a cell".
+
+
 ### Pass E — the parts list moves to the Inspect slot, and placing resolves against the struck face
 
 **`PartsListModule` owns the searchable list** and takes `ModuleSlots.INSPECT_PANEL`, the slot

@@ -64,6 +64,16 @@ const TERRAIN_TAG: StringName = &"terrain"
 ## `Surface.height` carries. Ignored for blockers and field items, which sit on whatever
 ## surface the cell already has.
 @export var height: float = 0.0
+## taskblock-58 Pass F: **the size this placement was authored at**, or `Vector3.ZERO` for "the
+## part's own".
+##
+## *"A 3 x 3 x 0.5 wall exists as one part, and destroying it leaves a hole of a designed size."*
+## Zero rather than `Vector3.ONE` so every map authored before this loads byte-identically — an
+## absent field reads as zero, which reads as unchanged.
+##
+## `PlacedVolume` is where it is applied, to the boxes and to the hp alike.
+@export var size: Vector3 = Vector3.ZERO
+
 ## Surfaces only: radians, the same convention `Surface.facing` and `Unit.orientation` use.
 ## What makes a ramp directional.
 @export var facing: float = 0.0
@@ -74,10 +84,12 @@ func _init(
 	p_kind: StringName = KIND_SURFACE,
 	p_part_id: StringName = &"",
 	p_height: float = 0.0,
-	p_facing: float = 0.0
+	p_facing: float = 0.0,
+	p_size: Vector3 = Vector3.ZERO
 ) -> void:
 	cell = p_cell
 	kind = p_kind
 	part_id = p_part_id
 	height = p_height
 	facing = p_facing
+	size = p_size
