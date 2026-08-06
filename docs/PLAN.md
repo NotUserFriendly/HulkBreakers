@@ -1435,6 +1435,96 @@ authored height, and carry the result as the placement's `size`. **Growing up ve
 is the one thing the click has to decide, and Pass A's struck normal is what decides it — a top face
 grows up, a side face grows down.
 
+### The editor's remaining gestures
+**Needs:** nothing except where noted. **Unblocks:** authoring a board without knowing what the tools
+did not do.
+
+Eight things an author reaches for and does not find. Grouped because they are one session's worth of
+work, not because they are one mechanism.
+
+#### Map things need to be visible
+
+**A claim and a spawn marker are invisible or nearly so**, and they are the whole point of Map Thing. **One debug-menu toggle, on in editor view and forced off in player and spectator view** —
+these are authoring aids and a player must never see them.
+
+- **Claims get floating letters at half transparency** — `EXT` `INT` `ENT` `EMP` `MER` — over the
+  volume they belong to. The colours already distinguish them; the letters make a screenshot readable
+  and survive someone being colour-blind.
+- **Spawn markers become a coin-shaped primitive on the tile**, with the squad letter stamped on it.
+- **`spawn_none` folds into `remove`.** It is an eraser, and there is already an eraser — a marker
+  should be placed and removed the way everything else is. That drops the tool count by one and removes
+  the only verb whose job was undoing another verb.
+
+#### A chance is a part, not a map thing
+
+**It occupies a cell and stops a unit entering it, which is what a part does.** The only thing unusual
+about it is that *at authoring time you do not yet know which part it is* — and that is a property of
+the placement, not a different category. It moves out of Map Thing.
+
+**It needs a model that reads as unresolved.** Distinct from a fixed cover *and* from a claim: a
+pseudo-wireframe, or a rolling gradient. **Not lime** — vibrant lime is the Interior claim, and the two
+greens were deliberately separated once already.
+
+#### Extraction declares a region, not cells
+
+**Extraction cells are not authored and should not be.** They come from `MissionState.team_extraction_
+cells`, and taskblock-59 found the editor re-stamping the *previous bout's* markers onto an authored
+board every redraw — an authored board has no mission, so it correctly draws none now.
+
+**What is missing is a way to say where they land.** A Map Thing declaring *extraction happens in this
+region*, which the mission then resolves into cells at start. That keeps the board authored and the
+mission generative, and it is the same shape as the section vocabulary's other declarations — an
+authoring-time statement that never survives placement.
+
+#### `New Map`
+
+A button that resets to blank, behind a **"have you saved?"** prompt with continue and cancel. Nothing
+else in the editor can lose work; this can.
+
+#### Q and E rotate
+**Needs:** *Blockers need a real transform.*
+
+Counter-clockwise and clockwise. **Shown in Unit Resources under editor view, and only while the
+selected thing can actually rotate** — a permanently-visible hint for something usually unavailable is
+noise.
+
+**Gated deliberately.** taskblock-59 built the veneer's derived facing and reverted it: a placement
+carrying a facing nothing renders is exactly the visual/logic disagreement that block spent its time
+removing. **Rotation needs the render half to exist first**, or it is the same build-and-revert.
+
+#### Uniform walls, and authored ship weakpoints
+
+**The goal is a hulk that cracks.** A full battle — tanks, commandeered artillery off a shipment —
+should be disastrous for the ship it is fought in. Two rules get that, and they pull in opposite
+directions on purpose:
+
+- **Every default wall is 1x1, so failure is predictable everywhere.** A wall broken on one side of the
+  ship breaks exactly like a wall broken on the other. That uniformity is what makes damage readable
+  rather than arbitrary, and **it is why the default height should be short enough that stacking is the
+  normal way to build tall** — a full-height wall that can also be stacked says the same thing twice and
+  hides the failure points stacking exists to create.
+- **An authored weakpoint is one large part**, a *fake* wall at 3 x 5 x 0.2, and it fails **as a single
+  piece**. A stray grenade takes the whole thing and the moment reads as *"there's an opening there
+  now"* rather than *"one more bit of wall broke, like everywhere else."*
+
+**This is what `MapPlacement.size` and the Scale tool are actually for.** Not "walls can be any size" —
+**walls are uniform unless an author deliberately built a failure**, and the scale tool is how that
+deliberation is expressed.
+
+**Not the same thing as `Weak points`** below, which is a *part* exposing a vulnerable window under a
+condition — a reactor venting heat. This is the *ship's* structural weakness, authored into the board.
+Same word, two systems; keep them apart.
+
+#### The veneer cannot snap upward, and there is a fix
+
+**CC's finding:** *a veneer grown upward can never snap — a top-face pick strikes the top of the stack
+by definition, so there is never anything above it. Growing down snaps correctly.*
+
+**The proposed fix: a growing veneer is twice as thick, centred on the edge.** It grows until it strikes
+something above, then **drops to its real thickness and takes the height of what it struck.** Not
+exhaustive — there are edge cases it will not catch — but it handles the common case, and the scale
+tool covers the rest.
+
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
 that cross a room boundary meaningfully.
