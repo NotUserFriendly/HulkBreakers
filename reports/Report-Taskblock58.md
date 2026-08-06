@@ -1,7 +1,7 @@
 # Taskblock 58 Report — Faces, locations, one answerer, and the editor's real tools
 
-**Passes A, B, C, C.2 and D landed, in order; E and F are not started.** All five are on `master`
-and the suite is green (3165 of 3165). C was reviewed on a branch and merged on the supervisor's call; C.2 is the
+**Passes A, B, C, C.2, D and E landed, in order; F is not started.** All six are on `master` and
+the suite is green (3180 of 3180). C was reviewed on a branch and merged on the supervisor's call; C.2 is the
 addendum written after that review, which merges C, takes the wall-clock budget out of
 `test_ai_batch_yield`, and files the pacer defect as its own `PLAN.md` item rather than building it.
 
@@ -100,6 +100,21 @@ placement kind per part instead of the author choosing one alongside it.
 chosen.** `EditorModule` went over the repo's 1000-line gate. The split follows `InspectPanel`'s
 precedent and lands the vocabulary somewhere headlessly testable, but the trigger was a lint gate,
 not a design insight.
+
+**Pass E: `hovered_pick` fires only when something is connected.** It runs `PartPicker.hit` per
+mouse-motion event, which `BR35.01` measured at 1 559 usec on a real board. Gating on the signal's
+own connection count is a small thing that a mode with no ghost should not pay for, and it is the
+sort of cost that is invisible until someone profiles a mode that never wanted the feature.
+
+**Pass E: the ghost draws the real geometry rather than a stand-in.** `UnitGeometry.
+assembly_placements`, the same call `BoardView` makes for an actual placement. A proxy shape would
+have been simpler and would have had its own reasons to be wrong, which is precisely what *"a
+placement that surprises"* means.
+
+**Pass E: `editor_module.gd` hit the 1000-line gate a second time.** Pass D moved the tool
+vocabulary to `EditorTools`; this pass moved `target_from` to `FacePlacement`. Both are better homes
+than they left, and both moves were **triggered by a lint gate rather than by noticing** — worth
+recording as a pattern, since a third one is likely and the file is near the limit again.
 
 ## Tests that failed, then were corrected
 

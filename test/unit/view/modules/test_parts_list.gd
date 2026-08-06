@@ -121,3 +121,116 @@ func test_load_opens_the_same_widget() -> void:
 
 	assert_same(bar.list, placing, "Load built a second list instead of reusing the one")
 	assert_true(parts.is_showing(), "and it opens in the parts list's own slot")
+
+
+func _ghost(overlay: ControlOverlay) -> PlacementGhostModule:
+	return overlay.module(&"placement_ghost") as PlacementGhostModule
+
+
+func _picking(overlay: ControlOverlay) -> BoardInspectModule:
+	return overlay.module(&"board_inspect") as BoardInspectModule
+
+
+## **THE PASS'S REAL ACCEPTANCE**: *"what appears is what the ghost showed — a placement that
+## surprises is the defect this exists to prevent."*
+##
+## Asserted as the ghost's own transform against the authored placement's, both read back rather
+## than re-derived. It cannot fail while the wiring is real, because `EditorModule.placement_target`
+## is the single answer both of them ask — which is the point: the test checks the wiring, not that
+## two formulas agree.
+func test_what_the_ghost_showed_is_what_gets_placed() -> void:
+	var overlay: ControlOverlay = _overlay()
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	var ghost: PlacementGhostModule = _ghost(overlay)
+	editor.active_tool = &"place_terrain"
+	editor.selected_part = &"wall"
+
+	# A wall already standing, so there is a face to click and a top to land on.
+	editor.struck_normal = null
+	editor.controller.place(Vector2i(3, 3), &"wall", MapPlacement.KIND_BLOCKER, 0.0)
+
+	# Hover its top face: the pick the board picker would report.
+	_picking(overlay).hovered_pick.emit(
+		{"unit": null, "part": null, "cell": Vector2i(3, 3), "t": 1.0, "normal": Vector3.UP}
+	)
+
+	assert_true(ghost.is_showing(), "nothing was previewed")
+	var previewed: Dictionary = ghost.target.duplicate()
+	var shown: Array[Transform3D] = ghost.ghost_transforms()
+	assert_false(shown.is_empty(), "the ghost drew no boxes")
+
+	# Now the click, through the real router.
+	(
+		_picking(overlay)
+		. board_clicked
+		. emit(
+			{
+				"kind": Enums.HitKind.PART,
+				"unit": null,
+				"part": null,
+				"cell": Vector2i(3, 3),
+				"normal": Vector3.UP,
+			}
+		)
+	)
+
+	var authored: MapPlacement = null
+	for placement: MapPlacement in editor.controller.placements_at(previewed["cell"]):
+		if placement.part_id == &"wall" and is_equal_approx(placement.height, previewed["height"]):
+			authored = placement
+	gut.p(
+		(
+			"  ghost at %s h=%.2f -> authored %s"
+			% [previewed["cell"], previewed["height"], "yes" if authored != null else "NO"]
+		)
+	)
+	assert_not_null(authored, "the click did not author where the ghost said it would")
+
+	# And the drawn boxes sit exactly where that placement's own geometry does.
+	var real: Array[BoxPlacement] = UnitGeometry.assembly_placements(
+		DataLibrary.get_part(&"wall"), previewed["cell"], editor.facing(), null, authored.height
+	)
+	assert_eq(shown.size(), real.size(), "the ghost drew a different number of boxes")
+	for i in range(mini(shown.size(), real.size())):
+		var expected: Transform3D = real[i].transform.translated_local(real[i].box.center)
+		assert_almost_eq(
+			shown[i].origin.distance_to(expected.origin),
+			0.0,
+			0.0001,
+			"ghost box %d is not where the placement is" % i
+		)
+
+
+## A ghost that lingered would be describing a click that lands somewhere else — the surprise this
+## exists to prevent rather than a cosmetic lag.
+func test_the_ghost_clears_when_there_is_nothing_to_preview() -> void:
+	var overlay: ControlOverlay = _overlay()
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	var ghost: PlacementGhostModule = _ghost(overlay)
+	editor.active_tool = &"place_terrain"
+	editor.selected_part = &"wall"
+
+	_picking(overlay).hovered_pick.emit(
+		{"unit": null, "part": null, "cell": Vector2i(2, 2), "t": 1.0, "normal": Vector3.UP}
+	)
+	assert_true(ghost.is_showing(), "sanity: something was previewed")
+
+	_picking(overlay).hovered_pick.emit({})
+
+	assert_false(ghost.is_showing(), "the cursor left the board and the ghost stayed")
+	assert_true(ghost.target.is_empty(), "and it still claims a target")
+
+
+## Nothing to preview under a verb that places nothing, so nothing is drawn.
+func test_no_ghost_under_a_tool_that_places_nothing() -> void:
+	var overlay: ControlOverlay = _overlay()
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	var ghost: PlacementGhostModule = _ghost(overlay)
+	editor.selected_part = &"wall"
+
+	for tool: StringName in [&"select", &"scale", &"delete", &"place_map_thing"]:
+		editor.active_tool = tool
+		_picking(overlay).hovered_pick.emit(
+			{"unit": null, "part": null, "cell": Vector2i(2, 2), "t": 1.0, "normal": Vector3.UP}
+		)
+		assert_false(ghost.is_showing(), "%s previewed a placement it will not make" % tool)
