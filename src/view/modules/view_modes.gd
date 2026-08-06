@@ -218,6 +218,9 @@ const EDITOR_MODULES: Array[StringName] = [
 	# (`PartsListModule` closes Inspect when it opens), but declaring the order makes the shared
 	# slot's outcome stated rather than incidental.
 	&"parts_list",
+	# taskblock-58 Pass E: the ghost. A 3D preview rather than a UI surface, so it claims no slot
+	# and collides with nothing — the same standing `claim_volumes` has.
+	&"placement_ghost",
 	&"gizmo",
 	&"board_inspect",
 	&"combat_log",

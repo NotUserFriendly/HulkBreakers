@@ -33,6 +33,18 @@ signal board_clicked(hit: Dictionary)
 ## `cell` is `null` when the cursor is off the board entirely, which the readout shows as blank
 ## rather than as the last cell it saw.
 signal hovered_cell(cell: Variant)
+
+## taskblock-58 Pass E: **the whole pick under the cursor**, carrying the struck face.
+##
+## `hovered_cell` answers "which cell", which is what a coordinate readout wants and all anything
+## wanted until a ghost had to know *which face* of what is there. Emitted as `PartPicker.hit`'s own
+## dict — `{unit, part, cell, t, normal}` — or empty when the cursor is over nothing, so a listener
+## can tell "no geometry" from "geometry with no face", which are different situations.
+##
+## **A second signal rather than a wider `hovered_cell`**: that one is connected by
+## `EditorCoordsModule` and means something narrower, and widening it would make every listener
+## take a dict to read a coordinate.
+signal hovered_pick(pick: Dictionary)
 ## Emitted when a click opened the inspect panel, so a mode that paces a bout can pause it.
 signal inspect_opened
 
@@ -202,6 +214,13 @@ func _update_hover(screen_pos: Vector2) -> void:
 	# before the highlight so a listener sees the move even in a mode with no unit views at all —
 	# which the editor is, until a board is loaded into it.
 	_emit_hovered_cell(from, dir, battle.combat_state.grid)
+	# taskblock-58 Pass E: the full pick, for a listener that needs the struck face. **Only when
+	# somebody is connected** — this is `PartPicker.hit` on every motion event, which `BR35.01`
+	# measured at 1 559 usec on a real board, and a mode with no ghost has no reason to pay it.
+	if hovered_pick.get_connections().size() > 0:
+		hovered_pick.emit(
+			PartPicker.hit(battle.combat_state.units, battle.combat_state.grid, from, dir)
+		)
 	var hit: Dictionary = UnitPicker.hit(battle.combat_state.units, from, dir)
 	var hovered_unit: Unit = hit.unit as Unit if not hit.is_empty() else null
 	var hovered_part: Part = hit.part as Part if not hit.is_empty() else null

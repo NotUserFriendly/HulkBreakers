@@ -115,7 +115,7 @@ func _bar(overlay: ControlOverlay) -> EditorBarModule:
 ## **THE CENTRAL CLAIM, and it has moved from one module to five.**
 ##
 ## Pass F's answer was "a module set plus one authoring module". taskblock-57 Passes G and H took it
-## to four and taskblock-58 Pass E takes it to five, and **every one of them is named outright by
+## to four and taskblock-58 Pass E takes it to six, and **every one of them is named outright by
 ## the taskblock that added it** rather than arriving as a nameless increment:
 ##
 ## | module | the sentence that asked for it |
@@ -124,19 +124,20 @@ func _bar(overlay: ControlOverlay) -> EditorBarModule:
 ## | `editor_coords` | *"a coordinate readout replaces Unit Resources in editor mode"* |
 ## | `gizmo` | *"a 3D CAD-style handle set"* |
 ## | `parts_list` | *"every Place tool opens a parts list on the right, in the Inspect slot"* |
+## | `placement_ghost` | *"a ghost so the result is never a surprise"* |
 ##
 ## **The number going up is not the failure this guards against.** What it catches is a module
 ## arriving *unnamed* — an editor-only surface nobody asked for, or a bespoke copy of a panel that
 ## already exists. `parts_list` is neither: it is a widget that already existed, moved out of
-## `EditorBarModule` into a module that can claim a slot, which is why the count rose without
-## anything new being written.
+## `EditorBarModule` into a module that can claim a slot. `placement_ghost` is genuinely new code,
+## and it is the one thing Pass E's acceptance is stated against, so it arrives named.
 ##
 ## **Still counted rather than stated**, and against a denominator that stayed honest: `ui_buttons`
 ## and `announcements` also arrived after Pass F, and are excluded because they were built for the
-## battle surface — see `MODULES_BUILT_FOR_OTHER_SURFACES`. A sixth editor-only module reports the
+## battle surface — see `MODULES_BUILT_FOR_OTHER_SURFACES`. A seventh editor-only module reports the
 ## real number and fails, which is the property that made this test worth writing and is unchanged
-## by the number being five.
-func test_the_editor_is_a_module_set_plus_exactly_five_new_modules() -> void:
+## by the number being six.
+func test_the_editor_is_a_module_set_plus_exactly_six_new_modules() -> void:
 	var written_for_the_editor: Array[StringName] = []
 	for id: StringName in ViewModes.editor().modules:
 		if MODULES_BEFORE_PASS_F.has(id) or MODULES_BUILT_FOR_OTHER_SURFACES.has(id):
@@ -147,8 +148,18 @@ func test_the_editor_is_a_module_set_plus_exactly_five_new_modules() -> void:
 	gut.p("written for it: %s" % ", ".join(written_for_the_editor))
 	assert_eq(
 		written_for_the_editor,
-		[&"editor_bar", &"parts_list", &"gizmo", &"editor", &"editor_coords"] as Array[StringName],
-		"the authoring module, the bar, the parts list, the gizmo and the readout, and no more"
+		(
+			[
+				&"editor_bar",
+				&"parts_list",
+				&"placement_ghost",
+				&"gizmo",
+				&"editor",
+				&"editor_coords"
+			]
+			as Array[StringName]
+		),
+		"the authoring module, the bar, the list, the ghost, the gizmo and the readout, and no more"
 	)
 
 

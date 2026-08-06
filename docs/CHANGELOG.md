@@ -1,5 +1,56 @@
 # CHANGELOG.md — What's Been Built
 
+### Pass E — the parts list moves to the Inspect slot, and placing resolves against the struck face
+
+**`PartsListModule` owns the searchable list** and takes `ModuleSlots.INSPECT_PANEL`, the slot
+`InspectModule` uses. The taskblock justified the share with *"while placing you cannot be
+selecting"* — Pass D turned that from a claim about the author's intent into a claim about the code,
+since `select` and the three `place_*` verbs are one vocabulary and `active_tool` holds exactly one.
+The module closes Inspect when it opens, and the test asserts the two are **never** both up rather
+than that they usually are not.
+
+**One widget, two callers**, on the supervisor's call: the place verbs and Load open the same list.
+`EditorBarModule` borrows it rather than building one, and connects the pick in `link()`, which is
+the seam where every module in the mode is known to exist.
+
+**"Toggleable from UI buttons" came for free.** `INSPECT_PANEL` is edge-pinned, so the module
+reports itself collapsible and `UiButtonsModule` builds the toggle by sweeping for exactly that —
+the fourth time asking for a toggle has been answered by a `preferred_slot()`, with nothing in
+either file naming the other.
+
+#### What appears is what the ghost showed, by construction
+
+`FacePlacement.target_from` is **one function**, called by the preview to decide where to draw and
+by the click to decide where to author. A ghost that computed a landing spot and a placement that
+computed one would be two answers to a single question; there is one, so they cannot disagree. The
+test comparing the ghost's transform to the placement's checks that the wiring is live, not that two
+formulas match.
+
+- **A side face steps into the cell the normal points into**, not the cell the ray crossed. Those
+  coincide for a wall filling its cell and diverge for anything narrower, and the normal is the
+  honest one — it is the face that was looked at.
+- **A diagonal normal resolves to one orthogonal step.** `GridPlacement`'s grammar has no corner
+  attachment, so a diagonal target would be a placement with no neighbour to attach to.
+- **It reads authored `MapPlacement` rows, not a built `Grid`.** The first cut called
+  `EditorController.to_grid()`, which rebuilds the whole board — a per-frame whole-map serialization
+  to answer a question about one cell, with a ghost redrawn on every mouse move.
+
+**`PlacementGhostModule` draws the real thing in a different colour**, from the same
+`UnitGeometry.assembly_placements` call `BoardView` uses for an actual placement, rather than a
+stand-in shape with its own reasons to be wrong.
+
+**`BoardInspectModule.hovered_pick` is a second signal, not a widened `hovered_cell`.** The existing
+one answers "which cell" and is what `EditorCoordsModule` wants; widening it would make every
+listener take a dict to read a coordinate. **It fires only when something is connected**, because it
+runs `PartPicker.hit` per motion event — `BR35.01` measured that at 1 559 usec on a real board, and
+a mode with no ghost has no reason to pay it.
+
+**`editor_module.gd` hit the 1000-line gate twice in this taskblock**, which is what moved the tool
+vocabulary to `EditorTools` in Pass D and `target_from` to `FacePlacement` here. Both landed in
+better homes than they left; the trigger was a lint gate rather than a design insight, and that is
+worth saying plainly.
+
+
 ### Pass D — ten editor verbs become seven, grouped by what a click means
 
 The old list was grouped by what a click *touched* — a verb per marker, a verb per flag — which is
