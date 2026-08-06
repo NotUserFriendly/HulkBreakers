@@ -281,7 +281,7 @@ func test_the_editor_key_is_listed_in_the_bindings_legend() -> void:
 ## module adds** — the verb it calls is `EditorController`'s, which is tested with no scene at all.
 func test_a_board_click_authors_through_the_active_tool() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.active_tool = &"place"
+	editor.active_tool = &"place_terrain"
 	editor.selected_part = &"ship_floor"
 
 	assert_true(editor.apply_tool_at(Vector2i(2, 2)))
@@ -295,22 +295,31 @@ func test_every_tool_the_bar_offers_is_one_the_router_answers() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
 	editor.selected_part = &"ship_floor"
 	# A floor first, so the tools that need a surface under them have one.
-	editor.active_tool = &"place"
+	editor.active_tool = &"place_terrain"
 	editor.apply_tool_at(Vector2i(1, 1))
 
-	for tool: StringName in EditorModule.TOOLS:
+	for tool: StringName in EditorTools.TOOLS:
 		editor.active_tool = tool
 		assert_eq(editor.active_tool, tool, "the bar and the router agree on %s" % tool)
 		assert_true(editor.apply_tool_at(Vector2i(1, 1)), "%s did nothing at all" % tool)
 
 
-func test_the_spawn_tools_mark_and_unmark_a_cell() -> void:
+## taskblock-58 Pass D: **the spawn verbs are reachable through *Place Map Thing* and set the same
+## markers.** They were three entries in the tool vocabulary and are three entries in `MAP_THINGS`;
+## what a click does is unchanged, which is the point of asserting it here rather than trusting the
+## reorganisation.
+func test_the_spawn_markers_are_placed_as_map_things() -> void:
 	var editor: EditorModule = _editor(_editor_overlay())
-	editor.active_tool = &"spawn_a"
+	editor.active_tool = &"place_map_thing"
+	editor.selected_map_thing = &"spawn_a"
 	editor.apply_tool_at(Vector2i(1, 1))
 	assert_eq(editor.controller.spawn_markers.get(Vector2i(1, 1)), Enums.SpawnMarker.SPAWN_A)
 
-	editor.active_tool = &"spawn_none"
+	editor.selected_map_thing = &"spawn_b"
+	editor.apply_tool_at(Vector2i(2, 1))
+	assert_eq(editor.controller.spawn_markers.get(Vector2i(2, 1)), Enums.SpawnMarker.SPAWN_B)
+
+	editor.selected_map_thing = &"spawn_none"
 	editor.apply_tool_at(Vector2i(1, 1))
 	assert_false(editor.controller.spawn_markers.has(Vector2i(1, 1)))
 
@@ -320,7 +329,7 @@ func test_the_spawn_tools_mark_and_unmark_a_cell() -> void:
 ## that the verb is gone from the vocabulary, since the buttons are generated from it.
 func test_the_sight_blocking_tool_is_gone_from_the_vocabulary() -> void:
 	assert_does_not_have(
-		EditorModule.TOOLS, &"sight_blocking", "the verb retired with the array it authored"
+		EditorTools.TOOLS, &"sight_blocking", "the verb retired with the array it authored"
 	)
 
 
@@ -360,7 +369,8 @@ func test_authoring_a_claim_draws_it_through_the_claim_module() -> void:
 	assert_not_null(volumes, "the editor mode mounts the claim module")
 	assert_eq(volumes.boxes.size(), 0, "sanity: nothing drawn before anything is authored")
 
-	editor.active_tool = &"claim"
+	editor.active_tool = &"place_map_thing"
+	editor.selected_map_thing = &"claim"
 	editor.selected_claim_kind = SectionClaim.KIND_INTERIOR
 	editor.apply_tool_at(Vector2i(3, 2))
 
@@ -374,7 +384,8 @@ func test_removing_the_claim_stops_drawing_it() -> void:
 	var overlay: ControlOverlay = _editor_overlay()
 	var editor: EditorModule = _editor(overlay)
 	var volumes: ClaimVolumeModule = overlay.module(&"claim_volumes") as ClaimVolumeModule
-	editor.active_tool = &"claim"
+	editor.active_tool = &"place_map_thing"
+	editor.selected_map_thing = &"claim"
 	editor.apply_tool_at(Vector2i(1, 1))
 	assert_eq(volumes.boxes.size(), 1)
 
@@ -509,3 +520,38 @@ func test_authoring_replaces_the_live_board_with_what_was_authored() -> void:
 		true,
 		"and the authored floor is really on it"
 	)
+
+
+## taskblock-58 Pass D: **a chance is a thing you place, not a verb.** It was `&"chance"` in the
+## tool vocabulary and is an entry in `MAP_THINGS` now — *"a generic this-could-be-any-cover item
+## with defaults, and selecting it lets you change them: which categories, what chance."*
+##
+## The round trip is what the pass asks for: what the widgets said goes in, and comes back out of
+## the authored section with its categories and its value intact.
+func test_a_chance_placed_as_a_map_thing_round_trips_its_tag_and_value() -> void:
+	var editor: EditorModule = _editor(_editor_overlay())
+	editor.chance_tag_field.text = "barrel"
+	editor.chance_field.value = 0.35
+	editor.active_tool = &"place_map_thing"
+	editor.selected_map_thing = &"chance"
+
+	assert_true(editor.apply_tool_at(Vector2i(4, 3)), "placing a chance did nothing")
+
+	var declared: SectionSpawn = null
+	for spawn: SectionSpawn in editor.controller.spawns:
+		if spawn != null and spawn.cell == Vector2i(4, 3):
+			declared = spawn
+	assert_not_null(declared, "no chance was recorded at the clicked cell")
+	assert_eq(declared.kind, SectionSpawn.KIND_CLUTTER)
+	assert_eq(declared.tag, &"barrel", "the categories it was given")
+	assert_almost_eq(declared.chance, 0.35, 0.0001, "and the value")
+
+	# And it survives the section it is saved into, which is where a placed thing has to end up.
+	var section: SectionFile = editor.controller.to_section_file()
+	var saved: SectionSpawn = null
+	for spawn: SectionSpawn in section.spawns:
+		if spawn != null and spawn.cell == Vector2i(4, 3):
+			saved = spawn
+	assert_not_null(saved, "the chance did not reach the saved section")
+	assert_eq(saved.tag, &"barrel")
+	assert_almost_eq(saved.chance, 0.35, 0.0001)

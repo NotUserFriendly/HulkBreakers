@@ -37,6 +37,24 @@ const KIND_BLOCKER: StringName = &"blocker"
 ## `Grid.field_items` — loose parts lying on the ground, an ordered array per cell.
 const KIND_FIELD_ITEM: StringName = &"field_item"
 
+## taskblock-58 Pass D: **a part tagged this is the board, rather than something standing on it.**
+##
+## Walls and floors alike, which is the point: terrain is a property of the *part*, and it cuts
+## across `kind` — `ship_floor` lands as a `KIND_SURFACE` and `wall` as a `KIND_BLOCKER`, and an
+## author placing either is doing the same thing. The editor's *Place Terrain* tool is what reads
+## it, and the kind is then derived from the part rather than chosen alongside it.
+##
+## **An open tag on the part, so a new terrain type is a `.tres`** — the standing rule. It lives
+## here rather than on `Surface`, which holds `walkable`/`ramp`/`ladder`: those are all facts about
+## a *placed surface*, and terrain is a fact about board authoring that a blocker can carry too.
+##
+## **What this deliberately does not answer** is which of the remaining parts belong on a board at
+## all. `EditorModule.placeable_part_ids`'s own header has that limit — `DataLibrary.parts_pool()`
+## is every `Part`, arms and weapons included, and nothing in the data separates a crate from a
+## forearm. Pass D splits the placing verbs by what the click *means*; it does not close that gap,
+## and *Place Big Part* and *Place Part* still offer more than they should.
+const TERRAIN_TAG: StringName = &"terrain"
+
 @export var cell: Vector2i = Vector2i.ZERO
 @export var kind: StringName = KIND_SURFACE
 ## A `DataLibrary` part id. Unknown ids are a load error, never a silently skipped row —

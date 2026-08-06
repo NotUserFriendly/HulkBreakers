@@ -97,7 +97,7 @@ func test_the_readout_tracks_the_cell_and_height_under_the_cursor() -> void:
 	var coords: EditorCoordsModule = _coords(overlay)
 	editor.selected_part = &"ship_floor"
 	editor.selected_kind = MapPlacement.KIND_SURFACE
-	editor.active_tool = &"place"
+	editor.active_tool = &"place_terrain"
 	editor.controller.place(Vector2i(3, 2), &"ship_floor", MapPlacement.KIND_SURFACE, 0.6)
 	editor.refresh()
 
@@ -178,7 +178,7 @@ func test_folding_the_details_leaves_the_authoring_verbs_working() -> void:
 	editor.collapsed = true
 
 	editor.selected_part = &"ship_floor"
-	editor.active_tool = &"place"
+	editor.active_tool = &"place_terrain"
 
 	assert_true(editor.apply_tool_at(Vector2i(1, 1)), "a folded panel stopped the board authoring")
 	assert_eq(editor.controller.placements_at(Vector2i(1, 1)).size(), 1)
@@ -303,38 +303,41 @@ func test_the_bar_highlights_the_current_tool() -> void:
 	var editor: EditorModule = _editor(overlay)
 	var bar: EditorBarModule = _bar(overlay)
 
-	editor.active_tool = &"height"
+	editor.active_tool = &"scale"
 
-	assert_eq((bar.tool_buttons[&"height"] as Button).modulate, HulkTheme.HIGHLIGHT)
+	assert_eq((bar.tool_buttons[&"scale"] as Button).modulate, HulkTheme.HIGHLIGHT)
 	assert_ne(
-		(bar.tool_buttons[&"remove"] as Button).modulate,
+		(bar.tool_buttons[&"delete"] as Button).modulate,
 		HulkTheme.HIGHLIGHT,
 		"two tools are lit at once -- the highlight says nothing"
 	)
 
 
-## **The `place` tool lights its own kind's button.** There is no "Place" button on this bar — the
-## three kind buttons are what `place` is — so the lit one must be the kind the next click makes.
-func test_placing_lights_the_kind_button_that_says_what_will_be_placed() -> void:
+## **The highlight says what the next click will author**, and it keeps saying it when the author
+## switches between placing verbs.
+##
+## taskblock-58 Pass D: this used to be about the three placement-kind buttons, and its hard case
+## was *switching kind while the tool stayed `place`* — `active_tool` did not change, so the setter
+## emitted nothing and the highlight could stick to the previous kind. **That trap is unreachable
+## now**: the placing verbs are tools, so changing what will be placed changes `active_tool` and the
+## signal fires. The property is kept under test; the trap it guarded is gone by construction.
+func test_the_highlight_follows_the_placing_verb_that_will_author() -> void:
 	var overlay: ControlOverlay = _overlay()
 	var bar: EditorBarModule = _bar(overlay)
 
-	(bar.kind_buttons[MapPlacement.KIND_SURFACE] as Button).pressed.emit()
+	(bar.tool_buttons[&"place_terrain"] as Button).pressed.emit()
 	bar.list.chosen.emit(&"ship_floor")
 
-	assert_eq((bar.kind_buttons[MapPlacement.KIND_SURFACE] as Button).modulate, HulkTheme.HIGHLIGHT)
-	assert_ne((bar.kind_buttons[MapPlacement.KIND_BLOCKER] as Button).modulate, HulkTheme.HIGHLIGHT)
+	assert_eq((bar.tool_buttons[&"place_terrain"] as Button).modulate, HulkTheme.HIGHLIGHT)
+	assert_ne((bar.tool_buttons[&"place_big_part"] as Button).modulate, HulkTheme.HIGHLIGHT)
 
-	# **Switching kind while the tool stays `place`** — the case the setter alone cannot catch,
-	# because `active_tool` does not change and therefore emits nothing.
-	(bar.kind_buttons[MapPlacement.KIND_BLOCKER] as Button).pressed.emit()
-	bar.list.chosen.emit(&"ship_floor")
+	(bar.tool_buttons[&"place_big_part"] as Button).pressed.emit()
 
-	assert_eq((bar.kind_buttons[MapPlacement.KIND_BLOCKER] as Button).modulate, HulkTheme.HIGHLIGHT)
+	assert_eq((bar.tool_buttons[&"place_big_part"] as Button).modulate, HulkTheme.HIGHLIGHT)
 	assert_ne(
-		(bar.kind_buttons[MapPlacement.KIND_SURFACE] as Button).modulate,
+		(bar.tool_buttons[&"place_terrain"] as Button).modulate,
 		HulkTheme.HIGHLIGHT,
-		"the highlight stayed on the previous kind -- it says what will NOT be placed"
+		"the highlight stayed on the previous verb -- it says what will NOT be placed"
 	)
 
 
@@ -343,9 +346,9 @@ func test_the_default_tool_is_already_highlighted_before_anything_is_pressed() -
 	var overlay: ControlOverlay = _overlay()
 	var bar: EditorBarModule = _bar(overlay)
 	var editor: EditorModule = _editor(overlay)
-	assert_eq(editor.active_tool, &"place", "sanity: a fresh editor places")
+	assert_eq(editor.active_tool, &"place_terrain", "sanity: a fresh editor places")
 	assert_eq(
-		(bar.kind_buttons[editor.selected_kind] as Button).modulate,
+		(bar.tool_buttons[editor.active_tool] as Button).modulate,
 		HulkTheme.HIGHLIGHT,
 		"nothing is lit until the author presses something"
 	)

@@ -16,7 +16,7 @@ extends BarModule
 ##
 ## ## The tool buttons are generated, never listed
 ##
-## `EditorModule.TOOLS` is the vocabulary and every entry gets a button, so a tenth verb added to
+## `EditorTools.TOOLS` is the vocabulary and every entry gets a button, so a tenth verb added to
 ## that list grows a button the day it is added — the standing "content is data, not a code edit"
 ## rule applied to the authoring surface. **The labels come from the ids** (`Sight Blocking`,
 ## `Spawn A`) rather than from a table, for the same reason.
@@ -49,6 +49,20 @@ extends BarModule
 
 ## What a placement kind is called on a button. **An open table with a derived fallback**: a kind
 ## nobody named here reads as its own id, capitalised, rather than not appearing.
+## taskblock-58 Pass D: **tool id -> what the button says.** The three placement-kind labels this
+## replaced were `Tiles` / `Cover` / `Place Items`, which named what was being placed; these name
+## the click, which is what the reorganisation is for. Absent ids fall back to the id capitalised,
+## so an eighth tool still gets a readable button rather than none.
+const TOOL_LABELS: Dictionary = {
+	&"select": "Select",
+	&"place_terrain": "Terrain",
+	&"scale": "Scale",
+	&"delete": "Delete",
+	&"place_map_thing": "Map Thing",
+	&"place_big_part": "Big Part",
+	&"place_part": "Part",
+}
+
 const PLACEMENT_LABELS: Dictionary = {
 	MapPlacement.KIND_SURFACE: "Tiles",
 	MapPlacement.KIND_BLOCKER: "Cover",
@@ -67,8 +81,6 @@ const FILE_BUTTONS: Array = [
 
 ## Tool id -> its button, so the highlight can find one and a test can press one.
 var tool_buttons: Dictionary = {}
-## Placement kind -> its button. `place` has one per kind; see the class note.
-var kind_buttons: Dictionary = {}
 ## Label -> button, for the file row.
 var file_buttons: Dictionary = {}
 var load_button: Button = null
@@ -77,10 +89,10 @@ var load_button: Button = null
 ## back what it offers instead of re-deriving it.
 var list: SearchableList = null
 
-## Which kind the next pick from `list` becomes, or `&""` when the list is picking a board to load.
-## **Set by the button that opened the list**, which is the whole of how one widget serves two
+## Which place tool the next pick from `list` arms, or `&""` when the list is picking a board to
+## load. **Set by the button that opened the list**, which is the whole of how one widget serves two
 ## callers without either of them growing a mode flag.
-var _pending_kind: StringName = &""
+var _pending_tool: StringName = &""
 
 
 func module_id() -> StringName:
@@ -109,16 +121,11 @@ func link() -> void:
 
 ## Highlights whichever button arms `tool`, and dims the rest.
 ##
-## **The `place` tool highlights its own kind's button**, not a "Place" button that does not exist —
-## the three kind buttons are what `place` is on this bar, so the one that is lit is the one that
-## says what the next click will author.
+## taskblock-58 Pass D: **one lit button, because there is one armed tool.** This used to also light
+## a placement-kind button whenever `place` was armed, since `place` had no button of its own.
 func _on_tool_changed(tool: StringName) -> void:
-	var editor: EditorModule = _editor()
-	var kind: StringName = editor.selected_kind if editor != null else &""
 	for id: StringName in tool_buttons:
 		_light(tool_buttons[id] as Button, id == tool)
-	for placement_kind: StringName in kind_buttons:
-		_light(kind_buttons[placement_kind] as Button, tool == &"place" and placement_kind == kind)
 
 
 func _light(button: Button, lit: bool) -> void:
@@ -130,17 +137,12 @@ func _fill_bar(column: VBoxContainer) -> void:
 	tools.mouse_filter = Control.MOUSE_FILTER_STOP
 	column.add_child(tools)
 
-	for kind: StringName in EditorModule.PLACEMENT_KINDS:
-		kind_buttons[kind] = _button(
-			tools, _label_for_kind(kind), _on_place_kind_pressed.bind(kind)
-		)
-
-	for tool: StringName in EditorModule.TOOLS:
-		# `place` is the three kind buttons above; a single unqualified "Place" would author with
-		# whichever kind was last used, which is the kind of hidden state an editor cannot afford.
-		if tool == &"place":
-			continue
-		tool_buttons[tool] = _button(tools, String(tool).capitalize(), _on_tool_pressed.bind(tool))
+	# taskblock-58 Pass D: **one button per tool, and no special case.** The three placement-kind
+	# buttons that used to sit here were `place`'s stand-ins — a single unqualified "Place" would
+	# have authored with whichever kind was last used. The three placing verbs are real tools now,
+	# so the row is generated straight off the vocabulary with nothing skipped.
+	for tool: StringName in EditorTools.TOOLS:
+		tool_buttons[tool] = _button(tools, _label_for(tool), _on_tool_pressed.bind(tool))
 
 	var files := HBoxContainer.new()
 	files.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -176,27 +178,30 @@ func _build_list() -> void:
 
 ## Opens the parts list for `kind`. The pick is what actually arms the tool — opening the list
 ## changes nothing, so an author who opens it and closes it again has not silently switched tools.
-func _on_place_kind_pressed(kind: StringName) -> void:
+## Arming a tool, and — for the three that put a part down — opening the list of what it can put.
+##
+## taskblock-58 Pass D: **the tool is armed either way**, which is the difference from the old kind
+## buttons. Those opened a list and armed nothing until a pick was made; a Place tool is a tool, so
+## pressing it selects it, and the list is how you say *which* part rather than *whether* to place.
+func _on_tool_pressed(tool: StringName) -> void:
 	var editor: EditorModule = _editor()
 	if editor == null:
 		return
-	_pending_kind = kind
-	# **Offered for this kind**, which the data can only narrow for surfaces — see
-	# `EditorModule.placeable_part_ids`.
-	list.open("%s — place on a tile" % _label_for_kind(kind), editor.placeable_part_ids(kind))
-
-
-func _on_tool_pressed(tool: StringName) -> void:
-	var editor: EditorModule = _editor()
-	if editor != null:
-		editor.active_tool = tool
+	editor.active_tool = tool
+	if not EditorTools.is_place_tool(tool):
+		return
+	_pending_tool = tool
+	list.open(
+		"%s — pick a part" % _label_for(tool),
+		EditorTools.part_ids_for(tool, editor.placeable_part_ids())
+	)
 
 
 ## A board to load, by catalog name. Maps and sections share a namespace from the author's point of
 ## view — they picked a board, not a schema — which is exactly what `EditorModule.open` already
 ## assumes on the way in.
 func _on_load_pressed() -> void:
-	_pending_kind = &""
+	_pending_tool = &""
 	var boards: Array[StringName] = MapCatalog.names()
 	boards.append_array(SectionCatalog.names())
 	list.open("Load a board", boards)
@@ -206,18 +211,14 @@ func _on_list_chosen(id: StringName) -> void:
 	var editor: EditorModule = _editor()
 	if editor == null:
 		return
-	if _pending_kind == &"":
+	if _pending_tool == &"":
 		editor.open(String(id))
 		return
 	editor.selected_part = id
-	editor.selected_kind = _pending_kind
-	if _pending_kind == MapPlacement.KIND_SURFACE:
+	editor.selected_kind = EditorTools.kind_for(_pending_tool, id)
+	if editor.selected_kind == MapPlacement.KIND_SURFACE:
 		editor.last_surface_part = id
-	editor.active_tool = &"place"
-	# **Refreshed explicitly, because the kind may have changed while the tool did not.** Picking a
-	# tile and then picking cover both leave `active_tool` at `place`, so the setter emits nothing
-	# the second time and the highlight would still be on the previous kind's button.
-	_on_tool_changed(editor.active_tool)
+	editor.active_tool = _pending_tool
 
 
 ## The file verbs, called by name. **Every one of them already existed on `EditorModule`** — this
@@ -228,8 +229,8 @@ func _on_file_pressed(verb: StringName) -> void:
 		editor.call(verb)
 
 
-func _label_for_kind(kind: StringName) -> String:
-	return PLACEMENT_LABELS.get(kind, String(kind).capitalize())
+func _label_for(tool: StringName) -> String:
+	return TOOL_LABELS.get(tool, String(tool).capitalize())
 
 
 func _button(parent: Control, text: String, handler: Callable) -> Button:

@@ -1,5 +1,40 @@
 # CHANGELOG.md — What's Been Built
 
+### Pass D — ten editor verbs become seven, grouped by what a click means
+
+The old list was grouped by what a click *touched* — a verb per marker, a verb per flag — which is
+why it took ten entries to express what an author experiences as three gestures: put something
+down, take something away, grab something. Now: **`select`, `place_terrain`, `scale`, `delete`,
+`place_map_thing`, `place_big_part`, `place_part`.**
+
+**The generated-from-vocabulary property survived and got stronger.** `EditorBarModule` built a
+button per tool but skipped `place`, which was really three placement-kind buttons; the three
+placing verbs are tools now, so the row is generated with **no exception in it** and a test asserts
+the button count equals the vocabulary count.
+
+**`terrain` is a real tag on real parts** — `wall`, `ship_floor`, `ramp`, `ladder`. The taskblock
+names it, so it is authorised content rather than an invented vocabulary, and it is what lets
+*Place Terrain* derive its `MapPlacement` kind **per part**: terrain that attaches to `GROUND` is a
+surface, terrain that does not is a blocker. That closes a class of authoring error — an author
+could previously pick `wall` and `field_item` and author a placement the loader refuses.
+
+**`height` folded into `select`, and that was checked rather than assumed.** `GizmoModule._drag_to`
+already calls `EditorController.set_height` on a Y-axis drag of a placement, so the verb's whole
+behaviour is what the translate handles do. It became direct manipulation instead of a spinbox and
+a click.
+
+**The tool vocabulary moved to `src/logic/editor_tools.gd`.** `EditorModule` went over the repo's
+1000-line gate, the same split `InspectPanel` took when `BotViewer` came out of it — and logic is
+the truer home: which tools exist, and what kind each authors, are questions with no widget in them
+and are headlessly tested now.
+
+**What this did NOT fix, stated at the filter rather than only here.** *Place Big Part* and *Place
+Part* still offer every arm, head and battery in `DataLibrary.parts_pool()`. Nothing in the data
+separates a crate from a forearm, `placeable_part_ids`'s own header has said so since taskblock-57,
+and the taskblock authorises one tag rather than two. **Pass D split the verbs; the pool is still
+unfiltered for two of the three.**
+
+
 ### Pass C.2 — the pacer stops being a test's hidden variable
 
 **Pass C merged on the supervisor's call.** The one red test it carried,
