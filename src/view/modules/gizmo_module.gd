@@ -121,8 +121,33 @@ func focus_at(cell: Vector2i) -> bool:
 		gizmo.focus_placement(cell)
 	else:
 		gizmo.clear()
+	reassert_ghost()
 	redraw()
 	return true
+
+
+## taskblock-59 Pass B: **the focused placement is drawn see-through, so the handles inside it
+## read.**
+##
+## *"The select gizmo sits inside items. Acceptable, but then it must be clickable and draggable
+## there, and the selected part should render as a ghost."* The handles were always clickable —
+## `Gizmo.hit` is a ray/box test with no occlusion in it, and this module takes the input walk ahead
+## of `board_inspect` — so the defect was purely that a gizmo buried in a crate is a gizmo you
+## cannot aim at.
+##
+## **Only a placement, never a claim.** A claim's volume is already drawn translucent by
+## `ClaimVolumeModule`, so there is nothing to see through, and ghosting the cell under it would
+## make a floor vanish for a reason the author has no way to connect to what they clicked.
+## **Public because the board rebuild destroys it.** `EditorModule.refresh` runs after every edit
+## and `BoardView.build` frees every mesh, so the ghost is re-stated against the new ones — the
+## gizmo's focus is the source of truth and this is it re-asserting itself, not a second store of
+## what is selected.
+func reassert_ghost() -> void:
+	var battle: BattleScene = context.battle if context != null else null
+	if battle == null or battle.board_view == null:
+		return
+	var focused: bool = gizmo.subject == Gizmo.SUBJECT_PLACEMENT
+	battle.board_view.ghosting.ghost(gizmo.cell if focused else null)
 
 
 ## The index of the claim whose volume covers `cell`, or -1.

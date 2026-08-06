@@ -128,6 +128,10 @@ func link() -> void:
 	var parts: PartsListModule = _parts_list()
 	if parts != null and parts.list != null and not parts.list.chosen.is_connected(_on_list_chosen):
 		parts.list.chosen.connect(_on_list_chosen)
+	# taskblock-59 Pass B: the UI-buttons toggle asks for the list back and this answers with the
+	# armed tool's own list — see `PartsListModule.summoned` for why the module does not decide it.
+	if parts != null and not parts.summoned.is_connected(_on_list_summoned):
+		parts.summoned.connect(_on_list_summoned)
 
 
 ## Highlights whichever button arms `tool`, and dims the rest.
@@ -189,12 +193,32 @@ func _on_tool_pressed(tool: StringName) -> void:
 	if editor == null:
 		return
 	editor.active_tool = tool
-	if not EditorTools.is_place_tool(tool):
-		return
+	open_list_for(tool)
+
+
+## **What the armed tool picks from, decided in one place.** taskblock-59 Pass B.
+##
+## Three callers now: a tool button pressing itself, the UI-buttons toggle summoning the list back
+## (`PartsListModule.summoned`), and a test. They must offer the same thing, and the way to
+## guarantee that is for there to be one function rather than three that agree today.
+##
+## *Place Map Thing* joins the place tools here. It always had a selection — `MAP_THINGS`, with the
+## claim kinds under `claim` — and no way to make it, so every click authored the default
+## `Interior` claim. That is the whole of *"Map Thing places only lime-green volumes"*.
+func open_list_for(tool: StringName) -> void:
+	var editor: EditorModule = _editor()
 	var parts: PartsListModule = _parts_list()
-	if parts == null:
+	if editor == null or parts == null:
+		return
+	if not EditorTools.picks_from_a_list(tool):
 		return
 	_pending_tool = tool
+	if tool == &"place_map_thing":
+		parts.open(
+			"%s — pick a thing" % _label_for(tool),
+			EditorTools.map_thing_choices(EditorModule.CLAIM_KINDS)
+		)
+		return
 	parts.open(
 		"%s — pick a part" % _label_for(tool),
 		EditorTools.part_ids_for(tool, editor.placeable_part_ids())
@@ -214,12 +238,26 @@ func _on_load_pressed() -> void:
 	parts.open("Load a board", boards)
 
 
+## The toggle summoned the list. Re-opens whatever the armed tool offers, so the button and the tool
+## buttons cannot show different lists.
+func _on_list_summoned() -> void:
+	var editor: EditorModule = _editor()
+	if editor != null:
+		open_list_for(editor.active_tool)
+
+
 func _on_list_chosen(id: StringName) -> void:
 	var editor: EditorModule = _editor()
 	if editor == null:
 		return
 	if _pending_tool == &"":
 		editor.open(String(id))
+		return
+	if _pending_tool == &"place_map_thing":
+		var choice: Dictionary = EditorTools.map_thing_choice(id)
+		editor.selected_map_thing = choice["thing"]
+		if choice["claim_kind"] != &"":
+			editor.selected_claim_kind = choice["claim_kind"]
 		return
 	editor.selected_part = id
 	editor.selected_kind = EditorTools.kind_for(_pending_tool, id)

@@ -107,7 +107,15 @@ func test_the_readout_tracks_the_cell_and_height_under_the_cursor() -> void:
 	gut.p("readout: '%s' / '%s'" % [coords.cell_label.text, coords.content_label.text])
 	assert_true(coords.cell_label.text.contains("(3,2)"), "the cell is not what the cursor is over")
 	assert_true(coords.cell_label.text.contains("0.6"), "the height is not the authored one")
-	assert_eq(coords.content_label.text, "ship_floor", "it must name what is there")
+	# taskblock-59 Pass B: **the content line names two things now**, so this asserts the claim it
+	# was written for — *what is under the cursor* — rather than the whole line. The armed placement
+	# joined it because it is the one piece an author needs and cannot infer, and pinning the exact
+	# string would make every later addition to the readout look like a regression.
+	assert_true(
+		coords.content_label.text.begins_with("ship_floor"),
+		"it must name what is there: '%s'" % coords.content_label.text
+	)
+	assert_eq(coords.name_at(Vector2i(3, 2)), &"ship_floor")
 
 
 ## Off the board is blank, not the last cell it saw — a readout that keeps showing where the cursor
@@ -130,7 +138,11 @@ func test_an_empty_cell_reads_as_empty_rather_than_blank() -> void:
 	var overlay: ControlOverlay = _overlay()
 	var coords: EditorCoordsModule = _coords(overlay)
 	(overlay.module(&"board_inspect") as BoardInspectModule).hovered_cell.emit(Vector2i(9, 9))
-	assert_eq(coords.content_label.text, "empty")
+	# taskblock-59 Pass B: still "empty", now followed by what a click would put there.
+	assert_true(
+		coords.content_label.text.begins_with("empty"),
+		"a bare cell is an answer, not a missing one: '%s'" % coords.content_label.text
+	)
 
 
 ## *"Detail is the inspector's job."* A long id is cut rather than pushing the bar's other surfaces
