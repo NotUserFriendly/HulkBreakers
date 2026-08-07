@@ -132,7 +132,7 @@ func reachable_cells() -> Array[Vector2i]:
 	var actual: Unit = previewed_unit()
 	if actual == null:
 		return []
-	var pf := Pathfinder.new(state.grid, actual.shell.can_climb())
+	var pf := Pathfinder.for_unit(state.grid, actual)
 	var budget: float = actual.mp + actual.mp_per_ap() * actual.ap
 	return pf.reachable(actual.cell, budget)
 
@@ -162,7 +162,7 @@ func queue_move(cell: Vector2i) -> bool:
 	var actual: Unit = previewed_unit()
 	if actual == null:
 		return false
-	var pf := Pathfinder.new(state.grid, actual.shell.can_climb())
+	var pf := Pathfinder.for_unit(state.grid, actual)
 	var path: Array[Vector2i] = pf.astar(actual.cell, cell)
 	if path.size() < 2:
 		return false
@@ -187,7 +187,7 @@ func ghost_paths() -> Array[Array]:
 ## can zip the two arrays together without re-deriving cost itself.
 func leg_costs() -> Array[float]:
 	var actual: Unit = previewed_unit()
-	var pf := Pathfinder.new(state.grid, actual.shell.can_climb() if actual != null else false)
+	var pf := Pathfinder.for_unit(state.grid, actual)
 	var costs: Array[float] = []
 	for path: Array in ghost_paths():
 		var typed_path: Array[Vector2i] = []

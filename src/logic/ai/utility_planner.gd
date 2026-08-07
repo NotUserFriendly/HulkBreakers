@@ -314,7 +314,7 @@ static func _commit(
 		# **The one pathfind per selection.** Scoring ranked candidates on a
 		# chebyshev proxy; the real route is computed only for the cell that won —
 		# one `astar` call per selection rather than one per candidate.
-		var pathfinder := Pathfinder.new(context.view.grid, context.unit.shell.can_climb())
+		var pathfinder := Pathfinder.for_unit(context.view.grid, context.unit)
 		var path: Array[Vector2i] = pathfinder.astar(context.unit.cell, cell)
 		if path.size() < 2:
 			return false

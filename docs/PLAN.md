@@ -152,57 +152,7 @@ condition and is *more* at risk under this design rather than less: a select too
 gizmo is very close to a selection of its own. Whatever the editor already treats as "the thing
 being pointed at" is what the gizmo must read.
 
-### 3. Retire ramps; introduce `step_height`
-**Needs:** nothing. **Unblocks:** step height as a per-unit stat; deletes a subsystem rather than
-repairing it. **Read before `BR56.01` is fixed.**
-
-**Settled: ramps as machinery go away, replaced by stairs plus a step height.** A "ramp" becomes two
-ordinary tiles at 0.3 and 0.6 — content, not a special traversal case.
-
-**`step_height` does not exist yet, and that is the work.** Today `MAX_CLIMB_LEVELS` is 1.0 and
-**capability-gated**: a non-climber cannot go up at all without a ramp or a ladder, so a 0.3 tile is not
-walkable-onto by anything in the game. Introducing a free step height is what makes stairs work, and
-that one number replaces five separate checks:
-
-| today | under `step_height` |
-|---|---|
-| `is_ramp_at` in `ClimbAction` — refuse, it is a walk | rise ≤ step height → walk |
-| `is_ramp_at` in `HopDownAction` — same on the way down | rise ≤ step height → walk |
-| `_is_ramp_surface` in `move_cost` | rise ≤ step height → flat cost |
-| `MapGen.RAMP_MAX_RISE` and its generator branch | place tiles at heights |
-| `CellKind.RAMP` in `MapGenScratch` | gone |
-
-**Five categorical checks become one continuous comparison**, and it is the better rule: *can this unit
-step up that far* rather than *is this thing labelled a ramp*.
-
-**The editor's auto-placed terrain places ramps, not `ship_floor`.** Observed 2026-08-06.
-**Closed at taskblock-59 Pass B, and it was not a ramp defect at all**: the editor's default floor
-was `surface_part_ids()[0]`, the GROUND-attaching parts sort `[ramp, ship_floor]`, so "the first
-surface part" has meant `ramp` since taskblock-56 — whose own comment said the intent was
-`ship_floor`. Naming the default closed this and the *"warnings appear when placing `ship_floor`"*
-report together: the warning was **correct**, about a surface the editor had silently authored on
-the author's behalf.
-
-**`Surface.facing` never reaches the pathfinder**, so a ramp is already traversable from any direction —
-you can walk up its side. The directionality that would be the strongest argument for keeping ramps is
-not implemented, which also means **`BR56.01` is a visual defect on a field nothing reads.** Do not fix
-it first; it is a facing bug in a subsystem this deletes.
-
-**Step height becomes a per-unit stat**, which a ramp could never express — long legs step higher. Two
-consequences:
-
-- **The generator's navigability invariant must run against the lowest step height in play**, not a
-  constant. A 0.6 rise being free for some units and not others is the point, and the invariant has to
-  assume the worst case.
-- **A cosmetic ramp part is fine** — sloped geometry with no special traversal rules. If a two-tile
-  stair does not read well visually, the answer is content, not machinery.
-
-**Ramps return later as a genuinely distinct thing.** Once tracked and other legless chassis exist,
-"has no step height at all and needs a continuous slope" is a real mechanical category — and it will be
-*about the chassis*, not about a cell being labelled. **That is the version worth building, and it is
-not this one.**
-
-### 4. Elevated tiles lost their line borders
+### 3. Elevated tiles lost their line borders
 **Needs:** nothing. **Unblocks:** reading a stepped board by eye.
 
 Grid lines went flat when taskblock-55 deleted the ground quad, and lines-at-tile-height was **passed on
@@ -213,7 +163,7 @@ without them, so **the judgement call is due for revisiting rather than being a 
 If the answer is to draw them, the co-planarity is the problem to solve — a small offset, a different
 primitive, or the tile's own edge geometry doing the work.
 
-### 5. Attributes
+### 4. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;
@@ -234,6 +184,36 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 **Acceptance:** six attributes and modifiers on the matrix; personal_speed reads from Dex with no
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
+
+### 5. Settle the step height, and author it onto parts
+**Needs:** `step_height` existing, which landed at taskblock-60 Pass A. **Unblocks:** step height
+reading as *chassis* rather than as a constant; a stair length chosen rather than inherited.
+
+**`Unit.BASE_STEP_HEIGHT` is 0.3 and flagged, not designed.** It is the stair riser the design
+names — *"a ramp becomes two ordinary tiles at 0.3 and 0.6"* — and the reason step height had to
+exist at all was that a 0.3 tile was walkable-onto by nothing in the game. So it is the stated
+default rather than an invented number, and it wants a real decision. **Measured 2026-08-06, 40x30
+across eight seeds:**
+
+| | raised ground | one-way cells |
+|---|---|---|
+| the old ramps | 15.8% of walkable | 0 |
+| `step_height` 0.3 (3 treads per level) | 12.8% | 0 |
+| `step_height` 0.5 (1 tread per level) | 15.8% | 0 |
+
+**Navigability holds at every value measured**, so this is not a correctness question — it is how
+vertical a generated board feels. A flight is `ceil(rise / step_height)` steps, so a shorter step
+means a longer stair, more ring positions that cannot host one, and more rooms flattened by
+`_repair_stranded_elevation`. **One number, and the generator follows it with no code edit.**
+
+- **Then author it onto parts.** Nothing carries a `step_height` modifier yet, so the per-unit half
+  of the stat is real and untested by content: `Unit.lowest_step_height` currently always returns
+  the base. Legs are the obvious home, and **long legs stepping higher is the thing a ramp could
+  never express** — it is the reason the stat is per-unit rather than a constant.
+- **A chassis with no step height at all is the reason ramps come back.** *That* is a real
+  mechanical category — tracked, legless, needing a continuous slope — and it is about the chassis,
+  not about a cell being labelled. It needs authored parts that set the stat to zero before it can
+  be built, which is why it sits here rather than in front of this.
 
 # QUEUED
 

@@ -45,8 +45,12 @@ const ARRIVAL_RADIUS := 1
 ## Lays out a route around `origin`. Returns fewer than `POINT_COUNT` points — or
 ## none at all — when the reachable area is too small to spread them, which the
 ## caller must treat as "this unit has nowhere to patrol" rather than as an error.
-static func generate(grid: Grid, origin: Vector2i, can_climb: bool = false) -> Array[Vector2i]:
-	var pathfinder := Pathfinder.new(grid, can_climb)
+## tb60 Pass A: takes the unit rather than one of its mobility properties, so the route a
+## unit patrols is laid out over the ground that unit can actually walk — `step_height` and
+## `can_climb` read from one place. `null` lays out a route for the unmodified body, which is
+## what a test with no roster wants.
+static func generate(grid: Grid, origin: Vector2i, unit: Unit = null) -> Array[Vector2i]:
+	var pathfinder := Pathfinder.for_unit(grid, unit)
 	var costs: Dictionary = pathfinder.reachable_costs(origin, ROUTE_RADIUS)
 	var candidates: Array[Vector2i] = []
 	for cell: Vector2i in costs:

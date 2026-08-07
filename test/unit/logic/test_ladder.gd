@@ -197,21 +197,26 @@ func test_move_cost_opens_a_ladder_edge_for_a_non_climber() -> void:
 	assert_gt(cost, 0.0, "with a ladder the edge exists")
 
 
-## **A ramp is preferred over a ladder at equal distance**, which is the taskblock's own
-## stated ordering and the reason the ladder carries a cost scale at all.
-func test_move_cost_prefers_a_ramp_over_a_ladder() -> void:
-	var ramp_grid: Grid = _grid_with_step(0.0, 2.0)
-	ramp_grid.clear_surfaces(Vector2i(0, 0))
-	ramp_grid.add_surface(Vector2i(0, 0), Surface.new(DataLibrary.get_part(&"ramp"), 0.0))
-	var ramp_cost: float = Pathfinder.new(ramp_grid).move_cost(Vector2i(0, 0), Vector2i(1, 0))
+## **A stair step is cheaper than a ladder**, which is the taskblock's own stated ordering
+## and the reason the ladder carries a cost scale at all.
+##
+## tb60 Pass A: this used to compare a *ramp* edge against a ladder edge, and a ramp edge no
+## longer exists as a thing with its own cost — the comparison had to move to what actually
+## replaced it. The ordering being asserted is unchanged and is the same design claim:
+## **a ladder is direct but exposed; the graded route is indirect but cheap.** What changed is
+## that the graded route is now ordinary geometry rather than a tagged cell, so the "cheap"
+## half is `DEFAULT_COST` on a short rise instead of `DEFAULT_COST` on a labelled one.
+func test_move_cost_prefers_a_stair_step_over_a_ladder() -> void:
+	var stair_grid: Grid = _grid_with_step(0.0, Unit.BASE_STEP_HEIGHT)
+	var stair_cost: float = Pathfinder.new(stair_grid).move_cost(Vector2i(0, 0), Vector2i(1, 0))
 
 	var ladder_grid: Grid = _grid_with_step(0.0, 2.0)
 	GridPlacement.place(ladder_grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
 	var ladder_cost: float = Pathfinder.new(ladder_grid).move_cost(Vector2i(0, 0), Vector2i(1, 0))
 
-	gut.p("ramp %.1f against ladder %.1f" % [ramp_cost, ladder_cost])
-	assert_gt(ramp_cost, 0.0, "sanity: the ramp edge exists")
-	assert_lt(ramp_cost, ladder_cost, "a ramp is the cheaper way up")
+	gut.p("stair step %.1f against ladder %.1f" % [stair_cost, ladder_cost])
+	assert_gt(stair_cost, 0.0, "sanity: the stair edge exists")
+	assert_lt(stair_cost, ladder_cost, "a stair step is the cheaper way up")
 
 
 # --- it is a part, therefore shootable ------------------------------------------------

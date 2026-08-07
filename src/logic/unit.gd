@@ -9,6 +9,26 @@ const BASE_MP: float = 2.0
 ## and upgrades." Every other AP cost in the docs is quoted against this.
 const DEFAULT_MAX_AP: int = 6
 const AGILITY_STAT_KEY: StringName = &"agility"
+
+## The free rise: how far up a unit may step as ordinary walking, with no climbing
+## capability, no ladder, and no discrete action at all. **The one continuous number that
+## replaced five categorical "is this cell labelled a ramp" checks** (tb60 A) — the rule is
+## *can this unit step up that far*, never *is this thing a ramp*.
+##
+## **Flagged, not designed.** 0.3 is the stair riser the design names — "a ramp becomes two
+## ordinary tiles at 0.3 and 0.6" — and the stated reason step height had to exist at all was
+## that `Pathfinder.MAX_CLIMB_LEVELS` is capability-gated, so "a 0.3 tile is not walkable-onto
+## by anything in the game." So this is the stated default rather than an invented balance
+## number, and everything downstream derives from it rather than assuming it: `MapGen` sizes a
+## stair at `ceil(rise / step_height)` steps, so retuning this number re-shapes generated
+## stairs with no further edit.
+const BASE_STEP_HEIGHT: float = 0.3
+const STEP_HEIGHT_STAT_KEY: StringName = &"step_height"
+## Float slack for a rise compared against a step height. The same 0.001 every other
+## height comparison in this codebase uses — a stair authored at exactly the step height
+## must be walkable, not a coin flip on the last bit.
+const STEP_EPSILON: float = 0.001
+
 ## docs/04 gives no turn count for organic decay — a flagged, tunable
 ## placeholder, not a design decision.
 const DECAY_TURNS := 3
@@ -234,6 +254,38 @@ func mp_per_ap(operable: Array[Part] = []) -> float:
 	context.parts = operable if not operable.is_empty() else shell.operable_parts()
 	var agility: float = StatResolver.resolve(AGILITY_STAT_KEY, context).current
 	return BASE_MP + agility
+
+
+## The free rise this unit walks up, resolved live through `StatResolver` (docs/08) exactly
+## the way `mp_per_ap` resolves agility — so a leg swap changes what a unit can step over on
+## the same frame, and the tooltip and the pathfinder read one call.
+##
+## **A per-unit stat is the thing a ramp could never express.** Long legs step higher; a
+## tracked chassis steps nowhere at all. `operable_parts()`, not `living_parts()`: a
+## wound-disabled leg stops contributing reach the same way it stops contributing agility.
+##
+## `operable` lets a caller that has already walked the socket tree hand the list in, the
+## same amortization `mp_per_ap` takes.
+func step_height(operable: Array[Part] = []) -> float:
+	var context := ResolverContext.new()
+	context.base = BASE_STEP_HEIGHT
+	context.parts = operable if not operable.is_empty() else shell.operable_parts()
+	return StatResolver.resolve(STEP_HEIGHT_STAT_KEY, context).current
+
+
+## The smallest step height among `units` — **what a map's navigability invariant must be
+## judged against**, since a rise that is free for the long-legged and not for everyone else
+## strands whoever is shortest. `BASE_STEP_HEIGHT` for an empty roster, so a generator running
+## before any unit exists assumes the unmodified body rather than assuming nothing.
+static func lowest_step_height(units: Array[Unit]) -> float:
+	var lowest: float = BASE_STEP_HEIGHT
+	var seen := false
+	for unit: Unit in units:
+		var height: float = unit.step_height()
+		if not seen or height < lowest:
+			lowest = height
+			seen = true
+	return lowest
 
 
 ## docs/04 taskblock02 Pass D1: "Unit resolves its matrix by walking the

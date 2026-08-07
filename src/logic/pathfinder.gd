@@ -54,15 +54,36 @@ var _grid: Grid
 ## updated to pass a real unit's capability keeps its exact prior
 ## behaviour (never silently grants climbing).
 var _can_climb: bool
+## tb60 Pass A: the free rise THIS request's mover walks up — `Unit.step_height()`, a
+## per-unit stat, on the instance for exactly the reason `_can_climb` is: it is a property
+## of who is moving, not of the grid.
+##
+## Defaults to `Unit.BASE_STEP_HEIGHT` rather than to 0.0. The opposite posture from
+## `_can_climb`, and deliberately: a 0.0 default would mean an un-updated call site silently
+## refuses to walk up a stair, which is a *false negative about ordinary movement* rather
+## than the false grant of a capability the `can_climb` default guards against. The
+## unmodified body's own number is the honest default.
+var _step_height: float
 
 
 static func reset_diagnostics() -> void:
 	floods = 0
 
 
-func _init(grid: Grid, can_climb: bool = false) -> void:
+func _init(grid: Grid, can_climb: bool = false, step_height: float = Unit.BASE_STEP_HEIGHT) -> void:
 	_grid = grid
 	_can_climb = can_climb
+	_step_height = step_height
+
+
+## **The one way a pathfinder is built for a real unit**, so a caller cannot read one
+## mobility property off a unit and default the other. Every `Pathfinder.new(grid,
+## unit.shell.can_climb())` in this codebase became this call at tb60 Pass A — the drift it
+## prevents is the whole reason it exists rather than a second argument at fifteen sites.
+static func for_unit(grid: Grid, unit: Unit) -> Pathfinder:
+	if unit == null:
+		return Pathfinder.new(grid)
+	return Pathfinder.new(grid, unit.shell.can_climb(), unit.step_height())
 
 
 ## The plain per-cell terrain/occupancy cost of standing on `cell` — the
@@ -121,10 +142,15 @@ func _base_cost(cell: Vector2i) -> float:
 ## without `_can_climb`, or a drop beyond `MAX_HOP_DOWN_LEVELS`).
 ##
 ## taskblock-38 Pass C: `docs/PLAN.md`'s settled cost table, verbatim —
-## - a RAMP edge (either endpoint carrying a `Surface.RAMP_TAG`-tagged
-##   surface) is ordinary pathing at the plain terrain cost, whatever the
-##   level delta: "a sloped cell costs 1 MP like any other; the path just
-##   changes height as it goes." No special-casing beyond that check.
+## - **a rise (either way) within the mover's own `step_height` is ordinary
+##   pathing at the plain terrain cost.** tb60 Pass A: this replaced the
+##   ramp check that used to sit here — "either endpoint carries a
+##   `Surface.RAMP_TAG`-tagged surface" — and the replacement is a better
+##   rule, not a translation of the old one. A stair is now two ordinary
+##   tiles at ordinary heights, and what makes them walkable is *how far up
+##   they are*, never what they are labelled. A cosmetic ramp part still
+##   exists and still renders as a slope; it simply gets no traversal
+##   privilege the geometry does not earn.
 ## - same height: unchanged, the plain terrain cost (the vast majority of
 ##   edges).
 ## - climbing UP with no ramp: capability-gated, `CLIMB_COST` scaled by how
@@ -152,13 +178,16 @@ func move_cost(from: Vector2i, to: Vector2i) -> float:
 	var base: float = _base_cost(to)
 	if base < 0.0:
 		return -1.0
-	if _is_ramp_surface(from) or _is_ramp_surface(to):
-		return base
 	var from_height: float = UnitGeometry.true_height_for_cell(from, _grid)
 	var to_height: float = UnitGeometry.true_height_for_cell(to, _grid)
-	var level_delta: float = (to_height - from_height) / UnitGeometry.LEVEL_HEIGHT
-	if is_zero_approx(level_delta):
+	var rise: float = to_height - from_height
+	# **The one continuous comparison.** Up or down, within the step: it is a walk.
+	# Symmetric on purpose — a stair you can climb is a stair you can descend, and an
+	# asymmetric free rise would re-introduce exactly the one-way ground `BR46.02` was
+	# about, one tenth of a level at a time.
+	if absf(rise) <= _step_height + Unit.STEP_EPSILON:
 		return base
+	var level_delta: float = rise / UnitGeometry.LEVEL_HEIGHT
 	if level_delta > 0.0:
 		# taskblock-53 Pass C4: **one term, not a second branch.** A ladder standing at
 		# `from` makes this edge crossable for a shell with no climbing capability at
@@ -176,10 +205,6 @@ func move_cost(from: Vector2i, to: Vector2i) -> float:
 	if -level_delta > MAX_HOP_DOWN_LEVELS:
 		return -1.0
 	return HOP_DOWN_COST
-
-
-func _is_ramp_surface(cell: Vector2i) -> bool:
-	return Surface.is_ramp_at(_grid, cell)
 
 
 func is_walkable(cell: Vector2i) -> bool:

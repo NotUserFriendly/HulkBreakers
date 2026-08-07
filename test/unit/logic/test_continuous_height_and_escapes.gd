@@ -38,28 +38,55 @@ func test_a_0_3_high_part_is_standable_and_pathable() -> void:
 	)
 	assert_true(Pathfinder.new(grid).is_walkable(Vector2i(1, 1)), "a 0.3-high part is standable")
 
-	# **Pathable under the rules that already exist, not under a new one.** A 0.3 rise is an
-	# ordinary climb costing `ceil(CLIMB_COST * 0.3)` = 2 — *"partial MP costs round up"*,
-	# settled in `docs/PLAN.md` and pinned by `test_pathfinder.gd`. A first attempt at this pass
-	# added a free-step threshold that made such a rise cost 1, which **contradicted that settled
-	# decision**: a sub-level rise is meant to be cheap, not free.
+	# **tb60 Pass A reversed both pins below, deliberately, and this comment is the record.**
+	#
+	# What used to stand here: a 0.3 rise is an ordinary climb costing `ceil(CLIMB_COST * 0.3)`
+	# = 2, because *"partial MP costs round up"* is settled in `docs/PLAN.md` — and a first
+	# attempt at taskblock-54 added a free-step threshold making such a rise cost 1, which was
+	# **rejected at the time** as contradicting that decision: a sub-level rise was meant to be
+	# cheap, not free.
+	#
+	# `step_height` is that same idea, adopted on purpose rather than slipped in. The
+	# difference is that it is not a threshold bolted onto the climb rule — it is the boundary
+	# between *walking* and *climbing*, and the settled round-up rule still governs everything
+	# on the climbing side of it. **A rise inside the step height is not a cheap climb; it is
+	# not a climb.** See `SUPERSEDED.md` for the reversal and `test_step_height.gd` for the
+	# rule.
 	var climber := Pathfinder.new(grid, true)
 	assert_almost_eq(
 		climber.move_cost(Vector2i(1, 0), Vector2i(1, 1)),
-		2.0,
+		Pathfinder.DEFAULT_COST,
 		0.0001,
-		"a 0.3 rise is pathable, at the rounded-up partial climb cost"
+		"a 0.3 rise is a walk now — it is exactly the default step height"
 	)
 	assert_gt(climber.move_cost(Vector2i(1, 1), Vector2i(1, 0)), 0.0, "and steppable off again")
 
-	# Recorded rather than asserted as desirable: **a unit with no climbing capability cannot
-	# cross a 0.3 lip at all**, and no shipped part carries the tag. That is `BR46.02`'s residue,
-	# which taskblock-53 answered at the generator level — a map owes a route — rather than by
-	# loosening the movement rule. Pinned so the state of affairs is visible rather than assumed.
-	assert_lt(
+	# **The round-up rule is untouched where it still applies.** Asserted here rather than left
+	# implied, because the reversal above could easily be misread as having deleted it.
+	var steeper := Grid.new(4, 4)
+	for y: int in range(4):
+		for x: int in range(4):
+			_floor_at(steeper, Vector2i(x, y), 0.0)
+	steeper.clear_surfaces(Vector2i(1, 1))
+	_floor_at(steeper, Vector2i(1, 1), 0.4)
+	assert_almost_eq(
+		Pathfinder.new(steeper, true).move_cost(Vector2i(1, 0), Vector2i(1, 1)),
+		2.0,
+		0.0001,
+		"a 0.4 rise is still a climb, and still charges ceil(CLIMB_COST * 0.4) = 2"
+	)
+
+	# **And `BR46.02`'s residue is closed at the movement rule, which is the other reversal.**
+	# What stood here was: *a unit with no climbing capability cannot cross a 0.3 lip at all,
+	# and no shipped part carries the CLIMBER tag* — pinned so the state of affairs stayed
+	# visible. taskblock-53 answered it at the generator level, by making a map owe a route,
+	# rather than by loosening the movement rule. **tb60 Pass A loosened the movement rule**,
+	# so the lip a collapse leaves behind is now walkable by the bodies that actually exist.
+	assert_almost_eq(
 		Pathfinder.new(grid).move_cost(Vector2i(1, 0), Vector2i(1, 1)),
-		0.0,
-		"a non-climber still cannot cross it — capability-gated, unchanged by this block"
+		Pathfinder.DEFAULT_COST,
+		0.0001,
+		"a non-climber walks the 0.3 lip now — BR46.02's residue, closed at the rule"
 	)
 
 

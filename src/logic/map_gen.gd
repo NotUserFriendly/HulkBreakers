@@ -61,12 +61,21 @@ const RAISED_ROOM_LEVEL: int = 1
 ## board hanging generation. **Flagged, not designed** — 6 clears every seed measured, and
 ## the sweep test is what would notice it being too low.
 const NAVIGABILITY_REPAIR_PASSES: int = 6
-## The rise a ramp handles. Above it, a ladder. The taskblock's own rule, and the same
-## number the proving-ground map uses between tiers.
-const RAMP_MAX_RISE: float = 2.0
 
 
-static func generate(map_seed: int, width: int, rows: int) -> Grid:
+## tb60 Pass A: **`step_height` is a parameter, because the invariant this generator owes is
+## owed to the shortest unit that will play on the board.** Defaults to
+## `Unit.BASE_STEP_HEIGHT` — a generated map made before any roster exists assumes the
+## unmodified body — and a caller with real units passes `Unit.lowest_step_height(units)`.
+##
+## It reaches three places and they must all agree: the stair `_author_levels` builds, the
+## reachability floods `_repair_stranded_elevation` and `_ensure_spawns_connected` run, and
+## the `guarantee_navigability` sweep that has the last word. A generator that built stairs
+## for one step height and checked them against another would certify boards nobody can
+## walk.
+static func generate(
+	map_seed: int, width: int, rows: int, step_height: float = Unit.BASE_STEP_HEIGHT
+) -> Grid:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
 
@@ -76,14 +85,17 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	var rooms: Array[Rect2i] = []
 	_split_and_carve(grid, scratch, Rect2i(Vector2i.ZERO, Vector2i(width, rows)), rng, rooms)
 
-	# Vector2i -> float (radians) — the facing `_connect_with_a_ramp`
-	# computes for each ramp cell it stamps, carried through to `_emit`
-	# (surfaces are authored once, from the finished scratch, at the very
-	# end — see `_emit`'s own doc comment).
-	var ramp_facings: Dictionary = {}
-	_author_levels(scratch, rooms, rng, ramp_facings)
+	# Vector2i -> true, every cell a stair flight runs through. **Cover must not land on a
+	# tread**, and until tb60 Pass A that was carried by the tread being a `RAMP` cell kind,
+	# which `_scatter_cover` skipped for free. Dissolving the kind dissolved the protection
+	# with it, and the measurement is what caught it: raised ground across eight seeds fell
+	# from 15.8% of walkable cells to 8.3% purely because scattered cover sealed stairs and
+	# `_repair_stranded_elevation` then flattened the rooms behind them. Carrying the set
+	# explicitly restores exactly the old guarantee without restoring the enum.
+	var stair_cells: Dictionary = {}
+	_author_levels(scratch, rooms, rng, step_height, stair_cells)
 
-	_scatter_cover(grid, scratch, rng)
+	_scatter_cover(grid, scratch, rng, stair_cells)
 
 	# taskblock-37 Pass D: repairs AFTER cover scatter, not before — a
 	# scattered blocker can land squarely on a raised room's own single
@@ -91,20 +103,20 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	# ordinary corridor cell leading into it still can be), sealing off
 	# the whole room with no redundant route. Checking before cover exists
 	# would miss exactly this failure mode.
-	_repair_stranded_elevation(grid, scratch, rooms)
+	_repair_stranded_elevation(grid, scratch, rooms, step_height)
 
 	var spawn_cells: Array = _place_spawn_zones(grid, rooms)
-	_ensure_spawns_connected(grid, scratch, spawn_cells[0], spawn_cells[1], rng)
+	_ensure_spawns_connected(grid, scratch, spawn_cells[0], spawn_cells[1], rng, step_height)
 
 	_finalize_walls_and_empty(grid, scratch)
 
-	_emit(grid, scratch, ramp_facings)
+	_emit(grid, scratch)
 
 	# taskblock-53 Pass D: **the generator owes navigability.** Runs last, on the finished
 	# `Grid` rather than on the scratch, because that is where real surfaces, heights and
-	# ramp tags live — and it is what `MapNavigability` measures, so the repair and the
+	# heights live — and it is what `MapNavigability` measures, so the repair and the
 	# check cannot disagree about what a legal step is.
-	guarantee_navigability(grid)
+	guarantee_navigability(grid, step_height)
 
 	return grid
 
@@ -114,17 +126,28 @@ static func generate(map_seed: int, width: int, rows: int) -> Grid:
 ## capability — 16 of 40 seeds at real bout size, worst 216 cells. A symmetric connectivity
 ## check cannot see it: spawn zones stay mutually reachable on 60 of 60 seeds.
 ##
-## Repairs by opening the cheapest edge out of each stranded cell: **rise <= 2 gets a ramp,
-## anything higher gets a ladder** (the taskblock's own rule). A generator rule only — the
-## editor will enforce nothing, because an authored map may be broken on purpose.
+## Repairs by opening the cheapest edge out of each stranded cell — **which is now always a
+## ladder** (tb60 Pass A). A generator rule only; the editor will enforce nothing, because an
+## authored map may be broken on purpose.
+##
+## **The `rise <= RAMP_MAX_RISE gets a ramp` branch is deleted, and the branch was the bug in
+## it.** A ramp made a rise free by relabelling one cell, which is a thing no amount of real
+## geometry can do: under `step_height` a rise is free when it is short, and a rise this
+## function is looking at is by definition one no unit could step. So there is nothing left
+## for a one-cell repair to relabel. The two remaining options are a **stair** — which needs
+## a run of free cells in some direction and cannot be promised at an arbitrary stranded cell
+## — and a **ladder**, which needs one cell and is the capability-free route up by design.
+## The repair path takes the one it can always build; `_author_levels` builds stairs where it
+## does have the room. One fewer categorical check, and the check that went was the one that
+## could not have been honest.
 ##
 ## **Iterates, because one repair can expose another.** Opening a pit's edge can reveal a
 ## deeper shelf inside it that was never reachable to begin with. Bounded rather than
 ## looped-until-stable so a pathological board cannot hang generation; the remaining cells
 ## are left rather than forced, and the sweep test is what would notice a bound set too low.
-static func guarantee_navigability(grid: Grid) -> void:
+static func guarantee_navigability(grid: Grid, step_height: float = Unit.BASE_STEP_HEIGHT) -> void:
 	for _attempt: int in range(NAVIGABILITY_REPAIR_PASSES):
-		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid)
+		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid, step_height)
 		if stranded.is_empty():
 			return
 		var opened := 0
@@ -137,13 +160,18 @@ static func guarantee_navigability(grid: Grid) -> void:
 			return
 
 
-## Opens one upward edge out of `cell`, or false if it could not. The neighbour chosen is
-## the LOWEST one above `cell` — the smallest climb is the cheapest thing to build, and on a
+## Opens one upward edge out of `cell`, or false if it could not. Sized to the LOWEST
+## neighbour above `cell` — the smallest rise is the cheapest thing to build, and on a
 ## terraced board it is also the one most likely to be reachable itself.
+##
+## tb60 Pass A: **the chosen neighbour's identity stopped mattering, only its height.** A
+## ramp had to face the cell it served, so the old code carried `best_neighbour` to compute a
+## direction from — and getting that direction from an 8-way neighbour list while the other
+## stamping path used 4 is exactly what `BR56.01` was. A ladder is vertical and faces
+## nothing, so the whole question is gone rather than answered.
 static func _open_a_route_out(grid: Grid, cell: Vector2i) -> bool:
 	var here: float = UnitGeometry.true_height_for_cell(cell, grid)
 	var best_rise: float = INF
-	var best_neighbour := Vector2i.ZERO
 	for neighbour: Vector2i in grid.neighbors(cell):
 		if grid.blockers.has(neighbour):
 			continue
@@ -153,34 +181,9 @@ static func _open_a_route_out(grid: Grid, cell: Vector2i) -> bool:
 		if rise <= 0.001 or rise >= best_rise:
 			continue
 		best_rise = rise
-		best_neighbour = neighbour
 	if is_inf(best_rise):
 		return false
-	if best_rise <= RAMP_MAX_RISE:
-		return _stamp_ramp(grid, cell, best_neighbour, here)
 	return _stamp_ladder(grid, cell, here, best_rise)
-
-
-## Replaces `cell`'s walkable surface with a ramp facing the neighbour it serves.
-## `Pathfinder.move_cost` treats an edge with a ramp at either end as ordinary movement, so
-## this opens the step in both directions at once — which is the whole point, since the
-## defect is that the way back up does not exist.
-static func _stamp_ramp(grid: Grid, cell: Vector2i, toward: Vector2i, height: float) -> bool:
-	var direction: Vector2i = toward - cell
-	var kept: Array[Surface] = []
-	for surface: Surface in grid.surfaces_at(cell):
-		if not (Surface.WALKABLE_TAG in surface.part.tags):
-			kept.append(surface)
-	grid.clear_surfaces(cell)
-	grid.add_surface(
-		cell,
-		Surface.new(
-			DataLibrary.get_part(&"ramp"), height, atan2(float(direction.x), float(direction.y))
-		)
-	)
-	for surface: Surface in kept:
-		grid.add_surface(cell, surface)
-	return true
 
 
 ## Stands enough ladder segments at `cell` to reach `rise` above it. Placed through
@@ -287,9 +290,10 @@ static func _carve_room(
 ## by one level, then guarantees each is generally reachable — "since
 ## climbing is capability-gated and most units lack it, ramps are what
 ## make a raised area generally reachable" (docs/PLAN.md). Runs before
-## `_scatter_cover` so a scattered blocker never lands on the ramp cell
-## this stamps (`_scatter_cover` only ever sees plain `OPEN` cells, same
-## "runs before, sees only what's already there" posture spawn zones use).
+## `_scatter_cover` so a scattered blocker never lands on a stair tread —
+## the cells it stamps are recorded into `stair_cells` and refused there
+## (tb60 Pass A; before that the `RAMP` cell kind did the same job
+## implicitly).
 ## `generate()` runs its own `_repair_stranded_elevation` pass AFTER cover
 ## scatter too — see that function's own doc comment for why one pass
 ## right here isn't enough on its own.
@@ -297,7 +301,8 @@ static func _author_levels(
 	scratch: MapGenScratch,
 	rooms: Array[Rect2i],
 	rng: RandomNumberGenerator,
-	ramp_facings: Dictionary
+	step_height: float,
+	stair_cells: Dictionary
 ) -> void:
 	for room: Rect2i in rooms:
 		if rng.randf() >= RAISED_ROOM_PROBABILITY:
@@ -305,7 +310,7 @@ static func _author_levels(
 		for y in range(room.position.y, room.position.y + room.size.y):
 			for x in range(room.position.x, room.position.x + room.size.x):
 				scratch.set_level(Vector2i(x, y), RAISED_ROOM_LEVEL)
-		_connect_with_a_ramp(scratch, room, ramp_facings)
+		_connect_with_a_stair(scratch, room, step_height, stair_cells)
 
 
 ## General safety net, not another hand-chased special case: a raised
@@ -346,11 +351,11 @@ static func _author_levels(
 ## `_base_cost` only sees that at all if the temporary grid actually
 ## carries the real blockers.
 static func _repair_stranded_elevation(
-	grid: Grid, scratch: MapGenScratch, rooms: Array[Rect2i]
+	grid: Grid, scratch: MapGenScratch, rooms: Array[Rect2i], step_height: float
 ) -> void:
 	@warning_ignore("integer_division")
 	var anchor: Vector2i = rooms[0].position + rooms[0].size / 2
-	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers))
+	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers), false, step_height)
 	var reachable: Array[Vector2i] = pf.reachable(anchor, INF)
 	var reachable_set: Dictionary = {}
 	for cell: Vector2i in reachable:
@@ -369,10 +374,13 @@ static func _repair_stranded_elevation(
 			# Deferred to the connectivity question below instead.
 			if grid.blockers.has(cell):
 				continue
+			# tb60 Pass A: **one branch, where there were two.** A stranded stair tread used
+			# to need its own `RAMP`-kind clause to be flattened back to plain ground; a
+			# tread is an `OPEN` cell at a fractional level now, so flattening it is the
+			# same `set_level(cell, 0)` that flattens any other stranded cell. The old
+			# clause's own justification — "a ramp with nothing reachable on either end is
+			# not a ramp, it is a dead-end cell" — survives as a statement about heights.
 			if scratch.get_terrain(cell) == MapGenScratch.CellKind.OPEN:
-				scratch.set_level(cell, 0)
-			elif scratch.get_terrain(cell) == MapGenScratch.CellKind.RAMP:
-				scratch.set_terrain(cell, MapGenScratch.CellKind.OPEN)
 				scratch.set_level(cell, 0)
 	_flatten_stranded_blocker_cells(grid, scratch, reachable_set)
 
@@ -425,30 +433,30 @@ static func _has_reachable_neighbour(
 	return false
 
 
-## taskblock-38 Pass C: TWO already-OPEN, genuinely lower-level cells in a
-## straight line out from `room` become a two-cell RAMP — docs/PLAN.md's
-## corrected profile ("22.5 degrees, +0.5 level per cell, two cells per
-## full level," replacing tb37's one-cell 45-degree rise). The cell
-## bordering the room (`inner`) is the UPPER step, its own level authored
-## at `RAISED_ROOM_LEVEL - 0.5`; the cell one further out (`outer`),
-## continuing the same outward direction, is the LOWER step, at
-## `RAISED_ROOM_LEVEL - 1.0` (== real ground level for a level-1 room) — a
-## ramp's level is still authored at its own LOWER endpoint (docs/PLAN.md's
-## settled height model), just per-cell now instead of once for the whole
-## approach. `facing` (the direction of ascent, `outer` -> `inner`) is
-## recorded into `ramp_facings` for both cells, read back by `_emit`.
+## tb60 Pass A: **a run of already-OPEN, genuinely lower cells in a straight line out from
+## `room` becomes a STAIR** — ordinary floor tiles at evenly spaced heights, replacing
+## taskblock-38's two-cell `RAMP` profile.
 ##
-## Requires BOTH cells `OPEN` and below `RAISED_ROOM_LEVEL` (same "a
-## neighbour that's actually part of a DIFFERENT already-raised room still
-## reads as plain OPEN too" reasoning tb37 already established) — a ring
-## position that can't support the full two-cell depth (an edge of the
-## map, a wall, a corridor only one cell deep) simply isn't used; if NO
-## ring position anywhere around the room supports it, the room gets no
-## ramp at all and `_repair_stranded_elevation`'s own flood-and-flatten
-## safety net (below) catches it, exactly its documented job.
-static func _connect_with_a_ramp(
-	scratch: MapGenScratch, room: Rect2i, ramp_facings: Dictionary
+## **The step count is derived, never authored.** A stair spanning `rise` in steps no taller
+## than `step_height` needs `ceil(rise / step_height)` steps, hence that many *minus one*
+## intermediate cells — the room's own floor is the top step and the ground outside is the
+## bottom one. At the default 0.3 step height a level-1 room takes 4 steps of 0.25 across 3
+## cells, where the old ramp took 2 steps of 0.5 across 2. **That is the pass's cost, stated
+## plainly: stairs are longer than ramps were, so a ring position that supported a ramp may
+## not support a stair, and a room that finds no position anywhere gets flattened by
+## `_repair_stranded_elevation` instead.** Deriving rather than hardcoding is what makes that
+## a tunable consequence instead of a wall — raise `step_height` and the stairs shorten.
+##
+## Every cell in the run must be `OPEN` and below `RAISED_ROOM_LEVEL` (the same "a neighbour
+## that is actually part of a DIFFERENT already-raised room still reads as plain OPEN"
+## reasoning tb37 established). A ring position that cannot support the full depth — a map
+## edge, a wall, a corridor shallower than the run — simply is not used.
+static func _connect_with_a_stair(
+	scratch: MapGenScratch, room: Rect2i, step_height: float, stair_cells: Dictionary = {}
 ) -> void:
+	var rise: float = float(RAISED_ROOM_LEVEL) * UnitGeometry.LEVEL_HEIGHT
+	var steps: int = maxi(1, int(ceil(rise / maxf(step_height, 0.001))))
+	var treads: int = steps - 1
 	for y in range(room.position.y - 1, room.position.y + room.size.y + 1):
 		for x in range(room.position.x - 1, room.position.x + room.size.x + 1):
 			var inner := Vector2i(x, y)
@@ -462,24 +470,57 @@ static func _connect_with_a_ramp(
 				continue
 			var outward: Variant = _outward_ring_direction(room, inner)
 			if outward == null:
-				continue  # a diagonal corner cell — no cardinal approach to ramp along
-			if scratch.get_terrain(inner) != MapGenScratch.CellKind.OPEN:
-				continue
-			if scratch.get_level(inner) >= RAISED_ROOM_LEVEL:
-				continue
-			var outer: Vector2i = inner + (outward as Vector2i)
-			if not scratch.in_bounds(outer):
-				continue
-			if scratch.get_terrain(outer) != MapGenScratch.CellKind.OPEN:
-				continue
-			if scratch.get_level(outer) >= RAISED_ROOM_LEVEL:
-				continue
-			_stamp_ramp_pair(scratch, inner, outer, outward as Vector2i, ramp_facings)
-			return
+				continue  # a diagonal corner cell — no cardinal approach to run a stair along
+			if _stair_run_fits(scratch, inner, outward as Vector2i, treads):
+				_stamp_stair(scratch, inner, outward as Vector2i, treads, stair_cells)
+				return
+
+
+## Whether `treads` cells running outward from `inner` can all carry a step. Checked in full
+## before anything is written, so a partial stair — a run that climbs halfway and stops at a
+## wall, which is worse than no stair at all because it reads as a route — cannot be stamped.
+static func _stair_run_fits(
+	scratch: MapGenScratch, inner: Vector2i, outward: Vector2i, treads: int
+) -> bool:
+	for i: int in range(treads):
+		var cell: Vector2i = inner + outward * i
+		if not scratch.in_bounds(cell):
+			return false
+		if scratch.get_terrain(cell) != MapGenScratch.CellKind.OPEN:
+			return false
+		if scratch.get_level(cell) >= RAISED_ROOM_LEVEL:
+			return false
+	return true
+
+
+## Writes the treads. The cell bordering the room is the highest, each further-out cell one
+## step lower, and the ground beyond the last tread is the bottom of the flight — so a run of
+## `treads` cells divides the rise into `treads + 1` equal steps.
+##
+## **No facing is recorded, and nothing needs one.** The old pair-stamper computed an ascent
+## direction for `Surface.facing` because a ramp's geometry had an up-slope; a floor tile at a
+## height does not. That deleted field is the whole of `BR56.01`.
+static func _stamp_stair(
+	scratch: MapGenScratch,
+	inner: Vector2i,
+	outward: Vector2i,
+	treads: int,
+	stair_cells: Dictionary = {}
+) -> void:
+	var steps: int = treads + 1
+	for i: int in range(treads):
+		var cell: Vector2i = inner + outward * i
+		scratch.set_level(cell, float(RAISED_ROOM_LEVEL) * float(steps - 1 - i) / float(steps))
+		stair_cells[cell] = true
+	# **The cell the flight lands on is protected too, not just the treads.** It is ordinary
+	# ground at level 0, so nothing about its height marks it — but a blocker there seals the
+	# bottom of the stair exactly as surely as one on a tread, and that is the failure mode
+	# `_repair_stranded_elevation`'s own header describes.
+	stair_cells[inner + outward * treads] = true
 
 
 ## The cardinal direction from `room` through `cell` (a ring cell exactly
-## one step outside it), or null for a diagonal corner cell — a ramp only
+## one step outside it), or null for a diagonal corner cell — a stair only
 ## ever runs along a single N/S/E/W approach, never a corner graft (the
 ## same orthogonal-only posture `GridPlacement`'s own attachment grammar
 ## uses).
@@ -491,23 +532,6 @@ static func _outward_ring_direction(room: Rect2i, cell: Vector2i) -> Variant:
 	if y_inside:
 		return Vector2i(-1, 0) if cell.x < room.position.x else Vector2i(1, 0)
 	return null
-
-
-static func _stamp_ramp_pair(
-	scratch: MapGenScratch,
-	inner: Vector2i,
-	outer: Vector2i,
-	outward: Vector2i,
-	ramp_facings: Dictionary
-) -> void:
-	var ascent := Vector2(-outward.x, -outward.y)
-	var facing: float = BodyProjector.orientation_for(ascent)
-	scratch.set_terrain(inner, MapGenScratch.CellKind.RAMP)
-	scratch.set_level(inner, RAISED_ROOM_LEVEL - 0.5)
-	ramp_facings[inner] = facing
-	scratch.set_terrain(outer, MapGenScratch.CellKind.RAMP)
-	scratch.set_level(outer, RAISED_ROOM_LEVEL - 1.0)
-	ramp_facings[outer] = facing
 
 
 static func _carve_corridor(
@@ -580,11 +604,15 @@ static func _set_open(grid: Grid, scratch: MapGenScratch, cell: Vector2i) -> voi
 ## (`Pathfinder.move_cost`) and projecting into the shot plane
 ## (`ShotPlane.build` already reads every `grid.blockers` entry) the
 ## instant it's placed here — no further wiring needed.
-static func _scatter_cover(grid: Grid, scratch: MapGenScratch, rng: RandomNumberGenerator) -> void:
+static func _scatter_cover(
+	grid: Grid, scratch: MapGenScratch, rng: RandomNumberGenerator, stair_cells: Dictionary = {}
+) -> void:
 	for y in range(grid.rows):
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			if scratch.get_terrain(cell) != MapGenScratch.CellKind.OPEN:
+				continue
+			if stair_cells.has(cell):
 				continue
 			if rng.randf() < COVER_PROBABILITY:
 				grid.blockers[cell] = _make_cover(rng)
@@ -781,9 +809,14 @@ static func _is_exposed_wall(scratch: MapGenScratch, cell: Vector2i) -> bool:
 ## wrote is structurally untouchable by anything carving does afterward
 ## — the old workaround is simply unnecessary now, not just simplified.
 static func _ensure_spawns_connected(
-	grid: Grid, scratch: MapGenScratch, a: Vector2i, b: Vector2i, rng: RandomNumberGenerator
+	grid: Grid,
+	scratch: MapGenScratch,
+	a: Vector2i,
+	b: Vector2i,
+	rng: RandomNumberGenerator,
+	step_height: float
 ) -> void:
-	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers))
+	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers), false, step_height)
 	if pf.astar(a, b).is_empty():
 		_carve_corridor(grid, scratch, a, b, rng)
 
@@ -802,13 +835,10 @@ static func _ensure_spawns_connected(
 ## `SPAWN_A`/`SPAWN_B` are a real-`Grid`-only overlay (`_place_spawn_
 ## zones` writes `Grid.spawn_marker` directly, never touching scratch) —
 ## untouched here; only the surface comes from scratch.
-static func _emit(grid: Grid, scratch: MapGenScratch, ramp_facings: Dictionary) -> void:
+static func _emit(grid: Grid, scratch: MapGenScratch) -> void:
 	for y in range(scratch.rows):
 		for x in range(scratch.width):
 			var cell := Vector2i(x, y)
-			var scratch_terrain: int = scratch.get_terrain(cell)
-			if scratch_terrain == MapGenScratch.CellKind.EMPTY:
+			if scratch.get_terrain(cell) == MapGenScratch.CellKind.EMPTY:
 				continue
-			MapGenScratch.place_surface(
-				grid, cell, scratch_terrain, scratch.get_level(cell), ramp_facings.get(cell, 0.0)
-			)
+			MapGenScratch.place_surface(grid, cell, scratch.get_level(cell))

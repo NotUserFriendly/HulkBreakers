@@ -82,21 +82,26 @@ func test_non_climb_capable_unit_has_no_path_over_a_ledge() -> void:
 
 
 ## "The weighting resolves itself; don't add heuristics" — a climb-capable
-## unit still takes a cheaper ramp-mediated route over paying to climb a
+## unit still takes a cheaper stair-mediated route over paying to climb a
 ## ledge directly, with no tiebreaker needed beyond real edge costs. Reads
 ## the actual resolved path's own cost back rather than hand-picking an
 ## expected route: 8-directional movement can find a cheaper way through a
-## ramp cell than the route this test set out to build (a diagonal step
-## landing ON a ramp cell is itself ordinary cost, `move_cost`'s own rule,
-## whatever level it happens to cross) — asserting the real number is
-## honest about that, asserting a specific path array would not be.
-func test_climb_capable_unit_prefers_a_cheaper_ramp_route_over_climbing() -> void:
+## stair tread than the route this test set out to build — asserting the
+## real number is honest about that, asserting a specific path array would
+## not be.
+##
+## tb60 Pass A: the detour is a real STAIR now (treads at 0.25/0.5/0.75,
+## each step within the default 0.3 step height) rather than three cells
+## labelled `ramp`. The route is cheaper for a reason the pathfinder can
+## see in the heights, not because of a tag.
+func test_climb_capable_unit_prefers_a_cheaper_stair_route_over_climbing() -> void:
 	var grid := GridFixture.flat(3, 2)
-	GridFixture.place_floor(grid, Vector2i(1, 0), 1)  # the ledge -- a direct climb, no ramp
+	GridFixture.place_floor(grid, Vector2i(1, 0), 1)  # the ledge -- a direct climb, no stair
 	GridFixture.place_floor(grid, Vector2i(2, 0), 1)  # target, already level 1 past the ledge
-	GridFixture.place_ramp(grid, Vector2i(0, 1), 0)
-	GridFixture.place_ramp(grid, Vector2i(1, 1), 1)
-	GridFixture.place_ramp(grid, Vector2i(2, 1), 1)
+	# The stair: three treads at 0.25/0.5/0.75, every step inside the default 0.3.
+	GridFixture.place_floor(grid, Vector2i(0, 1), 0.25)
+	GridFixture.place_floor(grid, Vector2i(1, 1), 0.5)
+	GridFixture.place_floor(grid, Vector2i(2, 1), 0.75)
 	var pf := Pathfinder.new(grid, true)
 
 	var direct_climb_cost: float = (
@@ -112,13 +117,14 @@ func test_climb_capable_unit_prefers_a_cheaper_ramp_route_over_climbing() -> voi
 	)
 
 
-## "Ramps and ladders are ordinary pathing... a sloped cell costs 1 MP like
-## any other cell" — no climb capability needed at all, and the cell's own
-## real height genuinely changes underneath the ordinary cost.
-func test_a_ramp_cell_costs_1_mp_and_changes_height() -> void:
+## tb60 Pass A: **a step within the step height costs 1 MP and changes height** — the
+## replacement for "a ramp cell costs 1 MP", and the same guarantee stated about geometry
+## instead of about a label. No climb capability needed at all, and the cell's own real
+## height genuinely changes underneath the ordinary cost.
+func test_a_step_within_step_height_costs_1_mp_and_changes_height() -> void:
 	var grid := GridFixture.flat(2, 1)
-	GridFixture.place_ramp(grid, Vector2i(1, 0), 1)
-	var pf := Pathfinder.new(grid)  # no climb capability -- ramps are ordinary movement
+	GridFixture.place_floor(grid, Vector2i(1, 0), Unit.BASE_STEP_HEIGHT)
+	var pf := Pathfinder.new(grid)  # no climb capability -- a short step is ordinary movement
 
 	var path: Array[Vector2i] = pf.astar(Vector2i(0, 0), Vector2i(1, 0))
 
@@ -126,9 +132,9 @@ func test_a_ramp_cell_costs_1_mp_and_changes_height() -> void:
 	assert_almost_eq(_sum_path_cost(pf, path), Pathfinder.DEFAULT_COST, 0.0001)
 	assert_almost_eq(
 		UnitGeometry.true_height_for_cell(Vector2i(1, 0), grid),
-		1.0 * UnitGeometry.LEVEL_HEIGHT + RampGeometry.STANDING_OFFSET,
+		Unit.BASE_STEP_HEIGHT * UnitGeometry.LEVEL_HEIGHT,
 		0.0001,
-		"the ramp cell's own height genuinely changes"
+		"the cell's own height genuinely changes"
 	)
 
 
@@ -481,23 +487,47 @@ func test_placement_mode_rejects_a_surface_missing_the_walkable_tag() -> void:
 	)
 
 
-## "Partial MP costs round up" (docs/PLAN.md, settled) — a 1.2 MP climb
-## (CLIMB_COST 4.0 * a 0.3-level rise) charges 2, not 1.2.
+## "Partial MP costs round up" (docs/PLAN.md, settled) — a 1.6 MP climb
+## (CLIMB_COST 4.0 * a 0.4-level rise) charges 2, not 1.6.
+##
+## tb60 Pass A: **the rise moved from 0.3 to 0.4 because 0.3 stopped being a climb.** It is
+## exactly `Unit.BASE_STEP_HEIGHT`, so it is now a walk at `DEFAULT_COST` — which is the
+## change this pass is, caught by a test that was asserting the old boundary. 0.4 is the
+## smallest tenth above the step height, so this still tests a genuinely partial climb.
 func test_placement_mode_partial_climb_cost_rounds_up() -> void:
 	var grid := GridFixture.flat(2, 1)
-	GridFixture.place_floor(grid, Vector2i(1, 0), 0.3)
+	GridFixture.place_floor(grid, Vector2i(1, 0), 0.4)
 	var pf := Pathfinder.new(grid, true)
 
 	assert_almost_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)), 2.0, 0.0001)
 
 
-## A ramp-tagged surface edge stays ordinary movement cost regardless of
-## how large the height delta is, and needs no climb capability — the
-## same "a sloped cell costs 1 MP like any other" rule tb37 already
-## established, now keyed off the surface's own tag instead of terrain.
-func test_placement_mode_ramp_surface_edge_is_free_regardless_of_height_delta() -> void:
-	var grid := GridFixture.flat(2, 1)
-	GridFixture.place_ramp(grid, Vector2i(1, 0), 5.0)
-	var pf := Pathfinder.new(grid)  # cannot climb
+## **The inversion of the rule this replaced, and the whole of the ramp retirement in one
+## assertion** (tb60 Pass A). A ramp-tagged surface used to make its edge ordinary movement
+## *regardless of how large the height delta was* — five levels, free, no capability. It now
+## earns nothing at all from the tag: a 5.0 rise is not an edge for a non-climber, ramp or
+## not, and the identical rise on a plain floor behaves identically.
+##
+## Keeping the ramp part in the fixture is the point. The cosmetic part still exists, is
+## still placeable, and still renders as a slope; what it no longer does is grant traversal.
+func test_placement_mode_a_ramp_tag_buys_no_traversal_the_geometry_did_not_earn() -> void:
+	var ramp_grid := GridFixture.flat(2, 1)
+	GridFixture.place_ramp(ramp_grid, Vector2i(1, 0), 5.0)
+	var floor_grid := GridFixture.flat(2, 1)
+	GridFixture.place_floor(floor_grid, Vector2i(1, 0), 5.0)
 
-	assert_almost_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)), Pathfinder.DEFAULT_COST, 0.0001)
+	var ramp_pf := Pathfinder.new(ramp_grid)  # cannot climb
+	var floor_pf := Pathfinder.new(floor_grid)  # cannot climb
+
+	assert_almost_eq(
+		ramp_pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)),
+		-1.0,
+		0.0001,
+		"a 5-level rise is no edge for a non-climber, whatever the surface is labelled"
+	)
+	assert_almost_eq(
+		floor_pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)),
+		ramp_pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)),
+		0.0001,
+		"and the plain floor at the same height behaves identically"
+	)

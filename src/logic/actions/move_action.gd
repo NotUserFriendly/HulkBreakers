@@ -38,7 +38,7 @@ func is_legal(state: CombatState) -> bool:
 	if path.size() < 2 or path[0] != actual.cell:
 		return false
 
-	var pf := Pathfinder.new(state.grid, actual.shell.can_climb())
+	var pf := Pathfinder.for_unit(state.grid, actual)
 	var sim_ap: int = actual.ap
 	var sim_mp: float = actual.mp
 	var per_ap: float = actual.mp_per_ap()
@@ -92,7 +92,7 @@ func apply(state: CombatState) -> void:
 ## IS the untraversed remainder's own leftover).
 func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) -> Dictionary:
 	var actual: Unit = state.find_unit(unit.id)
-	var pf := Pathfinder.new(state.grid, actual.shell.can_climb())
+	var pf := Pathfinder.for_unit(state.grid, actual)
 	# taskblock: "bots visibly spin through every facing, then move" — the
 	# STATE was already correct per-cell (taskblock-16 Pass A), but every
 	# `faced` LogEvent below fired DURING this loop while the single `move`
@@ -176,7 +176,7 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 static func _can_still_complete(
 	state: CombatState, actual: Unit, remaining: Array[Vector2i], free: bool = false
 ) -> bool:
-	var pf := Pathfinder.new(state.grid, actual.shell.can_climb())
+	var pf := Pathfinder.for_unit(state.grid, actual)
 	var sim_ap: int = actual.ap
 	var sim_mp: float = actual.mp
 	var per_ap: float = actual.mp_per_ap()

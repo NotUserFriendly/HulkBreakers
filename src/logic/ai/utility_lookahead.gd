@@ -185,7 +185,7 @@ static func _threat_from_moving_enemies(
 ## moving is a move**, and leaving it out would make a stationary enemy invisible to
 ## the ply that is specifically about enemies repositioning.
 static func _reachable_set(context: UtilityContext, enemy: Unit) -> Array[Vector2i]:
-	var pathfinder := Pathfinder.new(context.view.grid, enemy.shell.can_climb())
+	var pathfinder := Pathfinder.for_unit(context.view.grid, enemy)
 	var budget: float = maxf(1.0, enemy.mp_per_ap() * float(enemy.ap))
 	var cells: Array[Vector2i] = pathfinder.reachable(enemy.cell, budget)
 	if not cells.has(enemy.cell):

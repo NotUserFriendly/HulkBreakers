@@ -28,8 +28,14 @@ func _glyph(grid: Grid, cell: Vector2i) -> String:
 	var surfaces: Array[Surface] = grid.surfaces_at(cell)
 	if surfaces.is_empty():
 		return " "
-	if Surface.is_ramp_at(grid, cell):
-		return "+"
+	# tb60 Pass A: `Surface.is_ramp_at` is deleted — a ramp is cosmetic geometry now, not a
+	# traversal category. The glyph survives because the authored proving-ground map still
+	# places ramp parts and a dump should say what is actually there; it reads the tag
+	# directly rather than through a shared helper, since there is no shared question left
+	# for a helper to answer.
+	for surface: Surface in surfaces:
+		if Surface.RAMP_TAG in surface.part.tags:
+			return "+"
 	var top: float = -1.0
 	for surface: Surface in surfaces:
 		top = maxf(top, surface.height)

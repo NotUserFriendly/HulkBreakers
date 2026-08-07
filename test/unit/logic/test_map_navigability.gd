@@ -52,50 +52,84 @@ func test_the_invariant_reports_a_pit_that_has_no_route_out() -> void:
 	assert_true(stranded.has(Vector2i(2, 2)), "the pit is one-way ground and must be named")
 
 
-## **A rise of 2 or less gets a ramp.** Asserted on the repaired board rather than by calling
-## the private stamper, so the test describes the rule and not the implementation.
-func test_a_shallow_pit_is_repaired_with_a_ramp() -> void:
+## **A pit deeper than a step gets a ladder.** Asserted on the repaired board rather than by
+## calling the private stamper, so the test describes the rule and not the implementation.
+##
+## tb60 Pass A: this asserted a *ramp* until the ramp was retired. The rule it now describes
+## is simpler and is the whole of the repair path: a rise inside the step height was never
+## stranding in the first place, and everything else is a ladder.
+func test_a_pit_deeper_than_a_step_is_repaired_with_a_ladder() -> void:
 	var grid: Grid = _pit_grid(3.0)
 	MapGen.guarantee_navigability(grid)
 	assert_true(
-		Surface.is_ramp_at(grid, Vector2i(2, 2)), "a 2-high face is ramp work, not ladder work"
+		Surface.has_ladder_at(grid, Vector2i(2, 2)),
+		"a 2-high face is ladder work — there is no shallower repair left to reach for"
 	)
 	assert_eq(MapNavigability.stranding_cells(grid), [] as Array[Vector2i], "and the pit is open")
 
 
-## **The ladder branch of the generator rule is measured-dead, and this is the measurement.**
+## **The ladder branch was measured-dead and this pass woke it up — this is the measurement
+## the other way round.**
 ##
-## The rule is "rise <= 2 gets a ramp, anything higher gets a ladder". Nothing generated can
-## reach the second half, and the reason is arithmetic rather than luck: a cell is one-way only
-## if you can *fall into* it, which caps the drop at `MAX_HOP_DOWN_LEVELS` (2.0); the way out
-## is the same face you came down, so the repair's rise never exceeds 2.0 either — exactly
-## `RAMP_MAX_RISE`. Every stranded cell is therefore ramp work.
+## The old rule was "rise <= `RAMP_MAX_RISE` gets a ramp, anything higher gets a ladder", and
+## the second half could not fire: a cell is one-way only if you can *fall into* it, which
+## caps the drop at `MAX_HOP_DOWN_LEVELS` (2.0); the way out is the same face you came down,
+## so the repair's rise never exceeded 2.0 either — exactly the old `RAMP_MAX_RISE`. Every
+## stranded cell was therefore ramp work, and the previous version of this test asserted
+## precisely that inequality.
 ##
-## **The branch is kept rather than deleted**, the same way taskblock-52 kept its measured-dead
-## tiebreak stage: it costs nothing, and it is one constant away from live. **If this test
-## fails, the branch has woken up — update it rather than deleting it**, and check that the
-## generator really is placing ladders where it should.
-func test_the_generators_ladder_branch_cannot_currently_fire() -> void:
+## **Its own instruction was "if this test fails, the branch has woken up — update it rather
+## than deleting it," and that is what happened.** tb60 Pass A deleted the ramp branch, so
+## the ladder is not merely reachable, it is the only repair there is. The assertion inverts
+## to match: every stranded cell now takes a ladder, and the arithmetic that used to prove
+## the branch dead is what now bounds how tall those ladders get.
+func test_every_repair_is_a_ladder_now_that_the_ramp_branch_is_gone() -> void:
+	var grid: Grid = _pit_grid(3.0)
+	var stranded_before: Array[Vector2i] = MapNavigability.stranding_cells(grid)
+	assert_false(stranded_before.is_empty(), "sanity: there is something to repair")
+
+	MapGen.guarantee_navigability(grid)
+
+	for cell: Vector2i in stranded_before:
+		assert_true(
+			Surface.has_ladder_at(grid, cell),
+			"stranded cell %s must have been repaired with a ladder" % cell
+		)
 	(
 		gut
 		. p(
 			(
-				"MAX_HOP_DOWN_LEVELS %.1f, MAX_CLIMB_LEVELS %.1f, RAMP_MAX_RISE %.1f"
+				"MAX_HOP_DOWN_LEVELS %.1f, MAX_CLIMB_LEVELS %.1f, step height %.2f — %d repaired"
 				% [
 					Pathfinder.MAX_HOP_DOWN_LEVELS,
 					Pathfinder.MAX_CLIMB_LEVELS,
-					MapGen.RAMP_MAX_RISE,
+					Unit.BASE_STEP_HEIGHT,
+					stranded_before.size(),
 				]
 			)
 		)
 	)
-	assert_lte(
-		Pathfinder.MAX_HOP_DOWN_LEVELS * UnitGeometry.LEVEL_HEIGHT,
-		MapGen.RAMP_MAX_RISE,
-		(
-			"a drop no deeper than a ramp can repair means no stranded cell ever needs a ladder"
-			+ " — if this stops holding, the ladder branch is live and wants a real test"
-		)
+
+
+## **A rise inside the step height is not stranding at all**, which is why the repair path
+## never has a shallow case to handle. The boundary the deleted ramp branch used to sit on,
+## asserted directly instead of by the constant that used to name it.
+func test_a_drop_within_the_step_height_never_strands() -> void:
+	var grid := Grid.new(5, 5)
+	for y: int in range(5):
+		for x: int in range(5):
+			grid.add_surface(Vector2i(x, y), Surface.new(DataLibrary.get_part(&"ship_floor"), 3.0))
+	grid.clear_surfaces(Vector2i(2, 2))
+	grid.add_surface(
+		Vector2i(2, 2),
+		Surface.new(DataLibrary.get_part(&"ship_floor"), 3.0 - Unit.BASE_STEP_HEIGHT)
+	)
+	grid.set_spawn_marker(Vector2i(0, 0), Enums.SpawnMarker.SPAWN_A)
+
+	assert_eq(
+		MapNavigability.stranding_cells(grid),
+		[] as Array[Vector2i],
+		"you can step back out of a dip that shallow, so it is not one-way ground"
 	)
 
 

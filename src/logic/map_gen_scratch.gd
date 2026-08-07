@@ -25,10 +25,14 @@ extends RefCounted
 ## `opacity`/`blockers`/`surfaces`/`occupant_id`, none of which this
 ## taskblock's own scope touches; those stay direct `Grid` writes
 ## throughout generation, unaffected by this split.
+## tb60 Pass A: **`RAMP` is gone.** A stair is now a run of ordinary `OPEN` cells at
+## fractional `level` values, and `level` was already a float — so the thing that used to
+## need its own cell kind needs no representation at all beyond the height it already had.
+## That is the whole shape of the ramp retirement in one enum: the special case was never
+## carrying information the general case lacked.
 enum CellKind {
 	UNCARVED,
 	OPEN,
-	RAMP,
 	EMPTY,
 }
 
@@ -101,23 +105,23 @@ func as_temporary_grid(blockers: Dictionary = {}) -> Grid:
 	for y in range(rows):
 		for x in range(width):
 			var cell := Vector2i(x, y)
-			var cell_terrain: int = get_terrain(cell)
-			if cell_terrain == CellKind.OPEN or cell_terrain == CellKind.RAMP:
-				place_surface(temp, cell, cell_terrain, get_level(cell))
+			if get_terrain(cell) == CellKind.OPEN:
+				place_surface(temp, cell, get_level(cell))
 	temp.blockers = blockers.duplicate()
 	return temp
 
 
-## The one formula that turns a scratch terrain/level reading into a real
-## placed `Surface` — shared between this throwaway-grid builder and
-## `MapGen._emit`'s own real, final authoring pass, so the two can never
-## quietly drift apart into two formulas deciding the same height.
-static func place_surface(
-	grid: Grid, cell: Vector2i, cell_terrain: int, cell_level: float, facing: float = 0.0
-) -> void:
-	var is_ramp: bool = cell_terrain == CellKind.RAMP
-	var part_id: StringName = &"ramp" if is_ramp else &"ship_floor"
-	var height: float = cell_level * UnitGeometry.LEVEL_HEIGHT
-	if is_ramp:
-		height += RampGeometry.STANDING_OFFSET
-	GridPlacement.place(grid, cell, DataLibrary.get_part(part_id), height, facing)
+## The one formula that turns a scratch level reading into a real placed `Surface` — shared
+## between this throwaway-grid builder and `MapGen._emit`'s own real, final authoring pass,
+## so the two can never quietly drift apart into two formulas deciding the same height.
+##
+## tb60 Pass A: **one part id and one height formula, where there used to be two of each.**
+## The terrain kind and the facing are both gone from the signature: every generated surface
+## is a `ship_floor` at its own level, and a stair is a run of them at fractional levels. The
+## `RampGeometry.STANDING_OFFSET` fudge — a ramp cell resting a quarter-level above its own
+## authored height, so that "the level" and "the height you stand at" meant different things
+## for exactly one cell kind — goes with it. A cell's height is now simply its height.
+static func place_surface(grid: Grid, cell: Vector2i, cell_level: float) -> void:
+	GridPlacement.place(
+		grid, cell, DataLibrary.get_part(&"ship_floor"), cell_level * UnitGeometry.LEVEL_HEIGHT
+	)
