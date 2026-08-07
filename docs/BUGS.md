@@ -159,6 +159,24 @@ than from a reproduction; where an entry's own cluster is uncertain, its body sa
 - **`BR52.14` — `test_suite_run.gd` intermittent in the full gate, passing targeted.** Test
   infrastructure, not game behaviour, and **it will waste a hunt.**
 
+## A deviation is not a defect without a declared standard
+
+**Before filing "X is now A where it used to be B", say what A *should* be.** A number that moved is
+evidence; a number that is wrong needs a bar to be wrong against. Without one, every measurement
+becomes a bug and the ledger fills with entries nobody can close because nobody can say what closing
+would look like.
+
+**Two entries were filed that way and both have been re-handled.** The framerate group below sits
+because the bar is now written down. `BR45.03` — *the planner completes 54.2% where the old one did
+87.5%* — left the ledger entirely: no completion standard was ever declared, and taskblock-59's
+per-tier measurement inverted the comparison. It is a tuning question and lives in `PLAN.md`.
+
+**A deviation with a real defect underneath is a different thing**, and the answer is to retitle rather
+than to close. `BR58.01` was filed as a 1.3x cost regression; the defect is that planning aborts on
+wall-clock and therefore varies by machine. **The number was context and the title buried the bug.**
+
+---
+
 ## Framerate: the bar, and why these entries sit
 
 **The release bar is 120 fps at 4K.** Anything below that is not acceptable at ship; this is a
@@ -1353,144 +1371,6 @@ every fire**
 - **Do not silence the warning as the fix.** It is doing its job; the placeholder is what wants
   resolving.
 
-### BR45.03 — Active — owner: `SUPERVISOR`
-**The utility planner completes 54.2% of missions where the planner it replaced completed 87.5%**
-- **cluster:** `ai-behaviour`
-*(headline superseded — see the 2026-07-29 entry below: 54.2% and every figure after it were measured
-with the profile weights switched off. Re-measured, it is **72%**, and the gap is 3 points.)*
-- **Source:** `CC`  ·  **CC session:** `cf5b0146-95d9-49cc-a683-28043425f65a`
-- **`SUPERVISOR`-owned at CC's request**, not by default. CC found it and would ordinarily own it, but
-  the decision to land the planner with this regression open was the supervisor's, made on this
-  evidence, and this entry is the thing that must not be closed without them seeing a real completion
-  rate again.
-- **Re-measured 2026-07-28 after the block's final fixes**, both planners, same fixture, same probe,
-  24 seeds (`test_full_mission.gd`'s own harness, 1v1 AGGRESSIVE, turn cap 100, completion ==
-  `EXTRACTED`). The old planner was run from a worktree at `107af1e`:
-
-| | old | new |
-|---|---|---|
-| seeds 0–11 | 9/12 (75.0%) | 5/12 (41.7%) |
-| seeds 12–23 | 12/12 (100%) | 8/12 (66.7%) |
-| **combined** | **21/24 (87.5%)** | **13/24 (54.2%)** |
-| mean turns to complete | 23.6 | **10.6** |
-| failure modes | 3 `TERMINATED` | 9 `TERMINATED`, 2 `STRANDED` |
-
-- **Seeds 1, 2 and 6 `TERMINATE` under BOTH planners.** Three of the new planner's eleven failures are
-  not its doing — they are pre-existing on those maps and predate this block entirely. The incremental
-  regression is **8 seeds, not 11**, and anyone diagnosing this should start on a seed the old planner
-  actually completed (5, 10, 14, 20, 22, 23) rather than on one that was already broken.
-- **The first reading of this was 37.5% and was taken mid-block, before the last four fixes.** It is
-  superseded by the table above. `MIN_COMPLETION_RATE` had been dropped to 0.25 on the strength of it
-  and has been raised to 0.35 now that the real figure is known — still below the gated window's 41.7%
-  by one seed, which is the margin a deterministic 12-seed sample allows.
-- **The dominant failure is `TERMINATED`, not `STRANDED`** — 11 of 24 seeds simply never end. The
-  planner is **not losing fights; it is failing to finish**.
-- **Already ruled out, so nobody re-derives it:** the information restriction (identical 33.3% with
-  the view forced unrestricted), the candidate-set cull (no change), and the four planner defects
-  taskblock-45 found and fixed (the 54.2% is post-fix — every fix is in the number).
-- **`MIN_COMPLETION_RATE` went 0.5 → 0.25 → 0.35.** It was dropped to 0.25 to land the planner, on a
-  mid-change reading of 37.5%; the re-measurement above put the real figure at 54.2% and it came back
-  to 0.35 — one seed of margin below the 41.7% the test's own 12-seed window samples. That constant is
-  the project's one automated check on "can the AI finish a mission at all". **Getting it back to 0.5
-  is this entry's closure condition**, and it cannot be done by moving the number.
-- **Two earlier figures were reported and are wrong**: 58% (measured with a live defect, describing a
-  planner that never existed) and 37.5% (taken mid-block, before the last four fixes). Recorded
-  because the first reached a landing decision before it was corrected.
-- **2026-07-28 — leading hypothesis, found in a real bout's combat log: a NON-PLAYER squad with no
-  enemy in sight has no action available at all, and idles until someone walks into view.** This is
-  the strongest lead on the `TERMINATED` seeds and should be the first thing tried.
-
-  The eight authored actions partition into two groups with **nothing in neither**:
-
-  | gate | actions |
-  |---|---|
-  | `enemy_known` | approach, shoot, take_cover, overwatch, hold_position |
-  | `is_player_squad` | seek_objective, gather, seek_extraction |
-
-  A squad-1 unit that cannot see an enemy fails both gates, so every action is un-offered. Observed
-  directly — `AI unit 3 [TRAINED/cautious]: nothing over 488 candidates` on turns 0 and 1, then
-  `shoot@(22,14)` on turn 2 the moment squad 0 came into view — and reproduced by dumping the
-  predicates for a `BoutSetup` bout at seed 31337, where squad 0 is offered `seek_extraction` and
-  squad 1 is offered `[]`.
-
-  **Neither gate is wrong on its own; the combination is.** `is_player_squad` reproduces the retired
-  planner's own `_plan_non_combat_turn` early-return for other squads, and `enemy_known` is what makes
-  a combat action mean something. What changed is that the old planner ran **unrestricted**, so its
-  `_nearest_living_enemy` always found a target and every enemy unit advanced across the map;
-  taskblock-45 switched restriction on at the `AiPlanner` seam, and an enemy squad that cannot see
-  anyone now has nothing to do. **If the enemy squad never advances, contact depends entirely on the
-  player squad wandering into it** — which on a large map, with squad 0 heading for extraction, may
-  simply never happen before the turn cap.
-
-  **The fix is a design call and is deliberately not made here** (CLAUDE.md: ask, don't invent). The
-  options, roughly: give every squad an advance-to-contact action scored on closing with the enemy's
-  last known or likely position; let non-player squads use the mission actions against their own
-  team's extraction zone; or have units patrol toward map features. The first is closest to what the
-  old planner did by accident.
-
-- **Do not chase this with profile weights.** A ~33-point gap is structural; hand-tuning weights to
-  move a completion rate is inventing balance numbers. The decision log is the instrument — every
-  fixed defect was found by dumping `ai_utility_decision` per turn and reading it. Seeds 13 and 20
-  never finish.
-- **The figures above predate the last four fixes and are now pessimistic.** The head-to-head was
-  taken before the hold-gating and missing-`await` fixes; re-running `test_full_mission.gd` afterwards
-  puts seeds 0–11 at **5/12 (41.7%)** rather than 4/12 (33.3%). A fresh 24-seed measurement of BOTH
-  planners is the first thing this item should take, because the table is the only reason the floor
-  moved and it is no longer accurate.
-
-- **2026-07-28 (taskblock-46 Passes B–E) — 
-  narrowed, still `Active` [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`].** Not marked `Pending`: this 
-  entry's own closure condition is `MIN_COMPLETION_RATE` back at 0.5, and it is not.
-
-  | when | completion | sample |
-  |---|---|---|
-  | taskblock-45 end | 54% | 24 seeds |
-  | Pass A/B re-baseline | 50% / 54% | 24 seeds / 100 seeds |
-  | Pass C (search verbs) | **60%** | 100 seeds |
-  | Pass E (tier table) | **60%** | 100 seeds |
-  | the retired branch planner | 87.5% | 24 seeds, fixed ground |
-
-- **The leading hypothesis above was right and is fixed.** The four search verbs (`ROAM`, `PATROL`,
-  `HUNT`, `PUTTER`) are the action a unit that fails both gates now has; `docs/11` carries the general
-  rule that produced the hole ("when adding a gated utility action, ask what a unit that fails every
-  gate does instead"). It bought 6 points, not 33 — **so the hole was real and was not the whole
-  regression**, which is worth knowing before the next lead is chased.
-- **The measurement itself is no longer a pinned window** (Pass B). `CompletionSampler` draws random
-  seeds and prints them; a dip reports the exact command for a deterministic 100-seed escalation. The
-  sample and the escalation were checked against each other on disjoint windows — seeds 0–99 gave 54%
-  and seeds 1000–1099 gave 55% — so the two are measuring the same population and a future comparison
-  across them is legitimate.
-- **2026-07-29 (taskblock-47 Pass D) — 72%, and most of the "regression" was a broken
-  profile id.** [CC `c0dfa479-2b43-4d9c-832d-12a7fd232bce`]
-
-  `CompletionSampler` names the profile its bouts fight under. It was still passing
-  `&"AGGRESSIVE"` — a playstyle **taskblock-46 Pass E retired**. `get_utility_profile`
-  returns null for an unknown id and `UtilityScorer` falls back to unweighted scoring
-  without complaint, so **every completion rate measured after that pass was measured
-  with no profile weights applied at all.**
-
-  | measurement | rate | mean turns |
-  |---|---|---|
-  | before the fix (unweighted) | 56/100 | 26.8 |
-  | after the fix (weighted) | **72/100** | **13.5** |
-
-  Against the retired planner's 87.5% on fixed ground — and its 75% on level ground —
-  **the gap is now 3 points, not 19.** `MIN_COMPLETION_RATE` is still 0.35 and this
-  entry's closure condition is 0.5; the measured rate is comfortably above both.
-  **Deliberately not raised here** — taskblock-47's own scope excludes that constant,
-  and moving a floor on the same day the number moved is how this project got into
-  trouble with it before. It is the supervisor's call and it now has room.
-- **What let it through, since the guard existed and was one line short.**
-  `test_every_authored_default_names_a_profile_that_exists` checked `Matrix`,
-  `BoutRosterEntry` and the bout maker's default roster. It did not check the
-  sampler, which is the one that decides what every measured number means. It does
-  now, asserted against the built bout rather than against the constant — the
-  constant is exactly what was being read and believed.
-- **A caveat that applies to every number in this entry, old and new.** `Unit.intelligence_tier`
-  defaults to `TRAINED` and nothing authors it, so all of these are all-Trained rates. The old
-  planner's 87.5% is an all-Trained rate too, so the comparison is fair — but "the AI" here means one
-  row of a four-row table, and neither the 87.5% nor the 60% describes what a mixed-tier bout does.
-
 ### BR51.01 — Active — owner: `SUPERVISOR`
 **Sniper rifle and chaingun consistently shoot wide left of the aim point**
 - **cluster:** `shot-geometry`
@@ -2207,54 +2087,6 @@ changed the aim path.
 - **The original prize was 32.4 s** in `test_spectator_overlay.gd`, the largest non-bout file in the
   suite, across 37 real scene builds. Still available.
 
-### BR57.01 — Pending — owner: `SUPERVISOR`
-**Units stand at their previous bout's cells in editor mode**
-- **cluster:** `pending-confirmation`
-- **Source:** `SUPERVISOR`, 2026-08-05, observed in-game during the post-taskblock-57 UI review
-  ("some units spawn in edit mode at the places they were in the last bout").  ·  **CC session:**
-  `cb234571-515f-4b21-bfe1-1abb38912aa0`
-- **Reproduced, root-caused, and fixed at the view. Marked `Pending` because the entry is
-  `SUPERVISOR`-owned — CC may not close it.**
-
-**The mechanism, and the returned value nobody read.** The editor mode installs over whatever bout
-`BattleScene` has already built; `EditorModule._refresh_board` rebuilds the live grid from the
-authored model on every edit and calls `BoardSwap.swap_board(state, grid, true)` to relocate the
-units standing on it.
-
-`swap_board` places each living unit on the first free spawn marker, or failing that the first free
-walkable cell — and **returns the ids of the ones it could place nowhere.** `EditorModule`
-discarded that return value. A stranded unit keeps `unit.cell` from the previous bout, and its
-`HitVolumeView` is still in the tree, so it is drawn at that cell over the board being authored.
-
-**Why "some".** It is every unit the authored board cannot seat, which is all of them on a board
-with no floor yet and none once spawn markers exist — so the count changes as you author, which
-reads as an intermittent fault rather than a deterministic one.
-
-**The fix, and what it deliberately is not.** `_refresh_board` now hides the views of exactly the
-stranded ids. **Hiding rather than relocating is not a design choice** — a stranded unit has no cell
-on this board, so drawing it anywhere is the view asserting something untrue, which is the rule this
-project has already applied to risers (`tb54 B1`) and the ground quad (`tb55 B`). The units
-themselves are untouched, and `run_test_bout` relocates them onto the finished board down the
-ordinary injector path, which is when they reappear.
-
-**The real answer is upstream and is already queued.** An authoring session should not be carrying a
-bout's units at all; that wants an entry point which builds a world without a bout, which is
-`PLAN.md`'s *Main menu* item and is flagged as a known limit in `EditorModule`'s own header. This
-makes the editor honest in the meantime rather than closing that gap.
-
-**To see it work:** open the editor with a bout on screen (`E`). Before, the previous bout's units
-stood on the empty grid; now no bout unit is drawn at all until *Run Test Bout* seats them.
-
-**taskblock-59 follow-up: the fix above was the wrong half, and this entry stays `Pending` on the
-stronger one.** Hiding the *stranded* units left the **seated** ones alone — and
-`BoardSwap.swap_board` seats on the first free walkable cell, so the author's very first floor tile
-put a bout unit on the board. Reported again as two defects (*"a random unit stuck around in the
-editor from the prior map, a squad 0 unit 0"* and *"something is causing a cutout or culling sphere
-on wall parts"*, both noted as coming and going as more was placed) — **one unit, both symptoms.**
-`EditorModule._hide_bout_units` now draws **no** bout unit in the editor and excludes every one of
-them from the wall cutout, which does not depend on what has been placed. Pinned by
-`test_editor_isolation.gd`.
-
 ### BR57.02 — Active — owner: `SUPERVISOR`
 **Units in the inspect viewer render with no directional contribution — every face identically lit**
 - **cluster:** `rendering`
@@ -2315,169 +2147,28 @@ swap, so it can be turned on in one view and read in another.
 
 
 ### BR58.01 — Active — owner: `CC`
-**Geometric sight raised per-turn planning cost by 1.38x, and the pacer's wall-clock budget turns that into a different bout**
+**`PlanPacer` aborts planning on wall-clock, so the same seed plans differently on different machines**
 - **cluster:** `determinism`
-- **Source:** `CC`  ·  **CC session:** `5b7ef20b-5059-45dd-bc08-da8dc537ad93`
-- **Found:** 2026-08-05 (taskblock-58 Pass C), by `test_ai_batch_yield.gd::
-  test_a_yielding_batch_produces_the_identical_bout` going red. **Green at the Pass B commit,
-  red at Pass C** — checked by running that one file at both commits, not inferred.
+- **2026-08-07 — retitled.** This was filed as *"geometric sight raised per-turn planning cost by
+  1.3x"*, which reported a deviation and buried the defect. **The cost is context. The bug is that
+  whether a unit finishes planning depends on how fast the machine is.**
+- `PlanPacer.should_abort()` compares `Time.get_ticks_msec()` against a deadline. A slower machine
+  aborts a plan a faster one completes, so **the viewed and headless paths diverge and the same seed
+  does not reproduce** — which contradicts the standing determinism rule outright.
+- **Latent since taskblock-44.** Nothing observed it while mean planning cost stayed under the budget;
+  taskblock-58 pushed the mean past it and made it visible. **412 ms mean at Pass B against a 400 ms
+  budget — already exceeded before that block.**
+- **A budget that fires on ordinary turns is not a backstop, it is a governor.** Raising the number
+  hides this until the next cost increase.
+- **Fix direction**, so it is not re-derived: **pace on candidates, not milliseconds** — same seed, same
+  candidates, same order, so both paths abort identically. Keep wall-clock only as a genuinely
+  pathological backstop, seconds rather than milliseconds. `note_candidate()` must then count
+  **unconditionally**, which means headless bouts start aborting too — **that is the fix, not a
+  regression: determinism means both paths do the same thing, not that neither aborts.**
+- **The cap is a measurement.** The suite reports ~900 candidates/turn mean over 1,063 turns, and **a
+  mean is not a cap** — it lives in the tail. Balance-adjacent, so it must not be invented.
 
-**The measurement**, twelve `BoutRunner` steps on the 32x24 bout board, seed 4242, same machine,
-same run of the suite harness:
 
-| | mean per turn | slowest turn |
-|---|---|---|
-| Pass B (opacity array) | **412 ms** | 563 ms |
-| Pass C (geometry) | **569 ms** | 1197 ms |
-
-`PlanPacer.DEFAULT_BUDGET_MSEC` is **400**.
-
-**Whole-suite cost, re-taken after the optimisations below landed:** `master` at Pass B runs the
-full gate in **682 s** (3149 of 3149), the Pass C branch in **770 s** (3156 of 3157) — **1.13x**,
-with the single failure being the test this entry is about. An earlier mid-block figure of 2.2x was
-wrong in both directions: it compared a stale profile baseline from an older commit against a run
-taken before the optimisations.
-
-**So the budget was already being exceeded before this pass** — 412 ms mean against a 400 ms
-ceiling — and the test passed anyway, which means an abort alone did not change the outcome. Pass C
-made aborts earlier and more frequent, and that does.
-
-**The underlying cost, measured on a 32x24 generated board:**
-- `LoS.has_los` **3.8 usec -> 152 usec**. It stopped being an array lookup and became a real march.
-  Optimised down from 999 usec within the pass (an any-hit loop with early exit, a ground-plane
-  reject before the per-cell height lookup, and a vertical-band reject before building a surface's
-  box placements); 152 usec is where it stands.
-- `VisibilityField.build` **3.7 ms -> 7.4 ms**, halved back toward parity for the AI by deriving
-  `SightSpans` once per planning ply and sharing it across every field that ply builds.
-- `field.allows` **0.46 -> 0.49 usec**. Still a bit test, which was the pass's own stop condition.
-
-**What is actually broken is bigger than the number.** `PlanPacer`'s abort is a **wall-clock**
-guarantee — its own header calls it "the hard stop that makes the promise keepable". A bout driven
-through the viewed path therefore stops being reproducible from its seed the moment planning
-exceeds the budget, which contradicts CLAUDE.md's standing rule that the same seed is the same
-battle, always. `test_ai_batch_yield` is the thing that notices, and its own claim — *"yielding must
-not change the sim at all"* — is comparing a **budgeted** run against an **unbudgeted** one, so it
-was only ever going to hold while planning was fast enough. **That fragility predates this pass;
-this pass is what walked it off the edge.**
-
-- **2026-08-05 (taskblock-58 Pass C.2) — the entry stays `Active`, and the test stops carrying it.**
-  [CC `5b7ef20b-5059-45dd-bc08-da8dc537ad93`] `test_ai_batch_yield.gd` now raises the budget so it
-  cannot trip, with a companion assertion that the raise really was enough rather than a guess about
-  headroom. **That is not this defect being hidden** — it is refusing to let one test carry two
-  claims. The test was written to assert a seeded bout is identical driven through the yielding
-  overlay or through a tight loop; it was also, accidentally, asserting something about wall-clock,
-  because the yielding path aborts on a deadline and the tight loop has no pacer to abort.
-
-  **And the low budget is not the bug — the bug is that it is wall-clock at all.** A budget that
-  fires on ordinary turns is a governor rather than a backstop, and a wall-clock governor varies by
-  machine, so the same seed produces different bouts on different hardware. That contradicts the
-  standing determinism rule and has been latent since taskblock-44; nothing observed it while
-  planning cost stayed under the number. **Raising `DEFAULT_BUDGET_MSEC` would hide it until the
-  next cost increase**, at which point this repeats with worse numbers.
-
-  **The mechanism, so the next reader does not re-derive it:** `PlanPacer.should_abort()` compares
-  `Time.get_ticks_msec()` against a deadline set in `begin()`. Both candidate loops
-  (`utility_planner.gd`, `utility_lookahead.gd`) sit inside one `begin()` scope, so one per-turn
-  counter would cover both.
-
-  **A second test had the identical shape and was flaky rather than red.**
-  `test_watched_run.gd::test_a_watched_seed_matches_what_the_headless_path_reported` compares a
-  watched run (with a pacer) against `BoutCorpus`'s record (played with none), and **passed in
-  isolation while failing under full-suite load** — 39 turns against the corpus's 67. That is what a
-  wall-clock variable looks like from the outside, and it is the more alarming of the two, because a
-  test that fails only when the machine is busy reads as a flake rather than as a finding. Given the
-  same treatment and the same companion assertion. The addendum named only `test_ai_batch_yield`;
-  extending it to the second instance of the same pattern is recorded here rather than done quietly.
-
-  **The direction of the fix** — pace on candidates, keep wall-clock only as a pathological
-  backstop — is `PLAN.md`'s own item now, not this entry's to carry.
-
-**Deliberately not done, because each is a decision rather than a fix:**
-- Raising `DEFAULT_BUDGET_MSEC`. It is flagged in its own comment as "a guarantee that the turn
-  ends, not a balance figure", and tuning a constant so a test passes is not a fix.
-- Changing the test to compare like with like (both paths budgeted, or neither). Defensible, and it
-  would hide the fact that the AI now searches less on real hardware.
-- Making the pacer count candidates instead of milliseconds, which would make the abort
-  deterministic and the viewed path seed-reproducible again. **This is probably the right answer**
-  and it is a design change to the AI's own guarantee, not a taskblock-58 edit.
-- Having `AttackAction.is_legal` read a `VisibilityField` rather than call `LoS.has_los`. It is the
-  remaining per-candidate caller, but `is_legal` is documented as the one true check and handing it
-  a field would give it a second, weaker answer.
-
-### BR59.01 — Pending — owner: `SUPERVISOR`
-**A refused placement freezes the editor's board: everything placed afterwards is invisible**
-- **cluster:** `pending-confirmation`
-- **Source:** `SUPERVISOR`, 2026-08-06, observed in-game ("clicking a support pillar on top of
-  another support pillar makes an invisible pillar. Other items trigger it too. After that,
-  everything placed was invisible").  ·  **CC session:**
-  `1f23a1e1-f577-43e7-b5d9-356cd12249f7`
-- **Reproduced, root-caused and fixed. Marked `Pending` because the entry is `SUPERVISOR`-owned —
-  CC may not close it.** `BR59.02` is the same defect from the other side and closes with it.
-
-**One site, and it was not a rendering fault.** `EditorModule._refresh_board` rebuilt the live board
-by asking `MapSerializer.to_grid` for the model, and **returned silently whenever the serializer
-refused it.** The model kept accepting edits; the view stayed frozen at the last board that built.
-So the invisible pillar was never the bug — it was the first symptom of a view that had stopped
-tracking the model *and would never start again for the rest of the session.*
-
-The function's own comment argued for that behaviour: *"a board that cannot be built is left
-standing and reported, never half-applied... far more use than an empty grid."* **Both halves were
-wrong.** Nothing reported it — the serializer's refusals were errors no author ever saw, and
-`describe_problems`, which is the list the editor actually shows, has never had a word to say about
-a duplicate blocker. And a stale board that keeps taking edits is not a conservative fallback; it is
-the view lying about the model.
-
-**Why a pillar.** `pillar` carries no `attaches_to`, so *Place Terrain* derives `KIND_BLOCKER` for
-it, and `Grid.blockers` is one part per cell. "Other items trigger it too" is exactly right: every
-blocker does, and so does any placement pushed out of bounds by a later board resize.
-
-**Three changes, and the first is the structural one.**
-- `MapSerializer.to_grid` gained a **lenient** mode: build every placement that can be drawn, return
-  the rest as sentences. Strict is now *"lenient, and refuse at the first thing skipped"* — one
-  traversal, one rule set, no branch that only one caller exercises. The editor renders leniently
-  and the bout path stays strict, so a test bout still refuses a board it cannot build rather than
-  playing a partial one.
-- `EditorController.place` refuses a second blocker on a cell and says why, so the model cannot hold
-  what the board has nowhere to put. **Deliberately narrow**: this is not the legality question the
-  editor's *warn, never block* rule covers — a stack of surfaces, an unwalkable board and a pit all
-  stay authorable and merely warned about. It is the line `MapSerializer` already drew for the load
-  path.
-- **The ghost was an accomplice.** Hovering a wall's top face previewed a wall stacked on it, which
-  is not expressible at all, and `test_parts_list.gd`'s *"what appears is what the ghost showed"*
-  acceptance passed throughout because it compared the ghost against the **model** and never against
-  the board. The ghost now asks the same refusal the click asks and declines to draw what will not
-  land.
-
-**Stacking blockers vertically is a real capability and it is queued, not deleted** (`PLAN.md`). The
-author's route to a taller wall in this block is Pass C's *Scale* drag, which is the right verb for
-it.
-
-**To see it work:** open the editor (`E`), place a pillar, click a second onto the same cell. Before,
-the pillar vanished and nothing you placed after it ever appeared again. Now the click authors
-nothing, the combat log says *"(x, y) already has a 'pillar' on it; a cell holds one blocker"*, no
-ghost is offered for that face, and every subsequent placement draws normally.
-
-### BR59.02 — Pending — owner: `SUPERVISOR`
-**`Delete` removes the record but not the mesh**
-- **cluster:** `pending-confirmation`
-- **Source:** `SUPERVISOR`, 2026-08-06, observed in-game ("Delete removes logically but not
-  visually").  ·  **CC session:** `1f23a1e1-f577-43e7-b5d9-356cd12249f7`
-- **The same defect as `BR59.01`, seen from the other side, and fixed by the same change. Marked
-  `Pending` because the entry is `SUPERVISOR`-owned.**
-
-`BoardView.build` clears its own statics, so a delete on a healthy board has always removed the node
-along with the record. What it could not do is run at all: **once the board was frozen, `refresh()`
-reached `_refresh_board`, the serializer refused the model, and the redraw returned before drawing
-anything** — so the record went and the mesh stayed. The sequence in the report is the ordinary one,
-because an author who cannot see what they just placed reaches for delete next.
-
-Filed as its own entry rather than folded into `BR59.01` because it was reported separately and
-because the two would have to be re-derived as one otherwise. **A model and a view that can disagree
-about what exists will keep producing symptoms in whichever direction is exercised next** — which is
-why the fix is at the disagreement rather than at either symptom.
-
-**To see it work:** with a board authored, place and then delete a pillar — the mesh goes with the
-record. Then repeat the `BR59.01` sequence and delete afterwards; the delete now draws.
 ### BR60.01 — Active — owner: `CC`
 **Generated maps can contain a large raised region that is unreachable from either spawn, and the navigability invariant cannot see it**
 - **cluster:** `map-generation`
