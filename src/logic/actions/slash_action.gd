@@ -112,6 +112,15 @@ func apply(state: CombatState) -> void:
 	var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, extra_sources).current
 	var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, extra_sources).current
 
+	var shot := ShotAnnouncement.new(
+		&"slash",
+		actual.id,
+		origin,
+		direction,
+		actual.orientation,
+		weapon_id,
+		ShotAnnouncement.METHOD_SWING
+	)
 	for point: Vector2 in points:
 		ShotResolution.resolve_and_log_point(
 			state,
@@ -126,7 +135,11 @@ func apply(state: CombatState) -> void:
 			false,
 			RangeModel.max_range(weapon),
 			muzzle.y,
-			DamageResolver.DEFLECT_MODE_NONE
+			DamageResolver.DEFLECT_MODE_NONE,
+			0.0,
+			0.0,
+			0.0,
+			shot
 		)
 
 	if target.alive and target.shell.living_parts().is_empty():

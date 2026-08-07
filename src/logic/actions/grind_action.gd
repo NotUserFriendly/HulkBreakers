@@ -120,6 +120,18 @@ func apply(state: CombatState) -> void:
 	var base_bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, extra_sources).current
 	var hit_count: int = maxi(1, weapon.burst)
 
+	# **One announcement for the whole grind**, not one per bite. A grind is a saw held against
+	# a body for a beat — the escalating `bonus_pen` below is one continuous action, not
+	# `hit_count` separate ones, and announcing per bite would read as a burst it is not.
+	var shot := ShotAnnouncement.new(
+		&"grind",
+		actual.id,
+		origin,
+		direction,
+		actual.orientation,
+		weapon_id,
+		ShotAnnouncement.METHOD_GRIND
+	)
 	for i in range(1, hit_count + 1):
 		ShotResolution.resolve_and_log_point(
 			state,
@@ -134,7 +146,11 @@ func apply(state: CombatState) -> void:
 			false,
 			RangeModel.max_range(weapon),
 			muzzle.y,
-			DamageResolver.DEFLECT_MODE_NONE
+			DamageResolver.DEFLECT_MODE_NONE,
+			0.0,
+			0.0,
+			0.0,
+			shot
 		)
 
 	if target.alive and target.shell.living_parts().is_empty():

@@ -352,6 +352,22 @@ static func _fire(state: CombatState, overwatcher: Unit, weapon: Part, mover: Un
 			)
 		)
 
+	# tb60 Pass B: **the seventh path, and the one that has to announce for itself.** Overwatch
+	# resolves through `DamageResolver` directly and reaches
+	# `ShotResolution.log_impact_result`/`log_miss_result` rather than `resolve_and_log_point`,
+	# so the announcement the resolver makes for the other six does not happen here. Routed
+	# through `ShotResolution.announce` rather than a hand-written `combat_log.emit`, because an
+	# announcement written by hand at one call site is an announcement that can drift from the
+	# six the resolver writes.
+	#
+	# **`overwatch_triggered` above is not this.** That says a reaction fired at a named mover;
+	# this says a round left a muzzle in a direction, with the shooter's own facing beside it —
+	# which is what `BR54.01` needs and what the reaction event has never carried.
+	var shot := ShotAnnouncement.new(
+		&"overwatch", overwatcher.id, origin, direction, overwatcher.orientation, weapon.id
+	)
+	ShotResolution.announce(state, shot)
+
 	for point: Vector2 in points:
 		var results: Array[ImpactResult] = DamageResolver.resolve_shot(
 			origin,

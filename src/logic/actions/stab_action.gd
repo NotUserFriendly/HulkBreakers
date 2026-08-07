@@ -125,6 +125,20 @@ func apply(state: CombatState) -> void:
 	# every other melee number this action reads.
 	var stab_width: float = weapon.weapon_def.stab_width if weapon.weapon_def != null else 0.0
 
+	# tb60 Pass B: **`thrust`, not `fire`.** A stab resolves through the identical shot path, so
+	# it announces through the identical mechanism — but the event kind is neutral
+	# (`weapon_used`) and the method is data, because *fired* is the wrong word for driving a
+	# spike into something and a vocabulary that only fits guns is a vocabulary that will be
+	# wrong again for the next delivery anybody authors.
+	var shot := ShotAnnouncement.new(
+		&"stab",
+		actual.id,
+		origin,
+		direction,
+		actual.orientation,
+		weapon_id,
+		ShotAnnouncement.METHOD_THRUST
+	)
 	for point: Vector2 in points:
 		ShotResolution.resolve_and_log_point(
 			state,
@@ -140,7 +154,10 @@ func apply(state: CombatState) -> void:
 			RangeModel.max_range(weapon),
 			muzzle.y,
 			DamageResolver.DEFLECT_MODE_SLIDE,
-			stab_width
+			stab_width,
+			0.0,
+			0.0,
+			shot
 		)
 
 	if target.alive and target.shell.living_parts().is_empty():
