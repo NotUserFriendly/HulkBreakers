@@ -133,6 +133,24 @@ static func _walk(
 	pose: Pose,
 	include_joints: bool = false
 ) -> void:
+	# tb61 Pass B (`BR60.02`): **left as `hp > 0`, and the attempt to unify it is why.**
+	#
+	# `BodyProjector.projects` returns `hp > 0 or is_mangled or is_disabled` and calls itself
+	# "the *only* answer", so making this defer to it looks obviously right. It is not.
+	# `Part.failure_mode` **defaults to `MANGLE`** and `wall.tres` authors none, so a destroyed
+	# wall is `is_mangled` — and deferring here put its boxes back, so it went on blocking line
+	# of sight and shots. `test_los.gd::test_destroying_a_wall_with_a_real_shot_clears_los_
+	# through_it` caught it, and `docs/02`'s settled rule is explicit that a destroyed wall
+	# clears to fully passable ground.
+	#
+	# **So these were never two answers to one question.** They are two different questions
+	# applied in series, and the series is load-bearing: the projector asks *may this part be
+	# considered at all*, and this asks *does it still have volume*. Collapsing them resurrects
+	# every destroyed blocker on the board.
+	#
+	# The real disagreement is upstream of both — `MANGLE` as a default failure mode means
+	# "almost everything is mangled at 0 hp", which is not what `Part.is_mangled`'s own
+	# description ("the wreckage look", "isn't simply gone") is describing. See `BR60.02`.
 	if part.hp > 0:
 		for box: Box in part.volume:
 			result.append(BoxPlacement.new(part, box, unit_transform * part_transform))

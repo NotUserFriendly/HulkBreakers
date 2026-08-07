@@ -2,6 +2,44 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass B — the membership question: the obvious fix was tried and is wrong
+
+**Full gate green: 343 scripts, 3353 tests, 0 failures. `BR60.02` is NOT fixed**, and the failed
+attempt is this pass's output.
+
+**What was tried.** `UnitGeometry.assembly_placements` was made to defer to
+`BodyProjector.projects` rather than test `hp > 0` itself. Every argument pointed that way: the
+projector's own doc comment claims to be *"the only answer"*, `Part.is_disabled` promises a part
+that *"still occludes shots as geometry"*, and `docs/10`'s pillar is render-is-hitbox.
+
+**What happened: destroyed walls started blocking line of sight again.**
+`Part.failure_mode` **defaults to `&"MANGLE"`** and `wall.tres` authors none, so every destroyed
+wall is `is_mangled`; the projector admits it, and restoring its boxes resurrects it.
+`test_los.gd`'s *"a destroyed wall must stop blocking LOS"* caught it, with a bout-determinism
+golden failing downstream. `docs/02`'s settled tb31 Pass C rule is explicit the other way.
+
+**The entry's framing — written in taskblock-60 — was wrong, and is corrected rather than quietly
+amended.** These are **not two answers to one question.** They are two questions applied in
+series, and the series is load-bearing: the projector asks *may this be considered at all*,
+`assembly_placements` asks *does it still have volume*, and `RayCaster`/`SightSpans` call them back
+to back. Collapsing them conflates "not excluded" with "still solid".
+
+**The real disagreement is upstream of both and is a content decision.** `MANGLE` as the *default*
+failure mode means almost everything is mangled at 0 hp — not what `Part.is_mangled` describes, and
+not what `docs/01`'s `mangles_into` replacement model describes either. Three candidate rules are
+recorded in the entry; **none is chosen**, because choosing one is a design call about the whole
+part library rather than a patch.
+
+**`BR52.06` is worse than filed.** `RayCaster` gates on the projector and then marches
+`assembly_placements`, so an empty box list means the ray finds nothing: a mangled leg is
+**invisible and intangible**, not merely undrawn. That matches *"a leg appears to have no model"*
+more exactly than the original reading.
+
+**`test_membership_disagreement.gd` characterises the contradiction** — asserting the current
+behaviour on purpose, stating that those assertions describe a defect rather than an intent, and
+pinning the `failure_mode` default so the next attempt fails at the cause instead of at the LOS
+test.
+
 ### Pass A — shot geometry, and the instrument finally read
 
 **Full gate green: 342 scripts, 3350 tests, 0 failures.**

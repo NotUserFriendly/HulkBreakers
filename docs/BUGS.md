@@ -2384,3 +2384,56 @@ to one membership question (`PLAN.md`'s *Derive plane/picker membership instead 
 in four places* records the other three), and the fix belongs with that item rather than as a
 fifth local patch.
 
+**taskblock-61 Pass B — the obvious fix was tried, it is wrong, and that is this entry's most
+useful finding.**
+
+**What was tried.** Make `UnitGeometry.assembly_placements` defer to `BodyProjector.projects`
+instead of testing `hp > 0` itself. Every argument pointed that way: the projector's own doc
+comment claims to be *"the only answer"*, `Part.is_disabled` promises a part that *"still occupies
+its socket and still occludes shots as geometry"*, and `docs/10`'s pillar is render-is-hitbox.
+
+**What happened.** `test_los.gd::test_destroying_a_wall_with_a_real_shot_clears_los_through_it`
+went red — **a destroyed wall went back to blocking line of sight** — along with a bout-determinism
+golden downstream of it. **`Part.failure_mode` defaults to `&"MANGLE"` and `wall.tres` authors
+none**, so every destroyed wall on every board is `is_mangled`, the projector admits it, and giving
+it boxes again resurrects it. `docs/02`'s settled tb31 Pass C rule is explicit the other way:
+destroy a wall and *"its cell clears to fully passable ground, the same as any other dead cover"*.
+
+**So the framing in this entry's own heading is wrong, and it is corrected here rather than
+quietly.** These are **not two answers to one question**. They are two different questions applied
+in series, and the series is load-bearing:
+
+| | asks | consumers |
+|---|---|---|
+| `BodyProjector.projects` | *may this part be considered at all* | `RayCaster`, `SightSpans` gate on it |
+| `UnitGeometry.assembly_placements` | *does it still have volume* | the same callers, immediately after |
+
+Collapsing them conflates **"not excluded"** with **"still solid"**.
+
+**The real disagreement is upstream of both, and it is a content/design question.** `MANGLE` being
+the *default* failure mode means almost everything is mangled at 0 hp — which is not what
+`Part.is_mangled` describes. Its own comment is about *"the wreckage look"*, a part that *"isn't
+simply gone"*, and `docs/01` says a part with `mangles_into` set is **replaced** by wreckage.
+**A rule that tells a wrecked cladding plate from a demolished wall cannot be a boolean over
+`is_mangled`.** Candidates, none chosen here:
+
+- **Key on `mangles_into`** — a part that names a wreck becomes that wreck and keeps volume; one
+  that does not is simply gone. Closest to `docs/01`'s stated model.
+- **Stop defaulting `failure_mode` to `MANGLE`**, so mangling is something a designer opts into.
+  Changes every unauthored part in the library, which is the whole library.
+- **Give the projector a second question** — "considered" versus "solid" — making the current
+  series explicit rather than accidental.
+
+**Consequence for `BR52.06`, and it is worse than "invisible".** `RayCaster` gates on `projects`
+and then marches `assembly_placements`, so an empty box list means the ray finds nothing. **A
+mangled leg is invisible AND intangible**, not merely undrawn — which fits *"a leg appears to have
+no model"* more exactly than the original reading did.
+
+**Characterised by `test_membership_disagreement.gd`**, which asserts the current contradictory
+behaviour on purpose, states that those assertions describe a defect rather than an intent, and
+pins the `failure_mode` default that makes any naive fix resurrect walls. **When this entry is
+decided, that file wants rewriting rather than patching.**
+
+**Still `Active`, and it should stay that way until the rule above is chosen.** taskblock-61 fixed
+nothing here.
+
