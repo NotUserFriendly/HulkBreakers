@@ -965,6 +965,17 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   (not yet applied):** give `_on_apply_pressed`'s OBJECT resolution the same snapshot-before-arming
   treatment `_begin_move_on_next_click` already uses.
 
+**taskblock-61 Pass B — not hunted, on the taskblock's own instruction** (*"do not hunt an
+unreproduced entry"*). Still unreproduced; three real-scene scenarios were tried in taskblock-30 and
+nothing since has added a route back to it.
+
+**What it needs is one observation, not more code reading.** The recorded candidate — that
+`_on_apply_pressed`'s OBJECT resolution reads a live `_active` that the destination-cell picker can
+overwrite — predicts the fault **only if the supervisor's own workflow used the cell field's "Pick"
+button rather than typing coordinates.** That is a yes/no question about how it was driven, and it
+decides whether the candidate is the cause or a second, unrelated race worth fixing on its own
+merits.
+
 ### BR30.04 — Active — owner: `SUPERVISOR`
 **Waypoint colors shuffle when arming an attack and targeting a cover item**
 - **cluster:** `input-affordance`
@@ -1627,6 +1638,36 @@ restored verbatim from `a65f66d`; only this note is new.
   (`spectator_overlay.gd:125`, `squad_control_overlay.gd:557`) and both drive it elsewhere
   (`:370`, `:686`). So the capability is present on both paths and simply is not reached from an
   injection.
+
+**taskblock-61 Pass E — re-verified, still live, and this entry's own text is now stale.**
+
+**The overlays it describes no longer exist.** taskblock-57's module collapse retired
+`spectator_overlay.gd` and `squad_control_overlay.gd`; the handler is now
+`DebugPanelModule._on_debug_panel_applied`, which emits `verb_applied`, and
+`PlaybackModule._on_verb_applied` — **which calls `refresh_status()` and nothing else.** So the
+defect survived the collapse unchanged: the capability is present and simply is not reached from an
+injection.
+
+**The corrected fix shape, and why it is not "likely small".** `PlaybackModule.play()` is the wrong
+call — it resumes the *bout runner*, i.e. auto-plays turns, which is not what a debug verb should
+do. The right one is `ResolutionModule.play(events)`, which animates a specific event list and is
+what both real resolution paths already use (`playback_module.gd:192` with `runner.last_events`,
+`unit_input_module.gd:120` with its own).
+
+**The missing piece is a channel, not a call.** `_on_debug_panel_applied` receives the signal
+*after* the verb has already run, so it cannot snapshot the log around it — there is nowhere for it
+to get "the events this verb produced". Whatever executes the verb has to hand them over. **Which
+verbs should animate needs no policy**: a verb that emitted nothing yields an empty list and
+`play([])` is a no-op, so the set self-selects.
+
+**One ordering subtlety worth carrying into the fix.** `_on_debug_panel_applied` already calls
+`sync_unit_views` / `refresh_unit_views` before it would play, and that is the *correct* order
+rather than a bug: `ResolutionPlayer._prime` is documented as running in the same frame
+`refresh_unit_views()` did, and it is what stops a unit flashing at its destination and jumping
+back.
+
+**Not fixed here.** Recorded because the entry described code that no longer exists and would have
+sent the next reader to two deleted files.
 
 ### BR51.24 — Active — owner: `SUPERVISOR`
 **A part destroyed by an explosion disappears from inspect but stays on the model**
