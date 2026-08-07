@@ -2,6 +2,8 @@
 
 ## Taskblock 60 — prep for the bug hunt: delete two, instrument four, dissolve seven
 
+**Full gate green: 341 scripts, 3345 tests, 0 failures.**
+
 *Prep, not repair. **No bug is fixed in this block**; Pass D triages and taskblock-61 hunts.*
 
 ### Pass A — ramps retired, `step_height` introduced
@@ -157,6 +159,35 @@ membership instead of answering it in four places* rather than as a fifth local 
 whoever takes it — with the note that **half of it already exists**: `ResolutionPlayer` holds
 display state for position and facing during playback, and `BR54.02` is that same idea missing
 for which parts exist. That is a much smaller piece of work than the entry implies.
+
+### Pass D — the ledger sorted by cause, and the deep ones named
+
+**Every open entry carries a `cluster:` line, and that line is the sort.** Sixteen clusters over 46
+entries. **Nothing is derived and no index is maintained** — `grep 'cluster: `shot-geometry`'` is
+the whole query, the same posture the `^### BR` heading grep already has, and the reason `BUGS.md`
+has never needed a table of contents.
+
+**A cluster is a claim about shared cause, not about subject matter.** `BR52.09` and `BR54.02` are
+both *"the model and the picture disagree"* and land in **different** clusters, because one is a
+missing teardown path and the other is a timing gap — a hunt treating them as one thing fixes
+neither. That distinction is what Pass C's testing bought.
+
+**The five deep-investigation groups are named in `BUGS.md`'s own header** with what to check
+before starting: read the new firing log before theorising about shot geometry; re-read the wall
+cutout because `RayCaster` made it cheaper than its entry says; confirm whether `BR52.12` is an AI
+defect wearing overwatch's clothes; re-verify `BR55.01` still reproduces; and do not spend a hunt on
+`BR52.14`, which is test infrastructure.
+
+**The framerate entries were not re-triaged**, per the taskblock's instruction — the bar and the
+tolerance are recorded in the ledger's own header and those entries sit deliberately.
+
+**Two entries were re-pointed by this block's own findings.** `BR32.04` is filed under `wall-cutout`
+but is also a `two-clocks` symptom and may need no shader work at all; `BR52.06` gained a measured
+probable cause (`BR60.02`) and had its own `volume` theory ruled out.
+
+**Ledger arithmetic: 46 open at the start, 46 at the end.** `BR56.01` and `BR51.12` closed
+`Obsolete`; `BR60.01` and `BR60.02` filed from measurements taken in Passes A and C. The taskblock's
+own "44 live entries" counts the post-Pass-A state.
 
 ## Taskblock 59 follow-up — fourteen editor reports across four review rounds
 
