@@ -123,6 +123,41 @@ the log before forming a theory, which is what the taskblock asks anyway.
 other four are covered structurally plus by their own files; duplicating five fixtures here
 would have bought nothing.
 
+### Pass C — the snapshot split did NOT land, and the seven entries are not one root
+
+**Stopped and reported, which is the outcome this pass's own stop rule asks for** when the work
+outgrows the block — *"a half-built snapshot split is worse than none."* What it did not
+anticipate is the reason: **the premise does not hold.** Tested rather than taken from the
+entries, and the seven fall into five different classes.
+
+| entry | actual class | evidence |
+|---|---|---|
+| `BR54.02` part vanishes before its tracer | **the snapshot class, and the only one** | `refresh_unit_views` bakes at the FINAL state; `ResolutionPlayer._prime` already retro-applies a display offset — but only for `_display_cell` / `_display_orientation`. There is no equivalent for *structure*. |
+| `BR27.07` active-turn highlight | same class, same clock | named by `BR54.02`'s own entry |
+| `BR52.06` a leg has no model | **a membership disagreement** — see `BR60.02` | `UnitGeometry` emits boxes under `hp > 0`; `BodyProjector.projects` also admits `is_mangled`/`is_disabled`. Measured: a mangled leg at 0 hp is **hittable and draws nothing**. |
+| `BR52.09` destroyed cover stays drawn | **a missing teardown path** | nothing in `src/view/` listens for `part_destroyed` at all, and `_spawn_blocker` keeps no handle to the mesh it creates. A snapshot would not help; there is nothing to remove it *with*. |
+| `BR51.24` exploded part stays on model | **an undecided rule, pointing two ways** | the entry's own note: *"if that still holds, the model is right and inspect is wrong"*, and `refresh_unit_views` already runs on this path. |
+| `BR30.02` debug move never draws | **unreproduced** | three real-scene scenarios tried and recorded as a negative result; needs a supervisor repro. |
+| `BR57.01`, `BR59.02` | **already fixed, awaiting confirmation** | both `Pending` from prior sessions; `BR57.01`'s fix has since moved on again — the editor now draws no bout unit at all. |
+
+**So the hunt inherits something better than "seven entries that are one thing": seven entries
+sorted by what each actually is**, with two of them already closed pending a look, one that is a
+decision rather than a defect, and one that turned into a new measured entry.
+
+**`BR60.02` filed, and it is the substantive find.** Two functions answer *"does this part
+exist"* and answer differently, in the same frame, with no animation involved — a mangled or
+disabled part at 0 hp still projects (occludes, hittable) and emits no box for the view to draw.
+That is `docs/10`'s "render is hitbox" pillar broken outright, it is very likely `BR52.06`, and
+it rules out that entry's own `volume` theory (every leg part authors real boxes, checked).
+**Which side is wrong is a real decision and is not made here** — it is the fourth instance of
+one membership question having two answers, so it belongs with `PLAN.md`'s *Derive plane/picker
+membership instead of answering it in four places* rather than as a fifth local patch.
+
+**Nothing was built.** No bug is fixed in this block, and the snapshot split is left whole for
+whoever takes it — with the note that **half of it already exists**: `ResolutionPlayer` holds
+display state for position and facing during playback, and `BR54.02` is that same idea missing
+for which parts exist. That is a much smaller piece of work than the entry implies.
+
 ## Taskblock 59 follow-up — fourteen editor reports across four review rounds
 
 **Full gate green: 339 scripts, 3322 tests, 0 failures, 1396.6 s.**
