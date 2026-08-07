@@ -1716,6 +1716,14 @@ restored verbatim from `a65f66d`; only this note is new.
   shape on `ship_floor`: a real, shipped Part carrying no `volume` at all.
 - **Worth knowing which leg and on which preset** — the combat tester bodies clad every limb, so a
   missing model on one of them narrows quickly.
+- **A concrete cause found, 2026-08-06 (taskblock-60 Pass C): see `BR60.02`.** `UnitGeometry`
+  emits boxes under `if part.hp > 0` while `BodyProjector.projects` also admits `is_mangled` and
+  `is_disabled` — so **a mangled leg at 0 hp is hittable and draws nothing**, measured on a real
+  assembled body. That matches this report exactly and needs no timing or refresh explanation.
+- **The `volume` theory in the bullet above is ruled out.** Every leg part in `data/parts`
+  (`leg`, `thigh`, `leg_cladding`) authors real boxes, checked file by file.
+- **To confirm it is this and not something else:** the leg should still stop rounds. If the
+  invisible leg is also un-hittable, this is a different defect and `BR60.02` is not its cause.
 
 ### BR52.07 — Active — owner: `SUPERVISOR`
 **One shot in a burst flies off at roughly 90 degrees from the gun's facing**
@@ -2209,44 +2217,6 @@ before. `PerfStats` and the perf monitor are the instruments; the readout now su
 swap, so it can be turned on in one view and read in another.
 
 
-### BR60.01 — Active — owner: `CC`
-**Generated maps can contain a large raised region that is unreachable from either spawn, and the navigability invariant cannot see it**
-- **Source:** `CC`  ·  **CC session:** `93549217-f453-4fd6-b8f3-cecf9532290e`
-- **Found:** 2026-08-06, taskblock-60 Pass A, while measuring what the ramp retirement did to
-  generated boards. **Pre-existing — it reproduces identically before and after that change**, and
-  is filed rather than fixed because Pass A is not a bug-fix pass.
-
-**The gap is in what `MapNavigability` asks.** `one_way_cells` floods *out* from a spawn and then
-floods *back*, and reports cells that are in the first set but not the second — "you can get in and
-not out." **A region you can never get into at all is not in the outward flood, so it is invisible
-to the check by construction.** `stranding_cells` therefore returns empty on boards that contain
-hundreds of cells of unreachable raised ground.
-
-**Measured at 40x30 across 60 seeds**, counting 4-connected raised regions with zero cells reachable
-from `SPAWN_A` under a non-climbing `Pathfinder`:
-
-| | before the ramp retirement | after |
-|---|---|---|
-| unreachable regions | 12 | 12 |
-| largest, in cells | 235 (seed 43) | 235 (seed 43) |
-| others over 50 cells | 172, 110, 98, 79, 65, 50 | 173, 111, 89, 80, 66, 50 |
-
-The single-cell entries in both columns are cover sitting on a lone raised cell and are **not** this
-defect — a blocker cell is unreachable by construction and no unit could stand there anyway (see
-`test_map_gen.gd::_raised_regions`, which excludes them for exactly that reason).
-
-**The suspected mechanism, not yet confirmed.** `_repair_stranded_elevation` floods from
-`rooms[0]`'s own centre and flattens what it cannot reach. If that anchor sits *inside* a raised
-region, everything connected to the anchor survives the flatten while potentially having no route
-from the spawn zones, which are chosen later by `_place_spawn_zones`. **Confirm before fixing** —
-the anchor-inside-a-raised-room theory predicts the defect correlates with `rooms[0]` being raised,
-and that is a cheap thing to measure.
-
-**Why it has not been seen in play.** `test_every_raised_area_is_ramp_reachable_across_many_seeds`
-runs at 32x24, where it does not reproduce; the bout board is 40x30. So the sweep that would have
-caught it is measuring a smaller board than the game plays on, which is worth fixing whatever the
-cause turns out to be.
-
 ### BR58.01 — Active — owner: `CC`
 **Geometric sight raised per-turn planning cost by 1.38x, and the pacer's wall-clock budget turns that into a different bout**
 - **Source:** `CC`  ·  **CC session:** `5b7ef20b-5059-45dd-bc08-da8dc537ad93`
@@ -2408,3 +2378,83 @@ why the fix is at the disagreement rather than at either symptom.
 
 **To see it work:** with a board authored, place and then delete a pillar — the mesh goes with the
 record. Then repeat the `BR59.01` sequence and delete afterwards; the delete now draws.
+### BR60.01 — Active — owner: `CC`
+**Generated maps can contain a large raised region that is unreachable from either spawn, and the navigability invariant cannot see it**
+- **Source:** `CC`  ·  **CC session:** `93549217-f453-4fd6-b8f3-cecf9532290e`
+- **Found:** 2026-08-06, taskblock-60 Pass A, while measuring what the ramp retirement did to
+  generated boards. **Pre-existing — it reproduces identically before and after that change**, and
+  is filed rather than fixed because Pass A is not a bug-fix pass.
+
+**The gap is in what `MapNavigability` asks.** `one_way_cells` floods *out* from a spawn and then
+floods *back*, and reports cells that are in the first set but not the second — "you can get in and
+not out." **A region you can never get into at all is not in the outward flood, so it is invisible
+to the check by construction.** `stranding_cells` therefore returns empty on boards that contain
+hundreds of cells of unreachable raised ground.
+
+**Measured at 40x30 across 60 seeds**, counting 4-connected raised regions with zero cells reachable
+from `SPAWN_A` under a non-climbing `Pathfinder`:
+
+| | before the ramp retirement | after |
+|---|---|---|
+| unreachable regions | 12 | 12 |
+| largest, in cells | 235 (seed 43) | 235 (seed 43) |
+| others over 50 cells | 172, 110, 98, 79, 65, 50 | 173, 111, 89, 80, 66, 50 |
+
+The single-cell entries in both columns are cover sitting on a lone raised cell and are **not** this
+defect — a blocker cell is unreachable by construction and no unit could stand there anyway (see
+`test_map_gen.gd::_raised_regions`, which excludes them for exactly that reason).
+
+**The suspected mechanism, not yet confirmed.** `_repair_stranded_elevation` floods from
+`rooms[0]`'s own centre and flattens what it cannot reach. If that anchor sits *inside* a raised
+region, everything connected to the anchor survives the flatten while potentially having no route
+from the spawn zones, which are chosen later by `_place_spawn_zones`. **Confirm before fixing** —
+the anchor-inside-a-raised-room theory predicts the defect correlates with `rooms[0]` being raised,
+and that is a cheap thing to measure.
+
+**Why it has not been seen in play.** `test_every_raised_area_is_ramp_reachable_across_many_seeds`
+runs at 32x24, where it does not reproduce; the bout board is 40x30. So the sweep that would have
+caught it is measuring a smaller board than the game plays on, which is worth fixing whatever the
+cause turns out to be.
+
+### BR60.02 — Active — owner: `CC`
+**A mangled or disabled part is hittable and undrawn — the view and the shot plane disagree about which parts exist**
+- **Source:** `CC`  ·  **CC session:** `93549217-f453-4fd6-b8f3-cecf9532290e`
+- **Found:** 2026-08-06, taskblock-60 Pass C, while testing the claim that seven view entries
+  share one root. **They do not, and this is what one of them turned out to be.**
+
+**Two functions answer "does this part exist" and they answer differently.**
+
+- `BodyProjector.projects(part)` — what a **shot** resolves against — returns
+  `hp > 0 or is_mangled or is_disabled`. Its own doc states the rule: *"a part at 0 hp still
+  projects — still occludes, still hittable — if it failed under MANGLE or DISABLE (both stay
+  fully attached, `docs/03`)."*
+- `UnitGeometry.assembly_placements` — what the **view** draws, via
+  `HitVolumeView` — emits boxes under a bare `if part.hp > 0`.
+
+**Measured on a real assembled body**, reading both back rather than re-deriving either:
+
+| leg state | `projects()` | placement boxes drawn |
+|---|---|---|
+| healthy | true | 1 |
+| destroyed (plain 0 hp) | false | 0 |
+| **mangled at 0 hp** | **true** | **0** |
+| **disabled at 0 hp** | **true** | **0** |
+
+**So a mangled limb is a thing you can shoot and cannot see.** That is `docs/10`'s "render is
+hitbox" pillar broken outright, not a timing artefact — the two callers disagree in the same
+frame, with no animation involved.
+
+**This is very likely `BR52.06`** (*"a leg doesn't seem to have a model"*). A leg is among the
+likeliest parts to be mangled rather than cleanly destroyed, and mangling leaves it attached, so
+the unit keeps walking around with an invisible limb that still stops rounds. That entry's own
+proposed theory — a part authoring no `volume` — is **ruled out**: every leg part in
+`data/parts` authors real boxes, checked.
+
+**Which side is wrong is a real decision and is not made here.** Either the view should draw
+what projects (a mangled limb is visibly wrecked, which is the reading `docs/03`'s mangle state
+implies), or `projects()` is too generous and a mangled part should stop being hittable. **They
+must not be decided separately** — this is the fourth time this codebase has found two answers
+to one membership question (`PLAN.md`'s *Derive plane/picker membership instead of answering it
+in four places* records the other three), and the fix belongs with that item rather than as a
+fifth local patch.
+

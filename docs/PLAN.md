@@ -730,6 +730,18 @@ number of milliseconds.
 - **The view renders a snapshot**, holding state as of the last resolved action while the sim works on
   its own copy; it swaps and animates when planning completes. `refresh_unit_views(touched_ids)` is
   already the explicit sync point and `dup()` already exists for previews, so the seams are present.
+  **taskblock-60 Pass C found that half of this already exists and is smaller than it looks**:
+  `ResolutionPlayer._prime` already holds display state through playback — `_display_cell` and
+  `_display_orientation` — so a unit animates from where it *was* while the model has already
+  moved it. What has no equivalent is **structure**: which parts exist. `BR54.02` is exactly that
+  gap and nothing more, so the narrow fix is a third display dimension rather than a new
+  architecture.
+- **The seven-entry class this item was expected to dissolve does not exist.** taskblock-60 Pass C
+  tested it: only `BR54.02` and `BR27.07` are this shape. `BR52.06` is a membership disagreement
+  (`BR60.02`), `BR52.09` is a missing teardown path, `BR51.24` is an undecided rule, `BR30.02` is
+  unreproduced, and `BR57.01`/`BR59.02` are already fixed. **This item is still worth doing for its
+  own stated reasons** — consistency, and making off-thread work safe later — but not on the
+  grounds that it closes seven bugs.
   This buys *consistency* — the view can never observe a half-mutated state — and it is what would make
   off-thread work safe later, since a view reading an immutable snapshot cannot race a sim mutating its
   own copy.
