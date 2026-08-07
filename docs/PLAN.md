@@ -1506,6 +1506,31 @@ something above, then **drops to its real thickness and takes the height of what
 exhaustive — there are edge cases it will not catch — but it handles the common case, and the scale
 tool covers the rest.
 
+### Declare a completion standard, then tune to it
+**Needs:** *Author the intelligence tiers* (landed, taskblock-59). **Unblocks:** any statement about
+whether the AI is good enough.
+
+**Raised as `BR45.03` and removed from the ledger — it was a deviation without a standard.** The entry
+read *the planner completes 54.2% of missions where the planner it replaced completed 87.5%*, which
+measures a change against a baseline nobody ever declared correct. **87.5% was a number the old planner
+happened to produce, not a bar it was meeting.**
+
+**And taskblock-59 inverted the comparison** by authoring the intelligence tiers, so the figure the
+entry rested on describes a roster that no longer exists.
+
+**What is actually needed, in order:**
+
+- **A completion standard, stated per tier.** An all-`MINDLESS` squad cannot shoot at all, so its rate
+  should be low — *how* low is a design answer, and without one a bad number and a correct one look
+  identical. The same question for a mixed roster, which is what a real mission has.
+- **`seeds_to_first_win` is the metric**, not a rate. It degrades gracefully where a threshold on a
+  small integer count does not — which is what put `MIN_COMPLETION_RATE` a fraction of a seed from red
+  and got it lowered rather than investigated.
+- **Then tune to the standard**, and only then is a deviation from it a defect worth filing.
+
+**The general rule this came from is in `BUGS.md`'s header:** a number that moved is evidence; a number
+that is wrong needs a bar to be wrong against.
+
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
 that cross a room boundary meaningfully.

@@ -3321,3 +3321,129 @@ rather than patched in place.
   `MaterialEntry`'s 30.0 default, and the engagement measured sat at ~31 degrees — one degree over.
   A shipped material resting its whole feel on an unauthored default is a real thing for the first
   person touching armour balance to see, and a closed bug entry is the wrong place to keep it.
+
+### BR57.01 — Resolved — owner: `SUPERVISOR`
+**Units stand at their previous bout's cells in editor mode**
+- **cluster:** `pending-confirmation`
+- **Source:** `SUPERVISOR`, 2026-08-05, observed in-game during the post-taskblock-57 UI review
+  ("some units spawn in edit mode at the places they were in the last bout").  ·  **CC session:**
+  `cb234571-515f-4b21-bfe1-1abb38912aa0`
+- **Reproduced, root-caused, and fixed at the view. Marked `Pending` because the entry is
+  `SUPERVISOR`-owned — CC may not close it.**
+
+**The mechanism, and the returned value nobody read.** The editor mode installs over whatever bout
+`BattleScene` has already built; `EditorModule._refresh_board` rebuilds the live grid from the
+authored model on every edit and calls `BoardSwap.swap_board(state, grid, true)` to relocate the
+units standing on it.
+
+`swap_board` places each living unit on the first free spawn marker, or failing that the first free
+walkable cell — and **returns the ids of the ones it could place nowhere.** `EditorModule`
+discarded that return value. A stranded unit keeps `unit.cell` from the previous bout, and its
+`HitVolumeView` is still in the tree, so it is drawn at that cell over the board being authored.
+
+**Why "some".** It is every unit the authored board cannot seat, which is all of them on a board
+with no floor yet and none once spawn markers exist — so the count changes as you author, which
+reads as an intermittent fault rather than a deterministic one.
+
+**The fix, and what it deliberately is not.** `_refresh_board` now hides the views of exactly the
+stranded ids. **Hiding rather than relocating is not a design choice** — a stranded unit has no cell
+on this board, so drawing it anywhere is the view asserting something untrue, which is the rule this
+project has already applied to risers (`tb54 B1`) and the ground quad (`tb55 B`). The units
+themselves are untouched, and `run_test_bout` relocates them onto the finished board down the
+ordinary injector path, which is when they reappear.
+
+**The real answer is upstream and is already queued.** An authoring session should not be carrying a
+bout's units at all; that wants an entry point which builds a world without a bout, which is
+`PLAN.md`'s *Main menu* item and is flagged as a known limit in `EditorModule`'s own header. This
+makes the editor honest in the meantime rather than closing that gap.
+
+**To see it work:** open the editor with a bout on screen (`E`). Before, the previous bout's units
+stood on the empty grid; now no bout unit is drawn at all until *Run Test Bout* seats them.
+
+**taskblock-59 follow-up: the fix above was the wrong half, and this entry stays `Pending` on the
+stronger one.** Hiding the *stranded* units left the **seated** ones alone — and
+`BoardSwap.swap_board` seats on the first free walkable cell, so the author's very first floor tile
+put a bout unit on the board. Reported again as two defects (*"a random unit stuck around in the
+editor from the prior map, a squad 0 unit 0"* and *"something is causing a cutout or culling sphere
+on wall parts"*, both noted as coming and going as more was placed) — **one unit, both symptoms.**
+`EditorModule._hide_bout_units` now draws **no** bout unit in the editor and excludes every one of
+them from the wall cutout, which does not depend on what has been placed. Pinned by
+`test_editor_isolation.gd`.
+- **2026-08-07 (supervisor check via review session `HBPaR3`) — RESOLVED.** Confirmed in the editor.
+
+### BR59.01 — Resolved — owner: `SUPERVISOR`
+**A refused placement freezes the editor's board: everything placed afterwards is invisible**
+- **cluster:** `pending-confirmation`
+- **Source:** `SUPERVISOR`, 2026-08-06, observed in-game ("clicking a support pillar on top of
+  another support pillar makes an invisible pillar. Other items trigger it too. After that,
+  everything placed was invisible").  ·  **CC session:**
+  `1f23a1e1-f577-43e7-b5d9-356cd12249f7`
+- **Reproduced, root-caused and fixed. Marked `Pending` because the entry is `SUPERVISOR`-owned —
+  CC may not close it.** `BR59.02` is the same defect from the other side and closes with it.
+
+**One site, and it was not a rendering fault.** `EditorModule._refresh_board` rebuilt the live board
+by asking `MapSerializer.to_grid` for the model, and **returned silently whenever the serializer
+refused it.** The model kept accepting edits; the view stayed frozen at the last board that built.
+So the invisible pillar was never the bug — it was the first symptom of a view that had stopped
+tracking the model *and would never start again for the rest of the session.*
+
+The function's own comment argued for that behaviour: *"a board that cannot be built is left
+standing and reported, never half-applied... far more use than an empty grid."* **Both halves were
+wrong.** Nothing reported it — the serializer's refusals were errors no author ever saw, and
+`describe_problems`, which is the list the editor actually shows, has never had a word to say about
+a duplicate blocker. And a stale board that keeps taking edits is not a conservative fallback; it is
+the view lying about the model.
+
+**Why a pillar.** `pillar` carries no `attaches_to`, so *Place Terrain* derives `KIND_BLOCKER` for
+it, and `Grid.blockers` is one part per cell. "Other items trigger it too" is exactly right: every
+blocker does, and so does any placement pushed out of bounds by a later board resize.
+
+**Three changes, and the first is the structural one.**
+- `MapSerializer.to_grid` gained a **lenient** mode: build every placement that can be drawn, return
+  the rest as sentences. Strict is now *"lenient, and refuse at the first thing skipped"* — one
+  traversal, one rule set, no branch that only one caller exercises. The editor renders leniently
+  and the bout path stays strict, so a test bout still refuses a board it cannot build rather than
+  playing a partial one.
+- `EditorController.place` refuses a second blocker on a cell and says why, so the model cannot hold
+  what the board has nowhere to put. **Deliberately narrow**: this is not the legality question the
+  editor's *warn, never block* rule covers — a stack of surfaces, an unwalkable board and a pit all
+  stay authorable and merely warned about. It is the line `MapSerializer` already drew for the load
+  path.
+- **The ghost was an accomplice.** Hovering a wall's top face previewed a wall stacked on it, which
+  is not expressible at all, and `test_parts_list.gd`'s *"what appears is what the ghost showed"*
+  acceptance passed throughout because it compared the ghost against the **model** and never against
+  the board. The ghost now asks the same refusal the click asks and declines to draw what will not
+  land.
+
+**Stacking blockers vertically is a real capability and it is queued, not deleted** (`PLAN.md`). The
+author's route to a taller wall in this block is Pass C's *Scale* drag, which is the right verb for
+it.
+
+**To see it work:** open the editor (`E`), place a pillar, click a second onto the same cell. Before,
+the pillar vanished and nothing you placed after it ever appeared again. Now the click authors
+nothing, the combat log says *"(x, y) already has a 'pillar' on it; a cell holds one blocker"*, no
+ghost is offered for that face, and every subsequent placement draws normally.
+- **2026-08-07 (supervisor check via review session `HBPaR3`) — RESOLVED.** Confirmed in the editor.
+
+### BR59.02 — Resolved — owner: `SUPERVISOR`
+**`Delete` removes the record but not the mesh**
+- **cluster:** `pending-confirmation`
+- **Source:** `SUPERVISOR`, 2026-08-06, observed in-game ("Delete removes logically but not
+  visually").  ·  **CC session:** `1f23a1e1-f577-43e7-b5d9-356cd12249f7`
+- **The same defect as `BR59.01`, seen from the other side, and fixed by the same change. Marked
+  `Pending` because the entry is `SUPERVISOR`-owned.**
+
+`BoardView.build` clears its own statics, so a delete on a healthy board has always removed the node
+along with the record. What it could not do is run at all: **once the board was frozen, `refresh()`
+reached `_refresh_board`, the serializer refused the model, and the redraw returned before drawing
+anything** — so the record went and the mesh stayed. The sequence in the report is the ordinary one,
+because an author who cannot see what they just placed reaches for delete next.
+
+Filed as its own entry rather than folded into `BR59.01` because it was reported separately and
+because the two would have to be re-derived as one otherwise. **A model and a view that can disagree
+about what exists will keep producing symptoms in whichever direction is exercised next** — which is
+why the fix is at the disagreement rather than at either symptom.
+
+**To see it work:** with a board authored, place and then delete a pillar — the mesh goes with the
+record. Then repeat the `BR59.01` sequence and delete afterwards; the delete now draws.
+- **2026-08-07 (supervisor check via review session `HBPaR3`) — RESOLVED.** Confirmed in the editor.
