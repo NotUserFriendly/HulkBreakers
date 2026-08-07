@@ -37,8 +37,17 @@ extends RefCounted
 ## `Part.tags` is checked against — never a closed enum (CLAUDE.md): a
 ## designer adds a new walkable, or walkable-and-ramp-shaped, surface by
 ## tagging a Part, no code edit. `WALKABLE_TAG` gates `Pathfinder`
-## standability; `RAMP_TAG` is what makes a surface's own edge ride the
-## corrected ramp profile (`RampGeometry`) instead of a flat top.
+## standability.
+##
+## **`RAMP_TAG` is a rendering tag and nothing more, as of tb60 Pass A.** It still makes a
+## surface's own edges ride the sloped `RampGeometry` profile instead of a flat top, and
+## `CellInspection` still names the shape to a player. What it no longer does is grant
+## traversal: the shared "stepping onto this cell is ordinary movement, never a
+## Climb/HopDown" check that `Pathfinder`, `ClimbAction` and `HopDownAction` all read is
+## **deleted**, replaced by `Unit.step_height()` compared against the actual rise. A ramp is
+## content now: sloped geometry a unit walks over because it is shallow, not because it is
+## labelled. Do not reintroduce a traversal reading of this tag; that is the categorical
+## check the pass existed to remove.
 const WALKABLE_TAG: StringName = &"walkable"
 const RAMP_TAG: StringName = &"ramp"
 
@@ -100,24 +109,14 @@ static func first_walkable(surfaces: Array[Surface]) -> Surface:
 	return null
 
 
-## True if any surface placed at `cell` carries the ramp tag — the
-## placement-model check for "stepping onto/off this cell is ordinary
-## ramp movement, never a discrete Climb/HopDown action" (`Pathfinder`'s
-## own "no special-casing" rule; `ClimbAction`/`HopDownAction`'s own
-## "never onto a ramp" gate). taskblock-39 Pass C: replaces every direct
-## `grid.get_terrain(cell) == Enums.TerrainType.RAMP` check — the shared
-## formula so those callers and `Pathfinder`'s own ramp check can never
-## quietly drift apart.
-static func is_ramp_at(grid: Grid, cell: Vector2i) -> bool:
-	for surface: Surface in grid.surfaces_at(cell):
-		if RAMP_TAG in surface.part.tags:
-			return true
-	return false
-
-
-## True if any surface placed at `cell` carries the ladder tag. The companion to
-## `is_ramp_at`, and the same reason it exists: one shared formula, so
+## True if any surface placed at `cell` carries the ladder tag. One shared formula, so
 ## `ClimbAction` and `Pathfinder` cannot quietly drift apart about what a ladder is.
+##
+## **The last of its kind.** Its ramp-tag twin was deleted at tb60 Pass A, and the difference
+## between the two is worth keeping in view. A ladder is a real mechanical category: it is
+## *the route up that needs no capability*, and nothing about the geometry of the cell tells
+## you it is there. A ramp was never that; it was a label on a shallow rise, and a shallow
+## rise can simply be measured.
 static func has_ladder_at(grid: Grid, cell: Vector2i) -> bool:
 	for surface: Surface in grid.surfaces_at(cell):
 		if LADDER_TAG in surface.part.tags:

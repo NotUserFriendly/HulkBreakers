@@ -1,5 +1,78 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 60 — prep for the bug hunt: delete two, instrument four, dissolve seven
+
+*Prep, not repair. **No bug is fixed in this block**; Pass D triages and taskblock-61 hunts.*
+
+### Pass A — ramps retired, `step_height` introduced
+
+**Five categorical checks became one continuous comparison.** `Surface.is_ramp_at`,
+`MapGen.RAMP_MAX_RISE`, `MapGenScratch.CellKind.RAMP`, `_stamp_ramp`, `_stamp_ramp_pair` and
+`_connect_with_a_ramp` are deleted. The rule is now *can this unit step up that far*, never *is
+this thing labelled a ramp*.
+
+**`Unit.step_height()` is a per-unit stat through `StatResolver`**, mirroring `mp_per_ap` exactly —
+so a leg swap changes what a unit can step over on the same frame, and two units on the identical
+board legitimately disagree about the same rise. `BASE_STEP_HEIGHT` is **0.3, flagged not designed**:
+it is the stair riser the design names, not an invented number, and everything downstream derives
+from it rather than assuming it.
+
+**`Pathfinder.for_unit(grid, unit)` replaced fifteen `Pathfinder.new(grid, unit.shell.can_climb())`
+call sites.** A caller could read one mobility property off a unit and default the other; now it
+cannot. `SearchRoute.generate` takes the unit for the same reason.
+
+**The free rise is symmetric.** Up and down within the step both cost `DEFAULT_COST` — an
+asymmetric one would manufacture one-way ground a fraction of a level at a time, which is `BR46.02`
+in miniature.
+
+**The generator builds stairs and repairs with ladders.** A flight is `ceil(rise / step_height)`
+steps, so the tread count is derived and retuning the step height reshapes stairs with no further
+edit. The repair path's ramp branch is gone entirely: a rise inside the step height was never
+stranding, and everything above it is a ladder — **the branch `test_map_navigability.gd` had
+measured as dead is now the only branch there is**, and that test inverted rather than being
+deleted, as its own note instructed.
+
+**`MapNavigability` and `MapGen.generate` take the step height**, defaulting to
+`Unit.BASE_STEP_HEIGHT`; a caller holding a roster passes `Unit.lowest_step_height(units)`. The
+invariant has to assume the worst case or it certifies boards the shortest-legged unit cannot leave.
+
+**A cosmetic ramp survives as content.** `data/parts/ramp.tres`, `Surface.RAMP_TAG` and
+`RampGeometry` still render a slope and `CellInspection` still names it. What went is the traversal
+privilege. The guard in `test_step_height.gd` bans the three retired **identifiers**, deliberately
+not the word — a total ban cannot tell a correct use from an incorrect one, and the word is still
+live.
+
+**Reverted mid-pass, and worth recording.** Dissolving `CellKind.RAMP` silently dissolved a
+protection it was carrying: `_scatter_cover` skipped non-`OPEN` cells, so cover could never land on
+a ramp. With treads as ordinary `OPEN` cells, cover began sealing stairs and
+`_repair_stranded_elevation` then flattened the rooms behind them — **raised ground across eight
+seeds fell from 15.8% of walkable cells to 8.3% before this was caught.** `_author_levels` now
+records the flight (treads and the cell it lands on) into a `stair_cells` set that `_scatter_cover`
+refuses. **The measurement is what found it; nothing failed.**
+
+**Measured, both sides, 40x30 across eight seeds:**
+
+| | ramps | `step_height` 0.3 | `step_height` 0.5 |
+|---|---|---|---|
+| raised cells | 1076 (15.8%) | 883 (12.8%) | 1076 (15.8%) |
+| one-way (stranded) cells | 0 | 0 | 0 |
+| generation, 8 seeds | — | ~2.1 s | ~2.1 s |
+
+**The residual gap at 0.3 is the honest cost of the pass**: a 3-tread flight needs more room than a
+2-cell ramp did, so some rooms find no approach and are flattened. Navigability is untouched at
+every step height measured. **Which step height to ship is a balance call and is the supervisor's** —
+the code makes it one number.
+
+**Two entries closed as `Obsolete`** — `BR56.01` (repair ramps stamped at 45 degrees) and `BR51.12`
+(ramps stacked facing opposite ways). Both describe deleted code; neither was verified fixed.
+Supervisor-authorised over the owner gate, on the record that they reopen if met again.
+
+**`BR60.01` filed.** Measuring the before/after turned up a **pre-existing** defect that reproduces
+identically on both sides: `MapNavigability` asks "can you get out", so a raised region you can
+never get *into* is invisible to it — 12 such regions across 60 seeds at 40x30, largest 235 cells.
+Not fixed here.
+
+
 ## Taskblock 59 follow-up — fourteen editor reports across four review rounds
 
 **Full gate green: 339 scripts, 3322 tests, 0 failures, 1396.6 s.**

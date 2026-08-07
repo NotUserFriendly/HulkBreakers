@@ -293,7 +293,7 @@ static func build(
 	context._can_defer = context._some_other_living_unit()
 
 	context._move_budget = maxf(1.0, p_unit.mp_per_ap() * float(p_unit.ap))
-	var pathfinder := Pathfinder.new(p_view.grid, p_unit.shell.can_climb())
+	var pathfinder := Pathfinder.for_unit(p_view.grid, p_unit)
 	# taskblock-46 Pass C: a patrolling unit lays out its route the first time it
 	# needs one, records that it has arrived somewhere, and then picks the point it
 	# has neglected longest. Done here rather than in the planner because it is
@@ -306,9 +306,7 @@ static func build(
 	_record_recent(p_unit)
 	if p_unit.search_behaviour == &"PATROL":
 		if p_unit.patrol_points.is_empty():
-			p_unit.patrol_points = SearchRoute.generate(
-				p_view.grid, p_unit.cell, p_unit.shell.can_climb()
-			)
+			p_unit.patrol_points = SearchRoute.generate(p_view.grid, p_unit.cell, p_unit)
 		SearchRoute.record_arrival(p_unit, p_view.round_number)
 		context._patrol_target = SearchRoute.next_point(p_unit)
 

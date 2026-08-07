@@ -3166,3 +3166,113 @@ the cell's real height**
   asserts vertex counts and `test_board_view.gd` asserts an AABB; geometry in the right place
   facing the wrong way satisfies both. CLAUDE.md's "read the real node back, don't re-derive it"
   had been applied to placement and never to orientation.
+
+### BR56.01 — Obsolete — owner: `SUPERVISOR`
+**Navigability-repair ramps are stamped facing 45 degrees, across the corner of their own cell**
+- **Source:** `SUPERVISOR`, 2026-08-04, observed in-game across several bouts ("ramps are generating
+  rotated 45 degrees"), most clearly on `seed=339963260`.  ·  **CC session:**
+  `8b76a838-a998-436a-9e35-b74c4927f811`
+- **Confirmed, reproduced in isolation, and attributed to one of the two ramp-stamping paths.**
+
+**The mechanism.** `MapGen` stamps ramps from two places, and only one of them restricts itself to
+cardinal directions:
+- `_stamp_ramp_pair` (the ordinary room ramp) takes its direction from `_outward_ring_direction`,
+  which returns **only** N/S/E/W or `null`. Its own doc states the rule: *"a ramp only ever runs
+  along a single N/S/E/W approach, never a corner graft (the same orthogonal-only posture
+  `GridPlacement`'s own attachment grammar uses)."* These are always orthogonal.
+- `_open_a_route_out` (taskblock-53 Pass D's navigability repair) iterates **`Grid.neighbors()`,
+  which is 8-directional**, and hands whatever it picks to `_stamp_ramp`, which sets the facing to
+  `atan2(direction.x, direction.y)`. A diagonal neighbour therefore yields exactly ±45 or ±135
+  degrees. **The repair path violates the orthogonal-only posture the other path documents.**
+
+**The formula is not the defect.** `_stamp_ramp`'s inline `atan2(x, y)` is the same expression
+`BodyProjector.orientation_for` computes, and both paths point up-slope, so the two agree on every
+cardinal case. It is the *input* that differs — 8 neighbours against 4. (That the repair path
+open-codes the expression instead of calling the shared helper is a separate, smaller smell.)
+
+**Isolated reproduction**, a 5x5 plateau at 3.0 with one cell dropped to 1.0:
+- Wall off all four orthogonal neighbours, leaving only a diagonal escape → `guarantee_navigability`
+  stamps a ramp at `(2, 2)` facing **+45.0 deg**.
+- Leave the orthogonals open (control, same code path) → **+90.0 deg**, orthogonal.
+
+**Measured incidence — 20 of 44 ramp cells across the five seeds in `out/combat.log` are diagonal:**
+
+| seed | ramp cells | orthogonal | diagonal |
+|---|---|---|---|
+| 339963260 (the reported bout) | 12 | 5 | **7** |
+| 6930958 | 8 | 4 | **4** |
+| 208111853 | 15 | 7 | **8** |
+| 334004531 | 6 | 6 | 0 |
+| 2 | 3 | 2 | **1** |
+
+The orthogonal ones come in height pairs (0.25/0.75) — `_stamp_ramp_pair`'s inner/outer stamp. The
+diagonal ones are mostly lone cells at the stranded cell's own height, which is `_stamp_ramp`'s
+signature.
+
+**Why no test caught it.** The repair is judged on navigability alone, and a diagonal ramp *is*
+traversable — `Pathfinder.move_cost` treats an edge with a ramp at either end as ordinary movement,
+so `MapNavigability.stranding_cells` comes back clean and the sweep stays green. **Nothing anywhere
+asserts a ramp's facing.** The defect is visible only by looking at the board, which is what the
+supervisor did.
+
+**DO NOT FIX — supervisor instruction, 2026-08-04.** *"It's likely I'll make distinct ramp tiles
+obsolete in the next pass, so don't try and fix it."* The entry stays `Active` because the defect is
+real and confirmed, **not because it is waiting for someone to repair it**. If distinct ramp tiles do
+go away, this closes as `Obsolete` (the code it describes was replaced, and nobody verified a fix) —
+which is the supervisor's call to make, not CC's.
+
+**Not yet decided, and moot if the above lands:** whether the fix is to restrict `_open_a_route_out`
+to the four orthogonals, or to keep the diagonal candidate and stamp the ramp along the nearest
+cardinal axis. The first is simpler and matches the stated posture; the second preserves repair
+coverage in topologies where the only uphill neighbour really is diagonal (the isolated repro above
+is exactly that case, and under the first option that pit would get a **ladder** or stay stranded).
+**Either way it changes generated boards for every seed**, so the map corpus, the navigability sweep
+and any recorded measurement taken against a current seed move with it — which is why this is filed
+rather than patched in place.
+
+- **`Obsolete` (2026-08-06, taskblock-60 Pass A) — the code this entry describes was deleted, and
+  nobody verified a fix.** The supervisor authorised this closing status directly, over the
+  owner-gate rule, with the standing note that they will reopen it if they meet the defect again.
+- **What went.** `_open_a_route_out`'s ramp branch, `_stamp_ramp`, `MapGen.RAMP_MAX_RISE`,
+  `_stamp_ramp_pair`, `_connect_with_a_ramp`, `MapGenScratch.CellKind.RAMP` and
+  `Surface.is_ramp_at`. The generator authors stairs — ordinary `ship_floor` tiles at evenly
+  spaced heights — and repairs stranded ground with ladders. **No generated surface carries a
+  facing at all now**, which is what makes this unverifiable rather than fixed: the field the
+  entry is about is no longer written.
+- **The entry's own diagnosis survives as the reason the deletion was cheap.** It found that the
+  repair path took its direction from an 8-way neighbour list while the room path used 4, and that
+  `Surface.facing` never reached the pathfinder — so a ramp was already traversable from any
+  direction and the facing was a visual field nothing read. A ladder is vertical and faces
+  nothing, so the question the entry asks has no place left to be asked.
+- **The two options it left undecided — restrict the repair to four orthogonals, or stamp along
+  the nearest cardinal — are both moot.** Neither was taken; the branch that would have hosted
+  them is gone.
+- **Ramps do return later**, as `PLAN.md` says, but as a chassis property (a unit with no step
+  height at all, needing a continuous slope) rather than as a labelled cell. That is a different
+  entry when it happens.
+
+### BR51.12 — Obsolete — owner: `SUPERVISOR`
+**Ramps may generate on top of other ramps facing the other way**
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 fourth hunt.
+- Reported as a suspicion rather than a confirmed defect: ramps appearing stacked on one cell facing
+  opposite directions. **`Suspected` deliberately** — it has not been reproduced deliberately and no
+  route back to it is recorded.
+- Cheap to test headlessly once described: `MapGen` places ramps through `connect_with_a_ramp`, and
+  "at most one correctly typed floor surface per cell" is already asserted by
+  `test_map_gen.gd`. **If that test passes while this reproduces, the assertion is narrower than its
+  name** — which is the more interesting finding of the two.
+
+- **`Obsolete` (2026-08-06, taskblock-60 Pass A) — the subsystem this entry suspects was deleted,
+  and the suspicion was never reproduced.** Supervisor-authorised closing status, same as
+  `BR56.01`, with the same standing note that it reopens if the behaviour is met again.
+- **Ramps can no longer generate at all, stacked or otherwise.** `MapGenScratch.CellKind.RAMP` is
+  gone and `MapGenScratch.place_surface` authors exactly one part id, `ship_floor`, at one height
+  — so "two ramps on one cell facing opposite ways" has no mechanism behind it.
+- **The interesting half of the entry was answered rather than deleted, and the answer was that
+  the assertion was too narrow.** Its own note said: if `test_map_gen.gd`'s "at most one correctly
+  typed floor surface per cell" passes while this reproduces, the assertion is narrower than its
+  name. That assertion turned out to be counting *every* surface at a cell rather than every
+  *walkable* one — which is why a repair ladder sharing a cell with its floor made it fail the
+  moment ladders became the only repair. It now counts walkable surfaces, which is what its name
+  always claimed. **A cell still cannot hold two floors; it can hold a floor and a ladder, and
+  always could.**

@@ -40,12 +40,15 @@ static func place_floor(
 	GridPlacement.place(grid, cell, DataLibrary.get_part(&"ship_floor"), height, facing)
 
 
-## Places a single ramp CELL at `cell` — `level` is this cell's own LOWER
-## endpoint (docs/PLAN.md's settled height model, same convention
-## `MapGen._stamp_ramp_pair` uses), `facing` the direction of ascent. This
-## builds ONE cell's surface, the same primitive the real two-cell
-## MapGen profile is stamped from — a fixture wanting that full profile
-## calls this twice, once per cell, at the two levels it authors.
+## Places a single COSMETIC ramp cell at `cell` — `level` is this cell's own lower endpoint,
+## `facing` the direction of ascent.
+##
+## **tb60 Pass A: this places content, not machinery.** The generator no longer authors ramps
+## at all (it builds stairs out of `place_floor` at fractional levels, and a fixture wanting
+## a stair does the same), and a ramp-tagged surface buys a mover nothing the geometry has
+## not already earned. What this still does is place a real part with the sloped
+## `RampGeometry` profile — which is what the rendering and picking tests that call it
+## actually want, and why it survives rather than being deleted with the subsystem.
 static func place_ramp(grid: Grid, cell: Vector2i, level: float, facing: float = 0.0) -> void:
 	grid.clear_surfaces(cell)
 	var height: float = level * UnitGeometry.LEVEL_HEIGHT + RampGeometry.STANDING_OFFSET

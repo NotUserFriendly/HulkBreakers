@@ -13,8 +13,11 @@ extends CombatAction
 ## level alone would silently ignore a ramp's own +0.5 rest offset at
 ## either end).
 ##
-## The target cell must NOT be a ramp — stepping ONTO a ramp is always
-## ordinary movement (`Pathfinder`'s own rule), never this action.
+## tb60 Pass A: **the refusal is now about the drop, not about a label** — the mirror of the
+## same change in `ClimbAction`. A drop within the mover's own `Unit.step_height()` is
+## ordinary movement and this action declines it; stepping *down* off a stair is as much a
+## walk as stepping up one, and making the free rise asymmetric would manufacture one-way
+## ground a tenth of a level at a time.
 
 const SPEED := 40.0
 
@@ -33,16 +36,14 @@ func is_legal(state: CombatState) -> bool:
 		return false
 	if Grid.distance_chebyshev(actual.cell, target_cell) != 1:
 		return false
-	if Surface.is_ramp_at(state.grid, target_cell):
-		return false
-	var pf := Pathfinder.new(state.grid)
+	var pf := Pathfinder.for_unit(state.grid, actual)
 	if not pf.is_walkable(target_cell):
 		return false
 	var drop_height: float = (
 		actual.height - UnitGeometry.true_height_for_cell(target_cell, state.grid)
 	)
 	if (
-		drop_height <= 0.0
+		drop_height <= actual.step_height() + Unit.STEP_EPSILON
 		or drop_height > Pathfinder.MAX_HOP_DOWN_LEVELS * UnitGeometry.LEVEL_HEIGHT
 	):
 		return false

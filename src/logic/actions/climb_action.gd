@@ -11,10 +11,12 @@ extends CombatAction
 ## already resting on, `UnitGeometry.true_height_for_cell`'s own +0.5
 ## offset, not a whole-level ledge).
 ##
-## The target cell itself must NOT be a ramp — stepping ONTO a ramp is
-## always ordinary movement (`Pathfinder`'s own "no special-casing" rule),
-## never this action; the mover's OWN cell being a ramp is exactly what
-## makes the half-level case possible, and is fine.
+## tb60 Pass A: **the refusal is now about the rise, not about a label.** This used to
+## decline any target cell carrying a ramp tag, because stepping onto a ramp was ordinary
+## movement by definition. It now declines any rise within the mover's own
+## `Unit.step_height()` — for the same reason, one layer down: that is a walk, and a walk is
+## `MoveAction`'s. A tall unit therefore walks up something a short one has to climb, on the
+## same board, which is the point of the stat.
 
 const SPEED := 40.0
 
@@ -33,9 +35,7 @@ func is_legal(state: CombatState) -> bool:
 		return false
 	if Grid.distance_chebyshev(actual.cell, target_cell) != 1:
 		return false
-	if Surface.is_ramp_at(state.grid, target_cell):
-		return false
-	var pf := Pathfinder.new(state.grid)
+	var pf := Pathfinder.for_unit(state.grid, actual)
 	if not pf.is_walkable(target_cell):
 		return false
 	# taskblock-53 Pass C4: **a ladder is a second source of legality for an action
@@ -46,7 +46,11 @@ func is_legal(state: CombatState) -> bool:
 	if not actual.shell.can_climb() and not on_ladder:
 		return false
 	var rise: float = _rise(state, actual)
-	if rise <= 0.0:
+	# tb60 Pass A: **a rise within the step height is a walk, so this action declines it** —
+	# the same boundary `Pathfinder.move_cost` charges `base` for, read from the unit rather
+	# than from a tag, so the planner's idea of "that is just walking" and the action's
+	# cannot drift.
+	if rise <= actual.step_height() + Unit.STEP_EPSILON:
 		return false
 	# **A ladder replaces the rise cap with its own reach, rather than raising it.**
 	# `MAX_CLIMB_LEVELS` exists because a bare face is only climbable so far; a ladder

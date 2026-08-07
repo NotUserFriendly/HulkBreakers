@@ -58,14 +58,30 @@ func test_hopping_up_is_illegal_thats_a_climb_not_a_hop() -> void:
 	assert_false(HopDownAction.new(unit, Vector2i(1, 0)).is_legal(state))
 
 
-func test_hopping_onto_a_ramp_cell_is_illegal_thats_ordinary_movement() -> void:
+## tb60 Pass A: **a drop inside the step height is ordinary movement, so the action refuses
+## it** — the replacement for "hopping onto a ramp cell is illegal". Same rule, measured off
+## the unit instead of read off a tag.
+func test_hopping_down_within_the_step_height_is_illegal_thats_ordinary_movement() -> void:
 	var grid := GridFixture.flat(2, 1)
-	GridFixture.place_ramp(grid, Vector2i(1, 0), 0)
-	GridFixture.place_floor(grid, Vector2i(0, 0), 1)
+	GridFixture.place_floor(grid, Vector2i(0, 0), Unit.BASE_STEP_HEIGHT)
 	var unit := _make_unit(Vector2i(0, 0))
 	var state := CombatState.new(grid, [unit])
 
-	assert_false(HopDownAction.new(unit, Vector2i(1, 0)).is_legal(state))
+	assert_false(
+		HopDownAction.new(unit, Vector2i(1, 0)).is_legal(state),
+		"a %.2f drop is a walk, and MoveAction owns walks" % Unit.BASE_STEP_HEIGHT
+	)
+
+
+## And the cell just past the step height still is a hop — the boundary is real, not a
+## blanket refusal that happens to look right.
+func test_hopping_down_just_past_the_step_height_is_a_real_hop() -> void:
+	var grid := GridFixture.flat(2, 1)
+	GridFixture.place_floor(grid, Vector2i(0, 0), Unit.BASE_STEP_HEIGHT + 0.2)
+	var unit := _make_unit(Vector2i(0, 0))
+	var state := CombatState.new(grid, [unit])
+
+	assert_true(HopDownAction.new(unit, Vector2i(1, 0)).is_legal(state))
 
 
 func test_hop_down_emits_a_hopped_down_event() -> void:
