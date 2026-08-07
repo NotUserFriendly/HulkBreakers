@@ -103,6 +103,62 @@ confirm" roll-up — so pending items surface at a natural review point without 
 - **`prone` was not reproduced separately.** A prone unit is alive, so it should select normally when it
   is current — worth confirming which of the two states you actually saw fail.
 
+## Clusters — how the ledger is sorted, and which entries will eat a hunt
+
+**Every open entry carries a `cluster:` line, and that line is the sort.** Added at taskblock-60
+Pass D so a hunt opens against a grouped list rather than a chronological one. `grep 'cluster:
+`shot-geometry`' docs/BUGS.md` is the whole query; **nothing is derived and no index is
+maintained**, which is the same posture the `^### BR` heading grep already has. A cluster is a
+claim about *shared cause*, not about subject matter — `BR52.09` and `BR54.02` are both "the model
+and the picture disagree" and are in different clusters, because one is a missing teardown path and
+the other is a timing gap, and a hunt that treats them as one thing will fix neither.
+
+**A cluster is a lead, not a verdict.** Several were assigned from a title and an entry body rather
+than from a reproduction; where an entry's own cluster is uncertain, its body says so.
+
+| cluster | what it means |
+|---|---|
+| `shot-geometry` | where a round actually goes, against where it was aimed |
+| `wall-cutout` | the shader that opens walls between the camera and a unit |
+| `overwatch` | declaration, triggering, and what a declined trigger records |
+| `view-model-membership` | the view and the model disagree about **what exists** |
+| `two-clocks` | the view runs ahead of playback — they disagree about **when** |
+| `framerate` | see the section below; **these are not hunted** |
+| `determinism` | same seed, different bout |
+| `test-infrastructure` | the suite lying about its own results |
+| `engine-abort` | an engine-level crash or abort |
+| `camera` | framing and transitions |
+| `input-affordance` | a click that does nothing, or the wrong thing, with no feedback |
+| `map-generation` | what the generator produces |
+| `ai-behaviour` | what a unit decides |
+| `rendering` | lighting and materials |
+| `accounting` | a claim in a doc or a log that the code does not support |
+| `pending-confirmation` | fixed, awaiting the owner seeing it work |
+
+### The deep ones — named before a hunt starts, not discovered during one
+
+**Knowing which entries will eat a day is worth more before starting than an hour during.**
+
+- **`BR51.01` / `BR54.01` / `BR52.07` — shot geometry.** taskblock-60 Pass B made these readable:
+  every firing path now emits a `weapon_used` event carrying origin, direction, the shooter's own
+  facing, and the angle between the last two. **Read the new log before forming a theory.** They are
+  three symptoms that may be one cause and may be three. **Pass B already removed one suspect**:
+  `AttackAction` free-faces at its target before firing, so a queued attack reads near-zero
+  off-facing and `BR54.01` is not a stale-facing effect. That points at the aim point itself, which
+  `docs/02` measures as the frontmost region's centre — 20.1 degrees off-axis at one cell.
+- **`BR32.04` / `BR32.05` / `BR32.08` — the wall cutout.** `BR32.05` needs a real ray test in the
+  shader, which was a rewrite when it was filed. **`RayCaster` and `PartPicker`'s struck-point
+  reporting now exist**, so it is materially cheaper than the entry suggests — **re-read it before
+  deferring it again.** Note that `BR32.04` is also a `two-clocks` symptom (the hole snaps to the
+  destination before the move animates) and may not need the shader work at all.
+- **`BR52.12` / `BR52.15` — overwatch.** `BR52.12`'s own finding is that overwatch fires only on
+  movement and nothing moved, **which points at the AI rather than at overwatch.** Confirm which
+  before either is worked.
+- **`BR55.01` — an intermittent engine abort in `LoS.has_los`.** Intermittent, engine-level, and
+  taskblock-58 rewrote what `LoS` consults. **Re-verify it still reproduces before hunting it.**
+- **`BR52.14` — `test_suite_run.gd` intermittent in the full gate, passing targeted.** Test
+  infrastructure, not game behaviour, and **it will waste a hunt.**
+
 ## Framerate: the bar, and why these entries sit
 
 **The release bar is 120 fps at 4K.** Anything below that is not acceptable at ship; this is a
@@ -130,6 +186,7 @@ bug and it is chased on its own terms.
 
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
+- **cluster:** `framerate`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **2026-07-23 (supervisor revision to the instrumentation spec — supersedes the offsets below).**
   The dumps landed in tb35 A1; the offsets want changing now that they exist:
@@ -428,6 +485,7 @@ bug and it is chased on its own terms.
 
 ### BR27.09 — Active — owner: `SUPERVISOR`
 **Major hitch on new-turn or end-turn**
+- **cluster:** `framerate`
 - **Source:** `SUPERVISOR`
 - **Three concrete costs, measured headlessly (tb21 Pass E) — recorded here so they stop living in a
   planning doc.** Real logic and view classes timed directly, not through GUT. None of the three is
@@ -802,6 +860,7 @@ bug and it is chased on its own terms.
 
 ### BR27.15 — Active — owner: `SUPERVISOR`
 **Step out: the dartboard does not open on the first click; a second click is required**
+- **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`  ·  **Split from `BR27.01` part (1), 2026-08-04** — see that entry in
   `docs/BUGS-ARCHIVE.md` for the original four-way framing and the full taskblock-27 Pass B history.
 - **Reported:** taskblock-27, as *"doesn't open the dartboard, always resolves a center-mass shot"*.
@@ -849,6 +908,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR30.02 — Active — owner: `SUPERVISOR`
 **Debug move_object mutates state but the model never visually moves**
+- **cluster:** `view-model-membership`
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-21 (tb30 follow-up, live bout review), tested BEFORE BR30.01 (spawn) in the
   same session — so NOT explained by testing move against an already-invisible just-spawned unit (an
@@ -889,6 +949,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR30.04 — Active — owner: `SUPERVISOR`
 **Waypoint colors shuffle when arming an attack and targeting a cover item**
+- **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-21, found while confirming BR27.05: "selecting an attack, then trying to shoot
   a cover item causes your waypoint colors to shuffle."
@@ -911,6 +972,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR32.04 — Active — owner: `SUPERVISOR`
 **Clicking Resolve snaps the wall-cutout hole to the destination before the move animation catches up**
+- **cluster:** `wall-cutout`
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-22 (BR27.08 rebuild review). "On clicking resolve, cull position moves to the
   right cell immediately, while animation plays separately, splitting them."
@@ -955,6 +1017,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR32.05 — Active — owner: `SUPERVISOR`
 **Wall cutout cuts walls that aren't between camera and unit (coarse heuristic)**
+- **cluster:** `wall-cutout`
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-22 (tb32 review). The cutout shape mostly works, but the *shape* is wrong at
   the edges: looking at a unit with a wall **behind** them, a chunk is cut out of the top of that wall
@@ -1033,6 +1096,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
+- **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`
 - **2026-07-23 (supervisor re-check — the symptom has SHIFTED).** It is now reported as **"cannot
   seem to aim at a wall with burst"** — i.e. the aim step itself no longer engages, where the original
@@ -1075,6 +1139,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR32.08 — Suspected — owner: `SUPERVISOR`
 **Dead or knocked-out shells may have strange cutout behavior**
+- **cluster:** `wall-cutout`
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-22 (tb32 review). Not observed directly — flagged as a likely edge case: a
   dead or knocked-out shell may feed or interact with the wall-cutout oddly (still in
@@ -1092,6 +1157,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR33.01 — Suspected — owner: `SUPERVISOR`
 **Aim-view scroll cycles walls; layer labels read as part names**
+- **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-23 (tb33 review). Scrolling while aiming "cycles parts on a unit (or at least
   it looks that way)." The original intent: scrolling cycles between the current enemy and what stands
@@ -1119,6 +1185,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR34.03 — Active — owner: `SUPERVISOR`
 **`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
+- **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-23 (tb34 review). The queue row for an attack still renders the verbose default
   form; it should read as compactly as the move rows now do — `AttackAction(unit=2)`.
@@ -1129,6 +1196,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR34.04 — Active — owner: `SUPERVISOR`
 **Sniper camera frames the target from an odd angle**
+- **cluster:** `camera`
 - **Source:** `SUPERVISOR`
 - **Reported:** 2026-07-23 (post-tb34 check). tb34 Pass D's sniper framing engages past 5 cells and
   does centre the target, but the viewing angle it centres *from* reads wrong.
@@ -1160,6 +1228,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
 
 ### BR35.02 — Active — owner: `SUPERVISOR`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
+- **cluster:** `input-affordance`
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
 - **Found:** 2026-07-23 (tb35 Pass C, view-layer `Grid.blockers` audit sweep). `SpectatorOverlay`'s
   tile-inspect path (`_unhandled_input`) resolves a click via `BoardPicker.cell_at_ray` — pure
@@ -1216,6 +1285,7 @@ deliberately not `Pending`.** CC session `4ec878cf-1434-4676-8bd3-05c92eed071a`.
 
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
+- **cluster:** `camera`
 shooter is elevated on a small platform and the target is below**
 - **Source:** `CC`  ·  **CC session:** `d0685fa0-63d7-4f3e-b29b-f52886a5e0bc`
 - **Reported:** 2026-07-25 (tb40 Pass D, discovered building checkpoint 8's own loadable scenario —
@@ -1248,6 +1318,7 @@ shooter is elevated on a small platform and the target is below**
 
 ### BR45.01 — Active — owner: `CC`
 **Surrogate demotion from an ambiguous DAG node is an unresolved placeholder, and says so loudly on
+- **cluster:** `accounting`
 every fire**
 - **Source:** `CC`  ·  **CC session:** `a56eac1a-eddb-4d30-946a-4c8e594ef198`
 - **Raised 2026-07-27 by the supervisor noticing the warning volume in `run_tests.sh`.** The warning
@@ -1278,6 +1349,7 @@ every fire**
 
 ### BR45.03 — Active — owner: `SUPERVISOR`
 **The utility planner completes 54.2% of missions where the planner it replaced completed 87.5%**
+- **cluster:** `ai-behaviour`
 *(headline superseded — see the 2026-07-29 entry below: 54.2% and every figure after it were measured
 with the profile weights switched off. Re-measured, it is **72%**, and the gap is 3 points.)*
 - **Source:** `CC`  ·  **CC session:** `cf5b0146-95d9-49cc-a683-28043425f65a`
@@ -1415,6 +1487,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 
 ### BR51.01 — Active — owner: `SUPERVISOR`
 **Sniper rifle and chaingun consistently shoot wide left of the aim point**
+- **cluster:** `shot-geometry`
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
 - **Repro:** aim a sniper rifle or a chaingun at a goo barrel and fire. The shot lands
   **consistently left** of where the reticle sits. Reported first for the sniper rifle alone, then
@@ -1516,6 +1589,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 
 ### BR51.14 — Active — owner: `CC`
 **Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
+- **cluster:** `framerate`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-31, taskblock-51 fourth hunt.
 - **Repro:** select a unit, move the mouse over tiles **without aiming**. Framerate falls from 160 to
@@ -1544,6 +1618,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 
 ### BR51.15 — Active — owner: `SUPERVISOR`
 **A distinct hitch as the over-the-shoulder camera swings behind the unit**
+- **cluster:** `framerate`
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, taskblock-51 fourth hunt.
 - **Repro:** enter aim with the over-the-shoulder camera and watch the moment it arrives behind the
   shooter. A distinct hitch lands exactly there, separate from the general aim-view cost.
@@ -1556,6 +1631,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 
 ### BR51.16 — Active — owner: `SUPERVISOR`
 **The in-game combat log empties itself while the file on disk keeps everything**
+- **cluster:** `accounting`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-31, taskblock-51 fifth hunt. *"Combat log is resetting to nothing displayed in
   game, while the out of game file seems to stay un-cleared."*
@@ -1573,6 +1649,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 
 ### BR51.18 — Suspected — owner: `SUPERVISOR`
 **A unit slid sideways during a bout watched from both spectator and player control**
+- **cluster:** `two-clocks`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-07-31, in the same bout that confirmed `BR51.11`. *"This run in particular had unit 0
   on squad 0 slide sideways, but I think that was an unrelated interaction between spectator and player
@@ -1590,6 +1667,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 
 ### BR51.19 — Active — owner: `SUPERVISOR`
 **More than four units on a side spawn stacked on top of each other**
+- **cluster:** `map-generation`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-01, taskblock-51 sixth hunt. *"Starting a bout with more than 4 units on a side
   causes them to overlay each other at the start."*
@@ -1608,6 +1686,7 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 
 ### BR51.21 — Active — owner: `SUPERVISOR`
 **A debug injection never animates — the board snaps, nothing plays**
+- **cluster:** `two-clocks`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-01, sixth hunt, forcing a detonation. *"There is no visible explosion animation."*
 - **Confirmed by reading, and the log agrees.** `out/combat.log` carries
@@ -1642,6 +1721,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR51.24 — Active — owner: `SUPERVISOR`
 **A part destroyed by an explosion disappears from inspect but stays on the model**
+- **cluster:** `view-model-membership`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-01, sixth hunt. *"Bot parts destroyed by an explosion just seem to vanish from
   inspect, but are still visually there."*
@@ -1658,6 +1738,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR51.25 — Active — owner: `SUPERVISOR`
 **Non-unit objects render untransformed in the inspect preview**
+- **cluster:** `view-model-membership`
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-31, seventh hunt. **Re-scoped 2026-07-31** — first
   reported as barrels intersecting their tile base on the board; the supervisor clarified that **the
   world map places them correctly across levels** and the fault is in the **inspect preview**.
@@ -1676,6 +1757,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR52.02 — Active — owner: `CC`
 **A test file that fails to parse is dropped from the run and the suite still exits 0**
+- **cluster:** `test-infrastructure`
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-01, taskblock-52 Pass B, by walking into it. Renaming `PartPicker._near_ray`
   to `near_ray` left four stale calls in `test_selection_target.gd`. The run printed
@@ -1708,6 +1790,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR52.06 — Active — owner: `SUPERVISOR`
 **A leg appears to have no model**
+- **cluster:** `view-model-membership`
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-02, live. *"leg doesn't seem to have a model."*
 - **Not yet investigated.** Recorded verbatim rather than guessed at — "no model" could be a missing
   `Part.mesh_scene`, a part whose `volume` is empty (so `UnitGeometry.placements` emits no box for it
@@ -1727,6 +1810,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR52.07 — Active — owner: `SUPERVISOR`
 **One shot in a burst flies off at roughly 90 degrees from the gun's facing**
+- **cluster:** `shot-geometry`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-02, reading `out/combat.log` after a live burst. *"it had a strange 'one shot
   flew off at 90 degrees from the gun facing' event."*
@@ -1757,6 +1841,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR52.09 — Active — owner: `SUPERVISOR`
 **A destroyed cover object's model stays on the board**
+- **cluster:** `view-model-membership`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-02. *"forklift was obviously destroyed, I was flagging that the model stayed
   visible after destruction."*
@@ -1788,6 +1873,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR52.10 — Active — owner: `SUPERVISOR`
 **An AI unit fires a full burst through the ally standing directly in front of it, killing them**
+- **cluster:** `shot-geometry`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-02. *"Can't tell for sure, but it looks like AI isn't trying to avoid shooting
   allies in the back."* **Confirmed, and it is worse than the report supposed** — reproduced from
@@ -1837,6 +1923,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR52.12 — Active — owner: `SUPERVISOR`
 **Overwatch is declared constantly and never once fires, and a declined trigger logs nothing**
+- **cluster:** `overwatch`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-02. *"Log the failed overwatch as a bug, I can't really see what's happening with
   it until I can see its pie slice but that IS a bug either way."*
@@ -1870,6 +1957,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR52.13 — Suspected — owner: `CC`
 **Nothing penetrated anything across an entire battle**
+- **cluster:** `shot-geometry`
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-02, while investigating `BR52.09`. **Not reported by the supervisor**, and filed
   `Suspected` rather than `Active` because it may be entirely by design — it is a measurement looking
@@ -1890,6 +1978,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR52.14 — Suspected — owner: `CC`
 **`test_suite_run.gd` fails intermittently in the full gate and passes standalone**
+- **cluster:** `test-infrastructure`
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-02, during the `BR52.11` gate. One full run reported 1 failure; the same file
   passed **7/7 standalone**, and the immediately following full gate passed **2668/2668, exit 0**.
@@ -1906,6 +1995,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR52.15 — Active — owner: `CC`
 **Overwatch can be declared repeatedly in one turn**
+- **cluster:** `overwatch`
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-01.
 - `OverwatchAction.is_legal` checks alive, current turn, AP, weapon health and manipulator capability —
   and **never checks whether the unit is already on overwatch**. `apply` sets
@@ -1929,6 +2019,7 @@ restored verbatim from `a65f66d`; only this note is new.
 
 ### BR54.01 — Active — owner: `SUPERVISOR`
 **AI rounds leave the muzzle at up to 43 degrees off the unit's own facing**
+- **cluster:** `shot-geometry`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
 - **Found:** 2026-08-03. *"AI controlled units are firing at strange angles. Specifically the
   sniper rifle and shotgun equipped unit, the chaingun unit seems to be firing predictably by
@@ -2028,6 +2119,7 @@ changed the aim path.
 
 ### BR54.02 — Active — owner: `SUPERVISOR`
 **A destroyed part vanishes from the shell before the tracer that destroyed it draws**
+- **cluster:** `two-clocks`
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-08-03.
 - The part disappears from the model at *resolution* time, while `ResolutionPlayer` has not yet drawn
   the shot that killed it. The player sees the consequence before the cause.
@@ -2044,6 +2136,7 @@ changed the aim path.
 
 ### BR55.01 — Active — owner: `CC`
 **Intermittent engine abort in `LoS.has_los` — an out-of-bounds cell reaches `Grid.get_opacity`**
+- **cluster:** `engine-abort`
 - **Source:** `CC`  ·  **CC session:** `e5393c3a-bd26-4668-8905-c50cf31e04cb`
 - **Seen once in a full-suite run during taskblock-55 Pass D**, and **not reproducible**: the same
   file passed 12/12 in isolation immediately afterward, and the next full run was green at 2781
@@ -2080,6 +2173,7 @@ changed the aim path.
 
 ### BR55.03 — Active — owner: `SUPERVISOR`
 **`HulkTheme.build()` caching was reported done and is absent from the code**
+- **cluster:** `accounting`
 - **Source:** review audit, 2026-08-04.  ·  Provenance: taskblock-51 Pass B1.
 - **The spec and the report are quoted inline below rather than pointed at.** Both files rotate —
   `reports/` keeps a rolling five, so Taskblock 51's report is deleted at taskblock 56 — and CLAUDE.md's
@@ -2115,6 +2209,7 @@ changed the aim path.
 
 ### BR57.01 — Pending — owner: `SUPERVISOR`
 **Units stand at their previous bout's cells in editor mode**
+- **cluster:** `pending-confirmation`
 - **Source:** `SUPERVISOR`, 2026-08-05, observed in-game during the post-taskblock-57 UI review
   ("some units spawn in edit mode at the places they were in the last bout").  ·  **CC session:**
   `cb234571-515f-4b21-bfe1-1abb38912aa0`
@@ -2162,6 +2257,7 @@ them from the wall cutout, which does not depend on what has been placed. Pinned
 
 ### BR57.02 — Active — owner: `SUPERVISOR`
 **Units in the inspect viewer render with no directional contribution — every face identically lit**
+- **cluster:** `rendering`
 - **Source:** `SUPERVISOR`, 2026-08-05, observed in-game across the UI review passes ("Inspect
   window darkness is still there, but more specifically it is just on units. It looks like there is
   no light source when viewing units, and all of a unit's faces are identically shaded").  ·
@@ -2194,6 +2290,7 @@ and only a live unit takes the isolate-camera path. That asymmetry is the thing 
 
 ### BR57.03 — Active — owner: `SUPERVISOR`
 **Player view drops frames while panning the camera**
+- **cluster:** `framerate`
 - **Source:** `SUPERVISOR`, 2026-08-05, observed in-game ("Player view is dropping FPS when panning.
   It might be in the current combat log").  ·  **CC session:**
   `cb234571-515f-4b21-bfe1-1abb38912aa0`
@@ -2219,6 +2316,7 @@ swap, so it can be turned on in one view and read in another.
 
 ### BR58.01 — Active — owner: `CC`
 **Geometric sight raised per-turn planning cost by 1.38x, and the pacer's wall-clock budget turns that into a different bout**
+- **cluster:** `determinism`
 - **Source:** `CC`  ·  **CC session:** `5b7ef20b-5059-45dd-bc08-da8dc537ad93`
 - **Found:** 2026-08-05 (taskblock-58 Pass C), by `test_ai_batch_yield.gd::
   test_a_yielding_batch_produces_the_identical_bout` going red. **Green at the Pass B commit,
@@ -2308,6 +2406,7 @@ this pass is what walked it off the edge.**
 
 ### BR59.01 — Pending — owner: `SUPERVISOR`
 **A refused placement freezes the editor's board: everything placed afterwards is invisible**
+- **cluster:** `pending-confirmation`
 - **Source:** `SUPERVISOR`, 2026-08-06, observed in-game ("clicking a support pillar on top of
   another support pillar makes an invisible pillar. Other items trigger it too. After that,
   everything placed was invisible").  ·  **CC session:**
@@ -2360,6 +2459,7 @@ ghost is offered for that face, and every subsequent placement draws normally.
 
 ### BR59.02 — Pending — owner: `SUPERVISOR`
 **`Delete` removes the record but not the mesh**
+- **cluster:** `pending-confirmation`
 - **Source:** `SUPERVISOR`, 2026-08-06, observed in-game ("Delete removes logically but not
   visually").  ·  **CC session:** `1f23a1e1-f577-43e7-b5d9-356cd12249f7`
 - **The same defect as `BR59.01`, seen from the other side, and fixed by the same change. Marked
@@ -2380,6 +2480,7 @@ why the fix is at the disagreement rather than at either symptom.
 record. Then repeat the `BR59.01` sequence and delete afterwards; the delete now draws.
 ### BR60.01 — Active — owner: `CC`
 **Generated maps can contain a large raised region that is unreachable from either spawn, and the navigability invariant cannot see it**
+- **cluster:** `map-generation`
 - **Source:** `CC`  ·  **CC session:** `93549217-f453-4fd6-b8f3-cecf9532290e`
 - **Found:** 2026-08-06, taskblock-60 Pass A, while measuring what the ramp retirement did to
   generated boards. **Pre-existing — it reproduces identically before and after that change**, and
@@ -2418,6 +2519,7 @@ cause turns out to be.
 
 ### BR60.02 — Active — owner: `CC`
 **A mangled or disabled part is hittable and undrawn — the view and the shot plane disagree about which parts exist**
+- **cluster:** `view-model-membership`
 - **Source:** `CC`  ·  **CC session:** `93549217-f453-4fd6-b8f3-cecf9532290e`
 - **Found:** 2026-08-06, taskblock-60 Pass C, while testing the claim that seven view entries
   share one root. **They do not, and this is what one of them turned out to be.**
