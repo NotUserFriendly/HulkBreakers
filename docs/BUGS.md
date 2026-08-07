@@ -1137,7 +1137,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   the targeting logic itself. Recommend a live re-check before further investigation here; stays
   Active, not Pending, since no fix was made.
 
-### BR32.08 — Suspected — owner: `SUPERVISOR`
+### BR32.08 — Active — owner: `SUPERVISOR`
 **Dead or knocked-out shells may have strange cutout behavior**
 - **cluster:** `wall-cutout`
 - **Source:** `SUPERVISOR`
@@ -1182,6 +1182,12 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   feature is not what they originally intended** and is *"more likely to be obsoleted than fixed"* —
   the aim-view scroll cycling walls is a symptom of a design they no longer want, so effort spent
   fixing it may be spent on something due for removal. **Do not fix ahead of that decision.**
+- **Re-verified in code, 2026-08-07 (taskblock-60 follow-up): unchanged, and still reproduces.**
+  `AimController.layers_for` still groups the plane by `region.body` and emits one layer per
+  distinct body, and `ShotPlane` still sets `region.body = part` for an unowned cover `Part` — so
+  every wall is still its own aim layer. **Nothing since taskblock-51 has touched either side.**
+  Status left at `Suspected` deliberately: the mechanism is understood and the open question is
+  whether the feature survives at all, which is a decision rather than a defect.
 
 ### BR34.03 — Active — owner: `SUPERVISOR`
 **`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
@@ -1664,6 +1670,12 @@ with the profile weights switched off. Re-measured, it is **72%**, and the gap i
 - **Do not work this before it is reproduced.** Taskblock-51 Pass I's spectator/player divergence
   cluster is the same neighbourhood, and `PLAN.md`'s *One view, toggleable modules* would discard an
   instance fix here.
+- **Re-checked 2026-08-07 (taskblock-60 follow-up): still unreproduced, and still structurally
+  possible.** `ResolutionPlayer` continues to hold `_display_cell` and `_display_orientation` as
+  **two separate dictionaries**, seeded independently, which is exactly the shape that lets a
+  translation and a rotation come apart. So the described mechanism has not been closed off by
+  anything since — but nothing has reproduced it either, and no second sighting has been reported.
+  **Left `Suspected`**; one sighting plus the reporter's own hedge is not a described defect.
 
 ### BR51.19 — Active — owner: `SUPERVISOR`
 **More than four units on a side spawn stacked on top of each other**
@@ -1955,27 +1967,6 @@ restored verbatim from `a65f66d`; only this note is new.
   `state.resolve_until(queue, Overwatch.check_trigger)`. The hook is wired; there was simply almost
   nothing to trigger on.
 
-### BR52.13 — Suspected — owner: `CC`
-**Nothing penetrated anything across an entire battle**
-- **cluster:** `shot-geometry`
-- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-02, while investigating `BR52.09`. **Not reported by the supervisor**, and filed
-  `Suspected` rather than `Active` because it may be entirely by design — it is a measurement looking
-  for a decision, not a described defect.
-- **Measured** in `out/logs/combat-20260802-164344.log`: **78 `DEFLECT`, 78 `STOP_DEAD`, zero
-  `PENETRATE`** across 156 impacts and nine full chaingun bursts.
-- **The arithmetic explains it and may simply be correct.** `chaingun.tres` is `damage 2.0` with
-  `damage_multiplier 0.8` — **1.6 effective** — against `steel.tres`'s `dt` of **6.0**. A chaingun
-  round cannot penetrate steel, so every steel object on the board can only ever be worn down by
-  accumulated `STOP_DEAD` damage. An anti-personnel weapon failing to punch armour plate is a
-  reasonable thing for the model to say.
-- **What makes it worth recording anyway:** `steel.tres` authors no `deflect_threshold_deg`, so it
-  takes `MaterialEntry`'s **30.0** default, and a representative engagement in that battle sat at
-  **~31 degrees** incidence — one degree over. Combined with a damage figure that can never penetrate,
-  a shipped material is relying entirely on two unauthored defaults for its whole feel. **The numbers
-  are not invented here and no tuning is proposed**; this exists so the first person to touch weapon
-  or armour balance sees the measurement rather than rediscovering it.
-
 ### BR52.14 — Suspected — owner: `CC`
 **`test_suite_run.gd` fails intermittently in the full gate and passes standalone**
 - **cluster:** `test-infrastructure`
@@ -1992,6 +1983,15 @@ restored verbatim from `a65f66d`; only this note is new.
   through `tail`.
 - **What it needs is a captured failure**, not a theory: the next full-gate run of this file that goes
   red should have its complete output kept. Filed so the ~2% flake is not rediscovered from scratch.
+- **Re-measured 2026-08-07 (taskblock-60 follow-up): `out/suite_failures.json` now records 3 fails
+  in 236 runs, with the last failure at run 138.** So it has not reproduced in **98 consecutive
+  runs**, four of them gates driven by this taskblock. The rate has fallen from 3/138 (2.2%) to
+  3/236 (1.3%) purely by not recurring.
+- **Deliberately NOT closed on that.** Ninety-eight clean runs is not a fix, nobody changed
+  anything aimed at it, and the entry's own requirement — a captured failure — is still unmet.
+  Writing `Resolved` here would assert a verification that never happened. **Left `Suspected`, with
+  the number attached** so the next person can see whether it is decaying or dormant rather than
+  re-deriving the rate.
 
 ### BR52.15 — Active — owner: `CC`
 **Overwatch can be declared repeatedly in one turn**
@@ -2512,10 +2512,29 @@ from the spawn zones, which are chosen later by `_place_spawn_zones`. **Confirm 
 the anchor-inside-a-raised-room theory predicts the defect correlates with `rooms[0]` being raised,
 and that is a cheap thing to measure.
 
-**Why it has not been seen in play.** `test_every_raised_area_is_ramp_reachable_across_many_seeds`
-runs at 32x24, where it does not reproduce; the bout board is 40x30. So the sweep that would have
-caught it is measuring a smaller board than the game plays on, which is worth fixing whatever the
-cause turns out to be.
+**Why it had not been seen in play.** The sweep that would catch it runs at 32x24 while the bout
+board is 40x30 — a sweep measuring a smaller board than the game plays on, which is worth fixing
+whatever the cause turns out to be.
+
+**It surfaced at 32x24 for exactly one build, and then hid again — which is the strongest
+evidence yet that the board size is the whole reason nobody has seen it.** Raising
+`BASE_STEP_HEIGHT` to 0.4 shortened stairs, leaving more rooms raised and therefore more of them
+exposed, and seed 29 produced a 34-cell unreachable region at 32x24. Making spawn zones
+height-uniform then moved a zone onto a shelf it had been straddling, and the region became
+reachable again. **Neither change touched this defect.** Both changed how likely a board is to
+hand you an accidental way in — which is exactly what has been masking it all along.
+
+**At 40x30 it is completely stable across every variation tried**: six regions of 50, 65, 79, 98,
+110 and 235 cells, before the ramp retirement, after it, at step height 0.3, at 0.4, and with the
+spawn-zone fix in place. Plus a handful of single-cell blocker regions that are cover doing its job
+and are not this.
+
+**The concrete next step, and it is cheap: run the sweep at the bout board size.**
+`test_map_gen.gd` uses 32x24 and the game plays 40x30. A sweep measuring a smaller board than the
+game plays on is the reason a defect this size has gone unseen, and moving it would reproduce this
+every run instead of by accident. `KNOWN_UNREACHABLE` is the mechanism already in place to hold the
+results while the cause is found — it is currently empty, deliberately, and asserted as **equality**
+so that a reappearance is a red test rather than a silent pass.
 
 ### BR60.02 — Active — owner: `CC`
 **A mangled or disabled part is hittable and undrawn — the view and the shot plane disagree about which parts exist**

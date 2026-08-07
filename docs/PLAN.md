@@ -185,35 +185,26 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 5. Settle the step height, and author it onto parts
+### 5. Author `step_height` onto parts
 **Needs:** `step_height` existing, which landed at taskblock-60 Pass A. **Unblocks:** step height
-reading as *chassis* rather than as a constant; a stair length chosen rather than inherited.
+reading as *chassis* rather than as a constant.
 
-**`Unit.BASE_STEP_HEIGHT` is 0.3 and flagged, not designed.** It is the stair riser the design
-names — *"a ramp becomes two ordinary tiles at 0.3 and 0.6"* — and the reason step height had to
-exist at all was that a 0.3 tile was walkable-onto by nothing in the game. So it is the stated
-default rather than an invented number, and it wants a real decision. **Measured 2026-08-06, 40x30
-across eight seeds:**
+**The number itself is settled: `Unit.BASE_STEP_HEIGHT` is 0.4**, the supervisor's call on
+2026-08-07 — three steps to climb one level, with 0.5 rejected as too generous a slope. The 0.3
+that shipped in Pass A was a misreading: `PLAN`'s own *"two ordinary tiles at 0.3 and 0.6"* names
+tile **heights**, and that flight's steps are 0.3, 0.3 and **0.4**, so the example needs 0.4 to
+work at all. Measured at 40x30 over eight seeds: **15.7% of walkable cells raised and 0 stranded**,
+against the retired ramps' 15.8% — so the retirement cost essentially no elevation at this value.
 
-| | raised ground | one-way cells |
-|---|---|---|
-| the old ramps | 15.8% of walkable | 0 |
-| `step_height` 0.3 (3 treads per level) | 12.8% | 0 |
-| `step_height` 0.5 (1 tread per level) | 15.8% | 0 |
+**What is left is the per-unit half, which is real and untested by content.** Nothing carries a
+`step_height` modifier, so `Unit.lowest_step_height` always returns the base today.
 
-**Navigability holds at every value measured**, so this is not a correctness question — it is how
-vertical a generated board feels. A flight is `ceil(rise / step_height)` steps, so a shorter step
-means a longer stair, more ring positions that cannot host one, and more rooms flattened by
-`_repair_stranded_elevation`. **One number, and the generator follows it with no code edit.**
-
-- **Then author it onto parts.** Nothing carries a `step_height` modifier yet, so the per-unit half
-  of the stat is real and untested by content: `Unit.lowest_step_height` currently always returns
-  the base. Legs are the obvious home, and **long legs stepping higher is the thing a ramp could
-  never express** — it is the reason the stat is per-unit rather than a constant.
-- **A chassis with no step height at all is the reason ramps come back.** *That* is a real
-  mechanical category — tracked, legless, needing a continuous slope — and it is about the chassis,
-  not about a cell being labelled. It needs authored parts that set the stat to zero before it can
-  be built, which is why it sits here rather than in front of this.
+- **Legs are the obvious home**, and **long legs stepping higher is the thing a ramp could never
+  express** — it is the whole reason the stat is per-unit rather than a constant.
+- **A chassis with no step height at all is why ramps come back.** *That* is a real mechanical
+  category — tracked, legless, needing a continuous slope — and it is about the chassis, not about
+  a cell being labelled. It needs authored parts that set the stat to zero before it can be built,
+  which is why it sits behind this.
 
 # QUEUED
 
@@ -798,6 +789,27 @@ team, a patrol, everything sharing a spawn point — which is a design question,
 **Worth weighing against *Attributes* in NEXT before building:** batching one squad of three measured
 ~671ms → ~646ms per AI step, so as a *performance* argument this is weak; if it earns its place it
 will be as squad behaviour that reads better, not as a speed-up.
+
+### Two unauthored defaults carry a shipped material's whole feel
+**Needs:** nothing. **Unblocks:** armour and weapon balance being authored rather than inherited.
+
+**Salvaged from `BR52.13` when that entry closed** (taskblock-60 follow-up), because it is a real
+decision and a closed bug report is the wrong place to keep one.
+
+**`steel.tres` authors no `deflect_threshold_deg`**, so it takes `MaterialEntry`'s **30.0**
+default — and a representative engagement measured at the time sat at **~31 degrees** incidence,
+one degree the wrong side of it. Combined with weapon damage figures that decide penetration
+outright (a chaingun's 1.6 effective against steel's `dt` of 6.0 **cannot** penetrate, ever), a
+shipped material's entire feel rests on two numbers nobody chose.
+
+- **This is not a bug and was never reported as one.** Re-measured across six real bouts, the
+  resolver behaves: 15.5% of 2450 impacts penetrate, 33.5% stop dead, 51.0% deflect. The original
+  "nothing ever penetrates" reading came from a sample drawn entirely from a pairing that cannot.
+- **What it wants is authoring, not a fix** — a deflect threshold chosen per material, and a look
+  at whether the damage-versus-`dt` cliff is meant to be a cliff. **Balance numbers, so not
+  invented here.**
+- **Worth doing before any armour tuning pass**, or that pass will be tuning against defaults and
+  attributing the results to its own changes.
 
 ### Status effects and boosts
 **Needs:** nothing. **Unblocks:** perks, power and therms, wound thresholds.

@@ -487,19 +487,26 @@ func test_placement_mode_rejects_a_surface_missing_the_walkable_tag() -> void:
 	)
 
 
-## "Partial MP costs round up" (docs/PLAN.md, settled) — a 1.6 MP climb
-## (CLIMB_COST 4.0 * a 0.4-level rise) charges 2, not 1.6.
+## "Partial MP costs round up" (docs/PLAN.md, settled) — a 1.8 MP climb
+## (CLIMB_COST 4.0 * a 0.45-level rise) charges 2, not 1.8.
 ##
-## tb60 Pass A: **the rise moved from 0.3 to 0.4 because 0.3 stopped being a climb.** It is
-## exactly `Unit.BASE_STEP_HEIGHT`, so it is now a walk at `DEFAULT_COST` — which is the
-## change this pass is, caught by a test that was asserting the old boundary. 0.4 is the
-## smallest tenth above the step height, so this still tests a genuinely partial climb.
+## tb60 Pass A: **the rise has moved twice, and both moves are the pass working.** It was 0.3,
+## which stopped being a climb when `step_height` arrived; then 0.4, which stopped being a
+## climb when the supervisor set the step height there. **Derived off the constant now rather
+## than written as a literal**, so the next retune moves it automatically instead of going red.
 func test_placement_mode_partial_climb_cost_rounds_up() -> void:
 	var grid := GridFixture.flat(2, 1)
-	GridFixture.place_floor(grid, Vector2i(1, 0), 0.4)
+	# Just above the step height, and derived so this cannot silently become a walk again.
+	var rise: float = Unit.BASE_STEP_HEIGHT + 0.05
+	GridFixture.place_floor(grid, Vector2i(1, 0), rise)
 	var pf := Pathfinder.new(grid, true)
 
-	assert_almost_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)), 2.0, 0.0001)
+	assert_almost_eq(
+		pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)),
+		ceil(Pathfinder.CLIMB_COST * rise),
+		0.0001,
+		"a %.2f rise is a climb costing ceil(%.1f * %.2f)" % [rise, Pathfinder.CLIMB_COST, rise]
+	)
 
 
 ## **The inversion of the rule this replaced, and the whole of the ramp retirement in one

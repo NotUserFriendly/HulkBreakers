@@ -15,14 +15,20 @@ const AGILITY_STAT_KEY: StringName = &"agility"
 ## replaced five categorical "is this cell labelled a ramp" checks** (tb60 A) — the rule is
 ## *can this unit step up that far*, never *is this thing a ramp*.
 ##
-## **Flagged, not designed.** 0.3 is the stair riser the design names — "a ramp becomes two
-## ordinary tiles at 0.3 and 0.6" — and the stated reason step height had to exist at all was
-## that `Pathfinder.MAX_CLIMB_LEVELS` is capability-gated, so "a 0.3 tile is not walkable-onto
-## by anything in the game." So this is the stated default rather than an invented balance
-## number, and everything downstream derives from it rather than assuming it: `MapGen` sizes a
-## stair at `ceil(rise / step_height)` steps, so retuning this number re-shapes generated
-## stairs with no further edit.
-const BASE_STEP_HEIGHT: float = 0.3
+## **The supervisor's number, 2026-08-07.** Three steps to climb one level, and 0.5 was
+## rejected as too generous a slope.
+##
+## **It corrects a misreading worth recording, because the design document reads as though it
+## says 0.3.** `PLAN.md` describes a ramp becoming *"two ordinary tiles at 0.3 and 0.6"* —
+## those are **tile heights, not step sizes.** The flight they describe is 0 → 0.3 → 0.6 → 1.0,
+## whose steps are 0.3, 0.3 and **0.4**, so the largest step is the last one and the example
+## requires 0.4 to be walkable at all. Reading the tile heights as step sizes produced 0.3,
+## which is smaller than the design's own example needs.
+##
+## Everything downstream derives from this rather than assuming it: `MapGen` sizes a stair at
+## `ceil(rise / step_height)` steps — three at this value, matching the stated intent — so
+## retuning the number re-shapes every generated stair with no further edit.
+const BASE_STEP_HEIGHT: float = 0.4
 const STEP_HEIGHT_STAT_KEY: StringName = &"step_height"
 ## Float slack for a rise compared against a step height. The same 0.001 every other
 ## height comparison in this codebase uses — a stair authored at exactly the step height

@@ -3276,3 +3276,48 @@ rather than patched in place.
   moment ladders became the only repair. It now counts walkable surfaces, which is what its name
   always claimed. **A cell still cannot hold two floors; it can hold a floor and a ladder, and
   always could.**
+
+### BR52.13 — Obsolete — owner: `CC`
+**Nothing penetrated anything across an entire battle**
+- **cluster:** `shot-geometry`
+- **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02, while investigating `BR52.09`. **Not reported by the supervisor**, and filed
+  `Suspected` rather than `Active` because it may be entirely by design — it is a measurement looking
+  for a decision, not a described defect.
+- **Measured** in `out/logs/combat-20260802-164344.log`: **78 `DEFLECT`, 78 `STOP_DEAD`, zero
+  `PENETRATE`** across 156 impacts and nine full chaingun bursts.
+- **The arithmetic explains it and may simply be correct.** `chaingun.tres` is `damage 2.0` with
+  `damage_multiplier 0.8` — **1.6 effective** — against `steel.tres`'s `dt` of **6.0**. A chaingun
+  round cannot penetrate steel, so every steel object on the board can only ever be worn down by
+  accumulated `STOP_DEAD` damage. An anti-personnel weapon failing to punch armour plate is a
+  reasonable thing for the model to say.
+- **What makes it worth recording anyway:** `steel.tres` authors no `deflect_threshold_deg`, so it
+  takes `MaterialEntry`'s **30.0** default, and a representative engagement in that battle sat at
+  **~31 degrees** incidence — one degree over. Combined with a damage figure that can never penetrate,
+  a shipped material is relying entirely on two unauthored defaults for its whole feel. **The numbers
+  are not invented here and no tuning is proposed**; this exists so the first person to touch weapon
+  or armour balance sees the measurement rather than rediscovering it.
+
+- **`Obsolete` (`CC`, 2026-08-07, taskblock-60 follow-up) — re-measured, and it does not
+  reproduce.** Closed as `Obsolete` rather than `Resolved` deliberately: **nobody fixed anything**,
+  and `Resolved` would assert a verification that never happened. What changed is that the
+  measurement this entry *is* has been superseded by a better one.
+- **Six real AI bouts, six map seeds, driven headlessly through `BoutRunner` end to end:**
+
+| outcome | impacts | share |
+|---|---|---|
+| `PENETRATE` | **380** | **15.5%** |
+| `STOP_DEAD` | 820 | 33.5% |
+| `DEFLECT` | 1250 | 51.0% |
+| total | 2450 | |
+
+- **Against the original figure of zero penetrations in 156 impacts.** The entry's own arithmetic
+  is what explains both readings and neither is wrong: that battle was chaingun-versus-steel, a
+  pairing that *cannot* penetrate (1.6 effective damage against a `dt` of 6.0), so a sample drawn
+  from it reports zero by construction. A broader sample penetrates about one impact in six. **The
+  model was never broken; the sample was narrow.**
+- **The balance observation survives this closure and has been moved to `PLAN.md`** rather than
+  archived with the entry: `steel.tres` authors no `deflect_threshold_deg` and therefore leans on
+  `MaterialEntry`'s 30.0 default, and the engagement measured sat at ~31 degrees — one degree over.
+  A shipped material resting its whole feel on an unauthored default is a real thing for the first
+  person touching armour balance to see, and a closed bug entry is the wrong place to keep it.
