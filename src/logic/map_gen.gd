@@ -105,7 +105,7 @@ static func generate(
 	# would miss exactly this failure mode.
 	_repair_stranded_elevation(grid, scratch, rooms, step_height)
 
-	var spawn_cells: Array = _place_spawn_zones(grid, rooms)
+	var spawn_cells: Array = _place_spawn_zones(grid, scratch, rooms)
 	_ensure_spawns_connected(grid, scratch, spawn_cells[0], spawn_cells[1], rng, step_height)
 
 	_finalize_walls_and_empty(grid, scratch)
@@ -661,7 +661,7 @@ static func _roll_barrels(pallet: Part, rng: RandomNumberGenerator) -> void:
 ## game markers, not a physical fact scratch needs any notion of (they
 ## survive Pass D's own retirement for exactly that reason). Written
 ## directly to `grid.terrain`, never to scratch.
-static func _place_spawn_zones(grid: Grid, rooms: Array[Rect2i]) -> Array:
+static func _place_spawn_zones(grid: Grid, scratch: MapGenScratch, rooms: Array[Rect2i]) -> Array:
 	var best_a: Rect2i = rooms[0]
 	var best_b: Rect2i = rooms[1] if rooms.size() > 1 else rooms[0]
 	var best_dist: int = -1
@@ -678,12 +678,14 @@ static func _place_spawn_zones(grid: Grid, rooms: Array[Rect2i]) -> Array:
 				best_b = rooms[j]
 
 	if best_a == best_b:
-		var cell_a: Vector2i = _mark_zone(grid, best_a, Enums.SpawnMarker.SPAWN_A)
-		var cell_b: Vector2i = _mark_zone(grid, _far_corner(best_a), Enums.SpawnMarker.SPAWN_B)
+		var cell_a: Vector2i = _mark_zone(grid, scratch, best_a, Enums.SpawnMarker.SPAWN_A)
+		var cell_b: Vector2i = _mark_zone(
+			grid, scratch, _far_corner(best_a), Enums.SpawnMarker.SPAWN_B
+		)
 		return [cell_a, cell_b]
 
-	var cell_a: Vector2i = _mark_zone(grid, best_a, Enums.SpawnMarker.SPAWN_A)
-	var cell_b: Vector2i = _mark_zone(grid, best_b, Enums.SpawnMarker.SPAWN_B)
+	var cell_a: Vector2i = _mark_zone(grid, scratch, best_a, Enums.SpawnMarker.SPAWN_A)
+	var cell_b: Vector2i = _mark_zone(grid, scratch, best_b, Enums.SpawnMarker.SPAWN_B)
 	return [cell_a, cell_b]
 
 
@@ -706,15 +708,64 @@ static func _far_corner(room: Rect2i) -> Rect2i:
 ## occupied geometry at turn 0. Clearing any blocker here — the one
 ## place every spawn cell is already visited — keeps spawn zones
 ## guaranteed clear without a second full-grid pass.
-static func _mark_zone(grid: Grid, room: Rect2i, marker: int) -> Vector2i:
+## tb60 follow-up: **and every marked cell shares the anchor's height.**
+##
+## `BR40.04`'s invariant is that a spawn zone is flat, and until this pass it held by luck
+## rather than by construction — nothing here ever looked at a height. The ramp retirement
+## changed which rooms stay raised, and at a two-tread stair one seed put a zone across a full
+## `LEVEL_HEIGHT` ledge: units spawning on both sides of a step none of them can climb.
+## **Measured: zero non-uniform zones before this block, one after, so it was a regression
+## introduced here rather than a pre-existing defect surfaced** — which is why it is fixed
+## rather than pinned.
+##
+## **The zone shrinks rather than the terrain flattening.** Reshaping ground under a spawn
+## point would be a second, invisible authority on what the board looks like, competing with
+## `_author_levels` and `_repair_stranded_elevation`; declining to mark a cell is local and
+## says exactly what it means. The anchor is `room.position`, which is the cell this returns,
+## so the zone can never shrink to nothing.
+## **Read out of `scratch`, not out of the grid, and that is not a style choice.** This runs
+## before `_emit`, so `grid.surfaces` is still empty and `UnitGeometry.true_height_for_cell`
+## would answer 0.0 for every cell on the board — a filter that silently matches everything.
+## The first version of this fix did exactly that and the sweep stayed red, which is the only
+## reason it was caught.
+##
+## **The kept level is the block's MAJORITY, not the corner cell's**, and that correction
+## matters more than it looks. Anchoring on `room.position` collapsed one zone from four cells
+## to one, because the corner happened to be the single low cell beside a raised shelf — and
+## the three cells it discarded were the board's only way onto that shelf, turning a
+## spawn-zone defect into a 95-cell unreachable region. **Keeping the majority keeps the zone
+## whole and keeps whatever it stood on reachable.** Ties break to the lower level, so the
+## choice is deterministic rather than dictionary-order.
+static func _mark_zone(grid: Grid, scratch: MapGenScratch, room: Rect2i, marker: int) -> Vector2i:
 	var w: int = mini(SPAWN_ZONE_SIZE, room.size.x)
 	var h: int = mini(SPAWN_ZONE_SIZE, room.size.y)
+
+	var counts: Dictionary = {}
+	for y in range(room.position.y, room.position.y + h):
+		for x in range(room.position.x, room.position.x + w):
+			var level: float = scratch.get_level(Vector2i(x, y))
+			counts[level] = int(counts.get(level, 0)) + 1
+	var levels: Array = counts.keys()
+	levels.sort()
+	var kept: float = levels[0]
+	for level: float in levels:
+		if int(counts[level]) > int(counts[kept]):
+			kept = level
+
+	# The representative cell must be one this actually marked — `_ensure_spawns_connected`
+	# floods from it, and a cell outside its own zone would flood from the wrong side of the
+	# ledge the zone was just moved off.
+	var representative := Vector2i(-1, -1)
 	for y in range(room.position.y, room.position.y + h):
 		for x in range(room.position.x, room.position.x + w):
 			var cell := Vector2i(x, y)
+			if not is_equal_approx(scratch.get_level(cell), kept):
+				continue
+			if representative.x < 0:
+				representative = cell
 			grid.set_spawn_marker(cell, marker)
 			grid.blockers.erase(cell)
-	return room.position
+	return representative if representative.x >= 0 else room.position
 
 
 ## tb31 Pass C: the settled wall/empty model, replacing BR30.10's

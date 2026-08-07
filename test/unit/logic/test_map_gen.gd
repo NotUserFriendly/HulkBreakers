@@ -4,6 +4,26 @@ const WIDTH := 32
 const HEIGHT := 24
 const SEED_COUNT := 50
 
+## **The known-unreachable set — currently empty, and kept anyway** (tb60).
+##
+## `BR60.01`: `MapNavigability` asks *"can you get out"*, so a raised region you can never get
+## **into** is invisible to the invariant. At 40x30 — **the size the game actually plays** —
+## six regions of 50 to 235 cells reproduce, identically before and after this block.
+##
+## **At this file's 32x24 they do not, and the history of that is the point.** They appeared
+## here for exactly one build: raising the step height to 0.4 shortened stairs, which left more
+## rooms raised and therefore more of them exposed, and seed 29 surfaced a 34-cell region. Then
+## making spawn zones height-uniform moved a zone onto the shelf it had been straddling, and it
+## vanished again. **Neither change touched the defect** — both changed how likely the board is
+## to hand you an accidental way in.
+##
+## **So the list is empty and the assertion is still equality, not `is_empty()`.** A new entry
+## is a regression *or* another glimpse of `BR60.01`, and either wants a human reading it
+## rather than a silently-passing sweep. **The real fix is to run this sweep at the bout board
+## size**, where it would reproduce every time; that is taskblock-61's, not this block's, and
+## `BR60.01` says so.
+const KNOWN_UNREACHABLE: Array[String] = []
+
 
 func _find_cells(grid: Grid, marker: int) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
@@ -77,14 +97,14 @@ func test_a_generated_map_contains_more_than_one_level() -> void:
 ## it, ramps are what make a raised area generally reachable" (docs/
 ## PLAN.md). `MapGen` doesn't author any deliberate climb-only pocket, so
 ## every raised region found here is expected to connect.
-func test_every_raised_area_is_ramp_reachable_across_many_seeds() -> void:
+func test_every_raised_area_is_reachable_except_the_one_br60_01_names() -> void:
+	var unreachable: Array[String] = []
 	for map_seed in range(SEED_COUNT):
 		var grid: Grid = MapCorpus.read(map_seed, WIDTH, HEIGHT)
 		var spawn_a: Array[Vector2i] = _find_cells(grid, Enums.SpawnMarker.SPAWN_A)
 		var pf := Pathfinder.new(grid)
-		var reachable: Array[Vector2i] = pf.reachable(spawn_a[0], 9999.0)
 		var reachable_set: Dictionary = {}
-		for cell: Vector2i in reachable:
+		for cell: Vector2i in pf.reachable(spawn_a[0], 9999.0):
 			reachable_set[cell] = true
 
 		for region: Array[Vector2i] in _raised_regions(grid):
@@ -93,13 +113,22 @@ func test_every_raised_area_is_ramp_reachable_across_many_seeds() -> void:
 				if reachable_set.has(cell):
 					region_reachable = true
 					break
-			assert_true(
-				region_reachable,
-				(
-					"seed %d: raised region at %s must have SOME ramp-reachable entry point"
-					% [map_seed, region[0]]
+			if not region_reachable:
+				unreachable.append(
+					"seed %d at %s (%d cells)" % [map_seed, region[0], region.size()]
 				)
+
+	assert_eq(
+		unreachable,
+		KNOWN_UNREACHABLE,
+		(
+			"raised regions with no reachable entry changed — a NEW one is a regression, and a "
+			+ (
+				"MISSING one means BR60.01 is fixed and this list should shrink:\n%s"
+				% "\n".join(unreachable)
 			)
+		)
+	)
 
 
 ## Every level>0 cell grouped into 4-connected components — one entry per
@@ -575,13 +604,15 @@ func test_connect_with_a_stair_lays_evenly_spaced_treads_no_taller_than_the_step
 
 	MapGen._connect_with_a_stair(scratch, room, Unit.BASE_STEP_HEIGHT)
 
-	# 1.0 of rise at a 0.3 step needs 4 steps, so 3 treads at 0.75 / 0.5 / 0.25 running
-	# outward from the room. **Read as a run of differences, not as three magic numbers** --
-	# what the pass actually promises is that no step in the flight exceeds the step height,
-	# and the heights are just how that promise happens to be spelled at this rise.
+	# **Read as a run of differences, not as magic numbers.** What the pass promises is that no
+	# step in the flight exceeds the step height; the specific heights are just how that
+	# promise happens to be spelled at this rise and this constant. The tread count is derived
+	# here for the same reason -- a retune of `BASE_STEP_HEIGHT` should move this fixture, not
+	# redden it, and it has already moved once.
+	var treads: int = maxi(1, int(ceil(1.0 / Unit.BASE_STEP_HEIGHT))) - 1
 	var flight: Array[float] = [float(MapGen.RAISED_ROOM_LEVEL)]
-	for x in [4, 3, 2]:
-		flight.append(scratch.get_level(Vector2i(x, 1)))
+	for i in range(treads):
+		flight.append(scratch.get_level(Vector2i(4 - i, 1)))
 	flight.append(0.0)  # the ground the flight lands on
 
 	for i in range(1, flight.size()):
@@ -591,13 +622,16 @@ func test_connect_with_a_stair_lays_evenly_spaced_treads_no_taller_than_the_step
 			Unit.BASE_STEP_HEIGHT + Unit.STEP_EPSILON,
 			"step %d of the flight (%.3f) must be walkable without climbing" % [i, step]
 		)
+	var step: float = 1.0 / float(treads + 1)
 	assert_almost_eq(
-		flight[1], 0.75, 0.0001, "the tread bordering the room is one step below its floor"
+		flight[1], 1.0 - step, 0.0001, "the tread bordering the room is one step below its floor"
 	)
-	assert_almost_eq(flight[3], 0.25, 0.0001, "and the outermost tread is one step above ground")
-	# The cell past the flight was never touched -- a stair is exactly as long as it needs
-	# to be.
-	assert_almost_eq(scratch.get_level(Vector2i(1, 1)), 0.0, 0.0001)
+	assert_almost_eq(
+		flight[treads], step, 0.0001, "and the outermost tread is one step above ground"
+	)
+	# The cell past the flight was never touched -- a stair is exactly as long as it needs to
+	# be. `4 - treads` is the first cell beyond the outermost tread.
+	assert_almost_eq(scratch.get_level(Vector2i(4 - treads, 1)), 0.0, 0.0001)
 
 
 ## **The step count is derived, so a larger step height builds a shorter stair** -- the

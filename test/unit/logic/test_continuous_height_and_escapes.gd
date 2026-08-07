@@ -68,12 +68,16 @@ func test_a_0_3_high_part_is_standable_and_pathable() -> void:
 		for x: int in range(4):
 			_floor_at(steeper, Vector2i(x, y), 0.0)
 	steeper.clear_surfaces(Vector2i(1, 1))
-	_floor_at(steeper, Vector2i(1, 1), 0.4)
+	# **Derived off the constant, not written as a literal.** This assertion has now been
+	# invalidated twice by the step height moving (0.3, then 0.4); deriving it means the next
+	# retune moves the fixture instead of reddening it.
+	var steep_rise: float = Unit.BASE_STEP_HEIGHT + 0.05
+	_floor_at(steeper, Vector2i(1, 1), steep_rise)
 	assert_almost_eq(
 		Pathfinder.new(steeper, true).move_cost(Vector2i(1, 0), Vector2i(1, 1)),
-		2.0,
+		ceil(Pathfinder.CLIMB_COST * steep_rise),
 		0.0001,
-		"a 0.4 rise is still a climb, and still charges ceil(CLIMB_COST * 0.4) = 2"
+		"a rise just above the step height is still a climb, and still rounds up"
 	)
 
 	# **And `BR46.02`'s residue is closed at the movement rule, which is the other reversal.**

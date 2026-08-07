@@ -189,6 +189,68 @@ probable cause (`BR60.02`) and had its own `volume` theory ruled out.
 `Obsolete`; `BR60.01` and `BR60.02` filed from measurements taken in Passes A and C. The taskblock's
 own "44 live entries" counts the post-Pass-A state.
 
+### Follow-up — the step height corrected to 0.4, and a round on the `Suspected` entries
+
+**`BASE_STEP_HEIGHT` is 0.4**, the supervisor's number, with 0.5 rejected as too generous a slope.
+**The 0.3 that shipped in Pass A was a misreading and the correction is worth recording**, because
+the design document reads as though it says 0.3: `PLAN`'s *"two ordinary tiles at 0.3 and 0.6"*
+names tile **heights**, not step sizes, and that flight's steps are 0.3, 0.3 and **0.4** — the
+largest is the last one, so the example needs 0.4 to be walkable at all.
+
+**Re-measured at 40x30 over eight seeds: 15.7% of walkable cells raised, 0 stranded**, against the
+retired ramps' 15.8%. **So the ramp retirement costs essentially no elevation at this value** — the
+12.8% reported for Pass A was a consequence of the wrong constant, not of the retirement. Three
+fixtures that pinned the old boundary now **derive** their rise from the constant instead of
+writing it as a literal, because that assertion has been invalidated twice already.
+
+**A regression introduced by this block, found by the full gate and fixed rather than pinned.**
+Shorter stairs left more rooms raised, and on one seed a **spawn zone straddled a full
+`LEVEL_HEIGHT` ledge** — half a squad spawning on a shelf the other half cannot climb, breaking
+`BR40.04`'s invariant. **Measured on both sides to establish it was mine**: zero non-uniform zones
+before this block, one after. `_mark_zone` now keeps only the cells sharing the block's
+**majority** level.
+
+**That fix took two attempts and the first was worse than the bug.** Reading heights through
+`UnitGeometry.true_height_for_cell` returned 0.0 for every cell, because `_mark_zone` runs before
+`_emit` and `grid.surfaces` is still empty — a filter that silently matched everything, caught only
+because the sweep stayed red. Anchoring on `room.position` then collapsed a zone from four cells to
+one, because that corner was the single low cell beside a raised shelf, and **the three cells it
+discarded were the board's only way onto that shelf** — turning a spawn-zone defect into a 95-cell
+unreachable region. Majority-anchoring keeps both. Cost across 40 seeds: **two zones at three cells
+instead of four, and zero non-uniform.**
+
+**`BR60.01` appeared at 32x24 for exactly one build and then hid again**, which is the strongest
+evidence yet that board size is why nobody has seen it. The step-height raise exposed a 34-cell
+region on seed 29; the spawn-zone fix moved a zone onto the shelf and it became reachable.
+**Neither change touched the defect.** At 40x30 it is completely stable across every variation
+tried — six regions of 50 to 235 cells, before and after the retirement, at 0.3 and 0.4, with and
+without the spawn fix. `KNOWN_UNREACHABLE` is empty and asserted as **equality** rather than
+`is_empty()`, so a reappearance is a red test rather than a silent pass.
+
+**A round on all five `Suspected` entries, and four moved.**
+
+- **`BR32.08` confirmed and promoted to `Active`.** `wall_cutout_units` is fed
+  `combat_state.units` — every unit — and the occluder filter checks `null`, validity, the active
+  unit, squad, and `extracted`, but **never `alive`**. A dead friendly shell keeps its cell and its
+  view, so it keeps punching a porthole through walls. The `extracted` skip is the precedent and
+  its own comment argues the case word for word.
+- **`BR52.13` closed `Obsolete`** — re-measured across six real AI bouts: **380 of 2450 impacts
+  penetrate (15.5%)**, against the original zero of 156. Neither reading is wrong; that battle was
+  chaingun-versus-steel, a pairing that cannot penetrate, so the sample reported zero by
+  construction. **The model was never broken; the sample was narrow.** Closed `Obsolete` rather
+  than `Resolved` because nobody fixed anything.
+- **`BR52.14` re-measured and deliberately left open.** 3 fails in 236 runs, none since run 138 —
+  98 consecutive clean runs including four gates this block. **Ninety-eight clean runs is not a
+  fix**, and the entry's own requirement (a captured failure) is unmet.
+- **`BR33.01` and `BR51.18` re-verified, unchanged, left `Suspected`.** The first still reproduces
+  in code and is waiting on whether the feature survives at all; the second is still structurally
+  possible (`_display_cell` and `_display_orientation` remain separate) and still unreproduced.
+
+**The armour-balance observation inside `BR52.13` was salvaged into `PLAN.md` rather than
+archived** with the entry: `steel.tres` authors no `deflect_threshold_deg` and leans on a 30.0
+default against a measured ~31 degree engagement. A shipped material resting its feel on unauthored
+defaults is a decision, and a closed bug report is the wrong place to keep one.
+
 ## Taskblock 59 follow-up — fourteen editor reports across four review rounds
 
 **Full gate green: 339 scripts, 3322 tests, 0 failures, 1396.6 s.**
