@@ -1,5 +1,53 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 61 — the hunt
+
+### Pass A — shot geometry, and the instrument finally read
+
+**Full gate green: 342 scripts, 3350 tests, 0 failures.**
+
+**The three angle entries are three causes, not one** — which is the answer the pass existed to
+get, and it means the wall cutout does not inherit a shared upstream cause.
+
+**`BR52.10` fixed.** `UtilityContext._lof_possible` read `field.allows(cell)` — terrain and opacity
+only — so nothing anywhere asked whether a squadmate stood in the firing line, and an AI unit would
+put a twelve-round burst through the ally in front of it. It now also fails when a living squadmate
+sits on `Grid.line(cell, target.cell)`. **A regression restored, not a feature added**: the retired
+branch planner refused this and logged `held: ally_in_line` until the taskblock-45 rewrite.
+
+**No new input and no new weight, deliberately.** `shoot.tres` already carries `line_of_fire` as a
+consideration and `UtilityScorer`'s product model preserves a zero at every `n`, so answering
+`false` vetoes shooting from that cell outright. Inventing a friendly-fire weight would have been a
+balance number nobody chose, saying something the existing veto already says. Read through
+`WorldView.units_visible_to` rather than `_state.units` — allies are on the radio, so a squadmate is
+in that list at every tier including `MINDLESS`.
+
+**Measured over four bouts: impacts landing on a squadmate fell from 121/1803 (6.71%) to 37/1642
+(2.25%).** A 66% reduction, **not elimination, and the residual is expected**: the check is
+cell-granular by design and under two-phase turns an ally can move into a line after the decision
+to fire was made. Five tests; two go red when the check is reverted.
+
+**`BR54.01` confirmed, and what is left is a decision rather than an investigation.** 1391 first-hop
+impacts paired to their announcing shot: mean off-axis **17.20°** under 2 cells, **2.51°** beyond 8
+— monotonic decay, exactly what `docs/02` predicts if the aim point is the frontmost region's
+centre. Two independent measurements now agree (`docs/02` had 20.1° at one cell). **Both sweeps
+produced only one weapon each**, so the range half is confirmed and the weapon-independence half
+still rests on the entry's original table — stated rather than glossed.
+
+**`BR52.07`'s diagnosed mechanism is unreachable and nothing here did it.** The entry says the fix
+lands when `CombatState.shot_resolver` inverts; it defaults to `&"ray"`, and `RESOLVER_PLANE` is
+named only by its own constant, the differential harness and a comment. Marked `Pending` rather
+than closed, because the cause being unreachable is not the symptom being confirmed gone — and the
+entry now records what a reappearance would disprove.
+
+**`BR51.01` re-verified live and lifted out of the hunt.** `CameraRig.aim_at` still rotates the one
+real camera up to 5 degrees toward the reticle, and the aim ray casts through it. The supervisor's
+specification is architectural — the camera turns a cursor pixel into a world point, and the shot
+runs gun-to-point with no camera in the expression — so it became `PLAN`'s *Take the camera out of
+shot processing* rather than being half-built in a hunt pass. **Pass A's AI sweeps say nothing
+about it in either direction**, since the AI path never touches a camera.
+
+
 ## Taskblock 60 — prep for the bug hunt: delete two, instrument four, dissolve seven
 
 **Full gate green: 341 scripts, 3345 tests, 0 failures.**

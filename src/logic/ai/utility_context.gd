@@ -587,8 +587,59 @@ func visible_unit_ids() -> Array:
 
 ## **A bit test, not a cast.** `false` is conclusive; `true` is confirmed later by
 ## `ActionQueue.enqueue` against the real resolver.
+##
+## tb61 Pass A (`BR52.10`): **and a squadmate standing in the line blocks it, same as terrain
+## does.** This read `field.allows(cell)` alone — a `VisibilityField` test, so terrain and
+## opacity only. `_nearest_known_enemy` already skips allies as *targets*, but nothing anywhere
+## asked whether one was standing in the way, so an AI unit would fire a twelve-round burst
+## through the squadmate directly in front of it. Reproduced from a real bout: eight consecutive
+## pulls resolving on the ally, ending in a matrix ejection, on turn zero.
+##
+## **A regression, not a gap that was always there.** The retired branch planner refused this and
+## logged `held: ally_in_line`; the check went with it in the taskblock-45 rewrite.
+##
+## **No new input, no new weight, and that is deliberate.** `shoot.tres` already carries
+## `line_of_fire` as a consideration, and `UtilityScorer`'s product model preserves a zero at
+## every `n` — so answering `false` here vetoes shooting from that cell outright, which is
+## exactly the old refusal. Inventing a "friendly fire risk" weight would have been a balance
+## number nobody chose, to express something the existing veto already says.
 func _lof_possible(cell: Vector2i) -> bool:
-	return field == null or field.allows(cell)
+	if field != null and not field.allows(cell):
+		return false
+	return not _ally_in_line(cell)
+
+
+## True if a living squadmate stands on the cells between `cell` and the target.
+##
+## **`Grid.line` is the shared supercover walk**, the same one `LoS` reasons over — a
+## hand-rolled second line rule here is precisely the parallel system that would drift.
+## Endpoints are excluded: the shooter's own cell is where it stands, and the target's cell is
+## what it is shooting at.
+##
+## **Cell granularity, matching what this function is.** It is a cheap conservative filter whose
+## `true` is confirmed later against the real resolver; a per-candidate ray march would be the
+## right answer to a different question and would cost one march per scored cell, which is the
+## trap `Cover.is_covered_from` was pulled out of the scoring loop for.
+##
+## **Read through `units_visible_to`, never `_state.units`** — that is the seam `WorldView`
+## exists to hold. It costs nothing here: *"allies are always known: they are on the radio"*, so
+## a squadmate is in the list at every intelligence tier, including `MINDLESS`. A unit too dim to
+## remember an enemy still knows where its own squad is standing.
+func _ally_in_line(cell: Vector2i) -> bool:
+	if target == null:
+		return false
+	var allies: Array[Vector2i] = []
+	for other: Unit in view.units_visible_to(unit):
+		if other != unit and other.alive and other.squad_id == unit.squad_id:
+			allies.append(other.cell)
+	if allies.is_empty():
+		return false
+	for step: Vector2i in Grid.line(cell, target.cell):
+		if step == cell or step == target.cell:
+			continue
+		if step in allies:
+			return true
+	return false
 
 
 func _weapon_reaches(distance: int) -> bool:

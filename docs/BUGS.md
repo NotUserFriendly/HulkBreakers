@@ -1473,6 +1473,23 @@ every fire**
 - **The test stays as a regression guard.** It is cheap, it pins a real invariant, and it will catch the
   frame mismatch if a later change introduces the thing that was suspected here.
 
+**taskblock-61 Pass A — re-verified, unchanged, and deliberately not started.**
+
+`CameraRig.aim_at` still rotates the real camera toward the reticle by up to `MAX_LEAN_DEG` (5.0),
+via `look_at(centre)` then a second `look_at` along a leaned forward vector, and there is still one
+`Camera3D`. **The mechanism this entry names is live.**
+
+**Not touched by any measurement in this block, and that is a property of the defect rather than an
+oversight.** Pass A's sweeps are AI bouts, and the AI path never involves a camera — 1391 impacts
+say nothing about this entry in either direction. **It is a player-path defect and needs the player
+path to see it.**
+
+**Scoped out of the hunt on judgement, flagged for the supervisor.** The specification recorded
+above — *"the camera shouldn't be involved in actual shot processing at all"* — is an
+architectural change to how `TacticsController` turns a cursor into an aim point, not a patch to
+the lean. Doing it inside a hunt pass would either half-build it or quietly become the whole block.
+**It wants its own item; the diagnosis is complete enough that it can be picked up cold.**
+
 ### BR51.14 — Active — owner: `CC`
 **Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
 - **cluster:** `framerate`
@@ -1700,7 +1717,7 @@ restored verbatim from `a65f66d`; only this note is new.
 - **To confirm it is this and not something else:** the leg should still stop rounds. If the
   invisible leg is also un-hittable, this is a different defect and `BR60.02` is not its cause.
 
-### BR52.07 — Active — owner: `SUPERVISOR`
+### BR52.07 — Pending — owner: `SUPERVISOR`
 **One shot in a burst flies off at roughly 90 degrees from the gun's facing**
 - **cluster:** `shot-geometry`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -1730,6 +1747,27 @@ restored verbatim from `a65f66d`; only this note is new.
 - **So the fix already exists and is not switched on.** `RayChain` marches muzzle-to-aimed-point and
   cannot express this. It becomes live when `CombatState.shot_resolver` inverts — see that field's own
   doc comment for the 14 tests currently standing in the way.
+
+**`Pending [CC 93549217-f453-4fd6-b8f3-cecf9532290e]` — taskblock-61 Pass A: the mechanism this entry diagnosed is no longer
+reachable, and nothing in this block did it.**
+
+The entry's own closing line is *"the fix already exists and is not switched on ... it becomes live
+when `CombatState.shot_resolver` inverts"*. **It has.** `CombatState.shot_resolver` defaults to
+`&"ray"`, and `ShotResolution.RESOLVER_PLANE` is now named by exactly three places: its own
+constant, `ResolverDifferential` (the test harness that deliberately runs both), and a doc comment.
+**No production path selects the plane**, so the `origin + dir * region.depth + perp * point.x`
+reconstruction that drew a scattered round sideways cannot run in a real bout.
+
+**Marked `Pending` rather than closed, and the distinction matters here.** CC did not fix this and
+cannot confirm the *symptom* is gone — only that the diagnosed cause is unreachable. A sweep of
+1391 first-hop impacts found 36 exceeding 60 degrees off the announced direction, **every one of
+them inside 1.9 cells**, which is `BR54.01`'s close-range aim-point effect rather than this
+entry's long-range logging artifact. **If you see a burst throw one round sideways at a real
+distance again, this is not fixed and the theory is wrong.**
+
+**To see it work:** fire a long burst at a target 6+ cells away and read the impact lines. Every
+hit should lie along the muzzle-to-target axis; a hit that is perpendicular to it at that range is
+the defect returning.
 
 ### BR52.09 — Active — owner: `SUPERVISOR`
 **A destroyed cover object's model stays on the board**
@@ -1763,7 +1801,7 @@ restored verbatim from `a65f66d`; only this note is new.
   verbs rebuilding the whole board too often; its fix gates rebuilds to `DebugVerbs.affects_board()`,
   which is why the board *can* be rebuilt — **nothing triggers one when combat destroys a blocker.**
 
-### BR52.10 — Active — owner: `SUPERVISOR`
+### BR52.10 — Pending — owner: `SUPERVISOR`
 **An AI unit fires a full burst through the ally standing directly in front of it, killing them**
 - **cluster:** `shot-geometry`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -1812,6 +1850,42 @@ restored verbatim from `a65f66d`; only this note is new.
 - **Why the log made it findable at all** is worth keeping: `hit == origin` is a shape that reads as a
   resolver bug and is not one. Anything that resolves at zero distance should probably be a named,
   greppable condition rather than something a reader has to notice by comparing two coordinate pairs.
+
+**`Pending [CC 93549217-f453-4fd6-b8f3-cecf9532290e]` — fixed at taskblock-61 Pass A.**
+
+**`UtilityContext._lof_possible` now refuses a cell with a squadmate in the firing line.** It read
+`field == null or field.allows(cell)` — a `VisibilityField` test, so terrain and opacity and no
+units at all. It now also fails when a living squadmate stands on `Grid.line(cell, target.cell)`,
+endpoints excluded.
+
+**No new input and no new weight, deliberately.** `shoot.tres` already carries `line_of_fire` as a
+consideration and `UtilityScorer`'s product model preserves a zero at every `n` — so answering
+`false` here vetoes shooting from that cell outright, which is exactly the `held: ally_in_line`
+refusal the retired branch planner performed. Inventing a "friendly fire risk" weight would have
+been a balance number nobody chose, expressing something the existing veto already says.
+
+**Read through `WorldView.units_visible_to`, never `_state.units`** — the seam that class exists to
+hold. It costs nothing: *"allies are always known: they are on the radio"*, so a squadmate is in
+the list at every intelligence tier including `MINDLESS`.
+
+**Measured over four bouts, before and after:**
+
+| | impacts | landing on a squadmate |
+|---|---|---|
+| before | 1803 | **121 (6.71%)** |
+| after | 1642 | **37 (2.25%)** |
+
+**A 66% reduction, not elimination, and the residual is expected rather than mysterious.** The
+check is cell-granular and conservative by design — a cheap filter whose `true` is confirmed later
+against the real resolver — and under two-phase turns an ally can move into a line after the
+decision that fired was made. **Do not read the remaining 2.25% as the fix failing**; read it as
+the difference between "never aims through a squadmate" and "no round ever touches one", which are
+different promises and only the first was ever made.
+
+**To see it work:** watch a bout with three units a side. Units that line up behind one another
+should now hold or reposition rather than firing through the unit in front. The
+`test_ally_in_line.gd` fixture is `BR52.10`'s own geometry — shooter at `(20,5)`, squadmate at
+`(19,5)`, enemy at `(12,5)` — and two of its five assertions go red if the check is reverted.
 
 ### BR52.12 — Active — owner: `SUPERVISOR`
 **Overwatch is declared constantly and never once fires, and a declined trigger logs nothing**
@@ -1996,6 +2070,46 @@ changed the aim path.
   nobody has made — the current behaviour was never chosen, it is what "frontmost region" came to
   mean once bodies stopped being single boxes. Recorded in `docs/02` as a finding, explicitly not
   as intended behaviour. **Picking one is a design call, not a patch.**
+
+**taskblock-61 Pass A — the range effect is confirmed independently, and the cause is now a design
+decision rather than an investigation.**
+
+`weapon_used` (taskblock-60 Pass B) was built for this entry and this is its first reading. 1391
+first-hop impacts paired to the shot that announced them, across six AI bouts, measuring the angle
+between the announced muzzle-to-target axis and where the round actually landed:
+
+| range (cells) | n | mean | median | worst |
+|---|---|---|---|---|
+| 0 – 2 | 601 | **17.20°** | 9.84° | 89.36° |
+| 2 – 4 | 154 | **15.60°** | 7.93° | 68.94° |
+| 4 – 8 | 271 | 4.31° | 2.14° | 47.57° |
+| 8+ | 365 | **2.51°** | 1.16° | 47.28° |
+
+**Monotonic decay with range, which is what `docs/02` predicts** if the aim point is the frontmost
+region's centre: a fixed lateral distance inside the body subtends an angle that grows without
+limit as range shrinks. `docs/02` measured 20.1° at one cell by a different route; this measures a
+17.2° mean under two cells. **Two independent measurements agreeing is what makes this a diagnosis
+rather than a theory.**
+
+**A second sweep on a different roster reproduced the decay** — 8+ cells at mean 1.44°, worst
+3.49° — and found **no** long-range outliers at all. The 47° readings in the 4-8 and 8+ rows above
+appear in one roster and not the other and are **not explained**; whoever picks this up should
+isolate them before treating the table's tail as meaningful.
+
+**A limit of both sweeps, stated rather than buried:** each produced exactly one weapon
+(`pistol` in the first, `sniper_rifle` in the second) because the roster construction collapsed.
+**So this confirms the RANGE half and does not test the weapon-independence half** — that still
+rests on this entry's original per-unit table.
+
+**And taskblock-60 Pass B removed a suspect.** `AttackAction.apply` calls `FaceAction.face_for_free`
+toward its target *before* firing, so a queued attack always leaves with facing ≈ travel. **The 43
+degrees cannot be the unit pointing the wrong way.**
+
+**What is left is a decision, not a hunt.** `docs/02` states it outright: whether the aim point
+*should* be the frontmost region's centre, the body's centroid, or a point on the muzzle-to-target
+axis **is an open design question**, and the table above is a consequence rather than an intent. A
+unit aiming at the pistol in an enemy's outstretched hand is not obviously wrong; a unit doing that
+at one cell and missing the body entirely probably is.
 
 ### BR54.02 — Active — owner: `SUPERVISOR`
 **A destroyed part vanishes from the shell before the tracer that destroyed it draws**

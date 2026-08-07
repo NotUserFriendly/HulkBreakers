@@ -790,6 +790,40 @@ team, a patrol, everything sharing a spawn point — which is a design question,
 ~671ms → ~646ms per AI step, so as a *performance* argument this is weak; if it earns its place it
 will be as squad behaviour that reads better, not as a speed-up.
 
+### Take the camera out of shot processing
+**Needs:** nothing. **Unblocks:** `BR51.01`; aiming being a property of the gun rather than of the
+view.
+
+**The supervisor's specification, recorded against `BR51.01` and lifted here because it is
+architecture rather than a bug fix:**
+
+> *"The camera shouldn't be involved in actual shot processing at all. Like you said, it's a
+> flourish, so why is it affecting aim? The purpose is for the camera to give a better view of the
+> target. The mouse cursor, when clicked, is aimed at a point on a part the player wants to aim at.
+> The player camera should not be involved in drawing a line from the shooter's gun to that clicked
+> point."*
+
+**The defect it closes.** `CameraRig.aim_at` rotates the real `Camera3D` by up to `MAX_LEAN_DEG`
+(5.0) toward the reticle, and `TacticsController` caches that same camera — so every
+`project_ray_origin`/`project_ray_normal` casts through a camera turned away from where the player
+believes they are sighting. **A rotational offset on the whole ray**, which is exactly the widened
+symptom: shots landing left *and* down together, not a sign flip on one axis.
+
+- **The shape is a two-step split.** The camera converts a cursor pixel into **a world point on a
+  part** — that much it must do, since the cursor only exists in screen space. The shot is then
+  resolved **gun to that point**, with no camera in the expression. Today the second step reuses the
+  first step's ray.
+- **Un-leaning the projection is NOT the fix**, and was explicitly rejected: it keeps the camera in
+  the loop and merely changes its pose.
+- **It is a feedback loop today** — the lean is computed *from* the reticle point and the reticle is
+  computed by projecting *through* the leaned camera. Establish whether the offset is stable or
+  compounds across frames before choosing a fix; that answer changes what a test has to pin.
+- **Any new test must compare against the camera pose the player is looking through**, not against
+  the other consumer of the same ray. The frame-mismatch measurement came back clean at 0.0000 cells
+  precisely because the reticle and the resolver are handed the *same* wrong ray.
+- **Its own item rather than a hunt entry** (taskblock-61 Pass A's call): inside a hunt pass it
+  would either be half-built or become the whole block.
+
 ### Two unauthored defaults carry a shipped material's whole feel
 **Needs:** nothing. **Unblocks:** armour and weapon balance being authored rather than inherited.
 
