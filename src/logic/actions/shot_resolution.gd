@@ -82,8 +82,21 @@ static func resolve_and_log_point(
 	deflect_mode: StringName = DamageResolver.DEFLECT_MODE_RICOCHET,
 	radius: float = 0.0,
 	vertical_slope: float = 0.0,
-	point_depth: float = 0.0
+	point_depth: float = 0.0,
+	shot: ShotAnnouncement = null
 ) -> bool:
+	# tb60 Pass B: **the announcement happens here, where the paths already meet**, so no
+	# firing path writes an emit by hand and none can announce a shot different from the one it
+	# resolves. `announce_once` is idempotent per instance, so a burst's pellets sharing one
+	# announcement produce one event rather than nine — the granularity is a trigger pull,
+	# chosen by how many announcements a caller builds rather than by a flag here.
+	#
+	# **Before the resolve, deliberately.** A round that strikes nothing must still announce,
+	# which is the whole complaint: a sniper firing was indistinguishable from a sniper idling
+	# until something was hit. Emitting after the resolve would work too, but only until
+	# somebody added an early return.
+	if shot != null:
+		shot.announce_once(state)
 	var results: Array[ImpactResult] = resolve_point(
 		state,
 		attacker,
@@ -116,6 +129,18 @@ static func resolve_and_log_point(
 		CombatState.shots_escaped += 1
 		log_miss_result(state, attacker, origin, direction, point, max_range, origin_height)
 	return not results.is_empty()
+
+
+## For a firing path that does **not** funnel through `resolve_and_log_point` — today that is
+## `Overwatch` alone, which reaches `log_impact_result`/`log_miss_result` directly because it
+## resolves its shot through `DamageResolver` itself.
+##
+## Exposed rather than left to the caller's own `combat_log.emit` for the reason the whole pass
+## exists: an announcement written by hand at one call site is an announcement that can drift
+## from the six written by the resolver. `test_every_firing_path_announces_itself.gd` sweeps
+## `src/` for any file reaching a shot resolver and fails if it does not build one of these.
+static func announce(state: CombatState, shot: ShotAnnouncement) -> void:
+	shot.announce_once(state)
 
 
 ## The resolver dispatch, split out of `resolve_and_log_point` so the differential

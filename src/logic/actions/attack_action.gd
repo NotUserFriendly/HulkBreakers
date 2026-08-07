@@ -193,6 +193,12 @@ func apply(state: CombatState) -> void:
 	# nothing special armed.
 	var is_dud: bool = RangeModel.is_dud(weapon, range_cells)
 
+	# tb60 Pass B: **one announcement per trigger pull, shared by every point this pull throws.**
+	# Built before the loop rather than inside it, which is what makes the granularity a shot
+	# rather than a projectile.
+	var shot := ShotAnnouncement.new(
+		&"attack", actual.id, origin, direction, actual.orientation, weapon_id
+	)
 	for point: Vector2 in points:
 		# The shooter's own body sits at the ray's own origin (depth <= 0)
 		# and can otherwise satisfy `_find_next`'s point-containment check
@@ -217,7 +223,8 @@ func apply(state: CombatState) -> void:
 			DamageResolver.DEFLECT_MODE_RICOCHET,
 			0.0,
 			elevation.vertical_slope,
-			aim_depth
+			aim_depth,
+			shot
 		)
 
 	# Phase 6 placeholder: no living parts left disables the unit. Phase 7

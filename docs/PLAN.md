@@ -532,29 +532,6 @@ carries, and that is correct rather than a gap.
 
 **The AI queuing a vertical move is its own item** below, not part of this one.
 
-### Every way of firing announces itself
-**Needs:** nothing. **Unblocks:** reading a firefight out of the log without reconstructing it
-from impacts; any future analysis of who shot at what.
-
-**`BurstAction` is the only firing path that emits a fire event.** `AttackAction`, `StabAction`,
-`SlashAction`, `GrindAction`, `Suppression` and `Overwatch` resolve shots and emit **impacts
-only** — one of seven paths announces itself. A single shot that strikes nothing leaves a bare
-`miss`; a sniper firing is indistinguishable from a sniper idling until something is hit.
-
-- **`single_shot_fired`, and a framework the rest tag into.** The point is not one more event
-  kind — it is that a new way of putting a round in the air announces itself **by construction**
-  rather than by whoever adds it remembering to. `burst_fired` becomes one member of the
-  vocabulary instead of the exception that happens to have one.
-- **`ShotResolution` is the obvious seam.** Six of the seven paths already funnel through
-  `resolve_and_log_point`; `Overwatch` reaches `log_impact_result`/`log_miss_result` directly.
-  Whatever carries the announcement should sit where they already meet, not in each caller.
-- **It has already cost real time.** `BR54.01` needed every sniper and shotgun shot inferred from
-  its impacts before the bug could be characterised at all — the measurement existed only because
-  the impacts happened to carry origin and hit points.
-- **Open, and worth deciding once rather than per caller:** what a melee swing counts as. A stab
-  resolves through the same shot path but "fired" is the wrong word for it, so the vocabulary
-  probably needs a neutral term with the weapon's own method as data.
-
 ### A climb needs a position along it
 **Needs:** nothing. **Unblocks:** partial climbs, mid-action terrain destruction, and the
 destroyed-ladder fall — see the fourth bullet.

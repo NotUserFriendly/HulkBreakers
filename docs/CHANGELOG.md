@@ -72,6 +72,56 @@ identically on both sides: `MapNavigability` asks "can you get out", so a raised
 never get *into* is invisible to it — 12 such regions across 60 seeds at 40x30, largest 235 cells.
 Not fixed here.
 
+### Pass B — every way of firing announces itself
+
+**`BurstAction` was one of seven paths that announced.** `AttackAction`, `StabAction`,
+`SlashAction`, `GrindAction`, `Suppression` and `Overwatch` emitted impacts only, so a sniper
+firing and a sniper idling were indistinguishable in the log until something was hit. All seven
+now announce.
+
+**`ShotAnnouncement` is an object, not a seventh emit**, and that is what makes it
+by-construction. It carries the origin, the intended direction, **the unit's own facing**, the
+weapon, and which path took the shot; `ShotResolution.resolve_and_log_point` announces from it,
+so the six paths that share that seam cannot announce a shot different from the one they
+resolve. `Overwatch` resolves through `DamageResolver` itself and calls
+`ShotResolution.announce` rather than writing a `combat_log.emit` by hand — an announcement
+written at one call site is one that can drift from the six the resolver writes.
+
+**Once per trigger pull, not once per projectile.** `announce_once` is idempotent per instance,
+so a shotgun pull's nine pellets share one announcement and a three-round burst emits three.
+Granularity is expressed by how many announcements a caller builds rather than by a flag.
+**`burst_fired` is untouched** — it is a per-burst summary `LogFold` reads, and one of those now
+covers the several announcements a burst's pulls emit.
+
+**The melee vocabulary, decided once.** The event kind is `weapon_used`, deliberately neutral,
+with `method` as an **open `StringName` vocabulary** (`fire` / `thrust` / `swing` / `grind`). A
+stab resolves through the identical path and *fired* is the wrong word for it, so a vocabulary
+that only fits guns would be wrong again for the next delivery anybody authors. Suppression's
+opportunity attack announces as a thrust because it reaches for a `stab` provider — the method
+follows the weapon that delivers, not the rule that triggered it.
+
+**`BR54.01` is a field now rather than a reconstruction.** `off_facing` — the wrapped angle
+between where the unit is pointed and where the round went — is computed into the event, because
+that entry *is* that angle and it had to be inferred from impact geometry to be characterised at
+all.
+
+**An eighth path fails a test until it tags in**, which is the taskblock's own definition of the
+claim. `test_every_firing_path_announces_itself.gd` enumerates the seven, sweeps `src/` for any
+file reaching a shot resolver that is not listed, and checks every listed file still builds an
+announcement. **Verified non-vacuous**: a planted eighth path was caught and named.
+
+**A finding, from a test failing.** `AttackAction.apply` calls `FaceAction.face_for_free` toward
+its target *before* firing, so the facing an announcement records is post-re-face. The fixture
+assumed otherwise and went red. It is worth stating because it sharpens the instrument: a queued
+attack should read near-zero `off_facing`, so **`BR54.01`'s 43 degrees is not a stale-facing
+effect** — consistent with `docs/02`'s own measurement that the aim point is the frontmost
+region's centre, which moves off-axis without the unit turning at all. taskblock-61 should read
+the log before forming a theory, which is what the taskblock asks anyway.
+
+**Behavioural coverage is three of seven and says so.** `AttackAction`, `BurstAction` and
+`StabAction` are driven as real actions — the three shapes that could fail differently. The
+other four are covered structurally plus by their own files; duplicating five fixtures here
+would have bought nothing.
 
 ## Taskblock 59 follow-up — fourteen editor reports across four review rounds
 

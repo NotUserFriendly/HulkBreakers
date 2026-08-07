@@ -109,6 +109,19 @@ static func resolve_opportunity_attacks(
 		var crit_chance: float = WeaponResolver.resolve_crit_chance(weapon, []).current
 		var bonus_pen: float = WeaponResolver.resolve_bonus_pen(weapon, []).current
 		var stab_width: float = weapon.weapon_def.stab_width if weapon.weapon_def != null else 0.0
+		# tb60 Pass B: suppression's opportunity attack announces like any other shot. It reaches
+		# for a `stab` provider (`ActionCatalog.provider_for(attacker, &"stab")` above), so it
+		# announces as a thrust — the method follows the weapon that actually delivers it, not
+		# the rule that triggered it.
+		var shot := ShotAnnouncement.new(
+			&"suppression",
+			attacker.id,
+			origin,
+			direction,
+			attacker.orientation,
+			weapon.id,
+			ShotAnnouncement.METHOD_THRUST
+		)
 		ShotResolution.resolve_and_log_point(
 			state,
 			attacker,
@@ -125,7 +138,8 @@ static func resolve_opportunity_attacks(
 			DamageResolver.DEFLECT_MODE_SLIDE,
 			stab_width,
 			elevation.vertical_slope,
-			aim_depth
+			aim_depth,
+			shot
 		)
 		if mover.alive and mover.shell.living_parts().is_empty():
 			state.kill_unit(mover)

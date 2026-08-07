@@ -208,6 +208,14 @@ func apply(state: CombatState) -> void:
 		var pellet_points: Array[Vector2] = SpreadPattern.sample(
 			pull_point, weapon, ammo, state.rng
 		)
+		# tb60 Pass B: **one announcement per PULL, not per pellet and not per burst.** A burst
+		# is several trigger pulls, so it emits several — which is exactly what makes the
+		# per-pull recoil widening above readable in the log. `burst_fired` above still marks
+		# the burst as a whole; the two answer different questions and `LogFold` reads the
+		# summary, not these.
+		var shot := ShotAnnouncement.new(
+			&"burst", actual.id, origin, direction, actual.orientation, weapon_id
+		)
 		var pull_hit := false
 		for point: Vector2 in pellet_points:
 			var landed: bool = ShotResolution.resolve_and_log_point(
@@ -226,7 +234,8 @@ func apply(state: CombatState) -> void:
 				DamageResolver.DEFLECT_MODE_RICOCHET,
 				0.0,
 				elevation.vertical_slope,
-				aim_depth
+				aim_depth,
+				shot
 			)
 			pull_hit = pull_hit or landed
 		if pull_hit:
