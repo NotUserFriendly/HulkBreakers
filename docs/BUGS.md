@@ -2138,11 +2138,41 @@ between the announced muzzle-to-target axis and where the round actually landed:
 | 4 – 8 | 271 | 4.31° | 2.14° | 47.57° |
 | 8+ | 365 | **2.51°** | 1.16° | 47.28° |
 
-**Monotonic decay with range, which is what `docs/02` predicts** if the aim point is the frontmost
-region's centre: a fixed lateral distance inside the body subtends an angle that grows without
-limit as range shrinks. `docs/02` measured 20.1° at one cell by a different route; this measures a
-17.2° mean under two cells. **Two independent measurements agreeing is what makes this a diagnosis
-rather than a theory.**
+**Monotonic decay with range** — but **CC's first reading of that table was wrong and is corrected
+here.** It attributed the decay to the aim point alone and called `docs/02`'s 20.1-degree
+measurement an independent agreement. It is not independent: `docs/02` measured the aim-point
+offset with no scatter, while the table above measures muzzle-to-target-cell against where the
+round *landed*, which contains **the aim point and the weapon's scatter cone together**. A
+fixed-radius scatter ring subtends an angle that grows as range shrinks for exactly the same
+geometric reason the aim-point offset does, so the two are indistinguishable in that column.
+
+**The supervisor caught this from the other side, 2026-08-07:** *"this does seem to imply that shot
+recoil is behaving unpredictably. Even if a shot is aimed at an outstretched pistol, the cone angle
+of fired shots should still be smaller than what's observed."*
+
+**Decomposed, by comparing each sweep against what its own weapon's authored rings can subtend:**
+
+| weapon | widest authored ring | can subtend at 1c / 2c / 8c | measured mean, 0-2 cells |
+|---|---|---|---|
+| `pistol` | 0.500 cells | 26.6° / 14.0° / 3.6° | **17.2°** |
+| `sniper_rifle` | 0.030 cells | 1.7° / 0.9° / 0.2° | **8.8°** |
+
+- **The pistol sweep is fully explained by its own scatter** and shows no anomaly at all. The first
+  sweep was all-pistol, so **the headline table above is mostly a scatter cone, not the aim point.**
+- **The sniper sweep is not.** Its authored scatter cannot exceed 1.7 degrees at any range in the
+  sample, and the measurement is **8.8 degrees under two cells and 13.0 degrees at two-to-four** —
+  roughly **ten times** what scatter permits. **That residual is the real `BR54.01`**, and it is
+  what the aim point explains.
+- **A content observation that falls out of the same table:** `pistol.tres` authors a **0.5-cell**
+  widest ring against `chaingun`'s 0.6. `docs/02` describes the chaingun's huge radii as "aim
+  centre mass, accept the spray"; a sidearm nearly as wide as a chaingun looks like a number nobody
+  chose. **Not changed here** — balance is not invented — but worth a look.
+
+**Fixed 2026-08-07 (taskblock-61): `ShotPlane.center_of` returns the TORSO's centre.** Supervisor's
+call — *"aiming at the torso's center is likely the best aim point for a unit to use"*, with
+per-body-part targeting arriving later for smarter units. The torso is the shell's `root`, which
+needs no new tag and no authoring, and the frontmost region remains the fallback when the root
+projects nothing at that angle.
 
 **A second sweep on a different roster reproduced the decay** — 8+ cells at mean 1.44°, worst
 3.49° — and found **no** long-range outliers at all. The 47° readings in the 4-8 and 8+ rows above
@@ -2487,6 +2517,19 @@ behaviour on purpose, states that those assertions describe a defect rather than
 pins the `failure_mode` default that makes any naive fix resurrect walls. **When this entry is
 decided, that file wants rewriting rather than patching.**
 
-**Still `Active`, and it should stay that way until the rule above is chosen.** taskblock-61 fixed
-nothing here.
+**The rule is chosen, and the work is a refit rather than a fix (supervisor, 2026-08-07).**
+Mangling becomes **replacement**: a mangled thing becomes a wreck part with its own volume and a
+lower DT, so it blocks shots poorly because it *is* a poor blocker; destroy the wreck and it is
+gone under the ordinary `hp > 0` rule. *"A mangled wall is a wall that no longer works as a wall; a
+mangled leg is a leg that no longer works as a leg."* **`is_mangled` then stops being a membership
+question at all, which is what closes this entry.**
+
+**Explicitly deferred out of the hunt**, on the supervisor's instruction that a major refit does
+not happen mid-bug-hunt. Recorded as `PLAN.md`'s *Mangling is replacement, and a mangled thing no
+longer works as that thing*, with the measured scope: `Part.mangles_into` is **read by nothing**,
+so this is a new mechanic; `failure_mode` defaults to `MANGLE`; six batteries and `wall` author no
+wreck to become.
+
+**Still `Active`, and it closes as a consequence of that item rather than on its own.**
+taskblock-61 fixed nothing here.
 

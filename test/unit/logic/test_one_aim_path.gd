@@ -155,15 +155,21 @@ func test_only_the_catalog_constructs_a_firing_action() -> void:
 	)
 
 
-## **The finding `docs/02` now records, pinned.** The aim point is not the target's centre and not a
-## point on the muzzle-to-target axis: it is `best.rect.get_center()` for the target's frontmost
-## region — whichever single part projects nearest the shooter. An outstretched weapon or a raised
-## arm therefore *is* the aim point.
+## **Reversed at taskblock-61 on the supervisor's call, and the old text is kept in the reversal so
+## the change is legible.** This used to pin the opposite: *"the aim point is not the target's
+## centre ... it is `best.rect.get_center()` for the target's frontmost region — whichever single
+## part projects nearest the shooter. An outstretched weapon or a raised arm therefore IS the aim
+## point."* That was `docs/02`'s finding and `BR54.01`'s cause.
 ##
-## Asserted by comparing against the frontmost region computed here from the same plane, so this
-## test says "the aim point is that region's centre" rather than re-deriving a projection formula
-## and agreeing with itself.
-func test_the_aim_point_is_the_frontmost_region_centre_not_the_body_centre() -> void:
+## **Now it is the TORSO's centre** — *"aiming at the torso's center is likely the best aim point
+## for a unit to use"* — with per-body-part targeting arriving later for smarter units. The torso
+## is the shell's `root`, which needs no new tag and no authoring.
+##
+## Asserted against the root's own region computed here from the same plane, so this says "the aim
+## point is the torso's centre" rather than re-deriving a projection formula and agreeing with
+## itself. **The frontmost region is read too, and asserted to be a DIFFERENT point** — otherwise
+## this fixture could pass while the change did nothing.
+func test_the_aim_point_is_the_torso_centre_not_the_frontmost_region() -> void:
 	var built: Dictionary = _shooter_and_target()
 	var shooter: Unit = built.shooter
 	var target: Unit = built.target
@@ -177,29 +183,67 @@ func test_the_aim_point_is_the_frontmost_region_centre_not_the_body_centre() -> 
 
 	var target_parts: Array[Part] = target.shell.all_parts()
 	var frontmost: Region = null
+	var torso: Region = null
 	for region: Region in plane:
 		if not target_parts.has(region.part):
 			continue
 		if frontmost == null or region.depth < frontmost.depth:
 			frontmost = region
+		if region.part == target.shell.root and (torso == null or region.depth < torso.depth):
+			torso = region
 	assert_not_null(frontmost, "sanity: the target projects into the plane at all")
+	assert_not_null(torso, "sanity: the torso (the shell root) projects too")
 
 	var aim: Vector2 = ShotPlane.center_of(plane, target)
 	gut.p(
 		(
-			"aim point %+.3f,%+.3f -- frontmost region %s at depth %.3f"
-			% [aim.x, aim.y, frontmost.part.id, frontmost.depth]
+			"aim %+.3f,%+.3f -- torso %s %+.3f,%+.3f -- frontmost %s %+.3f,%+.3f"
+			% [
+				aim.x,
+				aim.y,
+				torso.part.id,
+				torso.rect.get_center().x,
+				torso.rect.get_center().y,
+				frontmost.part.id,
+				frontmost.rect.get_center().x,
+				frontmost.rect.get_center().y
+			]
 		)
 	)
-	assert_almost_eq(aim.x, frontmost.rect.get_center().x, 0.0001, "lateral is that region's own")
-	assert_almost_eq(aim.y, frontmost.rect.get_center().y, 0.0001, "height is that region's own")
+	assert_almost_eq(aim.x, torso.rect.get_center().x, 0.0001, "lateral is the torso's own")
+	assert_almost_eq(aim.y, torso.rect.get_center().y, 0.0001, "height is the torso's own")
+	# **The fixture has to be able to tell the two apart**, or this passes on a body where the
+	# torso happens to be frontmost and proves nothing.
+	assert_gt(
+		torso.rect.get_center().distance_to(frontmost.rect.get_center()),
+		0.05,
+		"sanity: on this body the torso and the frontmost region are genuinely different points"
+	)
 
 
-## The consequence of the above, and the reason it matters to `BR54.01`: the aim point carries a
-## **lateral offset from the muzzle-to-target-cell axis**, and that offset is a fixed distance in
-## the body rather than an angle — so the angle it subtends grows without limit as range shrinks.
-## Measured rather than asserted: the same board at two ranges, the near one deviating more.
-func test_the_off_axis_angle_grows_as_range_shrinks() -> void:
+## **Reversed at taskblock-61, and this one had gone rotten before it was reversed.**
+##
+## It used to read: *"the aim point carries a lateral offset from the muzzle-to-target-cell axis,
+## and that offset is a fixed distance in the body rather than an angle — so the angle it subtends
+## grows without limit as range shrinks"*, asserted as `readings[0] > readings[1]`.
+##
+## **With the torso as the aim point that offset is zero, and the old assertion kept passing on
+## floating-point noise.** Both readings came out at 3.7e-9 cells, and `atan2(3.7e-9, 1.93)` is
+## fractionally larger than `atan2(3.7e-9, 7.93)`, so a strict `>` was satisfied by a quantity that
+## is numerically nothing. **A test claiming to confirm `BR54.01`'s range effect, passing because
+## of the last bits of a float.** Caught only because the sibling test above went red and this one
+## was read while fixing it.
+##
+## What it asserts now is the property that actually holds and that the change was made for: **the
+## aim point sits on the muzzle-to-target axis at every range**, so there is no fixed lateral
+## offset left for range to amplify.
+##
+## **The residual in `BR54.01` is not gone and is not this.** A real assembled body carries its
+## muzzle on an outstretched arm, so the muzzle-to-target-*cell* axis and the muzzle-to-*torso*
+## line still differ — measured at 7.35 degrees at one cell on a `combat_tester` preset. That is
+## muzzle geometry, not aim-point choice, and it wants its own measurement rather than this
+## fixture's centred one.
+func test_the_aim_point_sits_on_the_axis_at_every_range() -> void:
 	var readings: Array[float] = []
 	for distance: int in [2, 8]:
 		var built: Dictionary = _shooter_and_target()
@@ -223,11 +267,18 @@ func test_the_off_axis_angle_grows_as_range_shrinks() -> void:
 				% [distance, aim.x, depth, degrees]
 			)
 		)
-	assert_gt(
-		readings[0],
-		readings[1],
-		"the same lateral offset subtends a larger angle up close -- BR54.01's range effect"
-	)
+	# **An absolute bound, not a comparison between the two.** Comparing them is what let noise
+	# satisfy this test; a bound cannot be met by a number that is merely smaller than another
+	# number that is also nothing.
+	for i: int in range(readings.size()):
+		assert_lt(
+			readings[i],
+			0.01,
+			(
+				"reading %d: the torso aim point must sit on the axis, not merely near it (%.6f deg)"
+				% [i, readings[i]]
+			)
+		)
 
 
 func _gd_files(root: String) -> Array[String]:

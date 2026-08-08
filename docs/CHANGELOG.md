@@ -2,6 +2,45 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass A follow-up — the aim point is the torso, and a rotten test came out with it
+
+**Full gate green: 343 scripts, 3353 tests, 0 failures.**
+
+**`ShotPlane.center_of` returns the torso's centre.** Supervisor's call — *"aiming at the torso's
+center is likely the best aim point for a unit to use"*, with per-body-part targeting arriving
+later for smarter units. **The torso is the shell's `root`**: no new tag, no authoring, works on
+every existing body, and `docs/01` already defines the root as what the whole assembly hangs off.
+The frontmost region stays as the fallback when the root projects nothing at that angle.
+
+**CC's earlier reading of `BR54.01` was wrong and is corrected in the entry.** The first sweep's
+range-decay table was presented as confirming the aim-point cause, with `docs/02`'s 20.1 degrees
+called an independent agreement. It is not independent: `docs/02` measured the aim point with no
+scatter, while the sweep measured muzzle-to-target-cell against where the round *landed* — **aim
+point and scatter cone together**, and a fixed-radius ring subtends an angle that grows as range
+shrinks for the same geometric reason. **The supervisor caught it from the other side**, doubting
+the observed cone width.
+
+**Decomposed against each weapon's authored rings:** `pistol` authors a 0.500-cell widest ring
+subtending 26.6 degrees at one cell, and the all-pistol sweep measured 17.2 — **fully explained by
+scatter, no anomaly**. `sniper_rifle` authors 0.030 cells, subtending at most 1.7 degrees, and its
+sweep measured **8.8 degrees under two cells** — roughly ten times what scatter permits. **That
+residual is the real `BR54.01`.** Recorded alongside: `pistol.tres`'s 0.5 ring sits just under
+`chaingun`'s 0.6, which looks like a number nobody chose; not changed, because balance is not
+invented.
+
+**A test was passing on floating-point noise, and it took the reversal to find it.**
+`test_the_off_axis_angle_grows_as_range_shrinks` asserted `readings[0] > readings[1]` to confirm the
+range effect. With the torso as the aim point both readings are **3.7e-9 cells** — numerically zero
+— and `atan2(3.7e-9, 1.93)` is fractionally larger than `atan2(3.7e-9, 7.93)`, so a strict `>` was
+satisfied by nothing at all. **It now asserts an absolute bound**: the aim point must sit *on* the
+axis, not merely nearer than another quantity that is also nothing. Found only because its sibling
+went red and it was read while fixing that.
+
+**The residual is not zero on a real body, and the test says so.** The centred fixture reads 0.000
+off axis at every range; a `combat_tester` preset carries its muzzle on an outstretched arm, so the
+muzzle-to-target-**cell** axis and the muzzle-to-**torso** line still differ — **7.35 degrees at one
+cell, down from `docs/02`'s 20.1**. That is muzzle geometry rather than aim-point choice.
+
 ### Pass B — the membership question: the obvious fix was tried and is wrong
 
 **Full gate green: 343 scripts, 3353 tests, 0 failures. `BR60.02` is NOT fixed**, and the failed

@@ -355,19 +355,44 @@ static func units_along(plane: Array[Region], state: CombatState) -> Array[Unit]
 	return units
 
 
-## The frontmost region belonging to `target`'s rect center — a point, never
-## a chosen body part (docs/02: the dartboard picks a point, not a part).
-## Shared by AttackAction's default aim point and the aim UI's reticle
-## default (docs/10 Phase 12.3): both must agree on "center mass," never
-## compute it twice.
+## Where an untouched aim lands on `target` — a point, never a chosen body part (docs/02: the
+## dartboard picks a point, not a part). Shared by `AttackAction`'s default aim point and the aim
+## UI's reticle default, so both agree on "centre mass" rather than computing it twice.
+##
+## ## tb61: the TORSO's centre, not the frontmost region's
+##
+## **Supervisor's call, 2026-08-07:** *"aiming at the torso's center is likely the best aim point
+## for a unit to use"*, with targeting specific body parts arriving later for smarter units.
+##
+## This used to return the centre of the **frontmost** region — whichever single face of whichever
+## single part sat nearest the shooter. `docs/02` measured what that means and it is `BR54.01`: an
+## outstretched pistol or a raised arm *is* the frontmost region at close range, so the aim point
+## was the gun, **20.1 degrees off the muzzle-to-target axis at one cell** and dropping to under a
+## degree by three. A unit aimed at the weapon rather than at the body, and the error grew without
+## limit as range shrank because it is a fixed lateral distance inside the body.
+##
+## **The torso is the shell's `root`**, which needs no new tag and no authoring: `docs/01` defines a
+## Shell as a single root part with the whole body assembled through its socket tree, so the root
+## *is* the central mass for a humanoid and the chassis for anything else. **If a body ever wants a
+## different anchor, a tag is the extension point** — this deliberately does not invent one now.
+##
+## **Falls back to the frontmost region** when the root projects nothing this angle — a torso fully
+## occluded by its own arm still gets a point rather than the cell centre, which is the old
+## behaviour and is better than nothing to aim at.
 static func center_of(plane: Array[Region], target: Unit) -> Vector2:
+	var root: Part = target.shell.root if target.shell != null else null
+	var torso: Region = null
+	var frontmost: Region = null
 	var target_parts: Array[Part] = target.shell.all_parts()
-	var best: Region = null
 	for region: Region in plane:
 		if not target_parts.has(region.part):
 			continue
-		if best == null or region.depth < best.depth:
-			best = region
+		if frontmost == null or region.depth < frontmost.depth:
+			frontmost = region
+		if root != null and region.part == root:
+			if torso == null or region.depth < torso.depth:
+				torso = region
+	var best: Region = torso if torso != null else frontmost
 	if best == null:
 		return Vector2(target.cell.x, target.cell.y)
 	return best.rect.get_center()

@@ -790,6 +790,55 @@ team, a patrol, everything sharing a spawn point — which is a design question,
 ~671ms → ~646ms per AI step, so as a *performance* argument this is weak; if it earns its place it
 will be as squad behaviour that reads better, not as a speed-up.
 
+### Mangling is replacement, and a mangled thing no longer works as that thing — MAJOR REFIT
+**Needs:** nothing. **Unblocks:** `BR60.02`, `BR52.06`, and the `is_mangled` flag stopping being a
+membership question. **Flagged as a refit on the supervisor's own instruction (2026-08-07) —
+explicitly NOT to be done inside a bug hunt.**
+
+**The rule, from the supervisor:**
+
+> *"All things that 'mangle into' something need a part to mangle into. Mangled parts should block
+> shots, just poorly ... a destroyed post-mangle part is just gone."*
+>
+> *"Some mangled items will need to be passable. What is a mangled wall? It's a wall that no longer
+> works as a wall. What is a mangled leg? It's a leg that no longer works as a leg."*
+
+**So mangling is REPLACEMENT, and the replacement is an ordinary part.** A mangled thing becomes a
+wreck with its own volume, its own material and its own — lower — DT, so it blocks shots poorly
+because it *is* a poor blocker, not because a flag says so. Destroy the wreck and it is gone, under
+the plain `hp > 0` rule every other part already obeys. **`is_mangled` stops being a membership
+question entirely**, which is what closes `BR60.02`.
+
+**Why it is a refit and not a fix — measured 2026-08-07:**
+
+- **`Part.mangles_into` is declared and read by nothing.** Three occurrences in the tree: the
+  `@export` and two doc comments. `docs/01`'s *"on destruction the part is replaced by that item"*
+  **was never implemented.** This is a new mechanic, not a repair.
+- **`failure_mode` defaults to `&"MANGLE"`**, so every part that authors nothing mangles — which is
+  most of the library.
+- **Cladding and plates already name a wreck** (`twisted_sheet_metal`, `metal_scraps`) and are
+  ready. **Six batteries author `MANGLE` with no `mangles_into`.** **`wall` authors neither.**
+- **Every MANGLE part needs a wreck authored, or a different failure mode.** That is content work
+  across the library, not a code change.
+
+**The wall is the sharp end, and the supervisor's rule resolves it.** A mangled wall is *a wall
+that no longer works as a wall* — passable rubble. That is compatible with `docs/02`'s settled tb31
+rule (*"destroy one and its cell clears to fully passable ground"*) only if the rubble is
+genuinely passable; if the wreck blocks movement, the two conflict and `docs/02` has to move.
+**Decide which before authoring the wreck**, because it is the difference between rubble you walk
+over and rubble you walk around.
+
+**A mangled leg is the same question in the body.** *A leg that no longer works as a leg* implies
+the wreck contributes no `agility`, no `step_height` and no locomotion — which is close to what
+`is_disabled` already means, and the two states may want merging rather than coexisting.
+
+- **Do not start this from a bug entry.** `BR60.02` and `BR52.06` are consequences and will close
+  as a side effect; they are not the work.
+- **taskblock-61 Pass B tried the small version and it failed**, informatively: making the view
+  honour `BodyProjector.projects` resurrected every destroyed wall as a sight blocker.
+  `test_membership_disagreement.gd` characterises the current contradiction and will need rewriting
+  rather than patching when this lands.
+
 ### Take the camera out of shot processing
 **Needs:** nothing. **Unblocks:** `BR51.01`; aiming being a property of the gun rather than of the
 view.
