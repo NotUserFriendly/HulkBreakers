@@ -976,6 +976,18 @@ button rather than typing coordinates.** That is a yes/no question about how it 
 decides whether the candidate is the cause or a second, unrelated race worth fixing on its own
 merits.
 
+**The owner cannot reproduce it either, 2026-08-07:** *"I can't reproduce this, move on next,
+setting a cell manually, and picking a cell all work."* **All three routes verified working by the
+reporter**, which is the observation the entry had been waiting on since taskblock-30 — and it
+answers the recorded candidate too: the picker-overwrites-`_active` race predicted a failure on the
+Pick route specifically, and the Pick route works.
+
+**So nothing reproduces it on either side.** CC could not reproduce it across three real-scene
+scenarios; the supervisor now cannot reproduce it across the three input routes. **This is the
+owner's to close** — CC may not, and a closing status is not being guessed at here. The `_active`
+snapshot asymmetry noted above is still a real race and worth fixing on its own merits, but it is
+evidently not what was reported.
+
 ### BR30.04 — Active — owner: `SUPERVISOR`
 **Waypoint colors shuffle when arming an attack and targeting a cover item**
 - **cluster:** `input-affordance`
