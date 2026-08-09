@@ -924,7 +924,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   `test_wheel_cycles_the_step_out_cell_and_wraps`. Every one passes. **They test the controller's
   state, which is correct; nothing tests that a player can see it**, which is the gap.
 
-### BR30.04 — Active — owner: `SUPERVISOR`
+### BR30.04 — Pending — owner: `SUPERVISOR`
 **Waypoint colors shuffle when arming an attack and targeting a cover item**
 - **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`
@@ -947,6 +947,26 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   either grow the color palette past 4, or exclude free step-out legs from the color-cycling index so
   only "real" queued legs consume a color slot.
 
+- **2026-08-09 (taskblock-61 Pass D — fixed to the supervisor's own spec; `Pending`)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. *"I'm not sure this is step out related. regardless, mono
+  color it. All queued waypoints are one color and a hollow box drawn on the walkable terrain
+  underneath. The most recent waypoint is a filled in box. Lime green for each."*
+  - **The colour cycle is retired outright**, so the shuffle is impossible by construction rather
+    than fixed by widening the palette — which was the other candidate this entry recorded and
+    would only have moved the wrap further out. **Nothing is keyed on leg index any more**, so
+    inserting or removing a leg cannot restyle the legs already on screen.
+  - **The step-out diagnosis in this entry is therefore neither confirmed nor needed.** The
+    supervisor doubted it and CC did not re-test it; with the index gone the cause is moot either
+    way. Recorded as unconfirmed rather than quietly promoted to "the cause".
+  - **Hollow is four bars, not a border square under a fill square.** The pattern
+    `_build_empty_indicators` uses paints over what is beneath it, and the spec is explicit that
+    the walkable terrain shows through.
+  - `WAYPOINT_COLOR` is CSS `limegreen` (`#32CD32`). **The supervisor named the colour, not the
+    hex** — flagged and tunable, per CLAUDE.md.
+  - `board_view.gd` hit `gdlint`'s 1000-line cap for the second time this taskblock, so marker
+    construction moved to `src/view/overlay_markers.gd`.
+  - **To see it:** queue four or five legs, then arm an attack against a covered target. No queued
+    waypoint should change colour; earlier waypoints are outlines, the newest is solid.
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **cluster:** `input-affordance`

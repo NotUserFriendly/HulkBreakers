@@ -2,6 +2,28 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D5 — waypoints go mono-colour, and the shuffle becomes impossible
+
+**`BR30.04` to `Pending`, to the supervisor's own spec.** The per-leg `LEG_COLORS[i % 4]` cycle is
+retired rather than widened: with nothing keyed on leg index, inserting a leg cannot recolour the
+legs already on screen, so the reported shuffle is gone **by construction** instead of by moving the
+wrap further out.
+
+**The entry's own step-out diagnosis is left unconfirmed rather than promoted.** The supervisor
+doubted it (*"I'm not sure this is step out related"*), CC did not re-test it, and with the index
+gone the cause is moot either way — so it is recorded as unconfirmed, not as the cause.
+
+**Waypoints are boxes now**: hollow outlines for earlier ones, filled for the most recent, one
+colour throughout. Hollow is four thin bars rather than the border-square-under-fill-square pattern
+`_build_empty_indicators` uses, because that paints over what is beneath and the spec asks for the
+walkable terrain to show through. `WAYPOINT_COLOR` is CSS `limegreen` — the supervisor named the
+colour, not the hex, so it is flagged and tunable.
+
+**`src/view/overlay_markers.gd` is new.** `board_view.gd` hit `gdlint`'s 1000-line cap for the
+**second time in this taskblock** — once for the cutout logger, once here. Marker construction has
+no board state in it, which made it the honest thing to lift rather than a comment to shorten.
+
+
 ### Pass D4 — one queue-label rule instead of seven overrides
 
 **`BR34.03` to `Pending`.** The entry asked for `AttackAction(unit=2)` and for the remaining action

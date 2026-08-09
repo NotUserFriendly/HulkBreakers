@@ -668,3 +668,69 @@ func test_overlays_never_touch_the_static_board() -> void:
 	assert_eq(
 		view._static.get_child_count(), static_count, "the overlay must not rebuild the board"
 	)
+
+
+## **`BR30.04`, the supervisor's own spec:** *"All queued waypoints are one color and a hollow box
+## drawn on the walkable terrain underneath. The most recent waypoint is a filled in box. Lime green
+## for each."*
+##
+## The shuffle this replaces was `LEG_COLORS[i % 4]` re-indexing every leg whenever step-out
+## inserted its free ones. **Nothing is keyed on leg index now**, so the defect is gone by
+## construction rather than by widening the palette — which is why this asserts the absence of a
+## per-leg colour rather than asserting a particular cycle.
+func test_every_queued_leg_is_drawn_in_the_one_waypoint_colour() -> void:
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(GridFixture.flat(10, 10), DataLibrary.material_table())
+
+	var legs: Array = [
+		[Vector2i(0, 0), Vector2i(1, 0)],
+		[Vector2i(1, 0), Vector2i(2, 0)],
+		[Vector2i(2, 0), Vector2i(3, 0)],
+		[Vector2i(3, 0), Vector2i(4, 0)],
+		[Vector2i(4, 0), Vector2i(5, 0)],
+	]
+	view.show_ghost_paths(legs)
+
+	var colours: Dictionary = {}
+	for node: Node in view._ghost_overlay.get_children():
+		for mesh: MeshInstance3D in _meshes_of(node):
+			colours[(mesh.mesh.material as StandardMaterial3D).albedo_color] = true
+	assert_eq(
+		colours.size(),
+		1,
+		"five legs — one past the old four-colour cycle — must still draw in exactly one colour"
+	)
+	assert_true(colours.has(BoardView.WAYPOINT_COLOR), "and that colour is the waypoint colour")
+
+
+## The most recent waypoint is filled and every earlier one is hollow. Counted by mesh, because a
+## hollow box is four bars and a filled one is a single quad — which is the only way to tell them
+## apart without rendering.
+func test_only_the_most_recent_waypoint_is_filled() -> void:
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(GridFixture.flat(10, 10), DataLibrary.material_table())
+
+	view.show_ghost_paths(
+		[[Vector2i(0, 0), Vector2i(1, 0)], [Vector2i(1, 0), Vector2i(2, 0)]] as Array
+	)
+
+	var hollow := 0
+	var filled := 0
+	for node: Node in view._ghost_overlay.get_children():
+		if node is Node3D and not (node is MeshInstance3D) and node.get_child_count() == 4:
+			hollow += 1
+		elif node is MeshInstance3D and (node.mesh as BoxMesh) != null:
+			filled += 1
+	assert_eq(hollow, 1, "the earlier waypoint is a hollow outline")
+	assert_gt(filled, 0, "and the most recent one is a solid box")
+
+
+func _meshes_of(node: Node) -> Array[MeshInstance3D]:
+	var found: Array[MeshInstance3D] = []
+	if node is MeshInstance3D and (node as MeshInstance3D).mesh is BoxMesh:
+		found.append(node)
+	for child: Node in node.get_children():
+		found.append_array(_meshes_of(child))
+	return found

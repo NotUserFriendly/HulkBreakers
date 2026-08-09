@@ -40,12 +40,21 @@ const GHOST_COLOR := Color(0.95, 0.82, 0.25)
 ## docs/10 taskblock03 D2: each queued leg gets its own tint so consecutive
 ## moves read as distinct segments instead of one merged smear — cycled if
 ## the queue ever outgrows this list, since nothing caps queue length.
-const LEG_COLORS: Array[Color] = [
-	Color(0.95, 0.82, 0.25),
-	Color(0.35, 0.85, 0.95),
-	Color(0.95, 0.45, 0.85),
-	Color(0.55, 0.95, 0.45),
-]
+## `BR30.04`, taskblock-61 Pass D — **the per-leg colour cycle is retired.** Waypoints shuffled
+## colour when an attack was armed because `LEG_COLORS[i % 4]` re-indexed every leg whenever
+## step-out inserted its free ones, and the supervisor's answer was to stop colouring by index at
+## all: *"mono color it. All queued waypoints are one color and a hollow box drawn on the walkable
+## terrain underneath. The most recent waypoint is a filled in box. Lime green for each."*
+##
+## **The shuffle is fixed by construction rather than by fixing the modulo** — with nothing keyed on
+## leg index, inserting a leg cannot recolour the legs already on screen. Which also means the
+## ledger's own step-out diagnosis is neither confirmed nor needed; the supervisor doubted it
+## (*"I'm not sure this is step out related"*) and it is now moot either way.
+##
+## The literal value is CSS `limegreen`; the supervisor named the colour, not the hex, so this is
+## the flagged, tunable spelling of it (CLAUDE.md: never invent a final number).
+const WAYPOINT_COLOR := Color("#32CD32")
+
 const WAYPOINT_LABEL_HEIGHT := 0.6
 const WAYPOINT_FONT_SIZE := 24
 ## docs/10 taskblock03 F1: "translucent... low alpha" — low enough to never
@@ -836,12 +845,18 @@ func show_ghost_paths(paths: Array, leg_costs: Array[float] = []) -> void:
 	var running_total: float = 0.0
 	for i in range(paths.size()):
 		var path: Array = paths[i]
-		var color: Color = LEG_COLORS[i % LEG_COLORS.size()]
-		for cell: Vector2i in path:
-			_ghost_overlay.add_child(_marker(cell, color, GHOST_HEIGHT))
+		# `BR30.04`: one colour for every leg, and the waypoint itself drawn as a box rather than
+		# as another trail cell — hollow, except the most recent, which is filled. Nothing is keyed
+		# on leg index any more, so a leg appearing or disappearing cannot restyle the others.
+		var is_latest: bool = i == paths.size() - 1
+		for j in range(path.size()):
+			if j == path.size() - 1:
+				continue
+			_ghost_overlay.add_child(_marker(path[j], WAYPOINT_COLOR, GHOST_HEIGHT))
 		if path.is_empty():
 			continue
-		_ghost_overlay.add_child(_leg_line(path, color))
+		_ghost_overlay.add_child(_leg_line(path, WAYPOINT_COLOR))
+		_ghost_overlay.add_child(_waypoint_box(path[path.size() - 1], is_latest))
 		var leg_cost: float = leg_costs[i] if i < leg_costs.size() else 0.0
 		running_total += leg_cost
 		_ghost_overlay.add_child(
@@ -950,32 +965,22 @@ func _waypoint_label(cell: Vector2i, number: int, leg_cost: float, running_total
 ## cells, wall indicator, field item marker, reachable/ghost overlays) keeps
 ## its own footprint unchanged; the empty-cell border/fill markers are the
 ## only callers that pass an explicit one.
+## **A queued waypoint.** `BR30.04`: filled for the most recent, a hollow outline for every earlier
+## one, `WAYPOINT_COLOR` for both. The outline geometry lives in `OverlayMarkers`.
+func _waypoint_box(cell: Vector2i, filled: bool) -> Node3D:
+	if filled:
+		return _marker(cell, WAYPOINT_COLOR, GHOST_HEIGHT)
+	return OverlayMarkers.hollow_box(
+		cell, WAYPOINT_COLOR, GHOST_HEIGHT + _height_for(cell), OVERLAY_SIZE
+	)
+
+
+## One flat overlay marker on `cell`'s own ground. Construction lives in `OverlayMarkers`; this
+## resolves the height, the only part needing the board.
 func _marker(
 	cell: Vector2i, color: Color, height: float, size: float = OVERLAY_SIZE
 ) -> MeshInstance3D:
-	var instance := MeshInstance3D.new()
-	var box_mesh := BoxMesh.new()
-	box_mesh.size = Vector3(size, 0.02, size)
-	box_mesh.material = WorldPalette.overlay_material(color)
-	instance.mesh = box_mesh
-	# taskblock-37 Pass E: `UnitGeometry.true_height_for_cell` as a base —
-	# every caller (extraction cells, wall/empty-cell indicators, reachable/
-	# ghost overlays, the field-item marker) used to assume ground was always at
-	# world Y 0; a marker over a raised cell must sit on ITS OWN real ground, not
-	# float below it or get buried inside it.
-	#
-	# taskblock-55 Pass B: unchanged, and deliberately so, though the ground it
-	# reads is now the **tile's** height rather than the cell's. That is what
-	# `_height_for` resolves to and always did — `true_height_for_cell` reads the
-	# walkable `Surface` placed there, so this was already asking the part where
-	# it is. An overlay marker is also not "a thing at that elevation" in the
-	# sense the pass forbids: it is a transient annotation about a cell, drawn
-	# above the tile on the ground-overlay height ladder, never geometry claiming
-	# to be solid.
-	instance.position = Vector3(
-		cell.x * UnitGeometry.CELL_SIZE, height + _height_for(cell), cell.y * UnitGeometry.CELL_SIZE
-	)
-	return instance
+	return OverlayMarkers.flat_box(cell, color, height + _height_for(cell), size)
 
 
 ## `grid` is null whenever a TACTICS overlay method (`show_reachable`/
