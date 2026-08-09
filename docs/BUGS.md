@@ -1493,8 +1493,14 @@ degrees by three. **Do not treat the table above as the explanation.**
   question — the *intended* direction is right, so the fault is downstream of intent.
 - **The resolution diverges from it.** Sniper shot logged: announced 175.4 degrees (south), round
   travelled `(-1.19, -0.32)` (west) — **~80 degrees off, and the hit is not on the announced ray.**
-- **It is not universal.** A pistol shot in the same log announced -90 degrees and travelled
-  `(-7.00, +0.05)`, dead on, penetrating a real torso.
+- **~~It is not universal.~~ WITHDRAWN — that "control" was not the supervisor's test.** CC
+  reported a clean pistol shot in the same file as evidence the defect was selective. The
+  supervisor fired **three units — chaingun, sniper rifle, shotgun — and no pistol.** The pistol
+  shots sit under a different `bout_start` (seed=0 at line 1516) from the pillar test (seed=2 at
+  line 2822): a different bout entirely.
+- **So there is NO working control in the reported data.** All three of the supervisor's weapons
+  are broken, and any hypothesis previously discarded for "failing to explain the working pistol"
+  was discarded against nothing. **Re-examine anything ruled out on that basis.**
 - **The broken shots dive.** All three weapons hit `ship_floor` at height **0.00** from a muzzle at
   **1.53**, under a cell downrange — the "left AND down" the entry's own widened symptom describes.
 
@@ -2522,4 +2528,34 @@ wreck to become.
 
 **Still `Active`, and it closes as a consequence of that item rather than on its own.**
 taskblock-61 fixed nothing here.
+
+### BR61.01 — Active — owner: `CC`
+**Every test run rotates and writes the supervisor's live combat log, so CC's tooling and the supervisor's play sessions land in the same files**
+- **cluster:** `test-infrastructure`
+- **Source:** `SUPERVISOR`, 2026-08-07 — *"your tools should print to log as well. We may have
+  clobbered a bit there, your tools and my tests printing to the same files."*  ·  **CC session:**
+  `93549217-f453-4fd6-b8f3-cecf9532290e`
+
+**Confirmed.** `FileSink` defaults to `res://out/combat.log` and archives the previous session into
+`res://out/logs/<timestamp>.log` on first construction per path. `BattleScene` constructs one
+unconditionally — so **any test that builds a real `BattleScene` rotates the live log and writes
+into it.** The view suite does that many times per run, and a full gate takes ~23 minutes of it.
+
+**The damage is to the monitoring channel, which `docs/09` calls "CC's and your monitoring channel
+— one channel, two consumers."** Concretely, this session:
+
+- CC read a pistol shot out of a session log and reported it to the supervisor as a **working
+  control** proving the defect was selective. The supervisor had fired no pistol. The reading was
+  from a different bout, and the conclusion drawn from it was wrong (see `BR51.01`).
+- Timestamped session logs interleave: `combat-20260809-023129.log` contains only pistol shots and
+  no chaingun/sniper/shotgun, and lines up with a CC gate rather than a play session.
+
+**The fix is a path, not a mechanism.** `FileSink._init` already takes one — `BattleScene` is the
+only caller that defaults it. A test-owned path (an env var the suite sets, or a `res://out/test/`
+default when running headless) separates the two consumers without touching rotation, `tail -f`,
+or the startup `log: <path>` line the supervisor uses.
+
+**Not fixed here** — filed mid-investigation, and the supervisor is isolating runs by hand for now.
+**Worth doing before the next hunt**, because a shared monitoring channel that silently mixes two
+sources produced a wrong conclusion within an hour of being noticed.
 
