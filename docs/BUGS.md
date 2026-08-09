@@ -1033,6 +1033,29 @@ deliberately not `Pending`.** CC session `4ec878cf-1434-4676-8bd3-05c92eed071a`.
   - **To see it:** spectate a bout with squads on different levels and click a wall face, then
     click open ground you can see is hidden behind a wall. The first should inspect the wall; the
     second should now do nothing rather than opening a cell you have never seen.
+- **2026-08-09 (taskblock-61 Pass D — how to see it, and why CC will not invent a repro)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. The supervisor asked how best to recreate this. **The
+  honest answer is that CC cannot show the path is reachable**, and the reasoning is worth more than
+  a guessed route:
+  - **It was never observed.** Source is `CC`, found by a tb35 code-audit sweep and later promoted
+    to `SUPERVISOR` ownership. Nobody has ever seen the symptom.
+  - **The window narrowed twice since it was written.** taskblock-51 Pass K made the primary pick
+    `PartPicker`, and taskblock-59 gave that call `include_surfaces = true` — so units, blockers,
+    field items **and floors** are all tested by the real ray. The fallback runs only when the ray
+    struck **nothing at all**.
+  - **And the only things the fallback can open are a blocker or a floor tile** — both already
+    tested by the primary pick. **So reaching this path usefully requires the two pickers to
+    disagree**, not an ordinary click. That is a much narrower claim than the entry's original
+    "click a wall face and it resolves behind it".
+  - **So it is instrumented rather than staged.** `inspect_fallback` logs whenever the path runs at
+    all, with the cell the plane math named and the guard's verdict. **A session with no
+    `inspect_fallback` line at all is evidence this entry is closer to `Obsolete` than to fixed**;
+    a line reading `HIDDEN, click dropped` is the defect caught in the act.
+  - **If a route is wanted anyway**, the conditions that make it likeliest: enable *Inspect Floor
+    Tiles* in the debug panel (a fallback click with no blocker does nothing without it, so there
+    is no symptom either way), take a shallow camera angle on a multi-level board, and click across
+    a gap — an unfloored cell or the space above a wall — where the ray can miss every box while
+    the plane solve still names a cell beyond.
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
 - **cluster:** `camera`

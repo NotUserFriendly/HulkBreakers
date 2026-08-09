@@ -2,6 +2,24 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D9 — `BR35.02` instrumented, because CC cannot show its path is reachable
+
+The supervisor asked how best to recreate `BR35.02`. **CC cannot, and said so rather than staging a
+route.** The entry was found by a tb35 code audit and never observed by anyone, and its window has
+narrowed twice since: taskblock-51 Pass K made the primary pick `PartPicker`, taskblock-59 gave that
+call `include_surfaces = true`, so units, blockers, field items and floors are all tested by the real
+ray. **The fallback runs only when the ray struck nothing at all — and the only things it can then
+open are a blocker or a floor tile, both of which the primary pick already tests.** Reaching it
+usefully requires the two pickers to *disagree*, which is a far narrower claim than the entry's
+original framing.
+
+**So `inspect_fallback` logs whenever the path runs**, with the cell the plane math named and the
+visibility guard's verdict. A session with no such line is evidence the entry is closer to
+`Obsolete` than fixed; a `HIDDEN, click dropped` line is the defect caught in the act. The guard
+itself stays, with its three headless tests — it is cheap and correct whether or not the path is
+live.
+
+
 ### Pass D8 — tile-inspect stops opening cells nobody can see
 
 **`BR35.02` to `Pending`.** `BoardPicker.cell_visible_from` casts from the camera to the resolved

@@ -164,7 +164,11 @@ func _click_at(screen_pos: Vector2, camera: Camera3D, battle: BattleScene) -> vo
 	# never seen. Checked only on this fallback, deliberately: the primary pick is `PartPicker`,
 	# real ray-vs-box against actual bodies, and a thing the ray genuinely struck is by definition
 	# not hidden.
-	if not BoardPicker.cell_visible_from(battle.combat_state.grid, from, cell as Vector2i):
+	var visible: bool = BoardPicker.cell_visible_from(
+		battle.combat_state.grid, from, cell as Vector2i
+	)
+	_log_fallback(battle, cell as Vector2i, visible)
+	if not visible:
 		return
 	var cell_root: Part = battle.combat_state.grid.blockers.get(cell)
 	if cell_root == null:
@@ -189,6 +193,37 @@ func _click_at(screen_pos: Vector2, camera: Camera3D, battle: BattleScene) -> vo
 ## **The topmost surface**, because that is the one you can see and the one you would stand on —
 ## `UnitGeometry.true_height_for_cell` answers the same question about height and this is the part
 ## that answers it.
+## **`BR35.02`: does this path ever actually run?** taskblock-61 Pass D.
+##
+## The entry was found by a code audit and **never observed by anyone**, and the window has narrowed
+## twice since it was written. `PartPicker` is the primary pick and tests units, blockers, field
+## items **and surfaces** (`include_surfaces = true` above, taskblock-59), so this fallback only
+## runs when the real ray struck *nothing at all* — and the only things it can then open are a
+## blocker or a floor tile, both of which the primary pick already tests. **Reaching here usefully
+## therefore requires the two pickers to disagree**, not an ordinary click.
+##
+## So rather than hand the supervisor a repro route CC cannot show is reachable, this says whenever
+## the path runs at all and what the visibility guard decided. A session with no `inspect_fallback`
+## line is evidence the entry is closer to `Obsolete` than to fixed; one with a `hidden` verdict is
+## the defect, caught.
+func _log_fallback(battle: BattleScene, cell: Vector2i, visible: bool) -> void:
+	if battle.combat_state == null:
+		return
+	battle.combat_state.combat_log.emit(
+		LogEvent.new(
+			battle.combat_state.round_number,
+			Enums.Phase.TACTICS,
+			-1,
+			&"inspect_fallback",
+			{"cell": cell, "visible": visible},
+			(
+				"inspect fallback: ray struck nothing, plane math named %s — %s"
+				% [str(cell), "visible" if visible else "HIDDEN, click dropped"]
+			)
+		)
+	)
+
+
 func _tile_at(cell: Vector2i, grid: Grid) -> Part:
 	var best: Part = null
 	var best_height: float = -INF
