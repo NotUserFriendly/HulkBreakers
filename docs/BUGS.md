@@ -992,7 +992,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     can't itself become a new staleness bug) wants its own careful pass, not a rushed one at the tail
     of an already-long taskblock.
 
-### BR32.05 — Active — owner: `SUPERVISOR`
+### BR32.05 — Pending — owner: `SUPERVISOR`
 **Wall cutout cuts walls that aren't between camera and unit (coarse heuristic)**
 - **cluster:** `wall-cutout`
 - **Source:** `SUPERVISOR`
@@ -1071,6 +1071,50 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   fix says: stop projecting at the camera angle, tilt to vertical and align to grid tiles. **Check the
   archived three before starting**, so a fourth symptom-level fix is not attempted.
 
+- **2026-08-09 (taskblock-61 Pass C1 — the supervisor's own gate, built and measured; `Pending`)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. **The fix shape is the supervisor's, and it is not the per-wall
+  pre-pass CC proposed:** *"If a wall is detected between the camera and the unit, then continue
+  doing what we're doing already, and if no wall is detected, then disable the cutout for that
+  unit. One check to get the wanted behavior."* Per-unit, not per-wall — so **the shader is
+  untouched**, and the change is a gate in front of the existing screen-space heuristic rather
+  than a fourth attempt to tune it.
+  - **What it deletes.** `wall_cutout.gdshader`'s own header has recorded the still-open symptom
+    since tb32: *"with the camera and unit on the SAME side of a wall (nothing should occlude at
+    all), the cutout still fires and over-cuts neighboring wall segments."* A unit with nothing
+    between it and the camera is no longer fed to the shader at all, so that over-cut has nothing
+    left to happen to.
+  - **What it does NOT delete, and this is what to look for.** Once *one* wall genuinely occludes
+    a unit, that unit is fed exactly as before and the per-fragment screen-space test still
+    decides alone — so a second wall near it, nearer the camera, can still take a bite. This
+    entry's own *"a chunk is cut out of the top of that wall behind them"* therefore disappears
+    when nothing is occluding and survives when something is. The residual wants the per-wall-cell
+    version; it is deliberately not attempted in the same change, on this entry's own reasoning
+    that the subsystem has been "fixed" three times and a fourth simultaneous change would make
+    the result unreadable.
+  - **Implementation:** `WallLegibility.cuts_for`/`sight_blocked_to_unit` (pure logic, headless),
+    called from `BoardView.update_wall_cutout`. Three rays per unit — the body AABB's centre and
+    its top and bottom face centres — and *any* one blocked keeps the cutout, deliberately biased:
+    a false "nothing is occluding" switches the hole off exactly when it is needed, and a single
+    centre ray misses a wall that hides only the legs. Blockers only, not floors: only walls carry
+    the cutout material, so a catwalk overhead is not something cutting a wall can help with.
+  - **`taskblock-61`'s own premise for this entry was wrong and the ledger was right.** The
+    taskblock says *"vertical separation is exactly what a screen radius cannot distinguish from
+    horizontal, which is why elevation makes it worse."* taskblock-51 Pass A already recorded the
+    supervisor varying cell levels with the misbehaviour unchanged. Worked from the measurement,
+    not the premise.
+  - **A cost assumption CC shipped and then disproved with its own probe.** The first version
+    walked all 217 blockers of a real 32x24 board per ray: **629 usec per unit, 10.07 ms a frame
+    for a 16-unit roster** — a framerate defect manufactured by a correctness fix, on a `_process`
+    path. `PartPicker.SKIP_RADIUS` is 3.0 and deliberately generous, so the cheap ground-plane
+    reject admits a six-cell-wide strip of the whole board and every blocker gets iterated anyway.
+    Filtering candidates through `Grid.line`'s supercover walk first: **41.2 usec per unit, 0.66 ms
+    a frame** — 15x. Pinned by `test_cutout_gate_cost_probe.gd`, which asserts the ratio rather
+    than a wall-clock bound.
+  - **To see it:** put a unit in the open with walls nearby but none between it and the camera, and
+    orbit. No wall should take a bite. Then step the same unit behind a wall — the porthole must
+    still appear, unchanged from before. **If a unit behind a wall now gets NO cutout, the gate is
+    inverted or too strict, and that is the regression to report.**
+
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **cluster:** `input-affordance`
@@ -1114,7 +1158,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   the targeting logic itself. Recommend a live re-check before further investigation here; stays
   Active, not Pending, since no fix was made.
 
-### BR32.08 — Active — owner: `SUPERVISOR`
+### BR32.08 — Pending — owner: `SUPERVISOR`
 **Dead or knocked-out shells may have strange cutout behavior**
 - **cluster:** `wall-cutout`
 - **Source:** `SUPERVISOR`
@@ -1131,6 +1175,32 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   happens. **What was tried:** shots resolving near a downed shell, watched from the spectator view.
   **What was not:** a shell downed *between* camera and a living unit, which is the geometry the
   cutout actually keys on.
+
+- **2026-08-09 (taskblock-61 Pass C1 — confirmed, mechanism found, fixed; `Pending`)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. **This entry's own original guess was exactly right** — it asked
+  *"still in `CombatState.units`? still fed to the cutout?"* and both are yes. `CombatState.
+  kill_unit` sets `alive = false` and **leaves the body in `units` forever** (only the grid
+  occupant is cleared), and `BattleScene` feeds `wall_cutout_units = combat_state.units` whole.
+  The cutout feed filtered on `extracted` and the debug exclusion and **never on `alive`**, so
+  every dead or shut-down shell kept cutting its own full-radius hole in walls permanently. A long
+  firefight progressively opened the level up, and nobody chose that — it fell out of the roster
+  array outliving the unit.
+  - **The supervisor's rule, and it maps onto a predicate that already existed:** *"I think the fix
+    is disable the cutout for dead units. If it gets a turn, it gets a cutout, if not, then no
+    cutout."* That is `CombatState._can_take_a_turn` (`alive and not shutdown`), already documented
+    as *"the one place that actually excludes it"* — made public as `can_take_a_turn` and read by
+    the cutout feed rather than a second copy of the same condition in the view.
+  - **Downed units still cut, on the supervisor's explicit instruction:** *"downed needs cutouts
+    though, because a downed unit may be only a turn from being back to normal."* `Unit.is_downed()`
+    is "no matrix docked" — orthogonal to `alive`/`shutdown` — so this needed no extra condition;
+    a downed unit is alive, still takes turns and still cuts. Pinned so nobody tidies it away
+    (`test_board_view_occlusion.gd::test_update_wall_cutout_still_cuts_for_a_downed_unit`).
+  - **`Suspected` -> `Pending`, not `Suspected` -> closed.** taskblock-51 Pass A's non-reproduction
+    stands as recorded; what changed is that a concrete mechanism was found by reading the feed
+    rather than by watching for the symptom. The geometry that pass named as untried — a shell
+    downed *between* camera and a living unit — is still untried, and is a good thing to look at.
+  - **To see it:** kill something and leave the body where walls stand between it and the camera.
+    No hole should follow the corpse. Then check a downed (not dead) crew member still gets one.
 
 ### BR33.01 — Suspected — owner: `SUPERVISOR`
 **Aim-view scroll cycles walls; layer labels read as part names**

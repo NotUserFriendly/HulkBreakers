@@ -215,6 +215,7 @@ func test_build_clears_previously_excluded_units_for_a_fresh_battle() -> void:
 		view.is_excluded_from_occlusion(7), "a fresh battle must not inherit a stale exclusion"
 	)
 
+
 ## tb32 Pass B was redesigned: the friendly-fade decision and its actual
 ## effect (fading a unit's own real body) now live on `HitVolumeView`/
 ## `BattleScene` (`test_hit_volume_view.gd`/`test_battle_scene_occlusion_
@@ -224,3 +225,120 @@ func test_build_clears_previously_excluded_units_for_a_fresh_battle() -> void:
 ## live). `BoardView` no longer owns any part of this mechanism; only
 ## `aim_active_unit`/`wall_cutout_units` (read by `BattleScene` now)
 ## remain here.
+
+
+## `BR32.05`, taskblock-61 Pass C1 — the supervisor's gate, read back off the real uniform feed.
+## Same board and same unit as `test_update_wall_cutout_feeds_the_focal_units_own_screen_position`
+## above, with the camera moved to the unit's OWN side of the wall. Before this gate the feed did
+## not look at the board at all: every unit on screen was fed, and the shader's screen-space test
+## decided alone — which is how a wall nothing was hiding behind still got cut.
+func test_update_wall_cutout_skips_a_unit_with_nothing_between_it_and_the_camera() -> void:
+	var grid := GridFixture.flat(5, 12)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var unit := _torso_unit(Vector2i(2, 6))
+	view.wall_cutout_units = [unit]
+
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, 10)
+	camera.look_at(UnitGeometry.bounding_sphere(unit).center, Vector3.UP)
+
+	view.update_wall_cutout(camera)
+
+	assert_eq(
+		_cutout_material(view).get_shader_parameter("unit_count"),
+		0,
+		"the wall is behind the unit from here — nothing is hidden, so nothing may be cut"
+	)
+
+
+## `BR32.08`, supervisor's rule: "if it gets a turn, it gets a cutout, if not, then no cutout."
+## `CombatState.kill_unit` only flips `alive` — the body stays in `units` forever — so every
+## corpse cut its own permanent full-radius hole and a long firefight progressively opened the
+## level up. The camera here is the one from the passing feed test above, so the ONLY thing under
+## test is the unit being dead.
+func test_update_wall_cutout_skips_a_dead_unit() -> void:
+	var grid := GridFixture.flat(5, 8)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var unit := _torso_unit(Vector2i(2, 6))
+	unit.alive = false
+	view.wall_cutout_units = [unit]
+
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, -5)
+	camera.look_at(UnitGeometry.bounding_sphere(unit).center, Vector3.UP)
+
+	view.update_wall_cutout(camera)
+
+	assert_eq(
+		_cutout_material(view).get_shader_parameter("unit_count"),
+		0,
+		"a corpse does not take turns, so it does not get a cutout"
+	)
+
+
+## The other half of the same predicate: a shut-down unit stays `alive` and still blocks as
+## geometry, but `CombatState.can_take_a_turn` excludes it and so does the cutout.
+func test_update_wall_cutout_skips_a_shut_down_unit() -> void:
+	var grid := GridFixture.flat(5, 8)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var unit := _torso_unit(Vector2i(2, 6))
+	unit.shutdown = true
+	view.wall_cutout_units = [unit]
+
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, -5)
+	camera.look_at(UnitGeometry.bounding_sphere(unit).center, Vector3.UP)
+
+	view.update_wall_cutout(camera)
+
+	assert_eq(
+		_cutout_material(view).get_shader_parameter("unit_count"),
+		0,
+		"a shut-down unit gets no turn"
+	)
+
+
+## **The rule's own explicit exception, pinned so nobody "tidies" it into the dead case.** The
+## supervisor: "downed needs cutouts though, because a downed unit may be only a turn from being
+## back to normal." `Unit.is_downed()` is "no matrix docked" — orthogonal to `alive`/`shutdown` —
+## so a downed unit still takes turns and must still cut. `_torso_unit`'s own torso hosts no
+## matrix, so this fixture is genuinely downed rather than merely asserted to be.
+func test_update_wall_cutout_still_cuts_for_a_downed_unit() -> void:
+	var grid := GridFixture.flat(5, 8)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var unit := _torso_unit(Vector2i(2, 6))
+	assert_true(unit.is_downed(), "sanity: this fixture docks no matrix, so it reads as downed")
+	assert_true(CombatState.can_take_a_turn(unit), "sanity: downed is not dead and not shut down")
+	view.wall_cutout_units = [unit]
+
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, -5)
+	camera.look_at(UnitGeometry.bounding_sphere(unit).center, Vector3.UP)
+
+	view.update_wall_cutout(camera)
+
+	assert_eq(
+		_cutout_material(view).get_shader_parameter("unit_count"),
+		1,
+		"a downed unit is a turn from standing back up — it keeps its cutout"
+	)

@@ -177,6 +177,28 @@ func surfaces_at(cell: Vector2i) -> Array[Surface]:
 	return []
 
 
+## **Every `Part` standing at `cell`** — blocker, placed surfaces and loose field items alike.
+##
+## The endpoint-exemption list a sight query excludes (`LoS._endpoints` builds one per endpoint
+## cell; the wall cutout's own camera-to-body test excludes the body's own cell the same way, so
+## the floor a unit stands on cannot read as the thing hiding it). Extracted here rather than
+## copied into the second caller — it is a question about a cell's contents, which is this class's
+## own subject, and two hand-rolled walks over `blockers`/`surfaces_at`/`field_items` is exactly
+## the shape that goes stale when a fourth collection is added.
+func parts_at(cell: Vector2i) -> Array[Part]:
+	var parts: Array[Part] = []
+	var blocker: Part = blockers.get(cell)
+	if blocker != null:
+		parts.append(blocker)
+	for surface: Surface in surfaces_at(cell):
+		if surface.part != null:
+			parts.append(surface.part)
+	for item: Variant in field_items.get(cell, []):
+		if item is Part:
+			parts.append(item)
+	return parts
+
+
 ## **Every placement on this grid, in placement order.** taskblock-58 Pass B.
 ##
 ## The five callers that used to iterate `grid.surfaces` all wanted exactly this and had to

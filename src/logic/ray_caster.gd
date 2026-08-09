@@ -181,19 +181,7 @@ static func obstructed(
 	var limit: float = distance - _ENDPOINT_MARGIN
 
 	for cell: Vector2i in grid.blockers:
-		var part: Part = grid.blockers[cell]
-		# The cheap tests first, in cost order: an excluded or destroyed part costs a lookup, the
-		# ground-plane reject costs no height, and only what survives both pays for one.
-		if part == null or exclude_parts.has(part) or not BodyProjector.projects(part):
-			continue
-		if not PartPicker.near_ray_flat(cell, from, dir):
-			continue
-		var height: float = UnitGeometry.true_height_for_cell(cell, grid)
-		if not PartPicker.near_ray(cell, from, dir, height):
-			continue
-		if _any_box_hit(
-			UnitGeometry.assembly_placements(part, cell, 0.0, null, height), from, dir, limit
-		):
+		if _blocker_in_the_way(grid, cell, from, dir, limit, exclude_parts):
 			return true
 
 	var y_low: float = minf(from.y, to.y)
@@ -260,6 +248,68 @@ static func _below_or_above(surface: Surface, y_low: float, y_high: float) -> bo
 	if is_inf(lowest):
 		return true
 	return surface.height + highest < y_low or surface.height + lowest > y_high
+
+
+## **One blocker, tested against one ray** — the body of `obstructed`'s own first loop, lifted so a
+## caller can supply its own candidate cells instead of the whole `grid.blockers` collection.
+##
+## The cheap tests first, in cost order: an excluded or destroyed part costs a lookup, the
+## ground-plane reject costs no height, and only what survives both pays for one.
+static func _blocker_in_the_way(
+	grid: Grid,
+	cell: Vector2i,
+	from: Vector3,
+	dir: Vector3,
+	limit: float,
+	exclude_parts: Array[Part]
+) -> bool:
+	var part: Part = grid.blockers.get(cell)
+	if part == null or exclude_parts.has(part) or not BodyProjector.projects(part):
+		return false
+	if not PartPicker.near_ray_flat(cell, from, dir):
+		return false
+	var height: float = UnitGeometry.true_height_for_cell(cell, grid)
+	if not PartPicker.near_ray(cell, from, dir, height):
+		return false
+	return _any_box_hit(
+		UnitGeometry.assembly_placements(part, cell, 0.0, null, height), from, dir, limit
+	)
+
+
+## **Is a blocker standing in any of `cells` in the way between `from` and `to`?** taskblock-61
+## Pass C1 — the same per-blocker test `obstructed` runs, over a candidate set the caller chose.
+##
+## `RayCaster`'s own header: *"membership becomes a property of the query rather than a list
+## maintained per caller."* This is that, taken one step further — the candidate *cells* are the
+## query's business too. `obstructed` asks about every blocker on the board because a shot has to;
+## the wall cutout's sight gate (`WallLegibility.sight_blocked_to_unit`) knows the ray's own
+## supercover line and has to answer three times per unit per frame on a `_process` path.
+##
+## **Measured, because the first shape of this was shipped on an assumption and the assumption was
+## wrong.** Walking all 217 blockers of a real 32x24 board cost **629 usec** for the gate's three
+## rays — over 10 ms a frame for a 16-unit roster, a framerate defect manufactured by a
+## correctness fix. `PartPicker.SKIP_RADIUS` is 3.0 and deliberately generous, so the cheap
+## ground-plane reject admits a six-cell-wide strip of the whole board and every blocker is
+## iterated regardless. Handing in the line's own cells is what makes the gate affordable; see
+## `test_cutout_gate_cost_probe.gd` for the current numbers.
+##
+## **Conservative in one direction only, stated so it is not mistaken for exact:** a caller passing
+## a supercover line gets the cells the ray's ground track crosses. A part whose boxes overhang its
+## own cell (`SKIP_RADIUS`'s own reason for existing) could in principle be missed. Walls are
+## exactly one cell across and cannot; authored cover could.
+static func blocker_obstructed_among(
+	grid: Grid, cells: Array[Vector2i], from: Vector3, to: Vector3, exclude_parts: Array[Part] = []
+) -> bool:
+	var span: Vector3 = to - from
+	var distance: float = span.length()
+	if distance <= 0.0001:
+		return false
+	var dir: Vector3 = span / distance
+	var limit: float = distance - _ENDPOINT_MARGIN
+	for cell: Vector2i in cells:
+		if _blocker_in_the_way(grid, cell, from, dir, limit, exclude_parts):
+			return true
+	return false
 
 
 static func _any_box_hit(

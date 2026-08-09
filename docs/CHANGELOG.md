@@ -2,6 +2,70 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass C1 — the wall cutout stops cutting for things nothing is hiding
+
+**`BR32.05` and `BR32.08`, both `SUPERVISOR`-owned, both moved to `Pending`. Full gate green at
+the fast rung: 326 scripts, 3141 tests, 0 failures.** `BR32.04` is untouched and named as such.
+
+**The fix shape is the supervisor's, and it is not the one CC proposed.** CC's version was
+per-wall: compute which wall cells genuinely occlude, feed those to the shader, cut only fragments
+inside them — a new uniform array and a shader change. The supervisor inverted it: *"if a wall is
+detected between the camera and the unit, then continue doing what we're doing already, and if no
+wall is detected, then disable the cutout for that unit. One check to get the wanted behavior."*
+**Per-unit, not per-wall — so the shader is untouched.** It targets the symptom
+`wall_cutout.gdshader`'s own header has recorded as still open since tb32: with camera and unit on
+the same side of a wall, the cutout fired anyway and over-cut neighbouring segments.
+
+**The residual half is recorded rather than implied.** Once one wall genuinely occludes a unit,
+that unit is fed exactly as before and the per-fragment screen-space test still decides alone, so
+a second wall nearer the camera can still take a bite. `BR32.05`'s *"a chunk cut out of the top of
+a wall behind them"* disappears when nothing is occluding and survives when something is. Not
+attempted in the same change, on the entry's own reasoning: the subsystem has been "fixed" three
+times (`BR31.03`, `BR32.01`, `BR32.02`, all archived) and two simultaneous changes would make the
+result unreadable.
+
+**`BR32.08` was a `Suspected` entry whose own original guess was exactly right.** It asked *"still
+in `CombatState.units`? still fed to the cutout?"* — both yes. `kill_unit` flips `alive` and leaves
+the body in the roster forever; the cutout feed filtered on `extracted` and a debug exclusion and
+**never on `alive`**. Every dead or shut-down shell cut its own full-radius hole permanently, so a
+long firefight progressively opened the level up. Nobody chose that; it fell out of the roster
+array outliving the unit. The supervisor's rule — *"if it gets a turn, it gets a cutout"* — landed
+on `CombatState._can_take_a_turn`, which already existed and was already documented as *"the one
+place that actually excludes it"*; it is public now and read by the view rather than copied into
+it. **Downed units still cut, deliberately and on instruction** — `is_downed()` is orthogonal to
+`alive`/`shutdown`, so this needed no new condition, and it is pinned by a test so nobody tidies
+it away.
+
+**A cost assumption CC shipped and its own probe disproved.** The gate's first version walked all
+217 blockers of a real 32x24 board per ray: **629 usec per unit — 10.07 ms a frame for a 16-unit
+roster**, on a `_process` path. A framerate defect manufactured by a correctness fix, and it would
+have shipped unnoticed. `PartPicker.SKIP_RADIUS` is 3.0 and deliberately generous, so the cheap
+ground-plane reject admits a six-cell-wide strip of the board and every blocker is iterated
+regardless — the reject was never the filter it reads as. Filtering candidates through `Grid.line`
+first: **41.2 usec, 0.66 ms a frame, 15x.** `RayCaster.blocker_obstructed_among` takes the
+candidate cells from the caller, sharing one copy of the per-blocker test with `obstructed` —
+`RayCaster`'s own *"membership becomes a property of the query"*, extended to the cells.
+
+**Three seams collapsed rather than added:**
+- `Grid.parts_at(cell)` — `LoS._endpoints` hand-rolled this walk over blockers/surfaces/field
+  items and the cutout gate needed the same endpoint exemption. One copy now.
+- `CombatState.can_take_a_turn` — was private, was about to be re-derived in the view.
+- `WallLegibility.cuts_for` — the whole per-unit "does this deserve a cutout" rule in one
+  headless-testable place, replacing three conditions accumulating in a `_process` loop. Only
+  `BoardView.is_excluded_from_occlusion` stays in the view, because it is view state.
+
+**An interim step tried and abandoned:** a `blockers_only` flag on `RayCaster.obstructed`, on the
+theory that the floor-placements loop was the expensive half. Measured at 629 usec against the
+full march's 574 — **it made the gate slower than the thing it was a subset of**, because the
+blocker loop, not the floor loop, is where the time goes on a board this size. Replaced by the
+candidate-cell filter, which is the actual fix.
+
+**`taskblock-61`'s own premise for `BR32.05` was wrong, and the ledger was right.** The taskblock
+says vertical separation is what a screen radius cannot distinguish, *"which is why elevation makes
+it worse"*; taskblock-51 Pass A already recorded the supervisor varying cell levels with the
+misbehaviour unchanged. Worked from the measurement.
+
+
 ### `BR51.01` root cause — a cell address where a plane point belongs
 
 **Found by instrumenting the player path and reading the supervisor's isolated run, after three CC

@@ -77,15 +77,7 @@ static func sight_point(grid: Grid, cell: Vector2i) -> Vector3:
 static func _endpoints(grid: Grid, a: Vector2i, b: Vector2i) -> Array[Part]:
 	var parts: Array[Part] = []
 	for cell: Vector2i in [a, b]:
-		var blocker: Part = grid.blockers.get(cell)
-		if blocker != null:
-			parts.append(blocker)
-		for surface: Surface in grid.surfaces_at(cell):
-			if surface.part != null:
-				parts.append(surface.part)
-		for item: Variant in grid.field_items.get(cell, []):
-			if item is Part:
-				parts.append(item)
+		parts.append_array(grid.parts_at(cell))
 	return parts
 
 

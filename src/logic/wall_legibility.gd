@@ -43,6 +43,114 @@ static func occludes_on_screen(
 	return wall_screen_position.distance_to(focal_screen_position) <= screen_radius
 
 
+## **Does this unit get a cutout at all?** taskblock-61 Pass C1 — the whole per-unit rule, in one
+## place a headless test can drive, rather than three conditions accumulated in a `_process` loop.
+##
+## Three reasons a unit is not worth cutting a wall for, and they are different kinds of reason:
+##
+## - **It has left the board.** `extracted` never clears `.cell` (docs/07 — extraction is distinct
+##   from death, both leave the roster entry behind), so an unfiltered feed cuts a permanent,
+##   unit-less hole at wherever it walked off from. `BR32.01`, archived.
+## - **It does not take turns.** `BR32.08`, the supervisor's rule: *"if it gets a turn, it gets a
+##   cutout, if not, then no cutout."* Dead and shut-down bodies stay in `CombatState.units`
+##   forever, so every corpse used to cut its own full-radius hole permanently and a long firefight
+##   progressively opened the level up. **A DOWNED unit still cuts** — `is_downed()` is "no matrix
+##   docked", orthogonal to both flags, and a downed unit may be one turn from standing back up.
+## - **Nothing is in front of it.** `BR32.05` — see `sight_blocked_to_unit` below.
+##
+## The one filter that stays in the view is `BoardView.is_excluded_from_occlusion`, because a
+## debug verb having destroyed a unit's own render node is view state and nothing here can know it.
+##
+## A null `grid` cannot be asked about geometry, so it answers the first two questions and stops
+## rather than inventing an answer to the third.
+static func cuts_for(grid: Grid, camera_position: Vector3, unit: Unit) -> bool:
+	if unit.extracted or not CombatState.can_take_a_turn(unit):
+		return false
+	if grid == null:
+		return true
+	return sight_blocked_to_unit(grid, camera_position, unit)
+
+
+## **Is anything actually in the way?** taskblock-61 Pass C1, `BR32.05`.
+##
+## The supervisor's own inversion of the problem: *"if a wall is detected between the camera and
+## the unit, then continue doing what we're doing already, and if no wall is detected, then
+## disable the cutout for that unit."* One gate in front of the existing screen-space heuristic
+## rather than a fourth attempt to tune the heuristic itself — and the heuristic has been "fixed"
+## three times already (`BR31.03`, `BR32.01`, `BR32.02`, all archived against this same path).
+##
+## **What this deletes:** `wall_cutout.gdshader`'s own header records the symptom still open since
+## tb32 — *"with the camera and unit on the SAME side of a wall (nothing should occlude at all),
+## the cutout still fires and over-cuts neighboring wall segments."* A unit with nothing between it
+## and the camera is no longer fed to the shader at all, so there is nothing for that over-cut to
+## happen to.
+##
+## **What this does NOT delete, stated so nobody reads more into it:** once *one* wall genuinely
+## occludes a unit, that unit is fed exactly as before and the screen-space test still decides
+## per fragment — so a second wall near it, nearer the camera, can still take a bite. That is the
+## residual half of `BR32.05` (its *"a chunk is cut out of the top of a wall behind them"*), and it
+## wants the per-wall-cell version, not this one.
+##
+## **A real 3D question, asked of the real geometry.** This class's own header explains why the
+## *radius* is screen-space and that reasoning is untouched — but "is a wall in the way" was never
+## the question a screen radius could answer, and `RayCaster.obstructed` has been the one march
+## that answers it since taskblock-52. Note it walks blockers, placed surfaces and field items but
+## **not units** (`LoS`'s own rule: a body in the way is a shot-resolution concern), so a unit can
+## never read as blocking sight to itself.
+##
+## **Biased toward keeping the cutout.** Three points, not one, and *any* of them blocked keeps the
+## hole: a false "nothing is occluding" switches the cutout off exactly when it is needed, which is
+## worse than leaving one on. A single centre ray misses a wall that hides only the legs.
+##
+## **Blockers only, and that is a correctness choice before it is a cost one.** Only walls carry
+## the cutout material (`BoardView`'s own `part.id == &"wall"`), so a unit hidden by a catwalk
+## overhead is not something cutting a wall can help with — keeping the cutout alive for it would
+## put the hole back exactly where `BR32.05` complains about it. Non-wall blockers (cover) still
+## count, deliberately: the safe direction is keeping a cutout, and reading `&"wall"` here would
+## put the view's own content decision in the logic layer.
+##
+## **Over the ray's own supercover cells, not over every blocker on the board.** This runs on a
+## `_process` path and the first version of it did not: walking `grid.blockers` cost 629 usec per
+## unit, over 10 ms a frame for a full roster. `Grid.line` is the same supercover walk `LoS` used
+## before geometry replaced the opacity array, used here as a candidate filter in front of the
+## real box test rather than as an answer in its own right. Numbers in
+## `test_cutout_gate_cost_probe.gd`.
+static func sight_blocked_to_unit(grid: Grid, camera_position: Vector3, unit: Unit) -> bool:
+	var exclude: Array[Part] = grid.parts_at(unit.cell)
+	var camera_cell := Vector2i(roundi(camera_position.x), roundi(camera_position.z))
+	var cells: Array[Vector2i] = Grid.line(camera_cell, unit.cell)
+	for point: Vector3 in body_sight_points(unit):
+		if RayCaster.blocker_obstructed_among(grid, cells, camera_position, point, exclude):
+			return true
+	return false
+
+
+## The points on `unit`'s own body the cutout's sight test casts to: its real world-space AABB
+## centre, and the centres of that box's top and bottom faces. Read off the actual placements
+## rather than sized by a constant — a tall shell and a downed one are different heights and
+## nothing here should have an opinion about which.
+##
+## The unit's own cell's parts are excluded by the caller, so the bottom point sitting exactly on
+## the floor it stands on is not a self-block — the same endpoint exemption `LoS` states as *"a
+## floor that blinded whoever stood on it would be a spectacular way to fail this pass."*
+##
+## A shell with no geometry at all (`unit.shell.root == null`, or a root authoring no `volume` —
+## the board state `BR51.01`'s loud miss caught two fixtures building) has no box to measure, so
+## this reports the single point `bounding_sphere` already falls back to rather than an AABB built
+## from infinities.
+static func body_sight_points(unit: Unit) -> Array[Vector3]:
+	var box_placements: Array[BoxPlacement] = UnitGeometry.placements(unit)
+	if box_placements.is_empty():
+		return [UnitGeometry.bounding_sphere(unit).center]
+	var box: AABB = UnitGeometry.placements_aabb(box_placements)
+	var center: Vector3 = box.get_center()
+	return [
+		center,
+		Vector3(center.x, box.position.y, center.z),
+		Vector3(center.x, box.end.y, center.z),
+	]
+
+
 ## tb32 Pass A: how many screen pixels a `cells`-wide circle spans at
 ## `depth` from the camera — pure trig mirroring `Camera3D`'s own
 ## perspective projection, so the wall-cutout shader's per-unit radius

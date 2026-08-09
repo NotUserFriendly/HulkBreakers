@@ -206,7 +206,7 @@ func _init(p_grid: Grid, initial_units: Array[Unit] = [], combat_seed: int = 0) 
 	rng.seed = combat_seed
 	for unit: Unit in initial_units:
 		add_unit(unit)
-	var living: Array[Unit] = units.filter(_can_take_a_turn)
+	var living: Array[Unit] = units.filter(can_take_a_turn)
 	if not living.is_empty():
 		_begin_turn(_fastest_by_initiative(living))
 
@@ -673,7 +673,7 @@ func advance_turn() -> void:
 			_resume_held_turn(held)
 			return
 
-	var living: Array[Unit] = units.filter(_can_take_a_turn)
+	var living: Array[Unit] = units.filter(can_take_a_turn)
 	if living.is_empty():
 		return
 	var candidates: Array[Unit] = living.filter(
@@ -724,7 +724,15 @@ func _begin_turn(unit: Unit) -> void:
 ## taskblock-22 Pass C: a shut-down unit stays `alive` (it still occludes/
 ## blocks as geometry — ShotPlane.build's own gate is untouched), but must
 ## never be handed another turn. The one place that actually excludes it.
-static func _can_take_a_turn(unit: Unit) -> bool:
+##
+## **Public since taskblock-61 Pass C1, and read by the view now.** The wall cutout's own feed
+## (`BoardView.update_wall_cutout`) asks exactly this question — the supervisor's rule for
+## `BR32.08` is *"if it gets a turn, it gets a cutout, if not, then no cutout"* — and answering it
+## there with a second `alive and not shutdown` would be the same rule in two places. Note what
+## this deliberately does NOT exclude: `Unit.is_downed()` (no matrix docked) is orthogonal to
+## both flags, so a downed unit still takes turns and still cuts walls, which is the rule's own
+## intent — a downed unit may be one turn from standing back up.
+static func can_take_a_turn(unit: Unit) -> bool:
 	return unit.alive and not unit.shutdown
 
 

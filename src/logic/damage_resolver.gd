@@ -405,7 +405,7 @@ static func tick_meltdowns(unit: Unit, state: CombatState) -> Array[Dictionary]:
 
 ## taskblock-22 Pass C: "a wounded unit that shuts down may trigger its
 ## reactor's MELTDOWN if the reactor is in that state" — a shut-down unit
-## never gets another turn (`CombatState._can_take_a_turn`), so a primed
+## never gets another turn (`CombatState.can_take_a_turn`), so a primed
 ## meltdown could otherwise never actually finish its own countdown
 ## (`tick_meltdowns` only ever runs at THIS unit's own turn start). Same
 ## shape/return as `tick_meltdowns` (one entry per part that detonated),

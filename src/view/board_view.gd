@@ -728,12 +728,12 @@ func update_wall_cutout(camera: Camera3D) -> void:
 				break
 			if unit == null or not is_instance_valid(unit):
 				continue
-			# A unit that's actually left the board (docs/07 extraction —
-			# distinct from ordinary death/shutdown, both of which leave a
-			# real body in place) has no cell worth cutting a hole for —
-			# `extracted` never clears `.cell`, so an unfiltered feed here
-			# cuts a permanent, unit-less hole at wherever it left from.
-			if unit.extracted or is_excluded_from_occlusion(unit.id):
+			# `WallLegibility.cuts_for` owns the whole per-unit rule — left the board, takes no
+			# turn (`BR32.08`), nothing actually in front of it (`BR32.05`) — stated there and
+			# tested headlessly. The debug exclusion stays here because it is view state.
+			if is_excluded_from_occlusion(unit.id):
+				continue
+			if not WallLegibility.cuts_for(grid, camera_position, unit):
 				continue
 			var position: Vector3 = UnitGeometry.bounding_sphere(unit).center
 			# Behind the camera: unproject_position() gives nonsense
