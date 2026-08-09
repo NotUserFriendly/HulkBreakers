@@ -63,6 +63,36 @@ func _init(p_label: RichTextLabel = null, p_state: CombatState = null) -> void:
 		label.meta_clicked.connect(_on_meta_clicked)
 
 
+## `BR51.16`: **this sink is a view of the stream, and the stream does not restart because the
+## overlay did.** An overlay swap mid-bout (Assume Control runs `set_overlay`, which tears every
+## module down and builds a fresh set) destroys this sink and its `LogFold` while `CombatState` and
+## its `CombatLog` carry on untouched — which is precisely why `out/combat.log` kept filling while
+## the panel showed nothing. Asking for the replay is what puts the rows back.
+##
+## The correctness of doing this unconditionally rests on history being per-`CombatState`: a new
+## bout brings a new `CombatLog` with nothing retained, so replay is a no-op exactly when the panel
+## *should* be empty.
+func wants_replay() -> bool:
+	return true
+
+
+## Drops the folded model and starts again against `state`.
+##
+## `BR51.16`: called by `CombatLogModule.attach_to` before joining a log, and it fixes the mirror
+## image of the emptying bug. `attach_to` re-pointed `fold.state` but never cleared the groups, so
+## loading a **new** bout under a live overlay left the *previous* bout's rows on screen —
+## measured at 10 stale rows against a brand-new `CombatState`. With replay in place, resetting
+## first is what makes the panel a pure function of the log it is currently attached to.
+##
+## `_expanded` is keyed by `LogFoldGroup.get_instance_id()`, so it is cleared with the fold — the
+## old ids address groups that no longer exist and could collide with a new group's id.
+func reset(state: CombatState) -> void:
+	fold = LogFold.new(state)
+	_expanded.clear()
+	lines.clear()
+	mark_dirty()
+
+
 func emit(event: LogEvent) -> void:
 	fold.ingest(event)
 	_rebuild_lines()

@@ -2,6 +2,54 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass E5 — the log empties on Assume Control, and persists on New Battle
+
+**`BR51.16` to `Pending`. Counted before it was touched, which the entry insisted on, and the count
+ruled out all three of its own suspects.** Panel rows went **15 → 2** across the trigger while the
+stream went 6 → 8 events having lost nothing — so it is *"nothing displayed"*, not *"the first N
+are gone"*. `LogFold.MAX_GROUPS` never fired.
+
+**The trigger is `toggle_blue_control` — the Assume Control button.** It calls `set_overlay`, which
+tears down every module and builds a fresh set, so `CombatLogModule._mount` constructs a new panel
+and a new `HierarchicalUiSink` whose `LogFold` has never seen an event. **The `CombatState` and its
+`CombatLog` are the same objects throughout**, which is precisely why the file keeps filling:
+`FileSink` is attached to the log, not the overlay.
+
+**The codebase already knew the shape and had walled off exactly one path.** `view_modes.gd` keeps
+`combat_log` in `AIM_MODULES` with the note *"rebuilt empty on remount, so turning it off and on
+would clear the visible log every time anyone aimed."* Aiming was safe; every overlay swap was not.
+
+**A second, mirror-image defect surfaced in the same measurement.** `attach_to` re-pointed
+`sink.fold.state` at a new `CombatState` and never cleared the groups, so loading a new bout under
+a live overlay left **10 stale rows from the previous bout** on screen. The panel and the file
+disagreed in *both* directions; only one direction was ever reported.
+
+**The fix is replay, which the entry's own third suspect names.** `CombatLog` retains a bounded
+history; `add_sink` replays it into any sink that asks. **`LogSink.wants_replay()` defaults false
+and that default is the load-bearing half** — `FileSink` would write every past line twice and a
+`MemorySink` capturing one turn for playback would swallow the whole bout. Replay runs through the
+same `wants()` filter as live emission: one stream, one filter.
+
+**The semantics fall out of history being per-`CombatState` rather than needing a rule.** A
+mid-bout swap keeps the same log and the rows come back; a new bout brings a new `CombatLog` with
+nothing retained, so the panel is empty because there is genuinely nothing to show. `attach_to`
+resets the fold first, which both prevents a doubled replay and fixes the stale-rows half.
+
+**`CombatLog.MAX_HISTORY` is 2000, flagged not designed** — the panel folds into at most 200 rows
+and `UiLogSink` measured 9.9 events per turn, so it comfortably refills a full panel. **Trimmed in
+batches, not by `pop_front` per event**: a contiguous `Array` would memmove the whole history on
+every event once full, which is the class of quiet cost `BR27.09` was filed about.
+
+**A rebuilt panel now shows slightly more than the original did**, because the replay includes
+events emitted before the first panel ever mounted. Expected, not a side effect to trim.
+
+**One existing test corrected rather than adjusted away.**
+`test_log_fold.gd::test_folding_never_changes_what_other_sinks_on_the_same_log_receive` compared
+the fold's *absolute* event total against a `MemorySink`'s, which only held while both sinks
+necessarily started empty. It measures the **delta across the action** now — the same claim, stated
+more exactly than the totals ever did.
+
+
 ### Pass E4 — the sniper camera was framing the target from behind it
 
 **`BR34.04` to `Pending`, and the measurement is worse than the report.** *"Frames the target from

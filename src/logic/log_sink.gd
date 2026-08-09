@@ -20,3 +20,18 @@ func emit(_event: LogEvent) -> void:
 ## `emit()` implementation.
 func wants(_event: LogEvent) -> bool:
 	return true
+
+
+## `BR51.16`: whether `CombatLog.add_sink` should replay its retained history into this sink so a
+## late arrival is up to date.
+##
+## **Default false, and the default is the important half.** Replay is wrong for almost every sink
+## here: `FileSink` would write every past line a second time, and a `MemorySink` capturing one
+## turn's events for playback would swallow the whole bout instead. The one consumer that needs it
+## is a UI panel rebuilt mid-bout — `HierarchicalUiSink` — because the panel is a *view of* the
+## stream and the stream did not restart just because the overlay did.
+##
+## Declared on the sink and checked by `CombatLog`, the same shape as `wants()` above and for the
+## same reason: it is one override rather than something every attach site has to remember.
+func wants_replay() -> bool:
+	return false

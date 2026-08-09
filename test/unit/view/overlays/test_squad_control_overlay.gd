@@ -638,3 +638,95 @@ func test_an_injection_that_caused_nothing_does_not_start_a_resolution() -> void
 		0,
 		"an empty event list must not reach the player at all"
 	)
+
+
+# --- taskblock-61 Pass E5 (BR51.16): the in-game log empties, the file keeps everything ---
+
+
+## `BR51.16` — **reproduced with a count, which the entry asks for before anything is touched.**
+##
+## *"Nothing displayed"* versus *"the first N lines are gone"* are different bugs, and the panel's
+## own row count against the sink's event count is what says which. This measures both across the
+## action that triggers it.
+##
+## **The trigger is Assume Control.** `BattleScene.toggle_blue_control` calls `set_overlay`, which
+## runs `ControlOverlay.teardown()` over every mounted module and builds a fresh set — so
+## `CombatLogModule._mount` constructs a new `CombatLogPanel` and a new `HierarchicalUiSink` whose
+## `LogFold` has never seen an event. **The `CombatState` and its `CombatLog` are the same object
+## throughout**, which is exactly why `out/combat.log` keeps filling: `FileSink` is attached to the
+## log, not to the overlay, and nothing tore it down.
+##
+## `view_modes.gd` already knew about this shape — `AIM_MODULES` keeps `combat_log` mounted with
+## the note *"rebuilt empty on remount, so turning it off and on would clear the visible log every
+## time anyone aimed."* That kept the aim path safe and left every overlay swap exposed.
+func test_assume_control_does_not_empty_the_log_panel_the_stream_still_holds() -> void:
+	var built: Dictionary = _bout()
+	var overlay: ControlOverlay = _squad_control(built)
+	var log: CombatLog = built.state.combat_log
+	var witness := MemorySink.new()
+	log.add_sink(witness)
+	for i in range(6):
+		log.emit(LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "marker %d" % i))
+	var before: String = _log_text(overlay)
+	gut.p("before, %d events on the stream:\n%s" % [witness.events.size(), before])
+	for i in range(6):
+		assert_true(before.contains("marker %d" % i), "sanity: the panel is showing the stream")
+
+	overlay.battle.toggle_blue_control()
+
+	var after: String = _log_text(overlay.battle.overlay as ControlOverlay)
+	gut.p("after, %d events on the stream:\n%s" % [witness.events.size(), after])
+	assert_gte(
+		witness.events.size(),
+		6,
+		"the stream itself lost nothing — this is why the file on disk stays un-cleared"
+	)
+	# **Asserted by marker, not by row count.** The swap logs a line or two of its own and the
+	# rebuilt panel replays the whole retained history — including events emitted before the
+	# original panel ever mounted — so it legitimately shows MORE rows than before. What must not
+	# happen is the history vanishing, which is what "resetting to nothing displayed" was.
+	for i in range(6):
+		assert_true(
+			after.contains("marker %d" % i),
+			"row 'marker %d' was on screen before Assume Control and must still be" % i
+		)
+
+
+## The other half of the semantics, and it is what makes replay-on-attach correct rather than
+## merely convenient: **a genuinely new bout must not inherit the old one's rows.**
+##
+## This was a real second defect, measured in the same pass: `CombatLogModule.attach_to` re-pointed
+## `sink.fold.state` at the new `CombatState` but never cleared the groups, so loading a new bout
+## under a live overlay left **10 stale rows** from the previous one on screen. The panel and the
+## file disagreed in both directions — emptying when it should not, and persisting when it should
+## not.
+func test_a_new_battle_does_not_inherit_the_previous_bouts_rows() -> void:
+	var overlay: ControlOverlay = _squad_control(_bout())
+	var log: CombatLog = overlay.battle.combat_state.combat_log
+	for i in range(4):
+		log.emit(LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "stale %d" % i))
+	assert_true(_log_text(overlay).contains("stale 0"), "sanity: the first bout's log is showing")
+
+	var fresh: Dictionary = _bout()
+	overlay.battle.load_battle(fresh.state, fresh.mission)
+
+	var rows: String = _log_text(overlay.battle.overlay as ControlOverlay)
+	gut.p("a fresh bout shows:\n%s" % rows)
+	# Not asserted as empty: loading a bout logs its own opening lines onto the NEW log, and those
+	# belong there. What must be gone is the previous bout's own content, which is why the markers
+	# are distinguishable rather than generic.
+	for i in range(4):
+		assert_false(
+			rows.contains("stale %d" % i),
+			"the previous bout's row 'stale %d' must not survive into a new CombatState" % i
+		)
+
+
+## The rows the combat-log panel is currently showing. Reads `HierarchicalUiSink.lines`, which is
+## the sink's own headless surface and is rebuilt on every `emit()` — never the `RichTextLabel`,
+## whose draw is deliberately deferred to a frame tick.
+func _log_text(overlay: ControlOverlay) -> String:
+	var module: ViewModule = overlay.module(&"combat_log")
+	if module == null:
+		return ""
+	return "\n".join((module as CombatLogModule).sink.lines)

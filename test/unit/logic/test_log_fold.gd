@@ -241,6 +241,19 @@ func test_folding_never_changes_what_other_sinks_on_the_same_log_receive() -> vo
 	var fold_sink := HierarchicalUiSink.new(null, state)
 	state.combat_log.add_sink(memory_sink)
 	state.combat_log.add_sink(fold_sink)
+	# **Measured as a delta across the action, not as an absolute total** — tb61 Pass E5.
+	#
+	# This used to compare the fold's whole event count against the MemorySink's. That worked only
+	# while both sinks necessarily started empty, and `BR51.16` ended that: `CombatLog` retains a
+	# bounded history and replays it into a sink that asks for one, so `HierarchicalUiSink` arrives
+	# already holding everything `CombatState.new` logged while building the board. The MemorySink
+	# does not replay, so the two baselines legitimately differ.
+	#
+	# **The claim under test is unchanged** — folding must not alter what any other sink receives —
+	# and a delta states it more exactly than the totals ever did: whatever the action emits, both
+	# sinks account for the same number of events.
+	var folded_before: int = _folded_event_total(fold_sink)
+	var groups_before: int = fold_sink.fold.groups.size()
 
 	# A curved path — down, then right — the exact "spam" case F1 exists
 	# to fold, forcing multiple faced/move pairs in the raw stream.
@@ -252,17 +265,23 @@ func test_folding_never_changes_what_other_sinks_on_the_same_log_receive() -> vo
 	var raw_count: int = memory_sink.events.size()
 	assert_gt(raw_count, 1, "sanity: a curved path really does emit more than one raw event")
 
-	var folded_event_total := 0
-	for group: LogFoldGroup in fold_sink.fold.groups:
-		folded_event_total += group.events.size()
 	assert_eq(
-		folded_event_total,
+		_folded_event_total(fold_sink) - folded_before,
 		raw_count,
 		"every raw event the MemorySink saw must also be accounted for inside the fold"
 	)
 	assert_eq(
-		fold_sink.fold.groups.size(), 1, "the whole curved path still folds into one move group"
+		fold_sink.fold.groups.size() - groups_before,
+		1,
+		"the whole curved path still folds into one move group"
 	)
+
+
+func _folded_event_total(sink: HierarchicalUiSink) -> int:
+	var total := 0
+	for group: LogFoldGroup in sink.fold.groups:
+		total += group.events.size()
+	return total
 
 
 ## taskblock-41 Pass D: the deliberately-verbose kinds Passes B-D added must

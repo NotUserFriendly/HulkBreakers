@@ -177,7 +177,16 @@ func attach_to(log: CombatLog, state: CombatState) -> void:
 		return
 	if _attached_to != null:
 		_attached_to.remove_sink(sink)
-	sink.fold.state = state
+	# `BR51.16`: **reset, then attach — the order is the fix.** `CombatLog.add_sink` replays its
+	# retained history into a sink that asks for it, so the fold must be empty first or a re-attach
+	# would show the old content plus the replayed copy of it. Resetting also fixes the mirror
+	# defect this pass measured: re-pointing `fold.state` at a NEW `CombatState` left the previous
+	# bout's rows on screen, because nothing had ever cleared the groups.
+	#
+	# Together they make the panel a pure function of whichever log it is currently attached to —
+	# an overlay swap mid-bout gets its rows back, and a genuinely new bout starts empty because
+	# the new log's history is empty, not because anything reset it.
+	sink.reset(state)
 	log.add_sink(sink)
 	_attached_to = log
 

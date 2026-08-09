@@ -1468,7 +1468,7 @@ components. **A `ShotPlane: no region for ...` line in the log means this has re
   proposes fixing with a camera-attached cutout — see `PLAN.md`), the framing tween completing and
   triggering a rebuild, or the occlusion pass re-evaluating as friendlies cross the near plane.
 
-### BR51.16 — Active — owner: `SUPERVISOR`
+### BR51.16 — Pending — owner: `SUPERVISOR`
 **The in-game combat log empties itself while the file on disk keeps everything**
 - **cluster:** `accounting`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -1485,6 +1485,63 @@ components. **A `ShotPlane: no region for ...` line in the log means this has re
   the same neighbourhood.
 - **Reproduce with a count before touching it.** "Nothing displayed" versus "the first N lines are
   gone" are different bugs, and the panel's own row count against the sink's event count says which.
+
+**taskblock-61 Pass E5 — `Pending`. Counted first, as instructed; the trigger is Assume Control,
+and there is a second defect pointing the other way.** CC session
+`906e0f07-5b0a-47bd-8444-fb42ed468da2`.
+
+- **The count says "everything before the swap", not "thinned".** Panel rows went **15 → 2** across
+  the trigger while the stream itself went 6 → 8 events, having lost nothing. The 2 survivors are
+  lines the swap itself emitted. So it is the *"nothing displayed"* branch, and **none of the
+  entry's three suspects was right**: `LogFold.MAX_GROUPS` never fired, the fold was not reset, and
+  it is not the spectator/player *overlay* pair in the sense meant when it was filed.
+- **The trigger is `BattleScene.toggle_blue_control` — the Assume Control button.** It calls
+  `set_overlay`, which runs `ControlOverlay.teardown()` over every mounted module and builds a
+  fresh set, so `CombatLogModule._mount` constructs a new `CombatLogPanel` and a new
+  `HierarchicalUiSink` whose `LogFold` has never seen an event. **The `CombatState` and its
+  `CombatLog` are the same objects throughout** — which is exactly why the file keeps filling:
+  `FileSink` is attached to the log, not to the overlay, and nothing tore it down.
+- **The codebase already knew the shape and had only walled off one path.** `view_modes.gd` keeps
+  `combat_log` in `AIM_MODULES` with the note *"rebuilt empty on remount, so turning it off and on
+  would clear the visible log every time anyone aimed."* That protected aiming and left every
+  overlay swap exposed.
+- **A second, mirror-image defect found in the same measurement.** `attach_to` re-pointed
+  `sink.fold.state` at a new `CombatState` but never cleared the groups, so loading a **new bout**
+  under a live overlay left **10 stale rows from the previous bout** on screen. The panel and the
+  file disagreed in both directions — emptying when it should not, persisting when it should not.
+- **The fix is replay, which the entry's own third suspect names** (*"an overlay swap re-creating
+  the panel without replaying what the log already holds"*). `CombatLog` retains a bounded history
+  and `add_sink` replays it into any sink that asks; `LogSink.wants_replay()` defaults **false** and
+  only `HierarchicalUiSink` overrides it — `FileSink` would write every past line twice, and a
+  `MemorySink` capturing one turn for playback would swallow the whole bout. Replay runs through
+  the same `wants()` filter as live emission, so there is still one stream and one filter.
+- **The semantics fall out of history being per-`CombatState` rather than needing a rule.** A
+  mid-bout swap keeps the same log, so the rows come back; a new bout builds a new `CombatLog` whose
+  history is empty, so the panel is empty because there is genuinely nothing to show. `attach_to`
+  resets the fold before attaching, which both prevents a doubled replay and fixes the stale-rows
+  half.
+- **`CombatLog.MAX_HISTORY` is 2000 and is flagged, not designed.** The panel folds into at most
+  `LogFold.MAX_GROUPS` (200) rows and `UiLogSink` measured a real 3v3 bout at 9.9 events per turn,
+  so 2000 comfortably refills a full panel. Trimmed in batches rather than by `pop_front` per
+  event — a contiguous `Array` would otherwise memmove the whole history on every event once full,
+  which is the class of quiet cost `BR27.09` was about.
+- **A rebuilt panel now shows slightly MORE than the original did**, and that is expected rather
+  than a side effect to fix: the replay includes events emitted before the first panel ever
+  mounted. It is the full retained log either way.
+- **To see it:** play a bout until the log has real content, then press **Assume Control**. The log
+  should keep everything it was showing instead of blanking. Then press **New Battle** — the log
+  should start clean rather than carrying the last bout's lines. **Both directions are the check**;
+  only one of them was reported.
+- **Tests:** `test_squad_control_overlay.gd::test_assume_control_does_not_empty_the_log_panel_the_
+  stream_still_holds` and `::test_a_new_battle_does_not_inherit_the_previous_bouts_rows`. Both
+  confirmed red against the pre-fix code. Asserted by distinguishable marker text rather than row
+  counts — a bout's own opening lines are legitimately identical between bouts, and folding can
+  extend a group rather than add a row, so counts mislead in both directions.
+- **One existing test was corrected rather than adjusted away:**
+  `test_log_fold.gd::test_folding_never_changes_what_other_sinks_on_the_same_log_receive` compared
+  the fold's absolute event total against a `MemorySink`'s. That only held while both sinks
+  necessarily started empty. It now measures the **delta across the action**, which states the same
+  claim more exactly than the totals did.
 
 ### BR51.18 — Suspected — owner: `SUPERVISOR`
 **A unit slid sideways during a bout watched from both spectator and player control**
