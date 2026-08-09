@@ -99,6 +99,11 @@ const PREVIEW_AMBIENT_ENERGY := 0.9
 ## `AMBIENT_ENERGY`, so the ambient contribution was the same before the fix as after it.
 const BOARD_LIGHT_ENERGY := 2.0
 
+## `BR57.02`: every visual layer, so a camera that narrows its `cull_mask` keeps the light.
+##
+## Godot exposes 20 render layers; this is all of them.
+const ALL_VISUAL_LAYERS := 0xFFFFF
+
 
 ## A flat dark backdrop plus soft ambient — otherwise Godot's default
 ## procedural sky paints a stock light grey with no relation to the theme,
@@ -130,6 +135,26 @@ static func directional_light(energy: float = 1.0) -> DirectionalLight3D:
 	var light := DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-LIGHT_ELEVATION_DEG, LIGHT_AZIMUTH_DEG, 0.0)
 	light.light_energy = energy
+	# `BR57.02`: **a `DirectionalLight3D` is a `VisualInstance3D`, so `Camera3D.cull_mask` culls
+	# the LIGHT, not just geometry** — and a light left on the default layer 1 disappears from any
+	# camera that narrows away from it, taking every directional contribution with it.
+	#
+	# `BotViewer.show_live` does exactly that: `cull_mask = 0`, then `HitVolumeView.ISOLATE_LAYER`
+	# and `BoardView.FLOOR_LAYER`. The board's light is on neither, so the isolate camera rendered
+	# the subject lit by its per-camera ambient override alone — which is precisely the report,
+	# *"no light source when viewing units, and all of a unit's faces are identically shaded."*
+	# Ambient with no directional term is what flat shading looks like.
+	#
+	# **This is the same defect tb23 Pass E2 already fixed once, for geometry.** The floor vanished
+	# from the isolate camera for exactly this reason and was given `FLOOR_LAYER` to be seen again;
+	# the light was never given anything. It reproduces only on units because only the isolate path
+	# narrows the mask — cover and loose parts take the fresh-copy path, which owns its world and
+	# restores its own light.
+	#
+	# **Not `light_cull_mask`, which is a different question and was already checked.** That one
+	# decides which OBJECTS this light illuminates and is correctly left at its default. This one
+	# decides which CAMERAS keep the light at all.
+	light.layers = ALL_VISUAL_LAYERS
 	return light
 
 

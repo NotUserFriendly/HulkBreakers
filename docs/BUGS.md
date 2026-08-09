@@ -2338,7 +2338,7 @@ at one cell and missing the body entirely probably is.
 - **The original prize was 32.4 s** in `test_spectator_overlay.gd`, the largest non-bout file in the
   suite, across 37 real scene builds. Still available.
 
-### BR57.02 — Active — owner: `SUPERVISOR`
+### BR57.02 — Pending — owner: `SUPERVISOR`
 **Units in the inspect viewer render with no directional contribution — every face identically lit**
 - **cluster:** `rendering`
 - **Source:** `SUPERVISOR`, 2026-08-05, observed in-game across the UI review passes ("Inspect
@@ -2370,6 +2370,47 @@ raise is kept because a preview does want more fill, but it is not the answer to
 inclusion in this Godot version. **It reproduces only on units**, which is the strongest clue in the
 report: cover and loose parts go through the *fresh copy* path in its own world with its own light,
 and only a live unit takes the isolate-camera path. That asymmetry is the thing to chase.
+
+**taskblock-61 Pass E6 — `Pending`. "Where to look next" was right on both counts, and the number
+is zero.** CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
+
+- **`Camera3D.cull_mask` culls the LIGHT, not just geometry.** A `DirectionalLight3D` is a
+  `VisualInstance3D`, so a camera that narrows away from the light's `layers` drops it from that
+  camera's render entirely.
+- **Measured on the real nodes: the isolate camera's `cull_mask` is `6`, the board light's `layers`
+  was `1`, and `6 & 1 == 0`.** No overlap at all — the light was not in that camera's render in any
+  degree. **Ambient with no directional term is exactly what "every face identically shaded"
+  looks like**, which is why the earlier ambient raise treated the symptom and could not have been
+  the cause.
+- **`BotViewer.show_live` is where the 6 comes from**: `cull_mask = 0`, then
+  `HitVolumeView.ISOLATE_LAYER` (2) and `BoardView.FLOOR_LAYER` (3). The board's light was on the
+  default layer 1 and was never given either.
+- **The asymmetry the entry named as the strongest clue is exactly this.** Only the isolate path
+  narrows the mask; cover and loose parts take the fresh-copy path, which owns its world and
+  restores its own light (`_apply_lighting`). That is why it reproduces only on units.
+- **This is the same defect tb23 Pass E2 already fixed once, for geometry.** The floor vanished
+  from this camera for precisely this reason and was given `FLOOR_LAYER` so it would be seen again.
+  **The light was never given anything**, and the suspects table above checked `light_cull_mask`
+  (which *objects* a light illuminates — correctly at its default) rather than `layers` (which
+  *cameras* keep the light). Two masks, one of them unexamined.
+- **The fix is one line in `WorldPalette.directional_light`:** `light.layers = ALL_VISUAL_LAYERS`.
+  **Deliberately not done by widening the camera's `cull_mask`**, which would let every other unit
+  and blocker draw through the preview again and undo tb22 G2 — a test asserts layer 1 stays
+  excluded so a later reader cannot "simplify" it that way.
+- **Honest limit: this proves the light is now IN the camera's render set, and CC cannot see
+  pixels.** The mechanism is measured and the necessary condition is met; whether the shading now
+  reads correctly is the supervisor's to judge, which is what keeps this `Pending`.
+- **To see it:** open Inspect on a **live unit on the board** (the isolate path — not cover, not a
+  loose part, which never had the defect). Its faces should now show real directional shading, lit
+  from the board's own light angle, instead of every face reading the same flat tone. **Also worth
+  a glance: the rest of the board must look unchanged** — the light gained render layers, it did
+  not gain energy or move.
+- **Tests:** `test_inspect_viewer_lighting.gd::test_the_isolate_camera_keeps_the_boards_
+  directional_light` (confirmed red without the fix, at `6 & 1 == 0`) and
+  `::test_the_isolate_camera_still_excludes_everything_it_was_narrowed_against`.
+- **`test_inspect_panel.gd` was at 927 lines and went over the 1000-line cap** when these were
+  appended, so they live in their own file. **Third file this block to hit that cap**, after
+  `board_view.gd` and `bout_injector.gd`.
 
 ### BR57.03 — Active — owner: `SUPERVISOR`
 **Player view drops frames while panning the camera**

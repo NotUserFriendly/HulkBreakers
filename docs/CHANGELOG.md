@@ -2,6 +2,43 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass E6 — the isolate camera was culling the board's light along with the geometry
+
+**`BR57.02` to `Pending`, and the entry's own "where to look next" was right on both counts.** It
+asked whether the shared-world `SubViewport` receives the board's `DirectionalLight3D` at all, and
+whether `Camera3D.cull_mask` narrowing interacts with light inclusion. It does, and it did not.
+
+**The number is zero.** Read off the real nodes: the isolate camera's `cull_mask` is `6`
+(`ISOLATE_LAYER` and `FLOOR_LAYER`), the board light's `layers` was `1`, and `6 & 1 == 0`. **A
+`DirectionalLight3D` is a `VisualInstance3D`**, so a camera narrowing away from its layers drops it
+from that camera's render entirely. The subject was lit by its per-camera ambient override alone —
+and ambient with no directional term is exactly what *"every face identically shaded"* is. The
+earlier ambient raise was treating the symptom, as the entry already suspected.
+
+**The asymmetry the entry called its strongest clue is precisely this mechanism.** Only the isolate
+path narrows the mask; cover and loose parts take the fresh-copy path, which owns its world and
+restores its own light. That is why it reproduced only on units.
+
+**This is tb23 Pass E2's defect, a second time, for lighting instead of geometry.** The floor
+vanished from this camera for exactly this reason and was given `FLOOR_LAYER` to be seen again.
+**The light was never given anything.** The entry's suspects table checked `light_cull_mask` —
+which *objects* a light illuminates, correctly left at default — and never `layers`, which decides
+which *cameras* keep the light. Two masks, one of them unexamined for three blocks.
+
+**One line: `light.layers = ALL_VISUAL_LAYERS` in `WorldPalette.directional_light`.** Deliberately
+**not** done by widening the camera's `cull_mask`, which would let every other unit and blocker
+draw through the preview and undo tb22 G2 — a test pins layer 1 as still excluded.
+
+**Stated plainly: this proves the light is in the camera's render set, and CC cannot see pixels.**
+The mechanism is measured and the necessary condition is met; whether the shading reads right is
+the supervisor's call, which is what keeps it `Pending` rather than done.
+
+**`test_inspect_panel.gd` was at 927 lines and went over the cap**, so the new tests live in
+`test_inspect_viewer_lighting.gd`. **Third file this block to hit the 1000-line limit**, after
+`board_view.gd` and `bout_injector.gd`, and the third to be paid by extracting rather than by
+shortening comments.
+
+
 ### Pass E5 — the log empties on Assume Control, and persists on New Battle
 
 **`BR51.16` to `Pending`. Counted before it was touched, which the entry insisted on, and the count
