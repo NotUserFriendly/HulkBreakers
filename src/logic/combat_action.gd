@@ -20,13 +20,41 @@ func describe() -> String:
 
 ## Queue-row-safe label — `describe()` itself can be arbitrarily long
 ## (`MoveAction`'s own path grows without bound), fine for a debug log
-## line but not a fixed-width UI row. Defaults to `describe()` unchanged;
-## override only where `describe()`'s own text can get long enough to
-## matter (`MoveAction`). `SelectionController.queue_entries()` reads
-## this for a queue row's own visible text and surfaces the full
-## `describe()` on hover only when the two actually differ.
+## line but not a fixed-width UI row. `SelectionController.queue_entries()` reads this for a queue
+## row's own visible text and surfaces the full `describe()` on hover only when the two differ.
+##
+## **`BR34.03`, taskblock-61 Pass D: derived here rather than overridden per action.** The entry
+## asked for `AttackAction(unit=2)` and added *"while in there, check the remaining action types
+## rather than fixing one and leaving the next to be reported separately"* — and there are twenty,
+## every one of them formatted `Name(first=..., rest...)`. Seven near-identical overrides would
+## have been seven things to remember; keeping the first field and closing the paren is the same
+## rule expressed once, and it covers an action nobody has written yet with no edit here.
+##
+## `MoveAction`'s own override is retired by this: truncating `MoveAction(unit=%d, path=%s)` at its
+## first field produces exactly the text that override was written to produce.
 func short_describe() -> String:
-	return describe()
+	return first_field_only(describe())
+
+
+## `"Name(a=1, b=2)"` -> `"Name(a=1)"`, leaving anything without a second field untouched.
+##
+## **Depth-aware on purpose.** A field whose own value contains a comma — a `Vector2i` prints as
+## `(3, 4)` — must not be cut through the middle, and one of these is a coordinate away from
+## existing: `MoveAction` already formats an `Array[Vector2i]`. Splitting on the first `", "` would
+## read correctly today and silently mangle the first action that puts a vector first.
+static func first_field_only(text: String) -> String:
+	var depth: int = 0
+	for i in range(text.length()):
+		var c: String = text[i]
+		if c == "(" or c == "[":
+			depth += 1
+		elif c == ")" or c == "]":
+			depth -= 1
+			if depth == 0:
+				return text
+		elif c == "," and depth == 1:
+			return text.substr(0, i) + ")"
+	return text
 
 
 ## docs/09 taskblock06 Pass E: a SECOND ordering axis — docs/09 Appendix G

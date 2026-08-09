@@ -230,14 +230,7 @@ func _finish(state: CombatState, actual: Unit, traversed: Array[Vector2i]) -> vo
 func describe() -> String:
 	return "MoveAction(unit=%d, path=%s)" % [unit.id, path]
 
-
-## BR27.08 (supervisor follow-up): only the `path=%s` term above is the
-## problem — it grows without bound, and was what stretched the queue
-## panel's own readout across the whole display. Everything else about
-## `describe()`'s own format (the class name, `unit=%d`, matching every
-## sibling action's own style) is fine and stays; the coordinates
-## themselves still reach the tooltip via `describe()`'s own full text
-## (`SelectionController.queue_entries()` surfaces it as hover detail
-## whenever it differs from this).
-func short_describe() -> String:
-	return "MoveAction(unit=%d)" % unit.id
+# BR27.08's own override lived here — only the `path=%s` term was ever the problem, since it grows
+# without bound and stretched the queue panel across the display. `BR34.03` generalised the rule to
+# every action (`CombatAction.short_describe`), which produces this exact text, so the override is
+# gone rather than kept as a second copy of the same answer.

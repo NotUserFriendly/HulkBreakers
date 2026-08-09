@@ -2,6 +2,29 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D4 — one queue-label rule instead of seven overrides
+
+**`BR34.03` to `Pending`.** The entry asked for `AttackAction(unit=2)` and for the remaining action
+types to be checked *"rather than fixing one and leaving the next to be reported separately"*. There
+are twenty, every one formatted `Name(first=..., rest...)` — so the rule lives once in
+`CombatAction.short_describe` rather than as seven near-identical overrides, and an action nobody
+has written yet is already covered.
+
+**`MoveAction`'s BR27.08 override is deleted rather than kept alongside**: truncating its describe
+at the first field produces exactly the text that override was written to produce.
+
+**Depth-aware truncation, which is not decoration.** Splitting on the first `", "` reads correctly
+today and would silently cut through the middle of the first action that formats a `Vector2i` first
+— and `MoveAction` already prints an `Array[Vector2i]`, so that is one refactor away rather than
+hypothetical. Its own test pins the case.
+
+**A consequence the supervisor should see rather than read about:** rows that were already short
+trim too. `FaceAction(unit=2, direction=1.00)` becomes `FaceAction(unit=2)` with the direction on
+hover. The pre-existing rule — hover detail appears exactly when short and full differ — is
+unchanged and still guarded; more rows simply differ now. An existing assertion used FaceAction as
+its "nothing to trim" example and was updated rather than worked around.
+
+
 ### Pass D3 — `BR32.07` root-caused from one click, and the silence fixed
 
 **The instrument earned its keep immediately.** One supervisor reproduction — burst through a

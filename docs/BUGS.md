@@ -1061,7 +1061,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     handles hitting whatever is in the way, which argues a player should be allowed to fire and hit
     the pillar. Against that, the LoS gate stops AP being spent on an impossible shot. **Not
     decided by CC.** Left `Active` for that reason.
-### BR34.03 — Active — owner: `SUPERVISOR`
+### BR34.03 — Pending — owner: `SUPERVISOR`
 **`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
 - **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`
@@ -1072,6 +1072,27 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   treatment to `AttackAction` — and while in there, check the remaining action types (burst, overwatch,
   repair, the melee actions) rather than fixing one and leaving the next to be reported separately.
 
+- **2026-08-09 (taskblock-61 Pass D — fixed; `Pending`)** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`].
+  **Derived once rather than overridden per action.** This entry asked for `AttackAction(unit=2)`
+  and added *"check the remaining action types rather than fixing one and leaving the next to be
+  reported separately"* — there are **twenty**, and every one formats as `Name(first=..., rest...)`.
+  Seven near-identical `short_describe()` overrides would have been seven things to remember, so
+  `CombatAction.short_describe` keeps the first field and closes the paren. An action nobody has
+  written yet is covered with no edit.
+  - **`MoveAction`'s own override (BR27.08) is deleted, not kept alongside** — truncating
+    `MoveAction(unit=%d, path=%s)` at its first field produces exactly the text that override
+    existed to produce.
+  - **Depth-aware, and that is not decoration.** Splitting on the first `", "` reads correctly
+    today and would silently cut through the middle of the first action that formats a `Vector2i`
+    first — `MoveAction` already prints an `Array[Vector2i]`, so that is one refactor away rather
+    than hypothetical. Pinned by its own test.
+  - **A consequence worth seeing, not just reading:** rows that were *already* short now trim too.
+    `FaceAction(unit=2, direction=1.00)` becomes `FaceAction(unit=2)`, with the direction moving to
+    the hover detail. The existing rule — detail appears exactly when short and full differ — is
+    unchanged and still guarded; more rows simply differ now. **If a bounded field like that should
+    have stayed on the row, this is the part to say so about.**
+  - **To see it:** queue an attack, a burst, an overwatch and a face; every row should read
+    `Name(unit=N)`, with the dropped terms on hover.
 ### BR34.04 — Active — owner: `SUPERVISOR`
 **Sniper camera frames the target from an odd angle**
 - **cluster:** `camera`
