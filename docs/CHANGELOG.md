@@ -2,6 +2,53 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass E4 — the sniper camera was framing the target from behind it
+
+**`BR34.04` to `Pending`, and the measurement is worse than the report.** *"Frames the target from
+an odd angle"* was understating it. With the new solve disabled and the real `Camera3D` read back —
+shooter at cell (2,3), target at (9,15), a genuinely diagonal pair — the camera sat **1.248 units
+to the side** of the shooter-to-target line, **2.139 units PAST the target** (on the far side,
+looking back at it away from the shooter), and **1.694 units up**. It was not a high angle so much
+as the wrong end of the shot.
+
+**The entry's diagnosis was exactly right and is worth restating**: tb34 Pass D's decision was
+correct against a spec that only asked for *centred*, and this rig centres the target at any angle
+because it faces its own `pan_offset` pivot. So keeping the current yaw and pitch was the smallest
+correct answer to the question that was asked. The angle it centred *from* was simply never
+specified.
+
+**`sniper_framing` takes the shooter now and solves the angle.** The two supervisor statements are
+reconciled rather than chosen between — *"directly above the line drawn between shooter and target,
+looking along it"* and *"a short distance from the target, in line between shooter and target"* —
+so the camera sits on the line, on the shooter's side, lifted by `SNIPER_UP_OFFSET`.
+
+**The distance is unchanged.** The same closed-form fit of the target's angular footprint to the
+usable half FOV, which already *was* "a short distance from the target". Only the direction moved.
+The horizontal leg is `sqrt(zoom^2 - up^2)` rather than `zoom`, so the lift does not push the
+camera further out than the fit solved for — a naive "go out, then raise" lands at
+`sqrt(zoom^2 + up^2)` and quietly shrinks the target it was solved to frame. A test reads the real
+distance back against the solved one.
+
+**`SNIPER_UP_OFFSET` is flagged, not designed, and is not a new number** — it is `ATTACK_UP_OFFSET`
+under its own name so the two framings can be tuned apart. It is the only number in this fix that
+anybody chose, and it is the one line to move if the view wants to be flatter.
+
+**Verified by reading the built node back, per `docs/10` rule 2, on a diagonal pair, and all three
+new rig tests were confirmed red with the solve disabled before being accepted.** The assertion is
+the perpendicular offset from the plane through the shooter-target line, derived from the units'
+own positions rather than from the solver's formula.
+
+**One reversal, quoted rather than deleted:**
+`test_sniper_framing_keeps_the_current_yaw_and_pitch` asserted the old behaviour on reasoning that
+is still true — with no second body to frame, any angle centres the target. It became
+`test_sniper_framing_solves_a_new_angle_rather_than_keeping_the_current_one`, with the old
+expectation and its argument recorded in place.
+
+**`BR51.01`'s note that this "may be one defect with" it is not supported.** That entry's lean is
+`ATTACK_RIGHT_OFFSET` on the over-the-shoulder path; this is the sniper path, which has no lateral
+offset at all and never did. Shared symptom vocabulary, different mechanism.
+
+
 ### Pass E3 — an injection animates, and two details of the recorded fix shape were wrong
 
 **`BR51.21` to `Pending`.** No debug injection had ever animated: a forced detonation, move or kill

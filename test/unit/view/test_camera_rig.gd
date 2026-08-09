@@ -365,3 +365,102 @@ func test_ease_to_framing_beyond_the_threshold_still_uses_the_shared_tween() -> 
 
 	assert_not_null(rig._active_tween)
 	assert_eq(rig.state.zoom, zoom_before, "the state itself doesn't jump on the same frame")
+
+
+# --- taskblock-61 Pass E4 (BR34.04): the sniper camera's viewing angle -------------------
+
+
+## `BR34.04` — **the camera sits on the shooter-to-target line, read off the real node.**
+##
+## The supervisor's spec: *"a short distance from the target, in line between shooter and target"*,
+## and *"directly above the line drawn between shooter and target, looking along it."* tb34 Pass D
+## centred the target from whatever angle the tactical camera happened to be at, which is what
+## *"frames the target from an odd angle"* is.
+##
+## **Read back from `global_transform`, and on a genuinely diagonal pair.** `docs/10` rule 2 exists
+## because the attack camera's yaw bug survived a full suite of hand-written cases that all shared
+## a row or a column; a solve that is wrong about which axis is which passes every aligned case and
+## fails the moment both coordinates differ. So the shooter and target here share neither.
+##
+## The assertion is the perpendicular distance from the camera to the vertical plane containing the
+## shooter-target line — derived from the two units' own positions, never from the solver's own
+## formula, which is the whole point of the rule.
+func test_the_sniper_camera_sits_on_the_shooter_to_target_line() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	var shooter := _make_unit(Vector2i(2, 3))
+	var target := _make_unit(Vector2i(9, 15))  # diagonal, and well past the sniper threshold
+	var distance: int = Grid.distance_chebyshev(shooter.cell, target.cell)
+	assert_gt(distance, CameraOrbitState.SNIPER_FRAME_DISTANCE, "sanity: genuinely past threshold")
+	var shooter_sphere: Dictionary = UnitGeometry.bounding_sphere(shooter)
+	var target_sphere: Dictionary = UnitGeometry.bounding_sphere(target)
+
+	rig.ease_to_framing(shooter_sphere, target_sphere, distance)
+	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
+
+	var camera_pos: Vector3 = rig.camera().global_transform.origin
+	var shooter_at: Vector3 = shooter_sphere.center
+	var target_at: Vector3 = target_sphere.center
+	var along := Vector2(target_at.x - shooter_at.x, target_at.z - shooter_at.z).normalized()
+	var to_camera := Vector2(camera_pos.x - target_at.x, camera_pos.z - target_at.z)
+	# Signed perpendicular offset from the line, in the ground plane.
+	var sideways: float = to_camera.x * along.y - to_camera.y * along.x
+	gut.p("camera at %s, sideways off the line by %.4f" % [camera_pos, sideways])
+	assert_almost_eq(sideways, 0.0, 0.001, "the camera must sit ON the shooter-to-target line")
+
+	# ...and on the SHOOTER's side of the target, not past it. A camera the right distance away on
+	# the far side is also "on the line" and is looking at the target from behind it.
+	assert_lt(
+		to_camera.dot(along), 0.0, "the camera must be between the shooter and the target, not past"
+	)
+
+
+## The lift is real and is the *only* thing off the line — *"directly above"* it. Read back as the
+## camera's own height against the line's height at that point, so a change to `SNIPER_UP_OFFSET`
+## moves this test's reported number rather than breaking its claim.
+func test_the_sniper_camera_sits_above_the_line_by_its_own_offset() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	var shooter := _make_unit(Vector2i(2, 3))
+	var target := _make_unit(Vector2i(9, 15))
+	var distance: int = Grid.distance_chebyshev(shooter.cell, target.cell)
+	var target_sphere: Dictionary = UnitGeometry.bounding_sphere(target)
+
+	rig.ease_to_framing(UnitGeometry.bounding_sphere(shooter), target_sphere, distance)
+	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
+
+	var camera_pos: Vector3 = rig.camera().global_transform.origin
+	var lift: float = camera_pos.y - (target_sphere.center as Vector3).y
+	gut.p("camera is %.4f above the target's own centre height" % lift)
+	assert_almost_eq(
+		lift,
+		CameraOrbitState.SNIPER_UP_OFFSET,
+		0.001,
+		"the camera rides exactly SNIPER_UP_OFFSET above the line, not at an arbitrary height"
+	)
+
+
+## **Lifting the camera must not push it further from the target than the fit solved for.** The
+## naive placement — go `zoom` out horizontally, then raise by the offset — lands at
+## `sqrt(zoom^2 + up^2)`, so the target it was solved to frame comes out slightly smaller than
+## intended. The horizontal leg is solved from the lift instead, and this reads the real distance
+## back to prove it.
+func test_the_lift_does_not_push_the_camera_past_its_solved_distance() -> void:
+	var rig := CameraRig.new()
+	add_child_autofree(rig)
+	var shooter := _make_unit(Vector2i(2, 3))
+	var target := _make_unit(Vector2i(9, 15))
+	var distance: int = Grid.distance_chebyshev(shooter.cell, target.cell)
+	var target_sphere: Dictionary = UnitGeometry.bounding_sphere(target)
+	var solved: Dictionary = CameraOrbitState.new().sniper_framing(
+		UnitGeometry.bounding_sphere(shooter), target_sphere
+	)
+
+	rig.ease_to_framing(UnitGeometry.bounding_sphere(shooter), target_sphere, distance)
+	rig._active_tween.custom_step(CameraRig.ATTACK_TWEEN_DURATION)
+
+	var actual: float = rig.camera().global_transform.origin.distance_to(target_sphere.center)
+	gut.p("solved zoom %.4f, real distance %.4f" % [solved.zoom, actual])
+	assert_almost_eq(
+		actual, solved.zoom as float, 0.001, "the real distance must equal the solved one"
+	)

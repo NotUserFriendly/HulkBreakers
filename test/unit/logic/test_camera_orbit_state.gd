@@ -235,7 +235,7 @@ func test_sniper_framing_pans_directly_on_the_targets_own_center() -> void:
 	var state := CameraOrbitState.new()
 	var target: Dictionary = _sphere(Vector3(9.0, 0.0, 3.0), 0.6)
 
-	var framing: Dictionary = state.sniper_framing(target)
+	var framing: Dictionary = state.sniper_framing(_sphere(Vector3.ZERO, 0.4), target)
 
 	assert_eq(framing.pan_offset, target.center)
 	assert_gt(framing.zoom, 0.0, "a real orbit distance, not a zero-distance look-at")
@@ -252,7 +252,7 @@ func test_sniper_framing_fits_the_targets_own_sphere_across_a_range_of_radii() -
 	state.pitch = -0.3
 	for radius in [0.2, 0.5, 1.0, 3.0, 8.0]:
 		var target: Dictionary = _sphere(Vector3(4.0, 0.0, -2.0), radius)
-		var framing: Dictionary = state.sniper_framing(target)
+		var framing: Dictionary = state.sniper_framing(_sphere(Vector3.ZERO, 0.4), target)
 		var camera_pos: Vector3 = _camera_pos(framing)
 		var look: Vector3 = _look_dir(framing.yaw, framing.pitch)
 		assert_true(
@@ -260,17 +260,36 @@ func test_sniper_framing_fits_the_targets_own_sphere_across_a_range_of_radii() -
 		)
 
 
-## With no second body to keep in frame, any viewing angle already centers
-## the target -- so, unlike attack_framing (which SOLVES a new yaw/pitch
-## from the shooter->target line), this keeps whatever the rig's current
-## orbit angle already is.
-func test_sniper_framing_keeps_the_current_yaw_and_pitch() -> void:
+## **Reversed at tb61 Pass E4 (`BR34.04`), and the old expectation is quoted rather than deleted.**
+##
+## This asserted `framing.yaw == 1.23` and `framing.pitch == -0.8` — that the solve keeps whatever
+## the rig's current orbit angle already is — on the reasoning that with no second body to keep in
+## frame, any viewing angle already centres the target. **That reasoning is still true and was
+## still not what the supervisor wanted:** the target is centred from an arbitrary heading, which
+## is what *"frames the target from an odd angle"* reports. The angle is now solved from the
+## shooter->target line, so the current one must NOT survive.
+func test_sniper_framing_solves_a_new_angle_rather_than_keeping_the_current_one() -> void:
 	var state := CameraOrbitState.new()
 	state.yaw = 1.23
 	state.pitch = -0.8
 	var target: Dictionary = _sphere(Vector3(9.0, 0.0, 3.0), 0.6)
 
-	var framing: Dictionary = state.sniper_framing(target)
+	var framing: Dictionary = state.sniper_framing(_sphere(Vector3.ZERO, 0.4), target)
+
+	assert_ne(framing.yaw, 1.23, "the viewing angle is solved, not inherited")
+	assert_ne(framing.pitch, -0.8, "and so is the pitch")
+
+
+## The one case where inheriting IS the honest answer: a shooter and target at the same point have
+## no horizontal line to sit on, so there is nothing to solve. Gated on the horizontal vector
+## exactly as `attack_framing` gates its own solve.
+func test_a_degenerate_shooter_target_pair_keeps_the_current_angle() -> void:
+	var state := CameraOrbitState.new()
+	state.yaw = 1.23
+	state.pitch = -0.8
+	var at := Vector3(9.0, 0.0, 3.0)
+
+	var framing: Dictionary = state.sniper_framing(_sphere(at, 0.4), _sphere(at, 0.6))
 
 	assert_eq(framing.yaw, 1.23)
 	assert_eq(framing.pitch, -0.8)
@@ -280,8 +299,9 @@ func test_sniper_framing_is_deterministic() -> void:
 	var state := CameraOrbitState.new()
 	var target: Dictionary = _sphere(Vector3(5.0, 0.0, 0.0), 0.4)
 
-	var a: Dictionary = state.sniper_framing(target)
-	var b: Dictionary = state.sniper_framing(target)
+	var shooter: Dictionary = _sphere(Vector3.ZERO, 0.4)
+	var a: Dictionary = state.sniper_framing(shooter, target)
+	var b: Dictionary = state.sniper_framing(shooter, target)
 
 	assert_eq(a.yaw, b.yaw)
 	assert_eq(a.pitch, b.pitch)
@@ -371,7 +391,7 @@ func test_sniper_framing_centers_the_target_at_any_height() -> void:
 	var state := CameraOrbitState.new()
 	for delta: float in HEIGHT_DELTAS:
 		var target: Dictionary = _sphere(Vector3(3.0, delta, 0.0), 0.4)
-		var framing: Dictionary = state.sniper_framing(target)
+		var framing: Dictionary = state.sniper_framing(_sphere(Vector3.ZERO, 0.4), target)
 		assert_eq(
 			framing.pan_offset as Vector3, target.center, "must center target at delta %s" % delta
 		)

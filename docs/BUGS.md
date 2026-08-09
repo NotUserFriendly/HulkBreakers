@@ -924,7 +924,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   `test_wheel_cycles_the_step_out_cell_and_wraps`. Every one passes. **They test the controller's
   state, which is correct; nothing tests that a player can see it**, which is the gap.
 
-### BR34.04 — Active — owner: `SUPERVISOR`
+### BR34.04 — Pending — owner: `SUPERVISOR`
 **Sniper camera frames the target from an odd angle**
 - **cluster:** `camera`
 - **Source:** `SUPERVISOR`
@@ -955,6 +955,55 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   probably be a short distance from the target, in line between shooter and target"*. Today it frames
   from a high angle. That is a solvable framing constraint rather than a bug in the solver, and it is
   the shape to aim at.
+
+**taskblock-61 Pass E4 — `Pending`. It was framing the target from BEHIND, and that is measured
+rather than inferred.** CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
+
+- **`CameraOrbitState.sniper_framing` now takes the shooter and solves a viewing angle**, where it
+  previously took only the target and kept the rig's current yaw and pitch. The entry's diagnosis
+  was exactly right: tb34 Pass D's decision was correct against a spec that only asked for
+  *centred*, and this rig centres at any angle because it faces its own `pan_offset` pivot.
+- **The measured old behaviour, read off the real `Camera3D` with the solve disabled** — shooter at
+  cell (2,3), target at (9,15), a genuinely diagonal pair:
+  - **1.248 units to the side** of the shooter-to-target line;
+  - **2.139 units PAST the target**, i.e. on the far side, looking back at it *away* from the
+    shooter — not a high angle so much as the wrong end of the shot;
+  - **1.694 units up** rather than the 0.6 it now rides at.
+  **"Frames from an odd angle" was understating it**; the camera was behind the thing being shot.
+- **The two supervisor statements are reconciled rather than picked between.** *"Directly above the
+  line drawn between shooter and target, looking along it"* and *"a short distance from the target,
+  in line between shooter and target"*: the camera sits on the line, on the shooter's side, lifted
+  by `SNIPER_UP_OFFSET`.
+- **The distance is unchanged** — the same closed-form solve that fits the target's angular
+  footprint to the usable half FOV, which already *is* "a short distance from the target". Only the
+  direction changed. The horizontal leg is derived as `sqrt(zoom^2 - up^2)` so the lift does not
+  push the camera further out than the fit asked for; a test reads the real distance back and pins
+  it against the solved one.
+- **`SNIPER_UP_OFFSET` is flagged, not designed, and is not a new number** — it is
+  `ATTACK_UP_OFFSET`, the lift the over-the-shoulder framing already uses, given its own name so
+  the two can be tuned apart. **If the sniper view wants to be flatter or higher, that constant is
+  the one line to move**, and it is the only number in this fix anybody chose.
+- **A degenerate shooter/target pair still keeps the current angle**, gated on the horizontal
+  vector exactly as `attack_framing` gates its own solve — with no line to sit on there is nothing
+  to solve, and a test pins it.
+- **Verified by reading the built node back, per `docs/10` rule 2, on a diagonal pair.** The
+  assertion is the perpendicular offset from the vertical plane through the shooter-target line,
+  derived from the two units' own positions and never from the solver's formula. **All three new
+  rig tests were confirmed red with the solve disabled** before being accepted.
+- **To see it:** aim at something more than `SNIPER_FRAME_DISTANCE` (5) cells away. The camera
+  should settle **behind and slightly above your own shooter, looking down the shot** — you should
+  be reading the shot's own geometry, with the target centred at the far end. Previously it framed
+  the target from whatever heading the tactical camera was last at, frequently from the far side.
+- **`BR51.01`'s note that this "may be one defect with" it is not supported by this fix.** The lean
+  that entry is about is `ATTACK_RIGHT_OFFSET` on the over-the-shoulder path; this is the sniper
+  path, which has no lateral offset at all and never did. They share a symptom vocabulary, not a
+  mechanism.
+- **Tests:** `test_camera_rig.gd::test_the_sniper_camera_sits_on_the_shooter_to_target_line`,
+  `::test_the_sniper_camera_sits_above_the_line_by_its_own_offset`,
+  `::test_the_lift_does_not_push_the_camera_past_its_solved_distance`;
+  `test_camera_orbit_state.gd::test_sniper_framing_solves_a_new_angle_rather_than_keeping_the_
+  current_one` (**a reversal** — the old `keeps_the_current_yaw_and_pitch` test is quoted in place
+  rather than deleted) and `::test_a_degenerate_shooter_target_pair_keeps_the_current_angle`.
 
 ### BR35.02 — Pending — owner: `SUPERVISOR`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**

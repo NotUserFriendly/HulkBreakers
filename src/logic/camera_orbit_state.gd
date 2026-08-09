@@ -63,6 +63,17 @@ const SNIPER_FRAME_DISTANCE := 5
 ## slack against, unlike `_solve_back`'s binary search) — a small backoff
 ## factor on the solved zoom, not a design number.
 const SNIPER_ZOOM_SLACK := 1.02
+## `BR34.04`: how far the sniper camera sits **above** the shooter-to-target line, in world units.
+##
+## The supervisor's spec has two statements and this is what reconciles them: *"directly above the
+## line drawn between shooter and target, looking along it"* and *"a short distance from the
+## target, in line between shooter and target"*. On the line, and a little above it.
+##
+## **Flagged, not designed, and deliberately not a new number** — it is `ATTACK_UP_OFFSET`, the
+## lift the over-the-shoulder framing already uses, given its own name so the two can be tuned
+## apart without one silently dragging the other. If the supervisor wants the sniper view flatter
+## or higher, this is the one line to move.
+const SNIPER_UP_OFFSET := ATTACK_UP_OFFSET
 
 var yaw: float = 0.0
 var pitch: float = DEFAULT_PITCH
@@ -188,10 +199,34 @@ func attack_framing(shooter: Dictionary, target: Dictionary) -> Dictionary:
 ## sphere distance at which the target's own angular footprint fits the
 ## usable half-FOV (closed-form here, unlike `_solve_back`'s binary
 ## search, because there is no second body's own footprint to jointly
-## satisfy). Keeps the CURRENT yaw/pitch rather than solving a new viewing
-## angle — with nothing else to keep in frame, any direction already
-## centers the target.
-func sniper_framing(target: Dictionary) -> Dictionary:
+## satisfy).
+##
+## ## tb61 Pass E4 (`BR34.04`): it solves a viewing angle now, and used to keep the current one
+##
+## **The old behaviour was correct against tb34 Pass D's spec and the spec was under-specified.**
+## That pass asked only that the target be *centred*, and this rig faces its own `pan_offset` pivot
+## by construction — so `pan_offset = target.center` centres it at **any** yaw and pitch, and
+## keeping the current pair was the smallest correct answer. CC flagged exactly this at the time
+## ("computing a shooter-relative viewing direction anyway would have been unrequested scope"). The
+## consequence is what the supervisor then reported: the target is centred, and the angle it is
+## centred *from* is whatever the tactical camera happened to be at, which reads as arbitrary.
+##
+## **The supervisor's spec, in two statements that this reconciles:** *"the camera should sit
+## directly above the line drawn between shooter and target, looking along it"*, and later *"a
+## short distance from the target, in line between shooter and target."* So: on the shooter's side
+## of the target, on that line, lifted by `SNIPER_UP_OFFSET`, looking back down it.
+##
+## **The distance is unchanged and is already "a short distance from the target"** — the same
+## closed-form solve, the one at which the target's own angular footprint fills the usable half
+## FOV. What changed is only the *direction* the camera sits in. The camera is placed at a
+## horizontal offset of `sqrt(zoom^2 - up^2)` rather than at `zoom`, so lifting it does not push it
+## further out than the fit solved for: the total distance to the pivot stays exactly `solved_zoom`.
+##
+## **A degenerate shooter/target pair keeps the current yaw/pitch**, gated on the horizontal vector
+## exactly as `attack_framing` gates its own solve — with no horizontal direction to face, there is
+## no line to sit on and the old behaviour is the only honest answer.
+func sniper_framing(shooter: Dictionary, target: Dictionary) -> Dictionary:
+	var target_center: Vector3 = target.center
 	var target_radius: float = target.radius
 	var usable_half_fov: float = deg_to_rad(CAMERA_FOV_DEG * 0.5) * ATTACK_MARGIN
 	# Solving the exact boundary (angular footprint == usable_half_fov, zero
@@ -205,11 +240,37 @@ func sniper_framing(target: Dictionary) -> Dictionary:
 		if target_radius > 0.0
 		else DEFAULT_ZOOM
 	)
+	var framing_zoom: float = clampf(solved_zoom, MIN_ZOOM, ATTACK_BACK_MAX)
+
+	var shooter_center: Vector3 = shooter.center
+	var to_target := Vector2(target_center.x - shooter_center.x, target_center.z - shooter_center.z)
+	var framing_yaw: float = yaw
+	var framing_pitch: float = pitch
+	if to_target != Vector2.ZERO:
+		var dir: Vector2 = to_target.normalized()
+		# Back along the shooter->target line from the target, lifted. `horizontal` is solved from
+		# the lift so `camera_pos.distance_to(target_center)` comes out at exactly `framing_zoom` —
+		# a camera placed at `framing_zoom` horizontally and THEN raised would sit further away
+		# than the fit asked for, shrinking the target it was solved to frame.
+		var lift: float = minf(SNIPER_UP_OFFSET, framing_zoom)
+		var horizontal: float = sqrt(maxf(framing_zoom * framing_zoom - lift * lift, 0.0))
+		var camera_pos: Vector3 = (
+			target_center - Vector3(dir.x, 0.0, dir.y) * horizontal + Vector3(0.0, lift, 0.0)
+		)
+		# The same formula `attack_framing` uses, verified against a real `Camera3D` — pitch from
+		# `asin(look_dir.y)`, yaw from `atan2(-horiz.x, -horiz.y)`. Read from one place rather than
+		# restated, so the two framings cannot drift about what a yaw is.
+		var look_dir: Vector3 = (target_center - camera_pos).normalized()
+		framing_pitch = asin(clampf(look_dir.y, -1.0, 1.0))
+		var horiz := Vector2(look_dir.x, look_dir.z)
+		if horiz.length() > 0.0001:
+			framing_yaw = atan2(-horiz.x, -horiz.y)
+
 	return {
-		"yaw": yaw,
-		"pitch": pitch,
-		"zoom": clampf(solved_zoom, MIN_ZOOM, ATTACK_BACK_MAX),
-		"pan_offset": target.center,
+		"yaw": framing_yaw,
+		"pitch": framing_pitch,
+		"zoom": framing_zoom,
+		"pan_offset": target_center,
 	}
 
 

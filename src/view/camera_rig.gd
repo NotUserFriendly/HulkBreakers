@@ -151,7 +151,7 @@ func ease_to_framing(
 	shooter_sphere: Dictionary, target_sphere: Dictionary, distance_cells: int
 ) -> void:
 	var framing: Dictionary = (
-		state.sniper_framing(target_sphere)
+		state.sniper_framing(shooter_sphere, target_sphere)
 		if distance_cells > CameraOrbitState.SNIPER_FRAME_DISTANCE
 		else state.attack_framing(shooter_sphere, target_sphere)
 	)
