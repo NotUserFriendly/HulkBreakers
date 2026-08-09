@@ -2,6 +2,40 @@
 
 ## Taskblock 61 — the hunt
 
+### `BR51.01` root cause — a cell address where a plane point belongs
+
+**Found by instrumenting the player path and reading the supervisor's isolated run, after three CC
+hypotheses were measured, reported, and killed by in-game evidence.** All three were real defects
+and none was this one; they are recorded in the entry so nobody re-runs them.
+
+**Two defects stacked.** A `Part` target was never re-resolved into the preview `CombatState` —
+the unit branch did it, the part branch did not exist — so `center_of_part`'s identity match
+missed on **290 of 290** reticle events. And the miss then returned
+`Vector2(fallback_cell.x, fallback_cell.y)`: a **cell address** in a slot that means
+`(lateral offset, world height)`. `reticle_offset = hit - centre` turned that into
+`(-14.74, -19.73)`, and nothing clamps it.
+
+**It explains every symptom at once** — left *and* down (both components are cell coordinates),
+worse further from the map origin, only on inanimate targets, independent of camera lean, range
+and weapon.
+
+**No fallback survives.** `center_of` and `depth_of` return **null** on a miss and `push_error` the
+reason onto the combat log. Supervisor's call — *"misses loud"* — with the constraint that a null
+must **not** become a refusal to fire, since refusals have their own machinery and their own open
+defect. `depth_of`'s old `0.0` was the same lie in a different unit: zero depth reads as *at the
+muzzle*.
+
+**Four functions folded into two**, per *"every point where we can stop using two systems to do the
+same thing we need to consolidate"*. `center_of`/`center_of_part` and `depth_of`/`depth_of_part`
+were already equivalent — `ShotPlane.build` sets `region.body` to the unit for every one of its
+parts — so one walk keyed on that serves both kinds, and four call-site ternaries collapsed with
+them.
+
+**The loud miss immediately earned its keep.** Three existing tests were **pinning the bug** (the
+cell fallback, and `0.0` depth twice) and are reversed with their old assertions quoted; two
+fixtures in `test_taskblock21_gun_data.gd` were building a target with **no `volume` at all** — a
+board state that cannot occur — and passed only because the old code invented a point for it.
+
 ### Pass A follow-up — the aim point is the torso, and a rotten test came out with it
 
 **Full gate green: 343 scripts, 3353 tests, 0 failures.**

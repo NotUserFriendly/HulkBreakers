@@ -355,102 +355,94 @@ static func units_along(plane: Array[Region], state: CombatState) -> Array[Unit]
 	return units
 
 
-## Where an untouched aim lands on `target` — a point, never a chosen body part (docs/02: the
-## dartboard picks a point, not a part). Shared by `AttackAction`'s default aim point and the aim
-## UI's reticle default, so both agree on "centre mass" rather than computing it twice.
+## **Where an untouched aim lands on `body`, and how far away it is — one lookup, two answers.**
 ##
-## ## tb61: the TORSO's centre, not the frontmost region's
+## `body` is a `Unit` or an unowned `Part` (a wall, a pillar, a field item). `ShotPlane.build`
+## already tags every region with the identity it belongs to — `region.body` — so **one walk keyed
+## on that serves both**, and the torso preference below is the only thing that needs to know
+## which kind it got.
 ##
-## **Supervisor's call, 2026-08-07:** *"aiming at the torso's center is likely the best aim point
-## for a unit to use"*, with targeting specific body parts arriving later for smarter units.
+## ## tb61: four functions became two, because two systems answering one question is how they
+## ## drift
 ##
-## This used to return the centre of the **frontmost** region — whichever single face of whichever
-## single part sat nearest the shooter. `docs/02` measured what that means and it is `BR54.01`: an
-## outstretched pistol or a raised arm *is* the frontmost region at close range, so the aim point
-## was the gun, **20.1 degrees off the muzzle-to-target axis at one cell** and dropping to under a
-## degree by three. A unit aimed at the weapon rather than at the body, and the error grew without
-## limit as range shrank because it is a fixed lateral distance inside the body.
+## This was `center_of`/`center_of_part` and `depth_of`/`depth_of_part`: two pairs, each pair
+## walking the same regions under two different match rules — `target.shell.all_parts()` for a
+## unit, `region.body` for a part. **They were already equivalent**, since `build` sets
+## `region.body` to the unit for every one of its parts. Supervisor's instruction, 2026-08-07:
+## *"every point where we can stop using two systems to do the same thing we need to
+## consolidate."*
 ##
-## **The torso is the shell's `root`**, which needs no new tag and no authoring: `docs/01` defines a
-## Shell as a single root part with the whole body assembled through its socket tree, so the root
-## *is* the central mass for a humanoid and the chassis for anything else. **If a body ever wants a
-## different anchor, a tag is the extension point** — this deliberately does not invent one now.
+## ## A miss returns null, and that is deliberate
 ##
-## **Falls back to the frontmost region** when the root projects nothing this angle — a torso fully
-## occluded by its own arm still gets a point rather than the cell centre, which is the old
-## behaviour and is better than nothing to aim at.
-static func center_of(plane: Array[Region], target: Unit) -> Vector2:
-	var root: Part = target.shell.root if target.shell != null else null
-	var torso: Region = null
+## `null` rather than a fabricated `Vector2`, because **there is no correct aim point for a body
+## that is not in this plane**, and every value that could be returned instead is a lie that
+## looks like an answer. `BR51.01` was exactly that: the old miss returned
+## `Vector2(cell.x, cell.y)` — a **cell address** where a **plane point** belongs — and
+## `TacticsController` differenced it into a reticle offset of `(-14.74, -19.73)`, aiming shots
+## fourteen cells sideways and nineteen below the deck. `depth_of` had the same shape, answering
+## `0.0`.
+##
+## **A null surfaces as a visible runtime error at the caller; it deliberately does NOT become a
+## refusal to fire.** The supervisor's call: refusals have their own machinery and their own open
+## defect, and quietly routing an impossible state into it would bury both. The `push_error` puts
+## the reason on the combat log via `EngineErrorTap`, so the cause is readable rather than
+## inferred from a stack trace.
+##
+## **This path should now be unreachable in normal play.** It fired on every reticle event in the
+## reported session only because `TacticsController` was handing in a `Part` from a different
+## `CombatState` than the plane was built from; that is repaired at the caller. What remains here
+## is the guarantee that the *next* such mistake announces itself instead of steering a shot.
+static func center_of(plane: Array[Region], body: Variant) -> Variant:
+	var best: Region = _frontmost_for(plane, body)
+	if best == null:
+		_no_region_for(body)
+		return null
+	return best.rect.get_center()
+
+
+## The depth companion — same walk, same rule, same null on a miss.
+static func depth_of(plane: Array[Region], body: Variant) -> Variant:
+	var best: Region = _frontmost_for(plane, body)
+	if best == null:
+		_no_region_for(body)
+		return null
+	return best.depth
+
+
+## **The one walk.** Nearest region belonging to `body`, preferring the torso when `body` is a
+## unit — `docs/02`/tb61: the aim point is the torso's centre, not whichever part happens to
+## project nearest, so an outstretched weapon stops being what a unit aims at.
+static func _frontmost_for(plane: Array[Region], body: Variant) -> Region:
+	var root: Part = (body as Unit).shell.root if body is Unit else null
 	var frontmost: Region = null
-	var target_parts: Array[Part] = target.shell.all_parts()
+	var torso: Region = null
 	for region: Region in plane:
-		if not target_parts.has(region.part):
+		if region.body != body:
 			continue
 		if frontmost == null or region.depth < frontmost.depth:
 			frontmost = region
 		if root != null and region.part == root:
 			if torso == null or region.depth < torso.depth:
 				torso = region
-	var best: Region = torso if torso != null else frontmost
-	if best == null:
-		return Vector2(target.cell.x, target.cell.y)
-	return best.rect.get_center()
+	return torso if torso != null else frontmost
 
 
-## tb32 Pass C: the `center_of` counterpart for a non-unit target (wall/
-## cover/downed object/field item, `PartPicker`'s new HitKind.PART) —
-## matched by `region.body` rather than a Unit's `shell.all_parts()`:
-## `ShotPlane.build` above tags every region in one blocker/field-item's
-## own assembly with the SAME root-Part identity (`region.body = part`),
-## so this finds the frontmost region belonging to that whole object the
-## same way `center_of` finds the frontmost region belonging to a whole
-## unit's body.
-static func center_of_part(plane: Array[Region], part: Part, fallback_cell: Vector2i) -> Vector2:
-	var best: Region = null
-	for region: Region in plane:
-		if region.body != part:
-			continue
-		if best == null or region.depth < best.depth:
-			best = region
-	if best == null:
-		return Vector2(fallback_cell.x, fallback_cell.y)
-	return best.rect.get_center()
-
-
-## taskblock-37 Pass A: `center_of`'s own companion — the frontmost
-## region's real DEPTH, not just its rect center. `DamageResolver._find_
-## next` reconstructs a candidate's real height as `point.y + vertical_
-## slope * (candidate.depth - point_depth)`: for a genuinely tilted first
-## hop, the dartboard's own aim point sits at the TARGET's own depth, not
-## the origin's, so testing OTHER candidates (in front of or behind the
-## target) needs to adjust relative to THAT depth, not depth zero. `0.0`
-## (no matching region) is exactly a ricochet's own convention too — a
-## ricochet's continuation plane is always fresh-built from the deflection
-## point itself, genuinely AT depth zero, so this reduces to the exact old
-## formula for every ricochet hop and every caller that never computes a
-## real point_depth at all.
-static func depth_of(plane: Array[Region], target: Unit) -> float:
-	var target_parts: Array[Part] = target.shell.all_parts()
-	var best: Region = null
-	for region: Region in plane:
-		if not target_parts.has(region.part):
-			continue
-		if best == null or region.depth < best.depth:
-			best = region
-	return 0.0 if best == null else best.depth
-
-
-## `center_of_part`'s own depth companion — see `depth_of`'s own doc
-## comment for why this exists at all.
-static func depth_of_part(plane: Array[Region], part: Part) -> float:
-	var best: Region = null
-	for region: Region in plane:
-		if region.body != part:
-			continue
-		if best == null or region.depth < best.depth:
-			best = region
-	return 0.0 if best == null else best.depth
+static func _no_region_for(body: Variant) -> void:
+	var name: String = "<null>"
+	if body is Unit:
+		name = "unit %d" % (body as Unit).id
+	elif body is Part:
+		name = "part %s" % (body as Part).id
+	push_error(
+		(
+			(
+				"ShotPlane: no region for %s — it is not in this plane, so there is no aim point "
+				+ "for it. Returning null rather than inventing one; the caller is most likely "
+				+ "holding a body from a different CombatState than the plane was built from."
+			)
+			% name
+		)
+	)
 
 
 static func _offset(cell: Vector2i, origin: Vector2, dir: Vector2, perp: Vector2) -> Vector2:

@@ -259,11 +259,7 @@ func refresh() -> void:
 		return
 
 	var aim_point: Vector2 = (
-		(
-			ShotPlane.center_of(plane, target.unit)
-			if target.unit != null
-			else ShotPlane.center_of_part(plane, target.part, target.cell)
-		)
+		ShotPlane.center_of(plane, target.unit if target.unit != null else target.part)
 		+ tactics.reticle_offset
 	)
 	var action_id: StringName = tactics.armed_action.id if tactics.armed_action != null else &""

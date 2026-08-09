@@ -317,7 +317,15 @@ func test_center_of_returns_the_frontmost_regions_rect_center() -> void:
 	)
 
 
-func test_center_of_falls_back_to_the_targets_cell_with_no_regions() -> void:
+## **Reversed at tb61 (`BR51.01`).** This pinned `center_of` returning the target's **cell** when
+## it found no region — `assert_eq(..., Vector2(4, 4))` for a unit at cell (4, 4). That value is a
+## cell address in a slot that means `(lateral offset, world height)`, and `TacticsController`
+## differenced it into a reticle offset of `(-14.74, -19.73)`: shots aimed fourteen cells sideways
+## and nineteen below the deck. **The test was pinning the bug.**
+##
+## A miss returns `null` now — there is no correct aim point for a body that is not in the plane,
+## and every value that could be returned instead is a lie that looks like an answer.
+func test_center_of_returns_null_with_no_regions() -> void:
 	var no_volume := Part.new()
 	no_volume.id = &"ghost"
 	no_volume.hp = 5
@@ -326,30 +334,36 @@ func test_center_of_falls_back_to_the_targets_cell_with_no_regions() -> void:
 	var state := CombatState.new(Grid.new(10, 10), [ghost_unit])
 	var plane: Array[Region] = ShotPlane.build(Vector3(4, 0.0, 0), Vector3(0, 0.0, 1), state)
 
-	assert_eq(ShotPlane.center_of(plane, ghost_unit), Vector2(4, 4))
+	var centre: Variant = ShotPlane.center_of(plane, ghost_unit)
+	assert_push_error("ShotPlane: no region for")
+	assert_null(centre, "a miss must not invent an aim point")
+	assert_ne(centre, Vector2(4, 4), "and emphatically must not hand back the cell address")
 
 
-## tb32 Pass C: the PartPicker counterpart — matched by `region.body`
-## (a blocker/field item's own root Part identity, ShotPlane.build's own
-## `region.body = part`) instead of a Unit's `shell.all_parts()`.
-func test_center_of_part_returns_the_frontmost_regions_rect_center() -> void:
+## tb32 Pass C, folded at tb61: **the same `center_of` handles a Part**, matched by `region.body`
+## — a blocker or field item's own root identity — exactly as it matches a unit. There is no
+## longer a separate `center_of_part`; two functions answering one question is how they drift.
+func test_center_of_returns_the_frontmost_regions_rect_center_for_a_part() -> void:
 	var grid := Grid.new(10, 10)
 	var wall := _part(&"wall", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 0.2)))
 	grid.blockers[Vector2i(2, 2)] = wall
 	var state := CombatState.new(grid, [])
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
-	var center: Vector2 = ShotPlane.center_of_part(plane, wall, Vector2i(2, 2))
+	var center: Vector2 = ShotPlane.center_of(plane, wall)
 	var expected: Region = ShotPlane.resolve_projectile(plane, center)
 	assert_eq(
 		expected.part.id, &"wall", "the returned point must land inside the wall's own region"
 	)
 
 
-func test_center_of_part_falls_back_to_the_given_cell_with_no_matching_region() -> void:
+## The Part half of the same reversal — this pinned the cell fallback too.
+func test_center_of_returns_null_for_a_part_with_no_matching_region() -> void:
 	var unrelated := _part(&"unrelated", Box.new(Vector3.ZERO, Vector3(1.0, 1.0, 1.0)))
 
-	assert_eq(ShotPlane.center_of_part([], unrelated, Vector2i(4, 4)), Vector2(4, 4))
+	var centre: Variant = ShotPlane.center_of([], unrelated)
+	assert_push_error("ShotPlane: no region for")
+	assert_null(centre, "a miss must not invent an aim point")
 
 
 ## Reading (the aim window's own `layers_for`/`window_depth`) and resolving
@@ -555,30 +569,37 @@ func test_depth_of_returns_the_frontmost_regions_own_depth() -> void:
 	assert_eq(ShotPlane.depth_of(plane, near_unit), expected.depth)
 
 
-func test_depth_of_falls_back_to_zero_with_no_regions() -> void:
+## **Reversed at tb61**, the Unit twin of the Part case below. `0.0` reads as a real depth —
+## "at the muzzle" — so a miss reporting it is indistinguishable from a target standing on the
+## gun.
+func test_depth_of_returns_null_with_no_regions() -> void:
 	var no_volume := Part.new()
 	no_volume.id = &"ghost"
 	no_volume.hp = 5
 	no_volume.max_hp = 5
 	var ghost_unit := Unit.new(Matrix.new(), Shell.new(no_volume), Vector2i(4, 4))
 
-	assert_eq(ShotPlane.depth_of([], ghost_unit), 0.0)
+	var depth: Variant = ShotPlane.depth_of([], ghost_unit)
+	assert_push_error("ShotPlane: no region for")
+	assert_null(depth, "a miss must not report a depth at all, let alone zero")
 
 
-func test_depth_of_part_returns_the_frontmost_regions_own_depth() -> void:
+func test_depth_of_returns_the_frontmost_regions_own_depth_for_a_part() -> void:
 	var grid := Grid.new(10, 10)
 	var wall := _part(&"wall", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 0.2)))
 	grid.blockers[Vector2i(2, 2)] = wall
 	var state := CombatState.new(grid, [])
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
-	var expected: Region = ShotPlane.resolve_projectile(
-		plane, ShotPlane.center_of_part(plane, wall, Vector2i(2, 2))
-	)
-	assert_eq(ShotPlane.depth_of_part(plane, wall), expected.depth)
+	var expected: Region = ShotPlane.resolve_projectile(plane, ShotPlane.center_of(plane, wall))
+	assert_eq(ShotPlane.depth_of(plane, wall), expected.depth)
 
 
-func test_depth_of_part_falls_back_to_zero_with_no_matching_region() -> void:
+## **Reversed at tb61 with its `center_of` sibling.** `0.0` is the same shape of lie: a plausible
+## number for "not found", in a slot where zero depth means "at the muzzle".
+func test_depth_of_returns_null_with_no_matching_region() -> void:
 	var unrelated := _part(&"unrelated", Box.new(Vector3.ZERO, Vector3(1.0, 1.0, 1.0)))
 
-	assert_eq(ShotPlane.depth_of_part([], unrelated), 0.0)
+	var depth: Variant = ShotPlane.depth_of([], unrelated)
+	assert_push_error("ShotPlane: no region for")
+	assert_null(depth, "a miss must not report a depth of zero, which means 'at the muzzle'")

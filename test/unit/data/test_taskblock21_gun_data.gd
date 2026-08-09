@@ -20,6 +20,21 @@ func after_each() -> void:
 ## H1: "the reference guns are authored with two rings... re-author each
 ## gun's scatter as three: outer (few, low weight), middle (most, high
 ## weight), inner (few, low weight)."
+## tb61: **a target with a real box.** These fixtures used `Shell.new(Part.new())` — a body with
+## no `volume`, which projects no regions at all. That is a board state that cannot occur, and it
+## only passed because `ShotPlane.center_of` used to answer a miss with a made-up point. It is
+## loud now (`BR51.01`), so the fixture has to be honest: these tests are about AP cost, and AP is
+## spent whether or not the round finds anything, so giving the target geometry changes nothing
+## they assert.
+func _target_at(cell: Vector2i) -> Unit:
+	var torso := Part.new()
+	torso.id = &"torso"
+	torso.hp = 10
+	torso.max_hp = 10
+	torso.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(0.8, 1.0, 0.4))]
+	return Unit.new(Matrix.new(), Shell.new(torso), cell)
+
+
 func test_every_reference_gun_authors_its_own_rings_with_the_middle_heaviest() -> void:
 	for gun_id: StringName in [
 		&"sniper_rifle", &"chaingun", &"pump_shotgun", &"auto_shotgun", &"rifle"
@@ -72,7 +87,7 @@ func test_sniper_rifles_ap_cost_is_what_attack_action_actually_spends() -> void:
 	torso.sockets = [grip, wrist]
 
 	var shooter := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
-	var target := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(1, 0))
+	var target: Unit = _target_at(Vector2i(1, 0))
 	var state := CombatState.new(Grid.new(5, 5), [shooter, target])
 	shooter.ap = 10
 	var before_ap: int = shooter.ap
@@ -101,7 +116,7 @@ func test_chainguns_burst_spends_burst_ap_cost() -> void:
 	torso.sockets = [grip, wrist]
 
 	var shooter := Unit.new(Matrix.new(), Shell.new(torso), Vector2i(0, 0))
-	var target := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(1, 0))
+	var target: Unit = _target_at(Vector2i(1, 0))
 	var state := CombatState.new(Grid.new(5, 5), [shooter, target])
 	shooter.ap = 10
 	var before_ap: int = shooter.ap

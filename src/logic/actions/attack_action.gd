@@ -159,21 +159,12 @@ func apply(state: CombatState) -> void:
 	var range_cells: int = Grid.distance_chebyshev(actual.cell, target_cell)
 
 	var aim_point: Vector2 = (
-		(
-			ShotPlane.center_of(plane, target)
-			if target != null
-			else ShotPlane.center_of_part(plane, target_part, target_cell)
-		)
-		+ aim_offset
+		(ShotPlane.center_of(plane, target if target != null else target_part)) + aim_offset
 	)
 	# taskblock-37 Pass A: the aim point's own real depth — see
 	# `ShotPlane.depth_of`'s own doc comment for why `_find_next` needs
 	# this to correctly test a tilted shot's OTHER candidates.
-	var aim_depth: float = (
-		ShotPlane.depth_of(plane, target)
-		if target != null
-		else ShotPlane.depth_of_part(plane, target_part)
-	)
+	var aim_depth: float = ShotPlane.depth_of(plane, target if target != null else target_part)
 	var resolved_scatter: Array[Ring] = ShotScatter.for_shot(
 		actual, weapon, target_cell, state, extra_sources
 	)

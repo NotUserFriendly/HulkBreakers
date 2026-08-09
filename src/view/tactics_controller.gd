@@ -169,6 +169,9 @@ var input_capture_mode: bool = false
 ## was computed for. Cleared whenever aim ends, so a stale plane can never outlive the aim
 ## that built it.
 var _aim_state_cache: Dictionary = {}
+## tb61 (`BR51.01`): the last `reticle_offset` written to the log, so a mouse dragged across the
+## board emits one line per real change rather than one per motion event.
+var _last_logged_reticle: Vector2 = Vector2(INF, INF)
 var _aim_state_key: String = ""
 ## taskblock-51 (`BR26.02`): **the worst frame while aiming, not one sample from it.**
 ##
@@ -985,12 +988,75 @@ func aim_reticle_at_screen(screen_pos: Vector2) -> void:
 	)
 	if hit == null:
 		return
-	var center: Vector2 = (
-		ShotPlane.center_of(plane, target.unit)
-		if target.unit != null
-		else ShotPlane.center_of_part(plane, target.part, target.cell)
+	# tb61: one lookup keyed on `region.body`, whichever kind the target is.
+	var center: Vector2 = ShotPlane.center_of(
+		plane, target.unit if target.unit != null else target.part
 	)
 	reticle_offset = (hit as Vector2) - center
+	# tb61 (`BR51.01`): **the raw cursor-to-plane conversion, logged once per armed shot.**
+	#
+	# The supervisor's isolated run showed `reticle_offset` reaching **-8.00 lateral and -2.34
+	# below ground**, with the aim point tracking it almost exactly — so the resolver is aiming
+	# faithfully at a point this line produced. Nothing anywhere clamps this value.
+	#
+	# What is still unknown is which half is wrong: the conversion's INPUTS (a shooter/target
+	# cell pair that is not what the player is looking at) or its OUTPUT (an ill-conditioned
+	# ray-plane intersection). Both are in this event.
+	#
+	# **Emitted only when the value actually changes**, so a mouse dragged across the board does
+	# not write a line per motion event — the log is a monitoring channel shared with the
+	# supervisor (`BR61.01`), not a firehose.
+	if not _last_logged_reticle.is_equal_approx(reticle_offset) and selection.state != null:
+		_last_logged_reticle = reticle_offset
+		(
+			selection
+			. state
+			. combat_log
+			. emit(
+				(
+					LogEvent
+					. new(
+						selection.state.round_number,
+						Enums.Phase.TACTICS,
+						shooter.id,
+						&"reticle_aimed",
+						{
+							"hit": hit as Vector2,
+							"center": center,
+							"offset": reticle_offset,
+							"shooter_cell": shooter.cell,
+							"target_cell": target.cell,
+							"target_is_unit": target.unit != null,
+							"ray_origin": ray_origin,
+							"ray_dir": ray_dir,
+						},
+						(
+							(
+								"reticle: hit %+.2f,%+.2f  centre %+.2f,%+.2f  offset %+.2f,%+.2f"
+								+ "  shooter %s -> target %s (unit=%s)  ray from (%.2f,%.2f,%.2f) dir (%.2f,%.2f,%.2f)"
+							)
+							% [
+								(hit as Vector2).x,
+								(hit as Vector2).y,
+								center.x,
+								center.y,
+								reticle_offset.x,
+								reticle_offset.y,
+								str(shooter.cell),
+								str(target.cell),
+								str(target.unit != null),
+								ray_origin.x,
+								ray_origin.y,
+								ray_origin.z,
+								ray_dir.x,
+								ray_dir.y,
+								ray_dir.z,
+							]
+						)
+					)
+				)
+			)
+		)
 	reticle_changed.emit()
 	# tb34 Pass C: hover reads, never re-aims -- called AFTER reticle_offset
 	# is already set and its own aim_changed already emitted, from the same
@@ -1146,6 +1212,29 @@ func _build_aim_state() -> Dictionary:
 		if preview_target == null:
 			return {}
 		target = AimTarget.for_unit(preview_target)
+	elif aiming_at.part != null:
+		# tb61 (`BR51.01`): **a Part target has to be re-resolved into the preview too, and this
+		# branch simply did not exist.**
+		#
+		# The plane below is built from `preview`, a `CombatState.dup()`, so its blockers and
+		# field items are DUPLICATED Parts. The unit branch above already re-resolves by id for
+		# exactly this reason; a Part target kept its reference to the original, and
+		# `ShotPlane.center_of_part` matches on `region.body != part` by **identity**. So the
+		# lookup missed every single time — 290 of 290 reticle events in the reported session —
+		# and fell through to a fallback that returned a cell address as a plane point.
+		#
+		# **`docs/09`'s own rule, which the unit branch follows and this one did not:** never
+		# hold a bare `Part` reference across states; re-resolve it from the state you are
+		# actually working in.
+		var previewed: Part = preview.grid.blockers.get(aiming_at.cell)
+		if previewed == null:
+			var items: Array = preview.grid.field_items.get(aiming_at.cell, [])
+			for item: Variant in items:
+				if item is Part and (item as Part).id == aiming_at.part.id:
+					previewed = item as Part
+					break
+		if previewed != null:
+			target = AimTarget.for_part(previewed, aiming_at.cell)
 	# docs/10 taskblock05 A3: "aim from where the unit WILL BE" applies to
 	# facing too — the projected shot plane must be built from the facing
 	# the shooter will actually have (AttackAction's own free face at

@@ -1330,7 +1330,7 @@ every fire**
 - **Do not silence the warning as the fix.** It is doing its job; the placeholder is what wants
   resolving.
 
-### BR51.01 — Active — owner: `SUPERVISOR`
+### BR51.01 — Pending — owner: `SUPERVISOR`
 **Sniper rifle and chaingun consistently shoot wide left of the aim point**
 - **cluster:** `shot-geometry`
 - **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
@@ -1508,6 +1508,71 @@ degrees by three. **Do not treat the table above as the explanation.**
 `ShotAnnouncement` now carries `aim_offset` (what the reticle asked for) and `aim_point` (what the
 resolver used); the emit was verified end to end rather than assumed. **This is a player-touched
 defect and the supervisor's instruction stands: it is confirmed in the real game, not headlessly.**
+
+## ROOT CAUSE FOUND AND FIXED — `Pending [CC 93549217-f453-4fd6-b8f3-cecf9532290e]`
+
+**Two defects stacked. Neither alone would have been more than a nuisance; together they aimed
+shots fourteen cells sideways and nineteen below the deck.**
+
+**1. A `Part` target was never re-resolved into the preview state.** `TacticsController._build_aim_
+state` builds its shot plane from `preview = queue.preview(state)` — a `CombatState.dup()` — so the
+plane's blockers and field items are **duplicated** `Part`s. The **unit** branch already
+re-resolved by id (`preview.find_unit(...)`) for exactly this reason. **The part branch did not
+exist**: `target = aiming_at` kept the original reference, and `ShotPlane.center_of_part` matched
+`region.body != part` **by identity**. So the lookup missed every time — **290 of 290 reticle
+events** in the supervisor's isolated session, all `unit=false`. This is `docs/09`'s own "never
+hold a bare `Part` reference across states" rule, followed on one branch and absent on the other.
+
+**2. The miss returned a cell address where a plane point belongs.**
+
+```gdscript
+if best == null:
+    return Vector2(fallback_cell.x, fallback_cell.y)   # the old shot_plane.gd
+```
+
+A plane point is `(lateral offset from the ray axis, world height)` — under a cell in each
+component for any real body. A **cell address** is wherever the target sits on the board.
+`aim_reticle_at_screen` then computes `reticle_offset = hit - centre`, and **nothing anywhere
+clamps it**. From the log, verbatim:
+
+```
+reticle: hit -7.74,-4.73  centre +7.00,+15.00  offset -14.74,-19.73
+         shooter (7, 18) -> target (7, 15) (unit=false)
+```
+
+`centre` is literally the target's cell. `depth_of` had the identical shape, answering `0.0` — and
+zero depth reads as *at the muzzle*.
+
+**It explains every symptom**: left *and* down together (both components are cell coordinates),
+worse the further the target sits from the map origin, only on inanimate targets, and independent
+of camera lean, range and weapon — which is why three earlier hypotheses all measured real things
+and none of them was this.
+
+**The fix, both halves:**
+- `_build_aim_state` re-resolves a `Part` target out of the preview's own `grid.blockers` /
+  `grid.field_items`, mirroring the unit branch.
+- **`center_of` and `depth_of` return `null` on a miss** and `push_error` the reason onto the
+  combat log via `EngineErrorTap`. **No fallback at all** — supervisor's call, *"misses loud"*, and
+  their reasoning is recorded in the function's own header: there is no correct aim point for a
+  body that is not in the plane, and every value returnable instead is a lie that looks like an
+  answer. **A null surfaces as a visible runtime error and deliberately does NOT become a refusal
+  to fire**, because refusals have their own machinery and their own open defect.
+- **Four functions folded into two.** `center_of`/`center_of_part` and `depth_of`/`depth_of_part`
+  were two pairs walking the same regions under two match rules that were already equivalent —
+  `ShotPlane.build` sets `region.body` to the unit for every one of its parts. One walk
+  (`_frontmost_for`) keyed on `region.body` serves both kinds. Supervisor's instruction: *"every
+  point where we can stop using two systems to do the same thing we need to consolidate."*
+
+**Tests:** `test_aim_point_units.gd` (four), plus three existing tests **reversed because they were
+pinning the bug** — `center_of` falling back to the cell, and `depth_of`/`depth_of_part` falling
+back to `0.0`. The loud miss also caught **two dishonest fixtures** in `test_taskblock21_gun_data.gd`
+that built a target with no `volume` at all — a board state that cannot occur, passing only because
+the old code invented a point for it.
+
+**To see it work:** place units by debug and fire at a pillar or wall from several facings, as in
+the reported session. Rounds should travel along the announced direction; `weapon_used` now logs
+`aim` and `offset` beside the facing, and a healthy shot has an `offset` under a cell in both
+components. **A `ShotPlane: no region for ...` line in the log means this has regressed.**
 
 ### BR51.14 — Active — owner: `CC`
 **Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
@@ -2529,7 +2594,7 @@ wreck to become.
 **Still `Active`, and it closes as a consequence of that item rather than on its own.**
 taskblock-61 fixed nothing here.
 
-### BR61.01 — Active — owner: `CC`
+### BR61.01 — Active — owner: `SUPERVISOR`
 **Every test run rotates and writes the supervisor's live combat log, so CC's tooling and the supervisor's play sessions land in the same files**
 - **cluster:** `test-infrastructure`
 - **Source:** `SUPERVISOR`, 2026-08-07 — *"your tools should print to log as well. We may have
@@ -2558,4 +2623,62 @@ or the startup `log: <path>` line the supervisor uses.
 **Not fixed here** — filed mid-investigation, and the supervisor is isolating runs by hand for now.
 **Worth doing before the next hunt**, because a shared monitoring channel that silently mixes two
 sources produced a wrong conclusion within an hour of being noticed.
+
+**Promoted to `SUPERVISOR` ownership at the supervisor's request, 2026-08-07:** *"I want to have a
+hand in its creation."* So the separation is a design conversation rather than a CC chore — where
+the test log lives, whether the split is by path or by process, and what the startup line says are
+all decisions about a channel `docs/09` gives two consumers. **CC may not close this.**
+
+### BR61.02 — Active — owner: `CC`
+**The aim camera's lean moves a stationary cursor's aim point by 1.5 cells**
+- **cluster:** `shot-geometry`
+- **Source:** `CC`  ·  **CC session:** `93549217-f453-4fd6-b8f3-cecf9532290e`
+- **Found:** 2026-08-07, taskblock-61, while hunting `BR51.01`. **Filed only now that `BR51.01` is
+  settled** — filing entries off a moving diagnosis is how a ledger fills with near-misses.
+
+**`CameraRig.aim_at` rotates the real `Camera3D` toward the reticle by up to `MAX_LEAN_DEG` (5.0),
+and `TacticsController.aim_reticle_at_screen` casts the cursor ray through that same camera.** So
+the camera moves in response to where the reticle is, and the reticle is computed by projecting
+through the camera.
+
+**Measured**, and `test_aim_ray_is_camera_dependent.gd` pins it: the same screen pixel resolves to
+`(0.0000, 0.0000)` un-leaned and `(+1.5000, 0.0000)` after the lean. **The shift equals the reticle
+offset leaned toward** — the lean drags the aim point onto itself rather than merely nudging it.
+
+**Bounded, not compounding.** `aim_at` calls `look_at(centre)` before leaning, so each frame
+re-bases on the un-leaned pose; six cycles move the reading by 0.00000 cells. That matters for the
+fix: a compounding error would need the loop cut, a bounded one needs the cursor's meaning anchored
+to something the camera does not move.
+
+**This is NOT `BR51.01`** — removing the lean was implemented and the reported symptom persisted in
+game, which is what sent that hunt elsewhere. It is a real defect of its own, and a much smaller one.
+
+**Do not "fix" it by un-leaning the projection.** That restores the old answer exactly (pinned in
+the same test file), which is what makes it look like a fix while leaving the cursor's meaning
+dependent on a camera pose. **Do not delete the lean either** — supervisor, 2026-08-07:
+*"disconnecting the flourish and the actual result is what we're trying for here."* The shape is
+`PLAN.md`'s *Take the camera out of shot processing*.
+
+### BR61.03 — Active — owner: `CC`
+**The aim preview and the shot resolution anchor their planes at different points**
+- **cluster:** `shot-geometry`
+- **Source:** `CC`  ·  **CC session:** `93549217-f453-4fd6-b8f3-cecf9532290e`
+- **Found:** 2026-08-07, taskblock-61, while hunting `BR51.01`.
+
+**Two planes, two anchors, and each file's own comment admits its choice:**
+
+| | origin | height |
+|---|---|---|
+| `TacticsController._build_aim_state` (preview) | shooter's **cell** | **ground** — *"no specific weapon is in view for the aim PREVIEW itself ... same no-muzzle convention"* |
+| `AttackAction.apply` (resolution) | **shouldered muzzle** | **muzzle** |
+
+**taskblock-26 Pass A2 moved the resolution anchor off the cell centre and left the preview
+behind.** Its own comment explains why the resolution had to move — the tracer was landing "dead in
+the middle of the shooter's own torso" — and nothing carried that to the preview.
+
+**Measured at 0.067 cells of centre-mass difference at 2 range, decaying to 0.006 at 12.** Real,
+small, and **not** `BR51.01`, which it was briefly suspected of being.
+
+**The weapon IS available to the preview**, so the comment's premise is stale: `TacticsController`
+already passes `weapon.id` into `ActionCatalog.build_firing_action` a few lines away.
 

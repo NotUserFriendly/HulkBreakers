@@ -840,8 +840,14 @@ the wreck contributes no `agility`, no `step_height` and no locomotion — which
   rather than patching when this lands.
 
 ### Take the camera out of shot processing
-**Needs:** nothing. **Unblocks:** `BR51.01`; aiming being a property of the gun rather than of the
+**Needs:** nothing. **Unblocks:** `BR61.02`; aiming being a property of the gun rather than of the
 view.
+
+**Corrected at tb61: this does NOT unblock `BR51.01`, which it used to claim.** That entry's root
+cause turned out to be a cell address returned where a plane point belonged, and it is fixed. The
+camera lean is a **separate, smaller, still-live** defect — measured at 1.5 cells of aim-point
+movement for a stationary cursor — now filed as `BR61.02`. **Removing the lean was tried and
+reverted**: the supervisor wants the flourish disconnected from the result, not deleted.
 
 **The supervisor's specification, recorded against `BR51.01` and lifted here because it is
 architecture rather than a bug fix:**
