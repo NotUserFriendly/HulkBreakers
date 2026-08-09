@@ -216,6 +216,11 @@ func apply(state: CombatState) -> void:
 		var shot := ShotAnnouncement.new(
 			&"burst", actual.id, origin, direction, actual.orientation, weapon_id
 		)
+		# tb61 (`BR51.01`): what the player asked for and what the resolver used, side by side.
+		# `pull_point` rather than `aim_point` — a burst's later pulls are recoil-widened, so the
+		# per-pull point is the one that actually produced this announcement's rounds.
+		shot.aim_offset = aim_offset
+		shot.aim_point = pull_point
 		var pull_hit := false
 		for point: Vector2 in pellet_points:
 			var landed: bool = ShotResolution.resolve_and_log_point(

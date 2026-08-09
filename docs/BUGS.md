@@ -1449,6 +1449,60 @@ architectural change to how `TacticsController` turns a cursor into an aim point
 the lean. Doing it inside a hunt pass would either half-build it or quietly become the whole block.
 **It wants its own item; the diagnosis is complete enough that it can be picked up cold.**
 
+## taskblock-61 — three CC hypotheses tried and killed by in-game evidence
+
+**Read this before proposing a fourth.** Each was measured, each looked convincing, and each was
+disproved by the supervisor firing real shots. **The pattern in all three is the same: a component
+was measured headlessly and the whole was inferred from it.**
+
+**1. The camera lean.** Removing it was implemented and the shot still went wide in game. The lean
+IS a real defect — `test_aim_ray_is_camera_dependent.gd` measures a stationary cursor's aim point
+moving **1.5 cells** when the camera leans, and that test stands — but it is not this entry's
+symptom. **Reverted; the flourish is deliberately kept.** The supervisor's correction: *"removing
+the flourish is not what we're going for, disconnecting the flourish and the actual result is what
+we're trying for here."*
+
+**2. The preview/resolution plane split.** Real and worth recording: `TacticsController._build_
+aim_state` anchors its plane on the shooter's **cell at ground height** (its own comment: *"no
+specific weapon is in view for the aim PREVIEW itself ... same no-muzzle convention"*), while
+`AttackAction.apply` anchors on the **shouldered muzzle at muzzle height**. taskblock-26 Pass A2
+moved the resolution anchor and left the preview behind. **Measured at 0.067 cells of centre-mass
+difference at 2 range, decaying to 0.006 — not "massive".** A real inconsistency, a wrong culprit.
+
+**3. The short-range depth degeneracy.** `ShotPlane.depth_of` for a target one cell away reports
+**0.06**, because `shouldered_muzzle_point` puts the muzzle **1.13 cells forward** of the shooter's
+cell centre — so the muzzle is nearly touching a close target. In `_aim_point_world`'s
+`origin + dir * depth + perp * point.x`, a near-zero `depth` lets the perpendicular term dominate,
+and the aim height (0.9) against a muzzle at 1.53 over ~0.13 cells of run is a ~78 degree dive.
+**Measured with a zero reticle offset, so no cursor and no camera are involved:**
+
+| range | aim lateral | `depth` | implied off-axis |
+|---|---|---|---|
+| 1 cell | +0.116 | 0.06 | 62.6° |
+| 2 cells | +0.101 | 0.64 | 9.0° |
+| 3 cells | +0.049 | 1.60 | 1.8° |
+| 5 cells | +0.024 | 3.58 | 0.4° |
+
+**This is a genuine defect and is NOT the reported one.** The supervisor's observation is ~90
+degrees on *roughly straight-on* shots; this reaches 62 degrees only at one cell and falls under 2
+degrees by three. **Do not treat the table above as the explanation.**
+
+## What is actually established, and what the next step is
+
+- **The announcement is correct.** `weapon_used` reports 4.4-5.4 degrees off facing on the shots in
+  question — the *intended* direction is right, so the fault is downstream of intent.
+- **The resolution diverges from it.** Sniper shot logged: announced 175.4 degrees (south), round
+  travelled `(-1.19, -0.32)` (west) — **~80 degrees off, and the hit is not on the announced ray.**
+- **It is not universal.** A pistol shot in the same log announced -90 degrees and travelled
+  `(-7.00, +0.05)`, dead on, penetrating a real torso.
+- **The broken shots dive.** All three weapons hit `ship_floor` at height **0.00** from a muzzle at
+  **1.53**, under a cell downrange — the "left AND down" the entry's own widened symptom describes.
+
+**The one quantity never measured is the player's reticle offset**, because headless has no cursor.
+`ShotAnnouncement` now carries `aim_offset` (what the reticle asked for) and `aim_point` (what the
+resolver used); the emit was verified end to end rather than assumed. **This is a player-touched
+defect and the supervisor's instruction stands: it is confirmed in the real game, not headlessly.**
+
 ### BR51.14 — Active — owner: `CC`
 **Hovering tiles with a unit selected drops 160 fps to ~20, while moving only**
 - **cluster:** `framerate`

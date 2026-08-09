@@ -57,6 +57,22 @@ var direction: Vector2
 var facing: float
 var weapon_id: StringName
 var method: StringName
+## tb61 (`BR51.01`): **the aim point the shot actually resolved at, in the resolver's own plane
+## frame, plus the offset the player asked for.**
+##
+## Two hypotheses for "shots go wide left" died against in-game evidence — the camera lean
+## (removed; the shot still went left) and the preview/resolution plane anchors (measured at
+## 0.067 cells, not "massive"). **Both were component measurements.** What was never in the log
+## is the pair that would localise it in one shot: what the player asked for, and what the
+## resolver used.
+##
+## `aim_offset` is `TacticsController.reticle_offset` as handed to `ActionCatalog.
+## build_firing_action` — zero for every AI shot, and for a player shot the reticle's own
+## displacement from centre mass. `aim_point` is what the resolver landed on after adding it.
+## **If the player points at centre mass and the round leaves toward a point that is not centre
+## mass, these two numbers say so and say by how much.**
+var aim_offset: Vector2 = Vector2.ZERO
+var aim_point: Vector2 = Vector2.ZERO
 
 var _announced: bool = false
 
@@ -113,9 +129,14 @@ func announce_once(state: CombatState) -> void:
 						"facing": facing,
 						"travel": travel_angle(),
 						"off_facing": off_facing_degrees(),
+						"aim_offset": aim_offset,
+						"aim_point": aim_point,
 					},
 					(
-						"unit %d %s %s toward %.1f deg (facing %.1f, %.1f off)"
+						(
+							"unit %d %s %s toward %.1f deg (facing %.1f, %.1f off)"
+							+ " aim %+.2f,%+.2f offset %+.2f,%+.2f"
+						)
 						% [
 							attacker_id,
 							_verb(),
@@ -123,6 +144,10 @@ func announce_once(state: CombatState) -> void:
 							rad_to_deg(travel_angle()),
 							rad_to_deg(facing),
 							off_facing_degrees(),
+							aim_point.x,
+							aim_point.y,
+							aim_offset.x,
+							aim_offset.y,
 						]
 					)
 				)

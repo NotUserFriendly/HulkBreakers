@@ -199,6 +199,9 @@ func apply(state: CombatState) -> void:
 	var shot := ShotAnnouncement.new(
 		&"attack", actual.id, origin, direction, actual.orientation, weapon_id
 	)
+	# tb61 (`BR51.01`): what the player asked for and what the resolver used, side by side.
+	shot.aim_offset = aim_offset
+	shot.aim_point = aim_point
 	for point: Vector2 in points:
 		# The shooter's own body sits at the ray's own origin (depth <= 0)
 		# and can otherwise satisfy `_find_next`'s point-containment check
