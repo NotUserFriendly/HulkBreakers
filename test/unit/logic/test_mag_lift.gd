@@ -133,20 +133,54 @@ func test_a_pad_with_no_partner_refuses_by_name() -> void:
 	)
 
 
-## **Down is what a hop-down is for.** A lift only ever resolves upward, so the pad pair
-## cannot be ridden backwards to descend for an AP — which would make it strictly better
-## than the free drop it competes with.
-func test_the_lift_only_goes_up() -> void:
+## **The lift rides down for the same AP it rides up**, which is the supervisor's call of
+## 2026-08-09 and a reversal of this file's first version.
+##
+## What separates a ride from a hop-down is **availability, not direction**: a hop-down works
+## off any ledge anywhere, a lift works only at the two cells someone built it on. So a
+## descending ride is not a lift muscling in on free descent — it is the pair doing the one
+## job it has, in the direction the rider needs.
+##
+## The descent is asserted as the exact inverse of the ascent, from the same fixture, because
+## "it also goes down" is a claim about the pair being symmetric rather than about a second
+## mechanism existing.
+func test_the_lift_rides_back_down_for_the_same_one_ap() -> void:
 	var grid: Grid = _lift_grid()
 	var staged: Dictionary = _unit_on(grid, UPPER)
+	var state: CombatState = staged["state"]
+	var unit: Unit = staged["unit"]
+	var ap_before: int = unit.ap
+
+	assert_eq(
+		Surface.mag_lift_destination(grid, UPPER), LOWER, "the upper pad's partner is the lower"
+	)
+	var action := MagLiftAction.new(unit)
+	assert_true(action.is_legal(state), "a unit on the upper pad may ride down")
+	action.apply(state)
+
+	gut.p("rode down to %s at height %.2f for %d AP" % [unit.cell, unit.height, ap_before - unit.ap])
+	assert_eq(unit.cell, LOWER, "the descent lands on the lower pad's cell")
+	assert_almost_eq(unit.height, 0.0, 0.0001, "at the low floor's own height")
+	assert_eq(unit.ap, ap_before - MagLiftAction.AP_COST, "for the same single AP the ride up costs")
+
+
+## **A ride is worth an action only where one was built**, and that is the whole of what makes
+## it fair against a hop-down that works off any ledge. Stated as a test because the balance
+## claim is easy to read as "the lift is cheaper", which the raw numbers do not support for a
+## short drop — see `Surface.mag_lift_destination`'s own note.
+func test_a_hop_down_needs_no_lift_and_a_ride_needs_one() -> void:
+	var bare := GridFixture.flat(3, 1)
+	GridFixture.place_floor(bare, UPPER, RISE)
+	var staged: Dictionary = _unit_on(bare, UPPER)
 
 	assert_null(
-		Surface.mag_lift_destination(grid, UPPER), "the upper pad has no upward partner"
+		Surface.mag_lift_destination(bare, UPPER),
+		"an ordinary ledge with no pads on it offers no ride at all"
 	)
 	assert_eq(
 		MagLiftAction.new(staged["unit"]).refusal_reason(staged["state"]),
-		MagLiftAction.REFUSAL_NO_DESTINATION,
-		"so riding down is refused by name rather than silently working"
+		MagLiftAction.REFUSAL_NO_PAD,
+		"and the refusal names the absence rather than the direction"
 	)
 
 
@@ -250,34 +284,37 @@ func test_generated_maps_stand_lifts_where_ladders_would_go() -> void:
 	assert_eq(pads % 2, 0, "and every pad is placed as half of a pair, never alone")
 
 
-## **Every generated pad has a partner it actually serves.** The pairing is what makes a lift
-## work, and a half-lift is worse than no lift — it reads as a route and is not one.
-func test_every_generated_lower_pad_resolves_to_a_real_destination() -> void:
-	var orphans: Array[String] = []
+## **Every generated pad resolves to a partner, and the pairing is mutual.** A half-lift is
+## worse than no lift — it reads as a route and is not one — and now that a ride runs both
+## ways, "mutual" is the real invariant: whatever A rides to must ride back to A.
+func test_every_generated_pad_pairs_with_one_that_pairs_back() -> void:
+	var broken: Array[String] = []
 	var pairs := 0
 	for map_seed: int in [1, 2, 3, 4, 5, 9, 4242, 12345]:
 		var grid: Grid = MapGen.generate(map_seed, 32, 24)
 		for surface: Surface in grid.placements():
 			if not Surface.MAG_LIFT_TAG in surface.part.tags:
 				continue
-			# An upper pad legitimately has no destination of its own — it IS one. What must
-			# never happen is a pad with neither a partner above nor a partner below.
-			var up: Variant = Surface.mag_lift_destination(grid, surface.cell)
-			var is_a_landing := false
-			for neighbour: Vector2i in grid.neighbors(surface.cell):
-				if Surface.mag_lift_destination(grid, neighbour) == surface.cell:
-					is_a_landing = true
-			if up == null and not is_a_landing:
-				orphans.append("seed %d cell %s" % [map_seed, surface.cell])
-			else:
-				pairs += 1
-	gut.p("%d paired pads, %d orphans" % [pairs, orphans.size()])
+			var partner: Variant = Surface.mag_lift_destination(grid, surface.cell)
+			if partner == null:
+				broken.append("seed %d: %s has no partner" % [map_seed, surface.cell])
+				continue
+			if Surface.mag_lift_destination(grid, partner as Vector2i) != surface.cell:
+				broken.append(
+					(
+						"seed %d: %s rides to %s, which rides somewhere else"
+						% [map_seed, surface.cell, partner]
+					)
+				)
+				continue
+			pairs += 1
+	gut.p("%d mutually paired pads, %d broken" % [pairs, broken.size()])
 
 	assert_eq(
-		orphans,
+		broken,
 		[] as Array[String],
-		"a pad with no partner in either direction is a route that promises nothing:\n%s"
-		% "\n".join(orphans)
+		"a pad whose partner does not ride back is a one-way trip nobody authored:\n%s"
+		% "\n".join(broken)
 	)
 
 

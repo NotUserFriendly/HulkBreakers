@@ -237,7 +237,11 @@ func _play_event(event: LogEvent) -> void:
 		# aware, so a climb/drop plays as a real slide through the two
 		# cells' own true elevations instead of the silent snap it got
 		# before (no case at all matched either event kind).
-		&"move", &"climbed", &"hopped_down":
+		# tb62 Pass B: `mag_lifted` joins them for the same reason and at no extra cost —
+		# `MagLiftAction` emits the identical `"path"` shape. A ride is a teleport in the
+		# rules and a fast slide on screen, which is a presentation choice this list gets to
+		# make precisely because the log did not make it.
+		&"move", &"climbed", &"hopped_down", &"mag_lifted":
 			await _play_slide(event)
 		&"faced":
 			await _play_facing(event)

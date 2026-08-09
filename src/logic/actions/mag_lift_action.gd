@@ -12,10 +12,20 @@ extends CombatAction
 ##
 ## A lift is two `mag_lift`-tagged pads placed by the same generator branch that would have
 ## stood a ladder: one on the low cell, one on the raised cell it serves. A unit standing on
-## the low pad's cell pays 1 AP and **is at the other cell** — there is no path between them,
-## no intermediate position, and nothing to interrupt halfway. `Pathfinder` therefore knows
+## either pad pays 1 AP and **is at the other one** — there is no path between them, no
+## intermediate position, and nothing to interrupt halfway. `Pathfinder` therefore knows
 ## nothing about lifts at all: a lift is not an edge, so a route "through" one cannot be
 ## costed as movement, and pretending otherwise would put a second mover in `move_cost`.
+##
+## ## It rides down as well as up
+##
+## The supervisor's call, 2026-08-09, correcting an earlier up-only reading of this action:
+## *"Hop down's advantage is that it can happen anywhere, mag lift down is only in a few
+## places but is 'cheaper'."* What separates the two verbs is **where they are available**,
+## not which direction they run — so a lift that refused to descend was not protecting free
+## descent from competition, it was just half a mechanic. `Surface.mag_lift_destination`
+## holds the direction-agnostic pairing and the note on what "cheaper" does and does not
+## mean in raw numbers.
 ##
 ## **No facing to get wrong**, which is the other reason this was worth building now. The
 ## ladder work kept running into facing — a ladder is a thing on a side of a cell, and a
@@ -37,8 +47,8 @@ const SPEED := 40.0
 const REFUSAL_NONE: StringName = &""
 const REFUSAL_NOT_CURRENT: StringName = &"not_this_units_turn"
 const REFUSAL_NO_PAD: StringName = &"no_mag_lift_pad_here"
-const REFUSAL_NO_DESTINATION: StringName = &"lift_has_no_upper_pad"
-const REFUSAL_LANDING_BLOCKED: StringName = &"upper_pad_is_occupied"
+const REFUSAL_NO_DESTINATION: StringName = &"lift_has_no_partner_pad"
+const REFUSAL_LANDING_BLOCKED: StringName = &"partner_pad_is_occupied"
 const REFUSAL_NO_AP: StringName = &"not_enough_ap"
 
 var unit: Unit

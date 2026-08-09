@@ -248,11 +248,28 @@ static func _stamp_ladder(grid: Grid, cell: Vector2i, height: float, rise: float
 ## **A duplicate per pad**, unlike `_stamp_ladder`'s shared template: a side attachment
 ## really occupies its host's socket (`PartGraph.attach`), so two pads that are the same
 ## object would be one part claiming two sockets.
+##
+## ## Why it refuses to build near another lift
+##
+## `Surface.mag_lift_destination` DERIVES the pair from the board rather than storing it, so
+## a lift is only well-defined where the derivation has one possible answer. The repair sweep
+## fixes many stranded cells and readily stamps two lifts a cell or two apart — measured on
+## seeds 5, 9 and 4242, where pads cross-linked into chains and one cell ended up holding two
+## pads from two different passes.
+##
+## **The fix is at placement, not in the derivation.** A cleverer tie-break would have
+## returned one answer out of an ambiguous board, which is guessing with extra steps; a lift
+## whose pairing is unambiguous *by construction* cannot be got wrong later. Same posture as
+## `_stair_run_fits`: establish the whole fixture is buildable before writing any of it, and
+## let the caller fall back to a ladder — which needs one cell and no partner, and is exactly
+## the right answer in a crowded spot.
 static func _stamp_mag_lift(
 	grid: Grid, cell: Vector2i, landing: Vector2i, height: float, landing_height: float
 ) -> bool:
 	var pad: Part = DataLibrary.get_part(&"mag_lift_pad")
 	if pad == null:
+		return false
+	if _pad_in_reach_of(grid, cell) or _pad_in_reach_of(grid, landing):
 		return false
 	var lower: Part = pad.duplicate(true)
 	var upper: Part = pad.duplicate(true)
@@ -264,6 +281,19 @@ static func _stamp_mag_lift(
 		GridPlacement.place(grid, landing, upper, landing_height) != null
 		and GridPlacement.place(grid, cell, lower, height) != null
 	)
+
+
+## True if `cell` or any neighbour of it already carries a mag lift pad — i.e. if a pad
+## placed here would be within reach of a pairing that is not its own. The cell itself is
+## included because two repair passes can otherwise stack pads on one cell, which is the
+## same ambiguity with a zero displacement.
+static func _pad_in_reach_of(grid: Grid, cell: Vector2i) -> bool:
+	if Surface.has_mag_lift_at(grid, cell):
+		return true
+	for neighbour: Vector2i in grid.neighbors(cell):
+		if Surface.has_mag_lift_at(grid, neighbour):
+			return true
+	return false
 
 
 static func _split_and_carve(

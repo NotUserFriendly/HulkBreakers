@@ -180,7 +180,7 @@ static func has_mag_lift_at(grid: Grid, cell: Vector2i) -> bool:
 	return false
 
 
-## **The upper terminus of a lift whose lower pad stands at `from_cell`, or null.**
+## **The other end of the lift whose pad stands at `from_cell`, or null.**
 ##
 ## A lift is a *pair*: a pad on the low cell and a pad on the raised cell it serves, both
 ## placed by the same generator branch that would have stood a ladder. This resolves the
@@ -188,10 +188,28 @@ static func has_mag_lift_at(grid: Grid, cell: Vector2i) -> bool:
 ## place that does — `MagLiftAction` and anything scoring a lift read this rather than
 ## re-deriving the pairing.
 ##
-## **Strictly upward, and the nearest such cell wins.** Downward is what a hop-down is
-## for, so a lift never competes with free descent; and taking the lowest qualifying
-## neighbour keeps two lifts placed near each other from claiming each other's pads —
-## which is a real possibility on a terraced board, not a hypothetical.
+## ## It runs both ways, and that is the supervisor's call (2026-08-09)
+##
+## An earlier version of this resolved **upward only**, on the reasoning that free descent
+## already exists so a lift must not compete with it. **That was wrong about what the two
+## are for.** The supervisor: *"Hop down's advantage is that it can happen anywhere, mag
+## lift down is only in a few places but is 'cheaper'."* The distinction is **availability**,
+## not direction — a hop-down works off any ledge and a lift works only where one was built,
+## which is what makes the lift affording a better deal at its own two cells fair rather
+## than strictly better.
+##
+## **Worth stating so nobody later reads "cheaper" and finds the numbers disagreeing:** a
+## hop-down costs `Pathfinder.HOP_DOWN_COST` (1 MP) and a ride costs 1 AP, and 1 AP buys
+## `mp_per_ap` MP, so a *short* descent is not literally cheaper by the ride. Where the ride
+## is cheaper is depth — a hop-down beyond `MAX_HOP_DOWN_LEVELS` is not a legal edge at all,
+## so a four-level drop costs one action by lift and is impossible without one. Flagged
+## rather than tuned; the cost currencies are the design, the numbers behind them are not
+## this pass's to pick.
+##
+## **The nearest height wins, in either direction.** Two lifts standing near each other on a
+## terraced board would otherwise be able to claim each other's pads; taking the smallest
+## real height difference keeps a pair together, and the cell-order tie-break keeps it
+## deterministic rather than dependent on neighbour iteration order.
 ##
 ## Returns the destination CELL rather than the pad `Surface`, because that is what an
 ## action needs and what a caller can do anything with. The pad itself is a marker; the
@@ -203,15 +221,22 @@ static func mag_lift_destination(grid: Grid, from_cell: Vector2i) -> Variant:
 	if here == null:
 		return null
 	var best: Variant = null
-	var best_height: float = INF
+	var best_delta: float = INF
 	for neighbour: Vector2i in grid.neighbors(from_cell):
 		if not has_mag_lift_at(grid, neighbour):
 			continue
 		var landing: Surface = first_walkable(grid.surfaces_at(neighbour))
-		if landing == null or landing.height <= here.height + 0.001:
+		if landing == null:
 			continue
-		if landing.height >= best_height:
+		var delta: float = absf(landing.height - here.height)
+		# A pad at the same height is a different lift's end, not this one's — a lift that
+		# went nowhere would be an action that spends AP to stand still.
+		if delta <= 0.001:
 			continue
-		best_height = landing.height
+		if delta > best_delta:
+			continue
+		if delta == best_delta and best != null and not neighbour < (best as Vector2i):
+			continue
+		best_delta = delta
 		best = neighbour
 	return best

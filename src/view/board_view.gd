@@ -98,6 +98,10 @@ const GRID_LINE_WIDTH := 0.04
 ## heights, not top faces (`_marker()`'s own doc comment) — most rungs are
 ## 0.02-thick boxes/discs:
 ##   `EXTRACTION_CELL_HEIGHT` (0.010, this constant)
+##   -> `BoardOverlays.FILL_HEIGHT` / `BORDER_HEIGHT` (0.035 / 0.040, tb62
+##      Pass B — the mag lift pad's translucent fill and its opaque border,
+##      two rungs because it is two elements and the border must win where
+##      they overlap)
 ##   -> `HitVolumeView.TEAM_MARKER_Y` (0.06 — was IDENTICAL to this
 ##      constant, 0.01, a real unreported co-planar pair found while
 ##      enumerating this set for the first time)
@@ -105,7 +109,13 @@ const GRID_LINE_WIDTH := 0.04
 ##   -> `HitVolumeView.FACING_WEDGE_Y` (0.17 — 5x taller than every other
 ##      rung, needs real headroom, not just the next small step)
 ## A future ground overlay takes the next rung in THIS ladder, not a
-## value picked independently.
+## value picked independently. **A rung living in another file is still a
+## rung in this ladder** — `BoardOverlays` names its own because it must
+## not depend on this class, not because it is keeping separate books.
+##
+## tb62 Pass B: `_build_extraction_cells` moved to `BoardOverlays` with the
+## mag lift pads; this constant stays as the ladder's published anchor, and
+## `BoardOverlays.EXTRACTION_HEIGHT` is the same number at its new home.
 const EXTRACTION_CELL_HEIGHT := 0.010
 ## taskblock-39 Pass C: the wall-indicator marker/cross these four
 ## constants used to feed is retired (never actually rendered on a real
@@ -153,29 +163,6 @@ const EMPTY_FILL_SIZE := 0.8
 ## overlay" tier as the rest of this file's height ladder above, between
 ## `WALL_CROSS_HEIGHT` (0.03) and `HitVolumeView.TEAM_MARKER_Y` (0.06).
 ## Placeholder color, flagged/tunable like every other marker color here.
-## tb62 Pass B: **the mag lift pad, to the supervisor's own spec (2026-08-09)** — *"the top
-## and bottom surfaces both a 50% opacity navy blue square, with a 100% opacity, narrow,
-## navy blue border."* Two elements, so two rungs, and they take the next free pair on the
-## ground-overlay height ladder enumerated at `EXTRACTION_CELL_HEIGHT` rather than values
-## picked independently: 0.035 and 0.040, above the ghost rung (0.03) and below the field
-## item marker (0.045). The border sits above the fill because a hollow outline's bars
-## overlap the fill's outer band, and the 100% edge is what has to win there.
-##
-## **Navy is literal `#000080`**, not a shade chosen to look good — flagged and tunable like
-## every other palette entry here. The pad reads against the tile colour beneath it, not
-## against the backdrop.
-##
-## **This is the pad's ONLY appearance.** `mag_lift_pad` authors no `volume`, so
-## `_build_tiles` draws nothing for it and there is no box for this to be a second drawing
-## of — the co-planar pairing taskblock-55 Pass B deleted cannot recur here.
-const MAG_LIFT_COLOR := Color("#000080")
-const MAG_LIFT_FILL_ALPHA := 0.5
-const MAG_LIFT_FILL_HEIGHT := 0.035
-const MAG_LIFT_BORDER_HEIGHT := 0.040
-## Narrow, per the spec — roughly a third of `OverlayMarkers.RING_THICKNESS`, which is sized
-## to read as a waypoint outline rather than as a trim line.
-const MAG_LIFT_BORDER_THICKNESS := 0.03
-
 const FIELD_ITEM_MARKER_HEIGHT := 0.045
 const FIELD_ITEM_MARKER_COLOR := Color(0.75, 0.65, 0.35)
 
@@ -351,8 +338,11 @@ func build(
 	_static.add_child(grid_lines)
 	_log_build_step(&"grid_lines", grid.width * grid.rows, "cell borders")
 	_log_build_step(&"empty_cells", _build_empty_indicators(grid), "unfloored cells")
-	_log_build_step(&"extraction_cells", _build_extraction_cells(team_extraction_cells), "cells")
-	_log_build_step(&"mag_lifts", _build_mag_lift_pads(grid), "lift pads")
+	var extraction: int = BoardOverlays.extraction_cells_into(
+		_static, team_extraction_cells, _height_for
+	)
+	_log_build_step(&"extraction_cells", extraction, "cells")
+	_log_build_step(&"mag_lifts", BoardOverlays.mag_lift_pads_into(_static, grid), "lift pads")
 
 	var walls := 0
 	var cover := 0
@@ -458,56 +448,6 @@ func _build_tiles(p_grid: Grid, material_table: MaterialTable) -> MeshInstance3D
 
 	instance.mesh = mesh
 	return instance
-
-
-## "Team-coded extraction cells, drawn in their team's color" — one flat
-## marker per cell, `WorldPalette.team_color(squad_id)` same as every other
-## team-coded visual already reads (docs/10).
-## taskblock-41 Pass D: returns how many cells it drew, same reasoning as
-## `_build_empty_indicators`.
-func _build_extraction_cells(team_extraction_cells: Dictionary) -> int:
-	var count := 0
-	for squad_id: int in team_extraction_cells:
-		var color: Color = WorldPalette.team_color(squad_id)
-		var cells: Array = team_extraction_cells[squad_id]
-		for cell: Vector2i in cells:
-			_static.add_child(_marker(cell, color, EXTRACTION_CELL_HEIGHT))
-			count += 1
-	return count
-
-
-## tb62 Pass B: **every placed mag lift pad, as the supervisor's navy square.** Returns how
-## many it drew, same reasoning as `_build_empty_indicators`.
-##
-## **Driven off the placements, never off a cell sweep.** A pad is a real `Surface` at a real
-## height, so `grid.placements()` already knows where every one of them is and at what
-## elevation — and the pair's two ends genuinely sit at different heights, which a per-cell
-## walk asking `true_height_for_cell` would have flattened onto the floor beneath each.
-func _build_mag_lift_pads(p_grid: Grid) -> int:
-	var drawn := 0
-	for surface: Surface in p_grid.placements():
-		if not Surface.MAG_LIFT_TAG in surface.part.tags:
-			continue
-		var fill: Color = MAG_LIFT_COLOR
-		fill.a = MAG_LIFT_FILL_ALPHA
-		# The pad's own placed height, not the cell's walkable height: an upper pad sits at
-		# the ledge it delivers to, and reading the cell would draw it on the floor below.
-		_static.add_child(
-			OverlayMarkers.flat_box(
-				surface.cell, fill, surface.height + MAG_LIFT_FILL_HEIGHT, OVERLAY_SIZE
-			)
-		)
-		_static.add_child(
-			OverlayMarkers.hollow_box(
-				surface.cell,
-				MAG_LIFT_COLOR,
-				surface.height + MAG_LIFT_BORDER_HEIGHT,
-				OVERLAY_SIZE,
-				MAG_LIFT_BORDER_THICKNESS
-			)
-		)
-		drawn += 1
-	return drawn
 
 
 ## docs/10 taskblock02 G3 / taskblock03 I: "the ground is a flat green plane

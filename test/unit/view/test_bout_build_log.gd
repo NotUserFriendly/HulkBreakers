@@ -16,11 +16,19 @@ extends GutTest
 ## no longer draws anything per cell — it draws the tiles placed on it — so the
 ## step is renamed and counted in walkable parts. A per-cell count would have
 ## reported a number nothing in the scene corresponds to.
+##
+## tb62 Pass B: `mag_lifts` joins the sequence, after the extraction cells and
+## before the blockers. **Position is the claim, not membership** — a lift pad is
+## a ground-overlay annotation like an extraction cell, so it belongs with them
+## and above anything that can stand on top of it. This list going red when a step
+## is added is the test working: a build step nobody declared here is a step that
+## slipped into the sequence unnoticed.
 const EXPECTED_ORDER: Array[StringName] = [
 	&"tiles",
 	&"grid_lines",
 	&"empty_cells",
 	&"extraction_cells",
+	&"mag_lifts",
 	&"walls",
 	&"cover",
 	&"field_items",
@@ -83,7 +91,9 @@ func test_a_rebuilt_board_restarts_its_own_numbering() -> void:
 	assert_eq(steps.size(), EXPECTED_ORDER.size() * 2)
 	assert_eq(steps[0].data["index"], 1)
 	assert_eq(
-		steps[EXPECTED_ORDER.size()].data["index"], 1, "the second build starts over, not at 8"
+		steps[EXPECTED_ORDER.size()].data["index"],
+		1,
+		"the second build starts over, not at %d" % (EXPECTED_ORDER.size() + 1)
 	)
 
 
