@@ -1,15 +1,26 @@
 # Taskblock 61 Report — the hunt
 
-**All six passes landed.** A and B (shot geometry, membership), C (wall cutout), D (input
-affordance), E (the cheap remainder), and F is this report. Full gate green.
+**All six passes landed, plus a seventh after review.** A and B (shot geometry, membership), C
+(wall cutout), D (input affordance), E (the cheap remainder), F this report — and **G**, which is
+the supervisor's verdicts on pass E and the one new defect those verdicts turned up. Full gate
+green.
 
-**Thirteen entries moved.** Eight closed on the supervisor's own instruction earlier in the block —
-`BR30.02`, `BR30.04`, `BR32.04`, `BR32.05`, `BR32.07`, `BR32.08` as `Resolved`, `BR33.01` and
-`BR34.03` as `Obsolete`. **Nine sit at `Pending`** awaiting the supervisor's eyes: `BR51.01`,
-`BR52.07`, `BR52.10` and `BR35.02` from the earlier passes, and `BR51.19`, `BR51.21`, `BR34.04`,
-`BR51.16` and `BR57.02` from pass E. **Six new entries were filed** (`BR61.01`–`BR61.06`). The
-ledger stood at 43 open when pass C began and stands at **39** — 27 `Active`, 9 `Pending`, 3
-`Suspected`.
+**Twelve entries closed.** Eight on the supervisor's instruction during the block — `BR30.02`,
+`BR30.04`, `BR32.04`, `BR32.05`, `BR32.07`, `BR32.08` as `Resolved`, `BR33.01` and `BR34.03` as
+`Obsolete` — and **four more on the supervisor's review of pass E**: `BR51.19`, `BR51.21`,
+`BR51.16` and `BR57.02`, all `Resolved` and archived.
+
+**`BR34.04` went back to `Active` rather than closing, and not because the fix failed.** The
+supervisor: *"camera is still weird, but I'm looking at doing a refactor of the camera system
+(cutting the sniper cam entirely) so set back to active with that note."* The Pass E4 work is
+measurable — the camera provably sits on the shooter-to-target line where it used to sit 2.139
+units past the target — and it still does not read right to the only person who can see it. **That
+is precisely what a `SUPERVISOR`-owned entry is for**, and the entry now says outright that tuning
+`SNIPER_UP_OFFSET` is work the refactor discards.
+
+**Seven new entries were filed** (`BR61.01`–`BR61.07`). **Five sit at `Pending`**: `BR51.01`,
+`BR52.07`, `BR52.10` and `BR35.02` from the earlier passes, plus `BR61.07`. The ledger stood at 43
+open when pass C began and stands at **36** — 28 `Active`, 5 `Pending`, 3 `Suspected`.
 
 **One entry is named as not started rather than quietly carried: `BR27.15`.** It is unblocked and
 specified; see Open Questions.
@@ -184,6 +195,26 @@ made once and recorded as the worst available. That produced `src/debug/injectio
 `test/unit/view/test_inspect_viewer_lighting.gd`.
 
 
+### Pass G — after the supervisor's review
+
+**`BR61.07` was fixed in the session it was reported rather than filed and queued.** Confirming
+`BR51.21`, the supervisor saw *"destroyed things disappear before the explosion plays."* The
+alternative was to file it and stop, which is the safer default — but the mechanism was readable
+from source in minutes (`sync_board_view` ran before playback, and `assembly_placements` emits
+boxes under a bare `hp > 0`, so an hp-0 barrel loses its mesh in the rebuild), the fix is an
+ordering split rather than a new mechanism, and it is pinned both ways by measurement.
+
+**The fix splits a rule that had been treated as one.** `BR51.21`'s entry is right that the resync
+must precede playback — `ResolutionPlayer._prime` needs the frame `refresh_unit_views()` ran in.
+**But that is a rule about units.** A destroyed object needs the opposite: survive until after the
+animation that explains it. Unit syncs stayed before, the board sync moved after. Recorded because
+"move the line down" is the wrong summary and would be undone by a later reader.
+
+**`BR52.09` was deliberately not fixed alongside it.** It is the mirror — on the real resolution
+path nothing tears a destroyed blocker's model down at all, so it wrongly stays. One
+`part_destroyed`-driven teardown would close both, and it is what `BR52.09` already asks for; this
+pass corrects an ordering and invents no teardown mechanism ahead of that entry.
+
 ## Tests that failed, then were corrected
 
 **Six failing before correction**, and the two most useful were tests that had been passing while
@@ -310,7 +341,9 @@ stating plainly rather than filed as a near-miss.**
   reproduction closes it `Obsolete`**, not `Resolved` — nobody has ever seen the symptom. The
   `inspect_fallback` log line is the evidence; a session with no such line is that second failure.
 
-**Pass E (new) — five, and every one has a route:**
+**Pass E — reviewed by the supervisor: four confirmed `Resolved` and archived (`BR51.19`,
+`BR51.21`, `BR51.16`, `BR57.02`), and `BR34.04` returned to `Active` pending a camera refactor.
+Routes kept below for the record.**
 
 - **`BR51.19`** — squads larger than four no longer spawn stacked. **To see it:** start a bout with
   **six or more units a side** and look at turn 0. Every unit on its own cell, the ones past the
@@ -338,6 +371,14 @@ stating plainly rather than filed as a near-miss.**
   board itself**: it must look unchanged, since the light gained render layers and not energy.
   **CC cannot see pixels** — the measured claim is only that the light is now in that camera's
   render set at all, where the overlap was previously exactly zero.
+
+**Pass G (new):**
+
+- **`BR61.07`** — a destroyed thing now outlives its own explosion. **To see it:** set a goo
+  barrel's HP to 0 and press Apply. The barrel should still be on the board while the explosion
+  plays over it and vanish as the animation ends, rather than blinking out first and leaving the
+  blast hanging in empty space. Measured 62 board meshes before and during with the fix, 62 then 61
+  without it.
 
 **Closed during the block on the supervisor's own instruction:** `BR30.02`, **`BR30.04`**,
 `BR32.04`, `BR32.05`, `BR32.07`, `BR32.08` (`Resolved`), and `BR33.01`, `BR34.03` (`Obsolete` — the
@@ -392,12 +433,11 @@ points at stair-then-flatten-as-fallback**, but that is a guess about how genera
 look and not a correctness argument, so it is not taken. The sweep is pinned either way, so whatever
 lands can be judged against a number.
 
-**7. `BR57.02` is the one pass E `Pending` whose result CC genuinely cannot verify.** The mechanism
-is measured — the isolate camera's `cull_mask` is 6, the board light's `layers` was 1, and the
-overlap was exactly zero — and the necessary condition is now met. **Whether the shading looks right
-is not something a headless test can answer.** If it is still flat after this, the next thing to
-check is whether the `SubViewport` receives the board's `World3D` lighting at all, which is the
-other half of the entry's own "where to look next" and is not disproved by this fix.
+**7. `BR57.02` — answered.** CC could measure only that the light was back in the isolate camera's
+render set, never that the shading read right. The supervisor's verdict was *"clean fix, resolved"*,
+so the necessary condition turned out to be sufficient and the entry is closed. **Kept in this list
+because the shape recurs**: a fix CC can prove is *necessary* and cannot prove is *enough* should go
+to `Pending` saying exactly that, rather than being written up as done.
 
 **8. Four files have now hit the 1000-line lint cap in one block** — `board_view.gd` three times,
 `bout_injector.gd`, `test_inspect_panel.gd`, and `test_debug_control_panel.gd` is close. Each round
@@ -417,3 +457,21 @@ both, so nothing is broken; the question is whether a change to `src/logic/` sha
 should be allowed to commit on the fast gate at all, or whether that class of edit should pay the
 full one per pass. **The evidence points at "yes, pay it"**, but the full gate is 1000 s against
 555 s and that is the supervisor's trade to make, not CC's.
+
+**10. `BR34.04` is `Active` again and should not be worked before the camera refactor.** The Pass E4
+fix is real and measurable and the supervisor still reads the framing as wrong, and the planned
+refactor **cuts `sniper_framing` entirely** — so `SNIPER_UP_OFFSET`, `SNIPER_FRAME_DISTANCE`,
+`SNIPER_ZOOM_SLACK` and the distance branch in `ease_to_framing` are all on the way out. **The
+danger is a future hunt picking this up as a small tunable fix**, which is the trap `BR35.02` sat in
+for three blocks; the entry now says so in its own text. Two things the replacement must inherit,
+recorded so they are not re-derived: the rig faces its own `pan_offset` pivot by construction, so
+centring was never the hard part and the viewing angle always was; and `docs/10` rule 2 exists
+because this rig's yaw bug survived a full suite of row/column-aligned cases, so **any replacement
+needs a diagonal readback case from day one.**
+
+**11. `gdlint` crashed once with an internal `lark` error and passed clean on retry.** A full gate
+died at the lint stage on `AttributeError: 'Token' object has no attribute 'node_builder'` inside
+`gdtoolkit`/`lark`, with no test having run; `gdlint src test` then succeeded immediately with the
+same tree. **Recorded rather than acted on** — one occurrence is a flake, and the failure mode is
+loud (the suite does not run) rather than silent, so it cannot pass a bad build. Worth pinning
+`gdtoolkit`/`lark` versions if it recurs, since the lint gates every run.

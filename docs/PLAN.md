@@ -208,6 +208,34 @@ against the retired ramps' 15.8% — so the retirement cost essentially no eleva
 
 # QUEUED
 
+### The camera system, refactored — and the sniper camera cut rather than fixed
+**Needs:** nothing. **Unblocks:** closing `BR34.04`, and any further work on attack framing.
+
+**The supervisor's call, 2026-08-09:** *"camera is still weird, but I'm looking at doing a refactor
+of the camera system (cutting the sniper cam entirely)."* Recorded here so the intent is not carried
+only in a bug entry that a later hunt might try to satisfy on its own terms.
+
+**`BR34.04` is `Active` and must not be worked before this.** taskblock-61 Pass E4 made the sniper
+camera sit on the shooter-to-target line — measurably, where it previously sat **2.139 units past
+the target**, framing it from the far side — and the supervisor still reads the framing as wrong.
+**Every knob involved is on the way out**: `SNIPER_UP_OFFSET`, `SNIPER_FRAME_DISTANCE`,
+`SNIPER_ZOOM_SLACK` and the distance branch in `CameraRig.ease_to_framing`. Tuning them is work this
+refactor discards, which is the trap `BR35.02` sat in for three blocks.
+
+**Two things the replacement must inherit, so they are not re-derived:**
+
+- **The rig faces its own `pan_offset` pivot by construction**, so `pan_offset = target.center`
+  centres the target at *any* yaw and pitch. Centring was never the hard part; the viewing angle
+  always was. tb34 Pass D's decision to keep the current angle was correct against a spec that only
+  asked for centred, and that is the whole history of `BR34.04`.
+- **`docs/10` rule 2 exists because this rig's yaw bug survived a full suite of row/column-aligned
+  cases.** Any replacement needs a **diagonal** readback case from day one — built node,
+  `global_transform`/`unproject_position` read back, never a second copy of the formula.
+
+**When it lands, `BR34.04` closes `Obsolete`, not `Resolved`**, unless the new camera is separately
+confirmed: the code the entry describes will be gone, which is not the same as anyone having
+verified a fix.
+
 ### `BR60.01`'s repair — unreachable raised ground is detected and measured, and nothing repairs it
 **Needs:** a decision on which of three repairs is wanted (below). **Unblocks:** closing `BR60.01`,
 and generated 40x30 boards that do not hand a fifth of their elevation to nobody.

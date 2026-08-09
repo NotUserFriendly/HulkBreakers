@@ -189,11 +189,20 @@ func toggle() -> void:
 ## done before `sync_unit_views()` runs so the same call never resurrects what it was just told to
 ## vanish.
 ##
-## **`BR51.21`: the syncs below run BEFORE the events are re-published, and that order is load-
-## bearing rather than incidental.** `ResolutionPlayer._prime` is documented as running in the same
-## frame `refresh_unit_views()` did — it is what stops a unit flashing at its destination and
-## jumping back — so a listener that plays the injection must be handed it *after* the resync, not
-## instead of it.
+## **`BR51.21`: the UNIT syncs run BEFORE the events are played, and that order is load-bearing.**
+## `ResolutionPlayer._prime` is documented as running in the same frame `refresh_unit_views()` did —
+## it is what stops a unit flashing at its destination and jumping back — so a moved unit has to be
+## primed before its own animation, not after it.
+##
+## **`BR61.07`: the BOARD sync runs AFTER, and the split is the fix.** The board rebuild used to sit
+## between them, and `BoardView.build()` draws a blocker through
+## `UnitGeometry.assembly_placements`, which emits boxes under a bare `hp > 0` — so a barrel forced
+## to 0 hp lost its mesh in the rebuild and the detonation then animated at an already-empty cell:
+## *"destroyed things disappear before the explosion plays."*
+##
+## **So the order is not one rule but two, and they point opposite ways.** A moved unit must be
+## primed *before* playback; a destroyed object must survive *until after* it. Splitting the resync
+## along that line is what satisfies both, and it is why this is not simply a line moved down.
 func _on_debug_panel_applied(
 	verb_id: StringName, args: Dictionary, events: Array[LogEvent]
 ) -> void:
@@ -205,14 +214,18 @@ func _on_debug_panel_applied(
 		if object.get("kind") == Enums.HitKind.UNIT and object.get("unit") != null:
 			battle.remove_unit_view(object.unit)
 	battle.sync_unit_views()
-	# taskblock-42 Pass E (`BR35.03`): only when the verb actually changed the board. Rebuilding
-	# terrain, grid lines and every blocker to reflect a changed AP value was the whole of that
-	# entry.
-	if DebugVerbs.affects_board(verb_id):
-		battle.sync_board_view()
 	battle.refresh_unit_views()
 	verb_applied.emit(verb_id, events)
-	_play_injection(events)
+	# **Awaited, so the board rebuild genuinely follows the animation.** `_play_injection` suspends
+	# on `ResolutionModule.play`; calling it without `await` would detach at that first suspend and
+	# run the rebuild immediately, which is the bug this is fixing wearing a different shape.
+	await _play_injection(events)
+	# taskblock-42 Pass E (`BR35.03`): only when the verb actually changed the board. Rebuilding
+	# terrain, grid lines and every blocker to reflect a changed AP value was the whole of that
+	# entry. **A verb that animated nothing still lands here in the same frame** — `_play_injection`
+	# returns immediately on an empty list — so a non-animating board verb is not delayed.
+	if DebugVerbs.affects_board(verb_id):
+		battle.sync_board_view()
 
 
 ## `BR51.21`: animates what the verb actually caused, through the same `ResolutionModule.play` both

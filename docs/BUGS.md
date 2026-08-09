@@ -924,7 +924,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   `test_wheel_cycles_the_step_out_cell_and_wraps`. Every one passes. **They test the controller's
   state, which is correct; nothing tests that a player can see it**, which is the gap.
 
-### BR34.04 — Pending — owner: `SUPERVISOR`
+### BR34.04 — Active — owner: `SUPERVISOR`
 **Sniper camera frames the target from an odd angle**
 - **cluster:** `camera`
 - **Source:** `SUPERVISOR`
@@ -1004,6 +1004,27 @@ rather than inferred.** CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
   `test_camera_orbit_state.gd::test_sniper_framing_solves_a_new_angle_rather_than_keeping_the_
   current_one` (**a reversal** — the old `keeps_the_current_yaw_and_pitch` test is quoted in place
   rather than deleted) and `::test_a_degenerate_shooter_target_pair_keeps_the_current_angle`.
+
+**2026-08-09 — back to `Active` on the supervisor's own instruction, and the fix is not the
+question any more.** *"Camera is still weird, but I'm looking at doing a refactor of the camera
+system (cutting the sniper cam entirely) so set back to active with that note."*
+
+- **`Pending` was the wrong status to leave it at and `Resolved` would have been worse.** The Pass
+  E4 work landed and is measurable — the camera provably sits on the shooter-to-target line now,
+  where it previously sat 2.139 units past the target — **and it still does not read right to the
+  only person who can see it.** That is the whole reason this entry is `SUPERVISOR`-owned.
+- **Do not spend another pass tuning this.** The planned refactor **cuts `sniper_framing`
+  entirely**, so `SNIPER_UP_OFFSET`, `SNIPER_FRAME_DISTANCE`, `SNIPER_ZOOM_SLACK` and the whole
+  distance branch in `CameraRig.ease_to_framing` are all on the way out. Work spent moving those
+  numbers is work the refactor discards — the same trap `BR35.02` was in before taskblock-56.
+- **What the refactor should carry forward, so it is not re-derived:** the rig faces its own
+  `pan_offset` pivot by construction, so `pan_offset = target.center` centres the target at *any*
+  yaw and pitch — which is why centring was never the hard part and the viewing *angle* always
+  was. And `docs/10` rule 2 exists because this rig's yaw bug survived a full suite of
+  row/column-aligned cases; **any replacement needs a diagonal readback case from day one.**
+- **When the refactor lands, this closes `Obsolete` rather than `Resolved`** unless the new camera
+  is separately confirmed — the code it describes will be gone, which is not the same as anyone
+  having verified a fix.
 
 ### BR35.02 — Pending — owner: `SUPERVISOR`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
@@ -1468,94 +1489,6 @@ components. **A `ShotPlane: no region for ...` line in the log means this has re
   proposes fixing with a camera-attached cutout — see `PLAN.md`), the framing tween completing and
   triggering a rebuild, or the occlusion pass re-evaluating as friendlies cross the near plane.
 
-### BR51.16 — Pending — owner: `SUPERVISOR`
-**The in-game combat log empties itself while the file on disk keeps everything**
-- **cluster:** `accounting`
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-07-31, taskblock-51 fifth hunt. *"Combat log is resetting to nothing displayed in
-  game, while the out of game file seems to stay un-cleared."*
-- **The divergence is the whole finding.** Folding is presentation-only (tb22 F2) and `out/combat.log`
-  is written by a separate sink, so the panel and the file read the same stream through different
-  paths. One of them losing everything while the other keeps it means the loss is in the panel's own
-  state, not in the log.
-- **Suspects, in order:** `LogFold.MAX_GROUPS` discarding from the front (it pops oldest groups, which
-  would thin the panel but never empty it); the panel rebuilding its list from a fold that was reset;
-  or an overlay swap re-creating the panel without replaying what the log already holds — the
-  spectator/player overlay switch re-creates panels, and taskblock-51 Pass I's divergence cluster is
-  the same neighbourhood.
-- **Reproduce with a count before touching it.** "Nothing displayed" versus "the first N lines are
-  gone" are different bugs, and the panel's own row count against the sink's event count says which.
-
-**taskblock-61 Pass E5 — `Pending`. Counted first, as instructed; the trigger is Assume Control,
-and there is a second defect pointing the other way.** CC session
-`906e0f07-5b0a-47bd-8444-fb42ed468da2`.
-
-- **The count says "everything before the swap", not "thinned".** Panel rows went **15 → 2** across
-  the trigger while the stream itself went 6 → 8 events, having lost nothing. The 2 survivors are
-  lines the swap itself emitted. So it is the *"nothing displayed"* branch, and **none of the
-  entry's three suspects was right**: `LogFold.MAX_GROUPS` never fired, the fold was not reset, and
-  it is not the spectator/player *overlay* pair in the sense meant when it was filed.
-- **The trigger is `BattleScene.toggle_blue_control` — the Assume Control button.** It calls
-  `set_overlay`, which runs `ControlOverlay.teardown()` over every mounted module and builds a
-  fresh set, so `CombatLogModule._mount` constructs a new `CombatLogPanel` and a new
-  `HierarchicalUiSink` whose `LogFold` has never seen an event. **The `CombatState` and its
-  `CombatLog` are the same objects throughout** — which is exactly why the file keeps filling:
-  `FileSink` is attached to the log, not to the overlay, and nothing tore it down.
-- **The codebase already knew the shape and had only walled off one path.** `view_modes.gd` keeps
-  `combat_log` in `AIM_MODULES` with the note *"rebuilt empty on remount, so turning it off and on
-  would clear the visible log every time anyone aimed."* That protected aiming and left every
-  overlay swap exposed.
-- **A second behaviour was noticed in the same measurement and deliberately left alone.**
-  `attach_to` re-points `sink.fold.state` at a new `CombatState` without clearing the groups, so
-  loading a new bout under a live overlay carries the previous bout's rows forward.
-  **CC first "fixed" that too, and it was an overreach** — `test_battle_scene.gd::test_a_second_
-  bout_logs_its_own_seed_not_the_first_bouts` pins the accumulation on purpose: several bouts run
-  under one scene and the panel accumulates them the way `FileSink` appends them to one file.
-  **Nobody reported it as a defect.** Reverted; the accumulation is now pinned from this side too.
-- **The fix is replay, which the entry's own third suspect names** (*"an overlay swap re-creating
-  the panel without replaying what the log already holds"*). `CombatLog` retains a bounded history
-  and `add_sink` replays it into any sink that asks; `LogSink.wants_replay()` defaults **false** and
-  only `HierarchicalUiSink` overrides it — `FileSink` would write every past line twice, and a
-  `MemorySink` capturing one turn for playback would swallow the whole bout. Replay runs through
-  the same `wants()` filter as live emission, so there is still one stream and one filter.
-- **Replay starts at a floor, not at the beginning of history, and the full gate is what forced
-  that.** Replaying everything handed a freshly-mounted panel events emitted *before any panel
-  existed* — `CombatState.new` logs its own construction and `load_battle` attaches the sink
-  afterwards, deliberately — which put board-build noise ahead of the `bout_start` header the log
-  is supposed to open with. `test_battle_scene.gd` caught it. `CombatLog._replay_floor` is set once,
-  by the first replay-wanting sink, at wherever history already stood: that panel replays nothing
-  and sees exactly what it always saw, and every panel built after it replays from the same floor
-  and is brought level with its predecessor. **One integer, no rule about event kinds**, and it is
-  shifted when the history trims so a long bout cannot silently lose its oldest rows.
-- **`attach_to` is a no-op when already attached to that log.** `rebind()` and `load_battle` can
-  both reach it for the same log during one load, and with replay in place a re-attach would show
-  every line twice.
-- **`CombatLog.MAX_HISTORY` is 2000 and is flagged, not designed.** The panel folds into at most
-  `LogFold.MAX_GROUPS` (200) rows and `UiLogSink` measured a real 3v3 bout at 9.9 events per turn,
-  so 2000 comfortably refills a full panel. Trimmed in batches rather than by `pop_front` per
-  event — a contiguous `Array` would otherwise memmove the whole history on every event once full,
-  which is the class of quiet cost `BR27.09` was about.
-- **A rebuilt panel now shows slightly MORE than the original did**, and that is expected rather
-  than a side effect to fix: the replay includes events emitted before the first panel ever
-  mounted. It is the full retained log either way.
-- **To see it:** play a bout until the log has real content, then press **Assume Control**. The log
-  should keep everything it was showing instead of blanking. **Also check the log still opens with
-  its `bout_start` header** rather than with board-build lines, and that starting a second bout in
-  the same session appends to the panel rather than replacing it — both are behaviours the fix had
-  to be corrected to preserve.
-- **Tests:** `test_squad_control_overlay.gd::test_assume_control_does_not_empty_the_log_panel_the_
-  stream_still_holds` (confirmed red against the pre-fix code),
-  `::test_a_new_battle_appends_to_the_panel_rather_than_clearing_it` and
-  `::test_attaching_twice_to_the_same_log_does_not_double_the_rows` — the last two pin what the
-  fix must NOT change. Asserted by distinguishable marker text rather than row
-  counts — a bout's own opening lines are legitimately identical between bouts, and folding can
-  extend a group rather than add a row, so counts mislead in both directions.
-- **One existing test was corrected rather than adjusted away:**
-  `test_log_fold.gd::test_folding_never_changes_what_other_sinks_on_the_same_log_receive` compared
-  the fold's absolute event total against a `MemorySink`'s. That only held while both sinks
-  necessarily started empty. It now measures the **delta across the action**, which states the same
-  claim more exactly than the totals did.
-
 ### BR51.18 — Suspected — owner: `SUPERVISOR`
 **A unit slid sideways during a bout watched from both spectator and player control**
 - **cluster:** `two-clocks`
@@ -1579,174 +1512,6 @@ and there is a second defect pointing the other way.** CC session
   translation and a rotation come apart. So the described mechanism has not been closed off by
   anything since — but nothing has reproduced it either, and no second sighting has been reported.
   **Left `Suspected`**; one sighting plus the reporter's own hedge is not a described defect.
-
-### BR51.19 — Pending — owner: `SUPERVISOR`
-**More than four units on a side spawn stacked on top of each other**
-- **cluster:** `map-generation`
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-01, taskblock-51 sixth hunt. *"Starting a bout with more than 4 units on a side
-  causes them to overlay each other at the start."*
-- **Four is the tell.** A spawn zone that runs out of distinct cells and then stops advancing would put
-  every unit past the fourth on one cell — so look at how many cells the zone actually offers before
-  looking at the placement loop.
-- **`Grid.set_occupant_id` holds one occupant per cell**, so this is not two units legally sharing a
-  tile; it is placement writing over itself.
-- **Supervisor's clarification: it is logic-level, not a drawing artefact.** *"It looks to be logic level
-  as units moved from plausible positions."* Units that begin stacked and then move apart to sensible
-  cells means the *state* had them on one cell — the view was drawing the truth. So the defect is in
-  placement, and `set_occupant_id` holding one occupant per cell means the earlier arrivals' occupancy is
-  being overwritten rather than the placement being refused.
-- **Start at how many cells the spawn zone offers**, not at the placement loop: four being the threshold
-  is the shape of a zone that runs out of distinct cells and then stops advancing.
-
-**taskblock-61 Pass E1 — `Pending`. The hint was right and the arithmetic is exact.**
-CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
-
-- **`MapGen.SPAWN_ZONE_SIZE` is 2, so `_mark_zone` marks a 2x2 zone — exactly four cells**, and
-  fewer once tb60's height filter drops one. That is the whole of *"four is the tell"*: not a
-  coincidence and not a loop that stops advancing, but a zone that never had a fifth cell in it.
-- **The placement loop then wrapped.** `BoutSetup._spawn_squad` read
-  `spawn_cells[i % spawn_cells.size()]`, so unit 5 was handed unit 1's cell. `CombatState`'s own
-  registration loop (`combat_state.gd:230`) writes `set_occupant_id(unit.cell, unit.id)` per unit,
-  which is exactly the overwrite the entry predicted — the last writer won and the earlier arrival
-  simply stopped being registered anywhere.
-- **Reproduced with a count before the fix**: a 6-a-side bout on seed 4242 put **12 units on 8
-  distinct cells**, with units 4/5 on top of 0/1 and 10/11 on top of 6/7. After the fix, 12 on 12.
-- **The fix is `BoutSetup._placement_cells`**: the zone's own cells first, then a deterministic FIFO
-  spill outward. **Its edge rule is two-way traversability, not reachability** — a `HOP_DOWN` edge
-  is a legal step out of the zone a non-climbing shell cannot take back, so a one-way spill would
-  have spawned a unit stranded off a ledge and re-filed `BR40.04` under a new number.
-- **A zone that genuinely runs out now refuses the bout by name** rather than stacking, matching
-  `build_bout`'s own "never crash, never silently invent" posture. A grid with no spawn markers at
-  all is untouched — it has no zone to spill from and keeps the pre-existing `Vector2i(i, squad_id)`
-  fallback.
-- **No golden moved.** For any roster that fits the zone the chosen cells are identical to the old
-  `spawn_cells[i]`, so the full gate stayed green at 3395/3395 with the bout-determinism goldens
-  unchanged.
-- **To see it:** start a bout with **six or more units a side** and look at turn 0. Every unit
-  should stand on its own cell, with the ones past the fourth arranged outward from the spawn zone
-  rather than piled on it. The old symptom — units beginning stacked and then moving apart to
-  plausible positions — should be gone entirely, not merely rarer.
-- **Tests:** `test_bout_setup.gd::test_a_squad_larger_than_the_spawn_zone_does_not_stack_its_units`
-  (distinct cells *and* the occupancy grid agreeing with the units) and
-  `::test_units_spilled_out_of_a_full_spawn_zone_stand_on_reachable_ground` (every spilled unit
-  stands on walkable ground with a route back to its own zone). Both fail without the fix.
-
-### BR51.21 — Pending — owner: `SUPERVISOR`
-**A debug injection never animates — the board snaps, nothing plays**
-- **cluster:** `two-clocks`
-- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
-- **Found:** 2026-08-01, sixth hunt, forcing a detonation. *"There is no visible explosion animation."*
-- **Confirmed by reading, and the log agrees.** `out/combat.log` carries
-  `detonation: goo_barrel detonated at (18, 2), radius 2.0, 0 caught` — the mechanics fired and logged
-  correctly. `SquadControlOverlay._on_debug_panel_applied` then calls `sync_unit_views`,
-  `sync_board_view` and `refresh_unit_views` and **never calls `ResolutionPlayer.play()`**, so no
-  injected event is ever animated. The explosion sphere `BR35.08` built cannot appear on this path at
-  all.
-- **This is wider than detonations.** No injection animates: a forced move snaps, a forced kill snaps.
-  It has simply never been visible before because the verbs that existed changed state a refresh could
-  express.
-- **The fix is a design call, not a patch.** Playing an injection's own events would make the debug
-  panel drive the resolution player, which is a real coupling; the alternative is that injections are
-  deliberately instantaneous and detonations are verified by shooting a barrel instead (`BR51.01`).
-- **`set_part_hp` was also missing from `BOARD_CHANGING_VERBS`** — fixed in taskblock-51, and it
-  explains the paired symptom: the destroyed barrel stayed drawn because the board was never rebuilt.
-
-**Restored 2026-08-04 by a review audit [CC `e5393c3a-bd26-4668-8905-c50cf31e04cb`].** This entry was
-filed in commit `a65f66d` and **deleted from this file in `bd17685` without being archived** — that
-commit fixed `BR51.22` and `BR51.23`, which were filed in the same batch, and removed all three
-headings together. `BR51.21` was not fixed by it, and `BR35.08`'s own closing note says so in as many
-words: *"What this does not close: `BR51.21` (no injection ever animates) is untouched."* Text above
-restored verbatim from `a65f66d`; only this note is new.
-
-- **Re-verified still live, 2026-08-04, read from source.** **Both** overlays now carry the handler and
-  **neither plays anything**: `spectator_overlay.gd:624` and `squad_control_overlay.gd:817` each do
-  `sync_unit_views` → `sync_board_view` (only when `DebugVerbs.affects_board`) → `refresh_unit_views` →
-  a status refresh, and neither mentions `resolution_player` — though both hold one
-  (`spectator_overlay.gd:125`, `squad_control_overlay.gd:557`) and both drive it elsewhere
-  (`:370`, `:686`). So the capability is present on both paths and simply is not reached from an
-  injection.
-
-**taskblock-61 Pass E — re-verified, still live, and this entry's own text is now stale.**
-
-**The overlays it describes no longer exist.** taskblock-57's module collapse retired
-`spectator_overlay.gd` and `squad_control_overlay.gd`; the handler is now
-`DebugPanelModule._on_debug_panel_applied`, which emits `verb_applied`, and
-`PlaybackModule._on_verb_applied` — **which calls `refresh_status()` and nothing else.** So the
-defect survived the collapse unchanged: the capability is present and simply is not reached from an
-injection.
-
-**The corrected fix shape, and why it is not "likely small".** `PlaybackModule.play()` is the wrong
-call — it resumes the *bout runner*, i.e. auto-plays turns, which is not what a debug verb should
-do. The right one is `ResolutionModule.play(events)`, which animates a specific event list and is
-what both real resolution paths already use (`playback_module.gd:192` with `runner.last_events`,
-`unit_input_module.gd:120` with its own).
-
-**The missing piece is a channel, not a call.** `_on_debug_panel_applied` receives the signal
-*after* the verb has already run, so it cannot snapshot the log around it — there is nowhere for it
-to get "the events this verb produced". Whatever executes the verb has to hand them over. **Which
-verbs should animate needs no policy**: a verb that emitted nothing yields an empty list and
-`play([])` is a no-op, so the set self-selects.
-
-**One ordering subtlety worth carrying into the fix.** `_on_debug_panel_applied` already calls
-`sync_unit_views` / `refresh_unit_views` before it would play, and that is the *correct* order
-rather than a bug: `ResolutionPlayer._prime` is documented as running in the same frame
-`refresh_unit_views()` did, and it is what stops a unit flashing at its destination and jumping
-back.
-
-**Not fixed here.** Recorded because the entry described code that no longer exists and would have
-sent the next reader to two deleted files.
-
-**taskblock-61 Pass E3 — `Pending`. The channel exists, and two of the corrected fix shape's own
-details were wrong.** CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
-
-- **The channel is `DebugControlPanel._capture`.** It brackets the verb with a `MemorySink` on the
-  live `CombatLog` and emits the result as a third argument on `applied(verb_id, args, events)`.
-  This is the only place that *can* capture them: `applied` fires after the mutation, so nothing
-  downstream can snapshot the log around it. A sink added and removed around one call is the
-  *"temporary sink capturing one turn's events for playback"* `CombatLog.remove_sink` already
-  documents itself for, and the removal is unconditional — pinned by a test on the refusal path,
-  which is where a cleanup is most likely to be skipped.
-- **The entry's *"a verb that emitted nothing yields an empty list, so the set self-selects"* is
-  false as written, and that is the correction that mattered.** Every verb routes through `_guard`,
-  which emits `command` before anything can refuse and `command_outcome` after; a successful one
-  adds `inject`. **A raw capture is therefore never empty** — measured at three events for a verb
-  that changed nothing. Handing that to `ResolutionPlayer.play` raises its RESOLUTION banner and
-  waits out `RESOLVE_LEAD_IN` before it even looks at the list, so the "no-op" would have been a
-  visible pause on every Apply press. `InjectionEvents.effects` strips the audit trio and the
-  self-selection claim becomes true.
-- **`PlaybackModule` is the wrong owner, and the entry pointed at it.** Its `_on_verb_applied` is
-  where the dead handler lived, so it reads as the place to fix — but **`playback` is not in
-  `PLAYER_MODULES`**. It is mounted by the spectator and editor modes only, while `debug_panel` is
-  mounted by all three. A fix there would have animated injections while spectating and silently
-  not while playing: the same one-path defect this entry is about. `DebugPanelModule._play_injection`
-  owns it instead. A test asserts the player mode mounts no playback module, so this cannot be
-  "simplified" back.
-- **`ResolutionModule.play(events)` is the call, as the entry said** — not `PlaybackModule.play()`,
-  which resumes the bout runner and auto-plays turns.
-- **The sync-before-play ordering the entry flagged is preserved**: `_play_injection` runs after
-  `sync_unit_views` / `sync_board_view` / `refresh_unit_views`, which is the frame
-  `ResolutionPlayer._prime` is documented to need.
-- **`bout_injector.gd` was at 998 of the 1000-line cap** and the new vocabulary put it at 1026.
-  Rather than pay by shortening comments — which this block already did once to `board_view.gd`
-  and recorded as the worst available trade — the separable question moved to
-  `src/debug/injection_events.gd`. Noted because it is the second file this block to hit that cap.
-- **To see it:** open the debug panel, set a goo barrel's HP to 0 with Set Part HP, and press
-  Apply. **The explosion sphere `BR35.08` built should now play** where the board previously just
-  snapped. A forced move should slide rather than teleport. **A verb with no visible effect — the
-  readout toggles, `force_current_unit` — must still feel instant**, with no banner flash and no
-  pause; that is the half `InjectionEvents.effects` protects and it is worth checking too.
-- **This also unblocks `BR35.08`'s confirmation**, which could not be judged on the debug path at
-  all until an injection animated.
-- **Tests:** `test_bout_injector.gd::test_effect_events_strips_the_injectors_own_bookkeeping_and_
-  keeps_what_the_verb_caused` and `::test_effect_events_keeps_a_detonation_caused_by_a_forced_hp_
-  change`; `test_debug_control_panel.gd::test_a_verb_that_causes_effects_hands_them_to_the_applied_
-  signal`, `::test_a_verb_that_changes_nothing_carries_an_empty_list_rather_than_its_own_
-  bookkeeping`, `::test_the_capture_sink_is_detached_even_when_the_verb_refuses`;
-  `test_squad_control_overlay.gd::test_an_injection_hands_its_events_to_the_resolution_player` and
-  `::test_an_injection_that_caused_nothing_does_not_start_a_resolution`. The overlay pair reads
-  `ResolutionPlayer._display_cell` straight after the emit — `_prime` runs before the first awaited
-  timer, so the list's arrival is provable without waiting out an animation.
 
 ### BR51.24 — Active — owner: `SUPERVISOR`
 **A part destroyed by an explosion disappears from inspect but stays on the model**
@@ -1907,6 +1672,15 @@ the defect returning.
 - **So a destroyed blocker's mesh persists until the whole board is rebuilt** — i.e. until the next
   bout. The mechanical state is correct underneath it: the part is destroyed, salvage is credited, and
   the resolver stops treating it as an obstacle. Only the picture is stale.
+- **2026-08-09 (tb61 Pass G): `BR61.07` is this entry's mirror, and the two are one question.**
+  [CC `906e0f07-5b0a-47bd-8444-fb42ed468da2`] The debug injection path *does* rebuild the board
+  (`sync_board_view`, which has only two callers and neither real resolution path is one), so there
+  a destroyed blocker's model went away **too early** — before its own explosion had animated. Here
+  it never goes away at all. **Both are the same missing thing: nothing sequences blocker teardown
+  against the animation that explains it.** `BR61.07` was fixed by moving the injection path's
+  rebuild after playback, which is an ordering correction and deliberately not a teardown
+  mechanism — **the `part_destroyed`-driven teardown this entry asks for would close both**, and
+  inventing one ahead of the design decision below is what that fix declined to do.
 - **Visible in the same battle**: three forklifts are destroyed
   (`out/logs/combat-20260802-164344.log`), and units keep firing into the board afterwards with the
   models still standing.
@@ -2351,80 +2125,6 @@ at one cell and missing the body entirely probably is.
 - **The original prize was 32.4 s** in `test_spectator_overlay.gd`, the largest non-bout file in the
   suite, across 37 real scene builds. Still available.
 
-### BR57.02 — Pending — owner: `SUPERVISOR`
-**Units in the inspect viewer render with no directional contribution — every face identically lit**
-- **cluster:** `rendering`
-- **Source:** `SUPERVISOR`, 2026-08-05, observed in-game across the UI review passes ("Inspect
-  window darkness is still there, but more specifically it is just on units. It looks like there is
-  no light source when viewing units, and all of a unit's faces are identically shaded").  ·
-  **CC session:** `cb234571-515f-4b21-bfe1-1abb38912aa0`
-- **Not fixed. An earlier attempt treated the symptom and is recorded here so it is not repeated.**
-
-**What was tried and why it was wrong.** The first report was "lighting in the inspect viewer is
-very dark", and the fix raised the preview camera's own ambient
-(`WorldPalette.PREVIEW_AMBIENT_ENERGY`, 0.9 against the board's 0.35). That is defensible on its own
-terms — the viewer shares the battle's world so it withdraws its own light (`BR48.01`), leaving the
-subject lit from the board's angle — **but the follow-up observation rules it out as the cause**:
-*every face identically shaded* means the directional light is contributing **nothing**, not that it
-is contributing from an awkward angle. Ambient alone is exactly what flat shading looks like. The
-raise is kept because a preview does want more fill, but it is not the answer to this.
-
-**Suspects ruled out**, so the next session does not redo them:
-
-| checked | found |
-|---|---|
-| `HitVolumeView.set_isolated` replacing the render layer | it **adds** `ISOLATE_LAYER` and keeps layer 1 |
-| the board light not covering the isolate layer | `WorldPalette.directional_light` leaves `light_cull_mask` at its default, which covers every layer |
-| the meshes being unshaded | `WorldPalette.lit_material` is `SHADING_MODE_PER_PIXEL` |
-| the viewer's own light being left off | correct and deliberate — it would light the whole battle |
-
-**Where to look next.** Whether the shared-world `SubViewport` actually receives the board's
-`DirectionalLight3D` at all, and whether `Camera3D.cull_mask` narrowing interacts with light
-inclusion in this Godot version. **It reproduces only on units**, which is the strongest clue in the
-report: cover and loose parts go through the *fresh copy* path in its own world with its own light,
-and only a live unit takes the isolate-camera path. That asymmetry is the thing to chase.
-
-**taskblock-61 Pass E6 — `Pending`. "Where to look next" was right on both counts, and the number
-is zero.** CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
-
-- **`Camera3D.cull_mask` culls the LIGHT, not just geometry.** A `DirectionalLight3D` is a
-  `VisualInstance3D`, so a camera that narrows away from the light's `layers` drops it from that
-  camera's render entirely.
-- **Measured on the real nodes: the isolate camera's `cull_mask` is `6`, the board light's `layers`
-  was `1`, and `6 & 1 == 0`.** No overlap at all — the light was not in that camera's render in any
-  degree. **Ambient with no directional term is exactly what "every face identically shaded"
-  looks like**, which is why the earlier ambient raise treated the symptom and could not have been
-  the cause.
-- **`BotViewer.show_live` is where the 6 comes from**: `cull_mask = 0`, then
-  `HitVolumeView.ISOLATE_LAYER` (2) and `BoardView.FLOOR_LAYER` (3). The board's light was on the
-  default layer 1 and was never given either.
-- **The asymmetry the entry named as the strongest clue is exactly this.** Only the isolate path
-  narrows the mask; cover and loose parts take the fresh-copy path, which owns its world and
-  restores its own light (`_apply_lighting`). That is why it reproduces only on units.
-- **This is the same defect tb23 Pass E2 already fixed once, for geometry.** The floor vanished
-  from this camera for precisely this reason and was given `FLOOR_LAYER` so it would be seen again.
-  **The light was never given anything**, and the suspects table above checked `light_cull_mask`
-  (which *objects* a light illuminates — correctly at its default) rather than `layers` (which
-  *cameras* keep the light). Two masks, one of them unexamined.
-- **The fix is one line in `WorldPalette.directional_light`:** `light.layers = ALL_VISUAL_LAYERS`.
-  **Deliberately not done by widening the camera's `cull_mask`**, which would let every other unit
-  and blocker draw through the preview again and undo tb22 G2 — a test asserts layer 1 stays
-  excluded so a later reader cannot "simplify" it that way.
-- **Honest limit: this proves the light is now IN the camera's render set, and CC cannot see
-  pixels.** The mechanism is measured and the necessary condition is met; whether the shading now
-  reads correctly is the supervisor's to judge, which is what keeps this `Pending`.
-- **To see it:** open Inspect on a **live unit on the board** (the isolate path — not cover, not a
-  loose part, which never had the defect). Its faces should now show real directional shading, lit
-  from the board's own light angle, instead of every face reading the same flat tone. **Also worth
-  a glance: the rest of the board must look unchanged** — the light gained render layers, it did
-  not gain energy or move.
-- **Tests:** `test_inspect_viewer_lighting.gd::test_the_isolate_camera_keeps_the_boards_
-  directional_light` (confirmed red without the fix, at `6 & 1 == 0`) and
-  `::test_the_isolate_camera_still_excludes_everything_it_was_narrowed_against`.
-- **`test_inspect_panel.gd` was at 927 lines and went over the 1000-line cap** when these were
-  appended, so they live in their own file. **Third file this block to hit that cap**, after
-  `board_view.gd` and `bout_injector.gd`.
-
 ### BR57.03 — Active — owner: `SUPERVISOR`
 **Player view drops frames while panning the camera**
 - **cluster:** `framerate`
@@ -2832,3 +2532,70 @@ already passes `weapon.id` into `ActionCatalog.build_firing_action` a few lines 
   that becomes a real defect the moment something starts reading `is_mangled`.
 - **`Suspected` on purpose:** the mechanism is inferred from the log and the known default, not
   confirmed by reading the emitting code. Do not fix ahead of `BR60.02`'s refit, which owns the rule.
+
+### BR61.07 — Pending — owner: `SUPERVISOR`
+**A debug injection tears the destroyed thing off the board before its explosion animates**
+- **cluster:** `two-clocks`
+- **Source:** `SUPERVISOR`  ·  **CC session:** `906e0f07-5b0a-47bd-8444-fb42ed468da2`
+- **Found:** 2026-08-09, confirming `BR51.21` in a live session. *"Explosion plays, destroyed
+  things disappear before the explosion plays."* Filed separately rather than reopening `BR51.21`,
+  whose own defect — no injection animating at all — is fixed and confirmed.
+
+**Mechanism, read from source rather than inferred.** `DebugPanelModule._on_debug_panel_applied`
+runs its view resync **before** it plays the injection's events:
+`sync_unit_views` → `sync_board_view` (when `DebugVerbs.affects_board`) → `refresh_unit_views` →
+`_play_injection`. `sync_board_view` is a full `BoardView.build()`, and a blocker's mesh comes from
+`UnitGeometry.assembly_placements`, **which emits boxes under a bare `hp > 0`.** A barrel forced to
+0 hp therefore produces no placements, so the rebuild drops its model — and only then does the
+detonation animate, at a cell that is already empty.
+
+**The sync-before-play order is not simply wrong, which is why this needs a decision rather than a
+swap.** `BR51.21`'s own entry records why it is right: `ResolutionPlayer._prime` is documented as
+running in the same frame `refresh_unit_views()` did, and that is what stops a unit flashing at its
+destination and jumping back. **The order is correct for units and wrong for the board** — a moved
+unit must be primed before playback, a destroyed object must survive until after it.
+
+**`sync_board_view` has exactly two callers and neither real resolution path is one of them**
+(`debug_panel_module.gd` and `editor_module.gd`). `PlaybackModule` and `UnitInputModule` both go
+`refresh_unit_views` → `ResolutionModule.play` and never rebuild the board. So this ordering exists
+only on the injection path.
+
+**It is the mirror of `BR52.09`, and they are one question.** On the real path nothing tears a
+destroyed blocker's model down at all, so it wrongly *stays* (`BR52.09`, `Active`); on the debug
+path `sync_board_view` tears it down early, so it wrongly *goes*. **Both are the same missing
+thing: nothing sequences blocker teardown against the animation that explains it.** A fix that
+moves the board sync after playback closes this one and leaves `BR52.09` untouched; a real
+teardown path driven by `part_destroyed` would close both, and is what `BR52.09` already asks for.
+
+**Also touches `BR60.02`.** The bare `hp > 0` in `assembly_placements` is the same membership
+disagreement that entry owns — `BodyProjector.projects()` answers `hp > 0 or is_mangled or
+is_disabled` for the same part. The disappearance here is that disagreement made visible.
+
+**taskblock-61 Pass G — `Pending`, fixed in the same session it was reported.** CC session
+`906e0f07-5b0a-47bd-8444-fb42ed468da2`.
+
+- **The resync is split along the line the two rules actually fall on.** Unit syncs
+  (`sync_unit_views` / `refresh_unit_views`) stay **before** playback, because
+  `ResolutionPlayer._prime` needs the frame `refresh_unit_views()` ran in; `sync_board_view` moves
+  **after** it, because a destroyed object has to survive until its own explanation has played.
+  **Not a line moved down** — the old order was correct for one of the two and wrong for the other,
+  and nothing had separated them.
+- **`_play_injection` is now awaited.** Without the `await`, `_on_debug_panel_applied` detaches at
+  the first suspend inside `ResolutionModule.play` and the board rebuild runs immediately anyway —
+  the same defect wearing a different shape.
+- **A board verb that animates nothing is not delayed.** `_play_injection` returns without
+  suspending on an empty list, so the rebuild still lands in the same frame. Pinned by its own
+  test, because the obvious fix trades a visual bug for an unresponsive debug panel.
+- **Measured both ways.** Board meshes across a forced detonation: **62 before, 62 while the
+  explosion plays** with the fix; **62 before, 61 while it plays** without it — the barrel's mesh
+  gone at the moment its own detonation started.
+- **To see it:** set a goo barrel's HP to 0 and press Apply. **The barrel should still be on the
+  board while the explosion plays over it, and vanish as the animation ends** — not blink out first
+  and leave the explosion hanging in empty space.
+- **`BR52.09` is untouched and is the other half of this.** On the real path nothing tears a
+  destroyed blocker's model down at all, so it wrongly stays; a `part_destroyed`-driven teardown
+  would close both and is what that entry already asks for. **This fix deliberately does not
+  attempt it** — it corrects an ordering on the injection path and invents no teardown mechanism.
+- **Tests:** `test_squad_control_overlay.gd::test_a_destroyed_blocker_keeps_its_mesh_until_its_
+  explosion_has_played` (confirmed red on the old ordering) and
+  `::test_a_board_verb_with_nothing_to_animate_still_rebuilds_immediately`.

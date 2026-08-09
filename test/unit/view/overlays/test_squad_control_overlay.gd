@@ -749,3 +749,99 @@ func _log_text(overlay: ControlOverlay) -> String:
 	if module == null:
 		return ""
 	return "\n".join((module as CombatLogModule).sink.lines)
+
+
+# --- taskblock-61 Pass G (BR61.07): the destroyed thing must outlive its own explosion ----
+
+
+## `BR61.07` — **the board rebuild ran before the animation, so a barrel lost its mesh and the
+## detonation then played at an empty cell.**
+##
+## The supervisor, confirming `BR51.21`: *"Explosion plays, destroyed things disappear before the
+## explosion plays."*
+##
+## `sync_board_view` is a full `BoardView.build()`, and a blocker's mesh comes from
+## `UnitGeometry.assembly_placements`, **which emits boxes under a bare `hp > 0`** — so a barrel at
+## 0 hp produces no placements and the rebuild drops it.
+##
+## **Read synchronously, which is what makes the ordering provable.** `_on_debug_panel_applied` now
+## awaits `_play_injection`, which suspends inside `ResolutionModule.play`; so when control returns
+## here right after the emit, the handler is parked mid-animation and the board sync has not run
+## yet. Before the fix the rebuild had already happened by this line, and the barrel's meshes were
+## already gone.
+func test_a_destroyed_blocker_keeps_its_mesh_until_its_explosion_has_played() -> void:
+	var built: Dictionary = _bout()
+	var overlay: ControlOverlay = _squad_control(built)
+	var state: CombatState = built.state
+	var cell := Vector2i(5, 2)
+	var injector := BoutInjector.new(state)
+	var barrel: Part = DataLibrary.get_part(&"goo_barrel")
+	assert_not_null(barrel, "sanity: the shipped volatile barrel must load")
+	assert_true(injector.place_cover(cell, &"goo_barrel", {&"goo_barrel": barrel.duplicate(true)}))
+	overlay.battle.sync_board_view()
+	var drawn_with_barrel: int = _board_mesh_count(overlay.battle)
+	assert_gt(drawn_with_barrel, 0, "sanity: the board draws something")
+
+	# Zero the barrel for real, capturing exactly what the verb caused — the same list
+	# `DebugControlPanel._capture` would hand to `applied`.
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+	assert_true(injector.set_part_hp({"kind": Enums.HitKind.CELL, "cell": cell}, &"", 0))
+	state.combat_log.remove_sink(sink)
+	var effects: Array[LogEvent] = InjectionEvents.effects(sink.events)
+	assert_false(effects.is_empty(), "sanity: a forced detonation has something to animate")
+
+	overlay.debug_panel_module().panel.applied.emit(&"set_part_hp", {}, effects)
+
+	var drawn_while_playing: int = _board_mesh_count(overlay.battle)
+	gut.p(
+		(
+			"%d board meshes before, %d while the explosion plays"
+			% [drawn_with_barrel, drawn_while_playing]
+		)
+	)
+	assert_eq(
+		drawn_while_playing,
+		drawn_with_barrel,
+		(
+			"the board was rebuilt before the detonation animated, so the barrel's mesh was already "
+			+ "gone when its own explosion started — BR61.07"
+		)
+	)
+
+
+## A verb that changed the board but animated nothing must NOT be made to wait — `_play_injection`
+## returns immediately on an empty list, so the rebuild still lands in the same frame. Without this
+## the fix would trade a visual bug for an unresponsive debug panel.
+func test_a_board_verb_with_nothing_to_animate_still_rebuilds_immediately() -> void:
+	var built: Dictionary = _bout()
+	var overlay: ControlOverlay = _squad_control(built)
+	var cell := Vector2i(6, 3)
+	var barrel: Part = DataLibrary.get_part(&"goo_barrel")
+	BoutInjector.new(built.state).place_cover(
+		cell, &"goo_barrel", {&"goo_barrel": barrel.duplicate(true)}
+	)
+	var before: int = _board_mesh_count(overlay.battle)
+
+	overlay.debug_panel_module().panel.applied.emit(&"spawn_object", {}, [] as Array[LogEvent])
+
+	var after: int = _board_mesh_count(overlay.battle)
+	gut.p("%d board meshes before the rebuild, %d after" % [before, after])
+	assert_true(
+		DebugVerbs.affects_board(&"spawn_object"), "sanity: this verb is a board-changing one"
+	)
+	assert_gt(after, before, "the newly placed barrel must be drawn without waiting for anything")
+
+
+## Every `MeshInstance3D` under the board view, at any depth — the board's static geometry plus its
+## overlays. A count rather than a per-cell lookup: what is being asserted is that the rebuild has
+## or has not happened yet, and the rebuild replaces the lot.
+func _board_mesh_count(battle: BattleScene) -> int:
+	return _count_meshes(battle.board_view)
+
+
+func _count_meshes(node: Node) -> int:
+	var total: int = 1 if node is MeshInstance3D else 0
+	for child: Node in node.get_children():
+		total += _count_meshes(child)
+	return total

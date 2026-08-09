@@ -2,6 +2,47 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass G — the supervisor's verdicts, and the ordering `BR51.21` uncovered
+
+**Four entries closed on the supervisor's confirmation** — `BR51.19`, `BR51.21`, `BR51.16` and
+`BR57.02`, all `Resolved` and archived. **`BR34.04` went back to `Active`**, not because the fix
+failed but because it is about to be discarded: *"camera is still weird, but I'm looking at doing a
+refactor of the camera system (cutting the sniper cam entirely)."* The Pass E4 work is measurable
+and still does not read right to the only person who can see it, which is exactly what a
+`SUPERVISOR`-owned entry is for. Its note now says plainly that tuning `SNIPER_UP_OFFSET` is work
+the refactor throws away, and records what the replacement must carry forward.
+
+**`BR61.07` filed and fixed in the same session it was reported.** Confirming `BR51.21`, the
+supervisor saw *"destroyed things disappear before the explosion plays."*
+
+**The mechanism, read from source rather than guessed.** `DebugPanelModule._on_debug_panel_applied`
+ran `sync_board_view` before playing the injection's events, and `BoardView.build` draws a blocker
+through `UnitGeometry.assembly_placements`, **which emits boxes under a bare `hp > 0`** — so a
+barrel forced to 0 hp produced no placements, lost its mesh in the rebuild, and the detonation then
+animated at an already-empty cell.
+
+**The fix splits the resync along the line the two rules actually fall on.** `BR51.21`'s entry is
+right that the sync must precede playback — `ResolutionPlayer._prime` needs the frame
+`refresh_unit_views()` ran in, which is what stops a unit flashing at its destination. **But that is
+a rule about units.** A destroyed object needs the opposite: survive until after the animation that
+explains it. Unit syncs stayed before, the board sync moved after, and `_play_injection` is now
+awaited — without the `await` the handler detaches at the first suspend and rebuilds immediately,
+which is the same bug in a different shape.
+
+**A board verb that animates nothing is not delayed**, since `_play_injection` returns without
+suspending on an empty list. Pinned by its own test, because the obvious fix trades a visual bug for
+an unresponsive debug panel.
+
+**Measured both ways:** board meshes across a forced detonation are **62 before / 62 during** with
+the fix and **62 before / 61 during** without it.
+
+**`BR52.09` is the other half and is deliberately untouched.** On the real resolution path nothing
+tears a destroyed blocker's model down at all, so it wrongly *stays*; on the debug path it went too
+early. `sync_board_view` has only two callers and neither real path is one of them. **One
+`part_destroyed`-driven teardown would close both** — which is what `BR52.09` already asks for, and
+this pass invents no teardown mechanism ahead of it.
+
+
 ### Pass E6 — the isolate camera was culling the board's light along with the geometry
 
 **`BR57.02` to `Pending`, and the entry's own "where to look next" was right on both counts.** It
