@@ -124,7 +124,7 @@ func test_which_sample_ray_keeps_the_cutout_alive_across_zoom() -> void:
 		for i in range(points.size()):
 			var one: Array[Vector3] = [points[i]]
 			var blamed: Variant = RayCaster.blocker_obstructed_among(
-				grid, cells, camera, one, exclude
+				grid, cells, camera, one, exclude, WallLegibility.CUTOUT_TAG
 			)
 			var hit: bool = blamed != null
 			verdicts.append(

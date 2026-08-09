@@ -1169,6 +1169,39 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     `gdlint`'s 1000-line cap, and emission policy is a combat-log concern rather than a
     board-geometry one.
 
+- **2026-08-09 (taskblock-61 Pass C1 follow-up 3 — cover no longer counts as occluding)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. **Supervisor:** *"it looks like cover items are blocking
+  the 'is this unit obscured' ray. Only things with the cutout related tag should be detected by
+  that."* Correct, and it overrules a call CC made deliberately and wrote down: *"non-wall blockers
+  (cover) still count, deliberately: the safe direction is keeping a cutout."* **That reasoning was
+  wrong** — a cutout kept alive over geometry that can never be cut is not a safe answer, it is a
+  hole with no visible cause.
+  - **`MapGen` places six cover types as blockers** — `scrap_pile`, `goo_barrel`, `crate`,
+    `pillar`, `forklift`, `barrel_pallet` — and every one of them is drawn with
+    `WorldPalette.lit_material`, never the cutout material. None can ever be cut.
+  - **There was no cutout tag; `BoardView` decided with `part.id == &"wall"`.** That is content
+    identity hardcoded in code, which CLAUDE.md forbids outright, and it meant a second cuttable
+    terrain type would need a code edit. Fixed at the same time rather than worked around: a
+    `&"cutout"` tag authored on `wall.tres`, spelled once as `WallLegibility.CUTOUT_TAG`, read by
+    **both** the material assignment and the sight gate. What is drawn cuttable and what counts as
+    occluding are now the same authored fact and cannot drift.
+  - **The tag name is CC's and is a data-plus-one-constant rename** if the supervisor wants a
+    different word.
+  - `RayCaster.blocker_obstructed_among` gained a `required_tag` filter, defaulting to no filter —
+    the vocabulary stays with the caller, the same way `exclude_parts` already states membership
+    without that function having an opinion about why.
+  - **Pinned by three tests, not one:** cover between camera and unit does *not* keep the cutout
+    (with a sanity assertion that the pillar genuinely IS in the way, so the test is about what
+    counts rather than about what hits); a tagged wall still does; and a part with an id nobody
+    wrote code for, carrying the tag, occludes like a wall — which is the "addable as data, no code
+    edit" rule made checkable.
+  - **Not changed, deliberately:** `BoardView`'s build-step counter still splits walls from cover on
+    `blocker.id == &"wall"`, and `AsciiRender` still picks its wall glyph the same way. Those ask
+    what the map is made of, not what the cutout may cut, and quietly changing a diagnostic's
+    meaning is worse than leaving two different questions answered two ways.
+  - Cost unchanged within noise (686 usec a frame above the geometry floor, against 616 before);
+    the filter removes candidates, it does not add work.
+
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **cluster:** `input-affordance`

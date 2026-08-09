@@ -607,7 +607,11 @@ static func _add_box(mesh: ImmediateMesh, xform: Transform3D, size: Vector3) -> 
 ## so it reads as a fallen assembly, not upright cover.
 func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
 	var dropped: bool = DamageResolver.DROPPED_TAG in part.tags
-	var is_wall: bool = part.id == &"wall"
+	# taskblock-61 Pass C1: an authored tag, not `part.id == &"wall"` — content identity in code is
+	# what CLAUDE.md forbids, and a second cuttable terrain type would have needed an edit here.
+	# `WallLegibility.CUTOUT_TAG` is the same fact the sight gate reads, so what is drawn cuttable
+	# and what counts as occluding cannot drift apart.
+	var is_cutout: bool = WallLegibility.CUTOUT_TAG in part.tags
 	# taskblock-37 Pass E: the real height to sit at — `assembly_placements`
 	# defaults to a flat `height == 0.0`, which used to be harmless (nothing
 	# was ever raised); a cover object or wall over a raised cell needs to
@@ -623,7 +627,7 @@ func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = placement.box.size
-		if is_wall:
+		if is_cutout:
 			# tb32 Pass A: one shared cutout material for every wall,
 			# not `WorldPalette.lit_material()` per-placement — see
 			# `_wall_cutout_material`'s own doc comment.
@@ -648,7 +652,7 @@ func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -
 		# tb31 Pass C: tracked separately so `_process()` only re-evaluates
 		# legibility fading against walls specifically, not every box on
 		# the board.
-		if is_wall:
+		if is_cutout:
 			_wall_mesh_instances.append(instance)
 
 

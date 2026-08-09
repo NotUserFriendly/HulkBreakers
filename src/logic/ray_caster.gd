@@ -301,6 +301,11 @@ static func _blocker_in_the_way(
 ## the wall cutout can log *which* wall it blamed — the `BR32.05` diagnostic, since a gate that
 ## disagrees with what the supervisor sees is only settleable by naming the geometry it found.
 ##
+## `required_tag` narrows the candidates to blockers carrying it; `&""` (the default) means every
+## blocker counts. **The vocabulary belongs to the caller, not here** — this class knows what a tag
+## is and nothing about which ones mean what, the same way `exclude_parts` states membership
+## without this function having an opinion about why.
+##
 ## **Several rays from one origin, one walk.** `to_points` are all tested against each candidate
 ## cell before moving to the next — not one full walk per point. The cutout gate casts three rays
 ## at one body (centre, feet, head) and the per-cell work they share is most of the cost: the
@@ -311,7 +316,8 @@ static func blocker_obstructed_among(
 	cells: Array[Vector2i],
 	from: Vector3,
 	to_points: Array[Vector3],
-	exclude_parts: Array[Part] = []
+	exclude_parts: Array[Part] = [],
+	required_tag: StringName = &""
 ) -> Variant:
 	var dirs: Array[Vector3] = []
 	var limits: Array[float] = []
@@ -328,6 +334,8 @@ static func blocker_obstructed_among(
 	for cell: Vector2i in cells:
 		var part: Part = grid.blockers.get(cell)
 		if part == null or exclude_parts.has(part) or not BodyProjector.projects(part):
+			continue
+		if required_tag != &"" and required_tag not in part.tags:
 			continue
 		var height: float = UnitGeometry.true_height_for_cell(cell, grid)
 		# Built at most once per cell, and only for a cell some ray actually reaches — the

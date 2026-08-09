@@ -20,6 +20,27 @@ extends RefCounted
 ## close to the unit's on screen, AND is it nearer to the camera (in
 ## front of, not behind, the thing it would be hiding)?
 
+## **What the cutout is allowed to cut through.** taskblock-61 Pass C1, the supervisor's call:
+## *"it looks like cover items are blocking the 'is this unit obscured' ray. Only things with the
+## cutout related tag should be detected by that."*
+##
+## **An authored tag, not `part.id == &"wall"`.** That id check is what `BoardView` used to decide
+## which blockers got the cutout material, and it is exactly the hardcode CLAUDE.md forbids for
+## content identity — a second cuttable terrain type would have needed a code edit. One tag now
+## drives **both** the material assignment and this gate, so "is it drawn cuttable" and "does it
+## count as occluding" cannot disagree: they read the same authored fact.
+##
+## The consequence the supervisor reported: `MapGen` places six cover types as blockers
+## (`scrap_pile`, `goo_barrel`, `crate`, `pillar`, `forklift`, `barrel_pallet`), none of which
+## carries the cutout material and none of which can therefore ever be cut. Counting them as
+## occluders kept holes alive that nothing could open. **CC had chosen the opposite deliberately
+## and said so** — *"non-wall blockers (cover) still count, deliberately: the safe direction is
+## keeping a cutout"* — and that reasoning was wrong, because a cutout kept alive over uncuttable
+## geometry is not a safe answer, it is a hole with no cause.
+##
+## **A content vocabulary word, spelled once here.** Renaming it is a data edit plus this constant.
+const CUTOUT_TAG := &"cutout"
+
 
 ## True if a wall projecting to `wall_screen_position` (at `wall_depth`
 ## from the camera) should fade so a player can still read a focal point
@@ -112,12 +133,10 @@ static func is_cutout_subject(unit: Unit) -> bool:
 ## hole: a false "nothing is occluding" switches the cutout off exactly when it is needed, which is
 ## worse than leaving one on. A single centre ray misses a wall that hides only the legs.
 ##
-## **Blockers only, and that is a correctness choice before it is a cost one.** Only walls carry
-## the cutout material (`BoardView`'s own `part.id == &"wall"`), so a unit hidden by a catwalk
-## overhead is not something cutting a wall can help with — keeping the cutout alive for it would
-## put the hole back exactly where `BR32.05` complains about it. Non-wall blockers (cover) still
-## count, deliberately: the safe direction is keeping a cutout, and reading `&"wall"` here would
-## put the view's own content decision in the logic layer.
+## **Only what the cutout can actually cut counts as occluding** — `CUTOUT_TAG`, see its own
+## comment. Floors and field items are out because they are not blockers; cover is out because it
+## carries no cutout material. A unit hidden by a catwalk or a crate is genuinely hidden, and
+## cutting a wall somewhere else does not help — the hole would have no cause anyone could see.
 ##
 ## **Over the ray's own supercover cells, not over every blocker on the board.** This runs on a
 ## `_process` path and the first version of it did not: walking `grid.blockers` cost 629 usec per
@@ -153,7 +172,7 @@ static func blocking_cell(
 	var camera_cell := Vector2i(roundi(camera_position.x), roundi(camera_position.z))
 	var cells: Array[Vector2i] = Grid.line(camera_cell, cell)
 	return RayCaster.blocker_obstructed_among(
-		grid, cells, camera_position, body_sight_points(box), exclude
+		grid, cells, camera_position, body_sight_points(box), exclude, CUTOUT_TAG
 	)
 
 

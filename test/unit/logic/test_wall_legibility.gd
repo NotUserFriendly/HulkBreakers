@@ -108,6 +108,7 @@ func _short_wall(grid: Grid, cell: Vector2i, height: float) -> void:
 	wall.id = &"short_wall"
 	wall.hp = 60
 	wall.max_hp = 60
+	wall.tags = [&"terrain", WallLegibility.CUTOUT_TAG]
 	wall.volume = [Box.new(Vector3(0.0, height * 0.5, 0.0), Vector3(1.0, height, 1.0))]
 	grid.blockers[cell] = wall
 
@@ -227,4 +228,73 @@ func test_cuts_for_without_a_grid_still_refuses_a_dead_unit() -> void:
 	assert_false(
 		WallLegibility.cuts_for(null, Vector3(2, 5, -5), unit),
 		"no grid is no excuse for cutting a hole around a corpse"
+	)
+
+
+## **`BR32.05` follow-up, the supervisor's call:** *"it looks like cover items are blocking the 'is
+## this unit obscured' ray. Only things with the cutout related tag should be detected by that."*
+## `MapGen` places six cover types as blockers and none of them carries the cutout material, so
+## none can ever be cut — counting one as an occluder keeps a hole alive that nothing can open.
+## CC had chosen the opposite deliberately, on a "safe direction" argument that was wrong.
+func test_cover_between_the_camera_and_the_unit_does_not_keep_the_cutout() -> void:
+	var grid := GridFixture.flat(5, 12)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"pillar")
+	var unit := _standing_unit(Vector2i(2, 6))
+	var camera := Vector3(2, 5, -5)
+
+	assert_false(
+		WallLegibility.CUTOUT_TAG in DataLibrary.get_part(&"pillar").tags,
+		"sanity: a pillar is cover — it is never drawn with the cutout material"
+	)
+	assert_true(
+		(
+			RayCaster.blocker_obstructed_among(
+				grid,
+				Grid.line(Vector2i(2, -5), unit.cell),
+				camera,
+				WallLegibility.body_sight_points(UnitGeometry.bounding_box(unit)),
+				grid.parts_at(unit.cell)
+			)
+			!= null
+		),
+		"sanity: the pillar IS geometrically in the way — this is about what counts, not what hits"
+	)
+
+	assert_false(
+		_blocked(grid, camera, unit),
+		"cover cannot be cut through, so it must not keep a cutout alive"
+	)
+
+
+## The other half of the same rule: a tagged blocker still counts. Pairs with the test above so a
+## change that silences the gate entirely cannot pass both.
+func test_a_tagged_wall_between_the_camera_and_the_unit_still_keeps_the_cutout() -> void:
+	var grid := GridFixture.flat(5, 12)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var unit := _standing_unit(Vector2i(2, 6))
+
+	assert_true(
+		WallLegibility.CUTOUT_TAG in DataLibrary.get_part(&"wall").tags,
+		"wall.tres must author the cutout tag — the gate and the material both read it"
+	)
+	assert_true(_blocked(grid, Vector3(2, 5, -5), unit), "a wall is exactly what the cutout cuts")
+
+
+## **The tag has to be enough on its own.** A designer authoring a second cuttable terrain type
+## must not need a code edit (CLAUDE.md), which is the whole reason this stopped being
+## `part.id == &"wall"`. Nothing about the id may matter.
+func test_any_part_carrying_the_tag_counts_regardless_of_its_id() -> void:
+	var grid := GridFixture.flat(5, 12)
+	var bulkhead := Part.new()
+	bulkhead.id = &"some_future_bulkhead"
+	bulkhead.hp = 60
+	bulkhead.max_hp = 60
+	bulkhead.tags = [&"terrain", WallLegibility.CUTOUT_TAG]
+	bulkhead.volume = [Box.new(Vector3(0.0, 1.2, 0.0), Vector3(1.0, 2.4, 1.0))]
+	grid.blockers[Vector2i(2, 3)] = bulkhead
+	var unit := _standing_unit(Vector2i(2, 6))
+
+	assert_true(
+		_blocked(grid, Vector3(2, 5, -5), unit),
+		"a part nobody wrote code for, carrying the tag, must occlude like a wall"
 	)
