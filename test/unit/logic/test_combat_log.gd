@@ -2,14 +2,14 @@ extends GutTest
 
 
 func test_memory_sink_collects_events() -> void:
-	var log := CombatLog.new()
+	var stream := CombatLog.new()
 	var sink := MemorySink.new()
-	log.add_sink(sink)
+	stream.add_sink(sink)
 
 	var event := LogEvent.new(
 		1, Enums.Phase.RESOLUTION, 3, &"shot_fired", {"target": 7}, "unit 3 fired at unit 7"
 	)
-	log.emit(event)
+	stream.emit(event)
 
 	assert_eq(sink.events.size(), 1)
 	assert_eq(sink.events[0], event)
@@ -26,34 +26,34 @@ func test_events_of_kind_filters() -> void:
 
 
 func test_log_dispatches_to_multiple_sinks() -> void:
-	var log := CombatLog.new()
+	var stream := CombatLog.new()
 	var sink_a := MemorySink.new()
 	var sink_b := MemorySink.new()
-	log.add_sink(sink_a)
-	log.add_sink(sink_b)
+	stream.add_sink(sink_a)
+	stream.add_sink(sink_b)
 
-	log.emit(LogEvent.new(1, Enums.Phase.TACTICS, 0, &"queued"))
+	stream.emit(LogEvent.new(1, Enums.Phase.TACTICS, 0, &"queued"))
 
 	assert_eq(sink_a.events.size(), 1)
 	assert_eq(sink_b.events.size(), 1)
 
 
 func test_remove_sink_stops_further_dispatch_to_it() -> void:
-	var log := CombatLog.new()
+	var stream := CombatLog.new()
 	var temp := MemorySink.new()
-	log.add_sink(temp)
-	log.emit(LogEvent.new(1, Enums.Phase.RESOLUTION, 0, &"turn_start"))
+	stream.add_sink(temp)
+	stream.emit(LogEvent.new(1, Enums.Phase.RESOLUTION, 0, &"turn_start"))
 
-	log.remove_sink(temp)
-	log.emit(LogEvent.new(1, Enums.Phase.RESOLUTION, 0, &"turn_end"))
+	stream.remove_sink(temp)
+	stream.emit(LogEvent.new(1, Enums.Phase.RESOLUTION, 0, &"turn_end"))
 
 	assert_eq(temp.events.size(), 1, "events emitted after removal must not reach it")
 
 
 func test_remove_sink_is_a_no_op_for_a_sink_never_added() -> void:
-	var log := CombatLog.new()
-	log.remove_sink(MemorySink.new())  # must not error
-	log.emit(LogEvent.new(1, Enums.Phase.RESOLUTION, 0, &"turn_start"))
+	var stream := CombatLog.new()
+	stream.remove_sink(MemorySink.new())  # must not error
+	stream.emit(LogEvent.new(1, Enums.Phase.RESOLUTION, 0, &"turn_start"))
 	pass_test("remove_sink on an unknown sink did not error, and the log still dispatches")
 
 
@@ -100,3 +100,99 @@ func test_file_sink_default_path_produces_out_combat_log() -> void:
 	sink.close()
 
 	assert_true(FileAccess.file_exists("res://out/combat.log"))
+
+
+# --- taskblock-61 Pass E5 (BR51.16): retained history and the replay floor ----------------
+
+
+## A sink that asks for replay, for testing the floor without a whole overlay in the way.
+class ReplayingSink:
+	extends MemorySink
+
+	func wants_replay() -> bool:
+		return true
+
+
+## **The first replay-wanting sink sets the floor and receives nothing.** That is what keeps a
+## freshly-mounted panel from being handed events emitted before any panel existed — `CombatState`
+## logs its own construction and `BattleScene.load_battle` attaches the panel afterwards, on
+## purpose, so those events were never the panel's to show.
+func test_the_first_replaying_sink_receives_no_history() -> void:
+	var stream := CombatLog.new()
+	for i in range(3):
+		stream.emit(LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "before %d" % i))
+
+	var first := ReplayingSink.new()
+	stream.add_sink(first)
+
+	assert_eq(
+		first.events.size(), 0, "it saw nothing before it existed and must keep seeing nothing"
+	)
+
+
+## **A later one is brought level with its predecessor** — the overlay-swap case, which is the whole
+## defect: the panel is destroyed and rebuilt while the log carries on.
+func test_a_later_replaying_sink_receives_everything_since_the_floor() -> void:
+	var stream := CombatLog.new()
+	stream.emit(LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "before the panel"))
+	var first := ReplayingSink.new()
+	stream.add_sink(first)
+	for i in range(4):
+		stream.emit(LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "live %d" % i))
+	stream.remove_sink(first)
+
+	var rebuilt := ReplayingSink.new()
+	stream.add_sink(rebuilt)
+
+	var texts: Array[String] = []
+	for event: LogEvent in rebuilt.events:
+		texts.append(event.text)
+	gut.p("replayed: %s" % str(texts))
+	assert_eq(rebuilt.events.size(), 4, "exactly what the first sink saw, no more and no less")
+	assert_false(texts.has("before the panel"), "and nothing from before the first panel attached")
+
+
+## **Replay is opt-in, and the default is what protects every other sink.** A plain `MemorySink` —
+## the shape used to capture one turn's events for playback — must not be handed the whole bout.
+func test_an_ordinary_sink_is_never_replayed_into() -> void:
+	var stream := CombatLog.new()
+	stream.add_sink(ReplayingSink.new())
+	for i in range(3):
+		stream.emit(
+			LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "earlier %d" % i)
+		)
+
+	var plain := MemorySink.new()
+	stream.add_sink(plain)
+
+	assert_eq(plain.events.size(), 0, "a default sink receives only what is emitted after it joins")
+
+
+## **The floor is an index into a trimming array, so it has to move with the trim.** Left alone it
+## drifts forward through the surviving history and a re-attached panel silently loses its oldest
+## rows — a defect that only appears in a bout long enough to trim, which is the worst kind to ship.
+func test_the_replay_floor_survives_a_history_trim() -> void:
+	var stream := CombatLog.new()
+	var first := ReplayingSink.new()
+	stream.add_sink(first)
+	# Past twice the bound, which is where `_remember` slices.
+	var emitted: int = CombatLog.MAX_HISTORY * 2 + 10
+	for i in range(emitted):
+		stream.emit(LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "e%d" % i))
+	stream.remove_sink(first)
+
+	var rebuilt := ReplayingSink.new()
+	stream.add_sink(rebuilt)
+
+	gut.p(
+		(
+			"%d emitted, %d retained, %d replayed"
+			% [emitted, stream.history().size(), rebuilt.events.size()]
+		)
+	)
+	assert_eq(
+		rebuilt.events.size(),
+		stream.history().size(),
+		"the floor trimmed to 0 with the history, so the whole surviving log replays"
+	)
+	assert_lte(stream.history().size(), CombatLog.MAX_HISTORY * 2, "and the history stayed bounded")

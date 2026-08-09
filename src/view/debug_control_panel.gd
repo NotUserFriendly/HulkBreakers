@@ -537,13 +537,13 @@ func _begin_pick_cell(spin_x: SpinBox, spin_y: SpinBox) -> void:
 ## A panel with no state yet (`setup` never called) runs the action and reports no events rather
 ## than refusing it — the verb's own mutation is not this function's to veto.
 func _capture(action: Callable) -> Dictionary:
-	var log: CombatLog = combat_state.combat_log if combat_state != null else null
-	if log == null:
+	var stream: CombatLog = combat_state.combat_log if combat_state != null else null
+	if stream == null:
 		return {"ok": action.call() as bool, "events": [] as Array[LogEvent]}
 	var sink := MemorySink.new()
-	log.add_sink(sink)
+	stream.add_sink(sink)
 	var ok: bool = action.call()
-	log.remove_sink(sink)
+	stream.remove_sink(sink)
 	# **`InjectionEvents.effects`, not `sink.events`.** Every verb emits `command`,
 	# `command_outcome` and `inject` whether or not it changed anything, so the raw list is never
 	# empty and a listener could not tell "nothing to animate" from "something happened". Stripping

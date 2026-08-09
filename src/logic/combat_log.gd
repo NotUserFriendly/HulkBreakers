@@ -21,11 +21,29 @@ const MAX_HISTORY := 2000
 var _sinks: Array[LogSink] = []
 ## Every event emitted on this log, oldest first, trimmed to roughly `MAX_HISTORY`.
 ##
-## **Per `CombatState`, and that is what makes the replay semantics fall out correctly rather than
-## needing a rule.** A mid-bout overlay swap keeps the same state and therefore the same history, so
-## a rebuilt panel gets its rows back; a new bout builds a new `CombatState` with a new `CombatLog`
-## whose history is empty, so the panel is empty because there is genuinely nothing to show.
+## **Per `CombatState`, which is what scopes a replay to one bout without anyone writing a rule
+## about bouts.** A mid-bout overlay swap keeps the same state and therefore the same history, so a
+## rebuilt panel gets its rows back; a new bout builds a new `CombatState` with a new `CombatLog`,
+## and there is simply nothing of the old one here to replay.
+##
+## What a panel *shows* across a bout boundary is a separate question this does not answer: the
+## panel accumulates, because `CombatLogModule.attach_to` does not clear the fold. See its note.
 var _history: Array[LogEvent] = []
+## How far into `_history` a replay starts — **"what a panel would have seen"**, set once, by the
+## first replay-wanting sink to attach.
+##
+## `BR51.16`: without this, replay hands a freshly-mounted panel events emitted **before any panel
+## existed**. `CombatState.new` logs its own construction (`unit_assembled`, `build_step`) and
+## `BattleScene.load_battle` attaches the panel's sink only afterwards, deliberately — so those
+## events were never the panel's to show, and replaying them put board-build noise ahead of the
+## `bout_start` header the log is supposed to open with. That is a real readability regression and
+## `test_battle_scene.gd` caught it.
+##
+## One integer, and no rule about event kinds: the first panel to attach sets the floor at wherever
+## history already stood, so it replays nothing and sees exactly what it always saw. Every panel
+## after it — the ones an overlay swap builds mid-bout — replays from that same floor and is
+## brought up to date with its predecessor. **-1 means no replay-wanting sink has attached yet.**
+var _replay_floor: int = -1
 
 
 ## Attaches `sink`, and brings it up to date if it asked to be.
@@ -41,7 +59,12 @@ func add_sink(sink: LogSink) -> void:
 	_sinks.append(sink)
 	if not sink.wants_replay():
 		return
-	for event: LogEvent in _history:
+	if _replay_floor < 0:
+		# The first panel on this log. It saw nothing before now and must not start seeing it.
+		_replay_floor = _history.size()
+		return
+	for i: int in range(mini(_replay_floor, _history.size()), _history.size()):
+		var event: LogEvent = _history[i]
 		if sink.wants(event):
 			sink.emit(event)
 
@@ -75,8 +98,15 @@ func emit(event: LogEvent) -> void:
 ## whereas a per-event memmove is exactly the kind of quiet cost `BR27.09` was filed about.
 func _remember(event: LogEvent) -> void:
 	_history.append(event)
-	if _history.size() > MAX_HISTORY * 2:
-		_history = _history.slice(_history.size() - MAX_HISTORY)
+	if _history.size() <= MAX_HISTORY * 2:
+		return
+	var dropped: int = _history.size() - MAX_HISTORY
+	_history = _history.slice(dropped)
+	# **The floor is an index, so trimming has to move it.** Left alone it would drift forward
+	# through the surviving history and a re-attached panel would silently lose its oldest rows —
+	# a bug that only shows up in a bout long enough to trim, which is the worst kind to leave.
+	if _replay_floor > 0:
+		_replay_floor = maxi(_replay_floor - dropped, 0)
 
 
 ## The retained events, oldest first — read by tests and by anything that needs to know how far

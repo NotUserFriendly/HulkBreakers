@@ -1505,21 +1505,31 @@ and there is a second defect pointing the other way.** CC session
   `combat_log` in `AIM_MODULES` with the note *"rebuilt empty on remount, so turning it off and on
   would clear the visible log every time anyone aimed."* That protected aiming and left every
   overlay swap exposed.
-- **A second, mirror-image defect found in the same measurement.** `attach_to` re-pointed
-  `sink.fold.state` at a new `CombatState` but never cleared the groups, so loading a **new bout**
-  under a live overlay left **10 stale rows from the previous bout** on screen. The panel and the
-  file disagreed in both directions — emptying when it should not, persisting when it should not.
+- **A second behaviour was noticed in the same measurement and deliberately left alone.**
+  `attach_to` re-points `sink.fold.state` at a new `CombatState` without clearing the groups, so
+  loading a new bout under a live overlay carries the previous bout's rows forward.
+  **CC first "fixed" that too, and it was an overreach** — `test_battle_scene.gd::test_a_second_
+  bout_logs_its_own_seed_not_the_first_bouts` pins the accumulation on purpose: several bouts run
+  under one scene and the panel accumulates them the way `FileSink` appends them to one file.
+  **Nobody reported it as a defect.** Reverted; the accumulation is now pinned from this side too.
 - **The fix is replay, which the entry's own third suspect names** (*"an overlay swap re-creating
   the panel without replaying what the log already holds"*). `CombatLog` retains a bounded history
   and `add_sink` replays it into any sink that asks; `LogSink.wants_replay()` defaults **false** and
   only `HierarchicalUiSink` overrides it — `FileSink` would write every past line twice, and a
   `MemorySink` capturing one turn for playback would swallow the whole bout. Replay runs through
   the same `wants()` filter as live emission, so there is still one stream and one filter.
-- **The semantics fall out of history being per-`CombatState` rather than needing a rule.** A
-  mid-bout swap keeps the same log, so the rows come back; a new bout builds a new `CombatLog` whose
-  history is empty, so the panel is empty because there is genuinely nothing to show. `attach_to`
-  resets the fold before attaching, which both prevents a doubled replay and fixes the stale-rows
-  half.
+- **Replay starts at a floor, not at the beginning of history, and the full gate is what forced
+  that.** Replaying everything handed a freshly-mounted panel events emitted *before any panel
+  existed* — `CombatState.new` logs its own construction and `load_battle` attaches the sink
+  afterwards, deliberately — which put board-build noise ahead of the `bout_start` header the log
+  is supposed to open with. `test_battle_scene.gd` caught it. `CombatLog._replay_floor` is set once,
+  by the first replay-wanting sink, at wherever history already stood: that panel replays nothing
+  and sees exactly what it always saw, and every panel built after it replays from the same floor
+  and is brought level with its predecessor. **One integer, no rule about event kinds**, and it is
+  shifted when the history trims so a long bout cannot silently lose its oldest rows.
+- **`attach_to` is a no-op when already attached to that log.** `rebind()` and `load_battle` can
+  both reach it for the same log during one load, and with replay in place a re-attach would show
+  every line twice.
 - **`CombatLog.MAX_HISTORY` is 2000 and is flagged, not designed.** The panel folds into at most
   `LogFold.MAX_GROUPS` (200) rows and `UiLogSink` measured a real 3v3 bout at 9.9 events per turn,
   so 2000 comfortably refills a full panel. Trimmed in batches rather than by `pop_front` per
@@ -1529,12 +1539,15 @@ and there is a second defect pointing the other way.** CC session
   than a side effect to fix: the replay includes events emitted before the first panel ever
   mounted. It is the full retained log either way.
 - **To see it:** play a bout until the log has real content, then press **Assume Control**. The log
-  should keep everything it was showing instead of blanking. Then press **New Battle** — the log
-  should start clean rather than carrying the last bout's lines. **Both directions are the check**;
-  only one of them was reported.
+  should keep everything it was showing instead of blanking. **Also check the log still opens with
+  its `bout_start` header** rather than with board-build lines, and that starting a second bout in
+  the same session appends to the panel rather than replacing it — both are behaviours the fix had
+  to be corrected to preserve.
 - **Tests:** `test_squad_control_overlay.gd::test_assume_control_does_not_empty_the_log_panel_the_
-  stream_still_holds` and `::test_a_new_battle_does_not_inherit_the_previous_bouts_rows`. Both
-  confirmed red against the pre-fix code. Asserted by distinguishable marker text rather than row
+  stream_still_holds` (confirmed red against the pre-fix code),
+  `::test_a_new_battle_appends_to_the_panel_rather_than_clearing_it` and
+  `::test_attaching_twice_to_the_same_log_does_not_double_the_rows` — the last two pin what the
+  fix must NOT change. Asserted by distinguishable marker text rather than row
   counts — a bout's own opening lines are legitimately identical between bouts, and folding can
   extend a group rather than add a row, so counts mislead in both directions.
 - **One existing test was corrected rather than adjusted away:**

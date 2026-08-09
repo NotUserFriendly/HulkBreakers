@@ -76,23 +76,6 @@ func wants_replay() -> bool:
 	return true
 
 
-## Drops the folded model and starts again against `state`.
-##
-## `BR51.16`: called by `CombatLogModule.attach_to` before joining a log, and it fixes the mirror
-## image of the emptying bug. `attach_to` re-pointed `fold.state` but never cleared the groups, so
-## loading a **new** bout under a live overlay left the *previous* bout's rows on screen —
-## measured at 10 stale rows against a brand-new `CombatState`. With replay in place, resetting
-## first is what makes the panel a pure function of the log it is currently attached to.
-##
-## `_expanded` is keyed by `LogFoldGroup.get_instance_id()`, so it is cleared with the fold — the
-## old ids address groups that no longer exist and could collide with a new group's id.
-func reset(state: CombatState) -> void:
-	fold = LogFold.new(state)
-	_expanded.clear()
-	lines.clear()
-	mark_dirty()
-
-
 func emit(event: LogEvent) -> void:
 	fold.ingest(event)
 	_rebuild_lines()

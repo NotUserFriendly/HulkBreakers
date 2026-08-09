@@ -175,18 +175,22 @@ func rebind() -> void:
 func attach_to(log: CombatLog, state: CombatState) -> void:
 	if sink == null or log == null:
 		return
+	# `BR51.16`: **already attached to this log is a no-op, not a re-attach.** `CombatLog.add_sink`
+	# replays its retained history into a sink that asks for one, and both `rebind()` and
+	# `BattleScene.load_battle` can reach this for the same log during one load — detaching and
+	# re-adding would replay everything a second time on top of what the sink already holds.
+	if _attached_to == log:
+		sink.fold.state = state
+		return
 	if _attached_to != null:
 		_attached_to.remove_sink(sink)
-	# `BR51.16`: **reset, then attach — the order is the fix.** `CombatLog.add_sink` replays its
-	# retained history into a sink that asks for it, so the fold must be empty first or a re-attach
-	# would show the old content plus the replayed copy of it. Resetting also fixes the mirror
-	# defect this pass measured: re-pointing `fold.state` at a NEW `CombatState` left the previous
-	# bout's rows on screen, because nothing had ever cleared the groups.
-	#
-	# Together they make the panel a pure function of whichever log it is currently attached to —
-	# an overlay swap mid-bout gets its rows back, and a genuinely new bout starts empty because
-	# the new log's history is empty, not because anything reset it.
-	sink.reset(state)
+	# **The fold is deliberately NOT cleared here.** A first draft of this fix reset it, which made
+	# a new bout start the panel clean — and that broke
+	# `test_battle_scene.gd::test_a_second_bout_logs_its_own_seed_not_the_first_bouts`, which pins
+	# the opposite on purpose: several bouts run under one scene and the panel accumulates them,
+	# the same way `FileSink` appends them to one file. **Nobody reported the accumulation as a
+	# defect** and changing it was scope this fix had no business taking.
+	sink.fold.state = state
 	log.add_sink(sink)
 	_attached_to = log
 

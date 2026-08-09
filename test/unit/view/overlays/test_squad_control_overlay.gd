@@ -662,11 +662,11 @@ func test_an_injection_that_caused_nothing_does_not_start_a_resolution() -> void
 func test_assume_control_does_not_empty_the_log_panel_the_stream_still_holds() -> void:
 	var built: Dictionary = _bout()
 	var overlay: ControlOverlay = _squad_control(built)
-	var log: CombatLog = built.state.combat_log
+	var stream: CombatLog = built.state.combat_log
 	var witness := MemorySink.new()
-	log.add_sink(witness)
+	stream.add_sink(witness)
 	for i in range(6):
-		log.emit(LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "marker %d" % i))
+		stream.emit(LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "marker %d" % i))
 	var before: String = _log_text(overlay)
 	gut.p("before, %d events on the stream:\n%s" % [witness.events.size(), before])
 	for i in range(6):
@@ -692,34 +692,53 @@ func test_assume_control_does_not_empty_the_log_panel_the_stream_still_holds() -
 		)
 
 
-## The other half of the semantics, and it is what makes replay-on-attach correct rather than
-## merely convenient: **a genuinely new bout must not inherit the old one's rows.**
+## **The half this fix deliberately does NOT change, recorded because a first draft did.**
 ##
-## This was a real second defect, measured in the same pass: `CombatLogModule.attach_to` re-pointed
-## `sink.fold.state` at the new `CombatState` but never cleared the groups, so loading a new bout
-## under a live overlay left **10 stale rows** from the previous one on screen. The panel and the
-## file disagreed in both directions — emptying when it should not, and persisting when it should
-## not.
-func test_a_new_battle_does_not_inherit_the_previous_bouts_rows() -> void:
+## Resetting the fold on attach made a new bout start the panel clean, which reads sensible and is
+## wrong: `test_battle_scene.gd::test_a_second_bout_logs_its_own_seed_not_the_first_bouts` pins the
+## opposite on purpose — several bouts run under one scene and the panel accumulates them, the way
+## `FileSink` appends them to one file. **Nobody reported the accumulation as a defect**, and the
+## full gate caught the overreach because that test lives in a bout-building file the fast gate
+## skips. This pins the behaviour that was kept.
+func test_a_new_battle_appends_to_the_panel_rather_than_clearing_it() -> void:
 	var overlay: ControlOverlay = _squad_control(_bout())
-	var log: CombatLog = overlay.battle.combat_state.combat_log
+	var stream: CombatLog = overlay.battle.combat_state.combat_log
 	for i in range(4):
-		log.emit(LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "stale %d" % i))
-	assert_true(_log_text(overlay).contains("stale 0"), "sanity: the first bout's log is showing")
+		stream.emit(
+			LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "earlier %d" % i)
+		)
+	assert_true(_log_text(overlay).contains("earlier 0"), "sanity: the first bout's log is showing")
 
 	var fresh: Dictionary = _bout()
 	overlay.battle.load_battle(fresh.state, fresh.mission)
 
 	var rows: String = _log_text(overlay.battle.overlay as ControlOverlay)
-	gut.p("a fresh bout shows:\n%s" % rows)
-	# Not asserted as empty: loading a bout logs its own opening lines onto the NEW log, and those
-	# belong there. What must be gone is the previous bout's own content, which is why the markers
-	# are distinguishable rather than generic.
+	gut.p("after loading a second bout:\n%s" % rows)
 	for i in range(4):
-		assert_false(
-			rows.contains("stale %d" % i),
-			"the previous bout's row 'stale %d' must not survive into a new CombatState" % i
+		assert_true(
+			rows.contains("earlier %d" % i),
+			"the previous bout's row 'earlier %d' must still be readable in one scene" % i
 		)
+
+
+## **A replay must not double what the panel already holds.** `rebind()` and
+## `BattleScene.load_battle` can both reach `attach_to` for the same log during one load, and
+## `add_sink` replays — so without the already-attached guard a single load would show every line
+## twice.
+func test_attaching_twice_to_the_same_log_does_not_double_the_rows() -> void:
+	var built: Dictionary = _bout()
+	var overlay: ControlOverlay = _squad_control(built)
+	var module: CombatLogModule = overlay.module(&"combat_log") as CombatLogModule
+	built.state.combat_log.emit(
+		LogEvent.new(0, Enums.Phase.RESOLUTION, -1, &"diagnostic", {}, "once only")
+	)
+	var before: int = module.sink.lines.size()
+
+	module.attach_to(built.state.combat_log, built.state)
+	module.rebind()
+
+	gut.p("%d rows before re-attaching, %d after" % [before, module.sink.lines.size()])
+	assert_eq(module.sink.lines.size(), before, "re-attaching the same log must change nothing")
 
 
 ## The rows the combat-log panel is currently showing. Reads `HierarchicalUiSink.lines`, which is

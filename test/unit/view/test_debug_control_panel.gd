@@ -691,15 +691,17 @@ func test_a_verb_that_changes_nothing_carries_an_empty_list_rather_than_its_own_
 ## one worth pinning.
 func test_the_capture_sink_is_detached_even_when_the_verb_refuses() -> void:
 	var panel: DebugControlPanel = _open_panel()
-	var log: CombatLog = panel.combat_state.combat_log
-	var before: int = log._sinks.size()
+	var stream: CombatLog = panel.combat_state.combat_log
+	var before: int = stream._sinks.size()
 
 	panel._select_verb(_verb_index(&"set_part_hp"))
 	panel._active = SelectionTarget.for_cell(Vector2i(4, 4)).to_hit()
 	panel._on_apply_pressed()
 
 	assert_true(panel._status_label.text.contains("refused"), "sanity: this path refuses")
-	assert_eq(log._sinks.size(), before, "the capture sink must not outlive the call that made it")
+	assert_eq(
+		stream._sinks.size(), before, "the capture sink must not outlive the call that made it"
+	)
 
 
 ## Fills whichever widgets the `set_part_hp` param row built, by walking the real container rather
