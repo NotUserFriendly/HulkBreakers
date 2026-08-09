@@ -987,6 +987,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   because it cannot inherit them without dragging in `TacticsController` and the whole unit-input path.
   `PLAN.md`'s *One view, toggleable modules* dissolves the class. Fixing an instance is work that
   refactor discards.
+- Supervisor clarification note: Obsolete this if it cannot be reproduced during the taskblock-71 bug hunt.
 
 **taskblock-56 Pass D — the refactor landed, and this one did NOT evaporate. Still `Active`, and
 deliberately not `Pending`.** CC session `4ec878cf-1434-4676-8bd3-05c92eed071a`.
