@@ -1139,6 +1139,36 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   - **The floor is a separate, pre-existing defect and is filed as `BR61.04`** — not caused here,
     and the larger of the two numbers.
 
+- **2026-08-09 (taskblock-61 Pass C1 follow-up 2 — the zoom report, reproduced against and NOT
+  confirmed; diagnostic added instead)** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. **Supervisor:**
+  *"the cutout is still showing if far away, but is no longer cutting when close to the unit when
+  there is no wall between camera and unit"*, disambiguated by them as **camera** distance: same
+  unit, nothing between, correct zoomed in and wrong zoomed out.
+  - **CC could not reproduce a gate that invents occlusion**
+    (`test_cutout_gate_over_zoom.gd`). A board with **no blockers at all** and a board with a wall
+    nine cells off the line both answer "clear" at every zoom from 3 to 30. Whatever is happening,
+    the gate is not manufacturing geometry.
+  - **What zoom actually changes is the angle, and it is not monotonic.** The camera orbits a
+    **pivot**, not the unit, so pulling back walks it *over* a unit on its own side of that pivot:
+    measured **5.6 degrees down at zoom 3, 83.6 at zoom 12, 46.2 at zoom 30**. The consequence is
+    the supercover line length — **2 cells at zoom 3-6, 22 at zoom 30**. Zoomed in the camera is
+    nearly overhead and almost nothing *can* be between; zoomed out the view is oblique and walls
+    genuinely are. **This is a real mechanism for the reported behaviour that does not require a
+    bug**, which is exactly why it should not be "fixed" on a theory.
+  - **The three-point sampling bias was the prime suspect and was ruled out.** On a real generated
+    board the **centre** ray is blocked every time the gate fires — it is never the feet ray alone
+    keeping a plainly-visible unit's cutout alive.
+  - **So the diagnostic was built rather than a fix.** `WallLegibility.blocking_cell` returns the
+    **cell** it found rather than a bool, and the cutout log line now carries `blocked_by` — one
+    cell per fed unit. **To settle this:** zoom out until the cutout appears with nothing that
+    looks like it should be occluding, then read the `wall cutout: ... blocked by cells [...]` line
+    and check whether that cell is genuinely between the camera and that unit. If it is, the gate
+    is right and the visible defect is the residual per-fragment half of this entry; if it is not,
+    the cell names the bug.
+  - `BoardView`'s cutout logging moved to `src/debug/cutout_log.gd` to make room — the file was at
+    `gdlint`'s 1000-line cap, and emission policy is a combat-log concern rather than a
+    board-geometry one.
+
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **cluster:** `input-affordance`

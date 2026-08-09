@@ -140,6 +140,15 @@ static func is_cutout_subject(unit: Unit) -> bool:
 static func sight_blocked_to_body(
 	grid: Grid, camera_position: Vector3, cell: Vector2i, box: AABB
 ) -> bool:
+	return blocking_cell(grid, camera_position, cell, box) != null
+
+
+## The same question, answering **which cell** rather than merely whether — what the cutout log
+## records so a disagreement about "there was nothing between" can be checked against the board
+## instead of argued. `null` when nothing is in the way.
+static func blocking_cell(
+	grid: Grid, camera_position: Vector3, cell: Vector2i, box: AABB
+) -> Variant:
 	var exclude: Array[Part] = grid.parts_at(cell)
 	var camera_cell := Vector2i(roundi(camera_position.x), roundi(camera_position.z))
 	var cells: Array[Vector2i] = Grid.line(camera_cell, cell)

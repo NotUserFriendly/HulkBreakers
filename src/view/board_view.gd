@@ -162,12 +162,6 @@ const OCCLUSION_RADIUS_CELLS := 2.5
 ## this simply stops feeding the excess to the cutout (they'd still be
 ## visible, just not cut through a wall for).
 const WALL_CUTOUT_MAX_UNITS := 32
-## taskblock-41 Pass D: how coarsely a cut unit's screen position is quantised
-## before deciding the cutout "changed" — see `_log_cutout`. Big enough that a
-## slow orbit produces a readable trickle rather than one event per frame,
-## small enough that a real repositioning still registers. Flagged and tunable
-## (CLAUDE.md: never invent a final number).
-const CUTOUT_LOG_GRID := 64.0
 
 ## taskblock-51 (`BR26.02`): switched by the `set_aim_visual` debug verb so the supervisor
 ## can bisect a GPU cost CC cannot measure. **Default on — the game behaves normally unless
@@ -231,7 +225,7 @@ var _excluded_from_occlusion: Dictionary = {}
 var _build_step_index := 0
 ## The last cutout arrangement actually written to the log, so an unchanged
 ## one is not written again. Cleared on every `build()`.
-var _last_cutout_fingerprint := ""
+var _cutout_log := CutoutLog.new()
 var _static: Node3D
 var _reachable_overlay: Node3D
 var _ghost_overlay: Node3D
@@ -281,7 +275,7 @@ func build(
 ) -> void:
 	grid = p_grid
 	_build_step_index = 0
-	_last_cutout_fingerprint = ""
+	_cutout_log.reset()
 	_clear(_static)
 	_wall_mesh_instances.clear()
 	ghosting.reset()
@@ -720,6 +714,7 @@ func update_wall_cutout(camera: Camera3D) -> void:
 	depths.resize(WALL_CUTOUT_MAX_UNITS)
 	radii.resize(WALL_CUTOUT_MAX_UNITS)
 	var count := 0
+	var blocked_by: Array = []
 	if camera != null and is_inside_tree():
 		var camera_position: Vector3 = camera.global_position
 		var viewport_height: float = float(get_viewport().size.y)
@@ -740,8 +735,12 @@ func update_wall_cutout(camera: Camera3D) -> void:
 			# and this rejects before the sight gate rather than after it.
 			if camera.is_position_behind(position):
 				continue
-			if not WallLegibility.sight_blocked_to_body(grid, camera_position, unit.cell, box):
+			var blamed: Variant = WallLegibility.blocking_cell(
+				grid, camera_position, unit.cell, box
+			)
+			if blamed == null:
 				continue
+			blocked_by.append(blamed)
 			var depth: float = camera_position.distance_to(position)
 			# BR32.02: `unproject_position()` and the shader's own
 			# FRAGCOORD are BOTH top-left-origin, Y-DOWN — confirmed live,
@@ -764,51 +763,7 @@ func update_wall_cutout(camera: Camera3D) -> void:
 	_wall_cutout_material.set_shader_parameter("unit_depths", depths)
 	_wall_cutout_material.set_shader_parameter("unit_radii_px", radii)
 	_wall_cutout_material.set_shader_parameter("unit_count", count)
-	_log_cutout(screen_positions, count)
-
-
-## taskblock-41 Pass D: "cutout drawn to (x, y)."
-##
-## **Deliberately not per frame.** This runs every frame, on every wall, while
-## the camera orbits — and `FileSink.emit()` flushes to disk per line, so a
-## genuine per-frame event here would cost more than the effect it documents
-## and would bury every other event in the log. Emitted only when the cutout
-## meaningfully CHANGES: how many units are being cut for, or any of them
-## crossing into a different `CUTOUT_LOG_GRID` block of screen space. Holding
-## still logs nothing; a real change logs once. Stated here rather than
-## silently narrowed — the volume ceiling is the design, not an oversight.
-func _log_cutout(screen_positions: PackedVector2Array, count: int) -> void:
-	if build_log == null:
-		return
-	var fingerprint := PackedStringArray()
-	for i in range(count):
-		var position: Vector2 = screen_positions[i]
-		(
-			fingerprint
-			. append(
-				(
-					"%d,%d"
-					% [
-						int(position.x / CUTOUT_LOG_GRID),
-						int(position.y / CUTOUT_LOG_GRID),
-					]
-				)
-			)
-		)
-	var current: String = "|".join(fingerprint)
-	if current == _last_cutout_fingerprint:
-		return
-	_last_cutout_fingerprint = current
-	build_log.emit(
-		LogEvent.new(
-			0,
-			Enums.Phase.TACTICS,
-			-1,
-			&"wall_cutout",
-			{"units": count, "blocks": current},
-			"wall cutout: %d unit(s) at screen blocks [%s]" % [count, current]
-		)
-	)
+	_cutout_log.emit(build_log, screen_positions, count, blocked_by)
 
 
 func _process(_delta: float) -> void:

@@ -297,6 +297,10 @@ static func _blocker_in_the_way(
 ## a supercover line gets the cells the ray's ground track crosses. A part whose boxes overhang its
 ## own cell (`SKIP_RADIUS`'s own reason for existing) could in principle be missed. Walls are
 ## exactly one cell across and cannot; authored cover could.
+## **The cell of the first blocker in the way, or `null`.** Returns the cell rather than a bool so
+## the wall cutout can log *which* wall it blamed — the `BR32.05` diagnostic, since a gate that
+## disagrees with what the supervisor sees is only settleable by naming the geometry it found.
+##
 ## **Several rays from one origin, one walk.** `to_points` are all tested against each candidate
 ## cell before moving to the next — not one full walk per point. The cutout gate casts three rays
 ## at one body (centre, feet, head) and the per-cell work they share is most of the cost: the
@@ -308,7 +312,7 @@ static func blocker_obstructed_among(
 	from: Vector3,
 	to_points: Array[Vector3],
 	exclude_parts: Array[Part] = []
-) -> bool:
+) -> Variant:
 	var dirs: Array[Vector3] = []
 	var limits: Array[float] = []
 	for to: Vector3 in to_points:
@@ -319,7 +323,7 @@ static func blocker_obstructed_among(
 		dirs.append(span / distance)
 		limits.append(distance - _ENDPOINT_MARGIN)
 	if dirs.is_empty():
-		return false
+		return null
 
 	for cell: Vector2i in cells:
 		var part: Part = grid.blockers.get(cell)
@@ -337,8 +341,8 @@ static func blocker_obstructed_among(
 			if box_placements.is_empty():
 				box_placements = UnitGeometry.assembly_placements(part, cell, 0.0, null, height)
 			if _any_box_hit(box_placements, from, dirs[i], limits[i]):
-				return true
-	return false
+				return cell
+	return null
 
 
 static func _any_box_hit(

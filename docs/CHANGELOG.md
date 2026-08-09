@@ -2,6 +2,38 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass C1 follow-up 2 — the zoom report gets a diagnostic, not a fix
+
+**The supervisor reported the cutout still firing when zoomed out with nothing between camera and
+unit, and correct when zoomed in.** CC could not reproduce a gate that invents occlusion: a board
+with **no blockers at all**, and a board with a wall nine cells off the line, both answer "clear"
+at every zoom from 3 to 30 (`test_cutout_gate_over_zoom.gd`).
+
+**What zoom changes is the angle, and it is not monotonic.** The camera orbits a **pivot**, not the
+unit, so pulling back walks it *over* a unit on its own side of that pivot — **5.6 degrees down at
+zoom 3, 83.6 at zoom 12, 46.2 at zoom 30**. The consequence is how much ground the ray crosses:
+the supercover line is **2 cells at zoom 3-6 and 22 at zoom 30**. Zoomed in the camera is nearly
+overhead and almost nothing *can* be between; zoomed out the view is oblique and walls genuinely
+are. **That is a real mechanism for the reported behaviour that does not require a bug** — so
+nothing was "fixed" on the strength of a theory.
+
+**The prime suspect was ruled out by measuring it.** The three-point sampling ("any of centre,
+feet, head blocked keeps the cutout") was the obvious candidate for a sticky gate at oblique
+angles. On a real generated board the **centre** ray is blocked every time the gate fires — the
+feet ray never keeps a plainly-visible unit's cutout alive on its own.
+
+**So the gate now names the cell it blamed.** `RayCaster.blocker_obstructed_among` and
+`WallLegibility.blocking_cell` return the **cell** rather than a bool, and the cutout log line
+carries a `blocked_by` field, one cell per fed unit. A disagreement between what the geometry
+computes and what is on screen is only settleable by naming the geometry — `docs/00`'s own rule
+about turning an adjudication into evidence.
+
+**`BoardView`'s cutout logging moved to `src/debug/cutout_log.gd`.** The file had reached
+`gdlint`'s 1000-line cap with no room for the diagnostic, and when the cutout log emits is a
+combat-log concern rather than a board-geometry one. `BoardView` is 960 lines now, which also
+leaves `BR32.04` somewhere to land.
+
+
 ### Pass C1 follow-up — the gate shipped as a framerate regression, and the probe is why
 
 **The supervisor caught it in one session: FPS swinging 160 -> 13.** The cutout gate was correct

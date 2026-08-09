@@ -342,3 +342,36 @@ func test_update_wall_cutout_still_cuts_for_a_downed_unit() -> void:
 		1,
 		"a downed unit is a turn from standing back up — it keeps its cutout"
 	)
+
+
+## **The `BR32.05` diagnostic, pinned.** A gate that disagrees with what the supervisor sees on
+## screen is only settleable by naming the geometry it found, so the cutout line records the cell
+## it blamed for every unit it kept. Without this the next report is another adjudication.
+func test_the_cutout_log_names_the_cell_it_blamed() -> void:
+	var grid := GridFixture.flat(5, 12)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+	var sink := MemorySink.new()
+	view.build_log = CombatLog.new()
+	view.build_log.add_sink(sink)
+
+	var unit := _torso_unit(Vector2i(2, 6))
+	view.wall_cutout_units = [unit]
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, -5)
+	camera.look_at(UnitGeometry.bounding_sphere(unit).center, Vector3.UP)
+
+	view.update_wall_cutout(camera)
+
+	var lines: Array[LogEvent] = sink.events.filter(
+		func(event: LogEvent) -> bool: return event.kind == &"wall_cutout"
+	)
+	assert_eq(lines.size(), 1, "one cutout line for one meaningful change")
+	assert_eq(
+		lines[0].data.get("blocked_by"),
+		"2.3",
+		"the log must name the wall cell the gate actually found, not just that it found one"
+	)
