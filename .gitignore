@@ -39,3 +39,12 @@ out/suite_failures.json
 
 # Supervisor scratch pad for the live bug hunts — deliberately untracked.
 temp.md
+
+# Editor swap/backup files. `.BUGS.md.kate-swp` was committed by a `git add -A` while the
+# supervisor had the ledger open, so this is a rule earned rather than anticipated: the
+# living docs are edited during the same sessions CC commits from, and a swap file caught
+# mid-write is a snapshot of a half-typed entry.
+.*.kate-swp
+*.swp
+*.swo
+*~
