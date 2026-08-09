@@ -36,6 +36,8 @@ static func drill_down(entry_value: StatValue) -> Array[String]:
 				op_text = "x%s" % source.delta
 			Enums.ModOp.OVERRIDE:
 				op_text = "-> %s" % source.delta
+			Enums.ModOp.MAX:
+				op_text = "offers %s" % source.delta
 		lines.append(
 			(
 				"%s (%s): %s"

@@ -46,7 +46,26 @@ static func build_bout(
 	CombatState.bouts_built += 1
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
-	var grid: Grid = MapGen.generate(rng.randi(), GRID_WIDTH, GRID_HEIGHT)
+
+	# tb62 Pass A: **the roster is assembled BEFORE the map, because the map's own
+	# navigability invariant is judged against the roster.** `step_height` is a per-unit
+	# stat now, so "is every cell reachable" has no answer until you know who is walking —
+	# a 0.6 rise is a stair to a long-legged body and a wall to a standard one, and the
+	# generator has to certify against whoever steps shortest (`Unit.lowest_step_height`).
+	#
+	# **Deliberately rng-neutral.** `DeepStrike.assemble_from_preset` draws no randomness at
+	# all, so moving assembly ahead of `MapGen.generate` leaves the `rng.randi()` sequence —
+	# map seed, then combat seed — exactly as it was. Every existing bout seed still builds
+	# the map it built before. Seating is the half that genuinely needs the board, so it
+	# stays below and is applied to units that already exist.
+	var units: Array[Unit] = []
+	units.append_array(_spawn_squad(roster_a, 0))
+	units.append_array(_spawn_squad(roster_b, 1))
+	if units.is_empty():
+		return {"error": "neither roster could actually assemble (bad template_id?)"}
+	var step_height: float = Unit.lowest_step_height(units)
+
+	var grid: Grid = MapGen.generate(rng.randi(), GRID_WIDTH, GRID_HEIGHT, step_height)
 	var spawn_a_cells: Array[Vector2i] = _cells_of_marker(grid, Enums.SpawnMarker.SPAWN_A)
 	var spawn_b_cells: Array[Vector2i] = _cells_of_marker(grid, Enums.SpawnMarker.SPAWN_B)
 
@@ -54,8 +73,12 @@ static func build_bout(
 	# squad A already holds. The two zones are the farthest-apart rooms and will not
 	# normally meet, but "normally" is what let the wrap survive five blocks.
 	var taken: Dictionary = {}
-	var cells_a: Array[Vector2i] = _placement_cells(grid, spawn_a_cells, roster_a.size(), taken)
-	var cells_b: Array[Vector2i] = _placement_cells(grid, spawn_b_cells, roster_b.size(), taken)
+	var cells_a: Array[Vector2i] = _placement_cells(
+		grid, spawn_a_cells, roster_a.size(), taken, step_height
+	)
+	var cells_b: Array[Vector2i] = _placement_cells(
+		grid, spawn_b_cells, roster_b.size(), taken, step_height
+	)
 	# A grid carrying no spawn markers at all has no zone to spill from, and
 	# `_spawn_squad`'s own `Vector2i(i, squad_id)` fallback still hands out distinct
 	# cells — so an empty zone is the pre-existing marker-less case, not a map too small
@@ -74,11 +97,8 @@ static func build_bout(
 			)
 		}
 
-	var units: Array[Unit] = []
-	units.append_array(_spawn_squad(roster_a, 0, cells_a))
-	units.append_array(_spawn_squad(roster_b, 1, cells_b))
-	if units.is_empty():
-		return {"error": "neither roster could actually assemble (bad template_id?)"}
+	_seat_squad(units, 0, cells_a)
+	_seat_squad(units, 1, cells_b)
 
 	var state := CombatState.new(grid, units, rng.randi())
 	# taskblock-52 `BR52.11`: the origin seed travels with the bout, so
@@ -137,9 +157,12 @@ static func _entry_missing_profile(entry: BoutRosterEntry) -> bool:
 ## Requiring `move_cost` to exist in BOTH directions keeps every spawned unit on ground
 ## mutually connected to its own zone.
 ##
-## The mover is the conservative one: no climbing, unmodified `step_height`. A cell this
-## pathfinder can reach is one every shell in the roster can reach, whatever it is made
-## of. Deterministic by construction — a FIFO flood seeded with the zone's own cells in
+## The mover is the conservative one: no climbing, and — tb62 Pass A — the roster's own
+## **lowest** `step_height` rather than the unmodified body's. That is what makes the
+## sentence below literally true instead of nearly true: a cell this pathfinder can reach
+## is one every shell in the roster can reach, whatever it is made of. Passing the base
+## would have been right only while no part authored the stat.
+## Deterministic by construction — a FIFO flood seeded with the zone's own cells in
 ## the order `_cells_of_marker` found them, expanded through `Grid.NEIGHBOR_OFFSETS` in
 ## its fixed order. No RNG; the same board always seats the same roster the same way.
 ##
@@ -147,9 +170,13 @@ static func _entry_missing_profile(entry: BoutRosterEntry) -> bool:
 ## `build_bout` refuses the bout by name rather than stacking, per this file's own
 ## "never crash, never silently invent" posture.
 static func _placement_cells(
-	grid: Grid, zone_cells: Array[Vector2i], count: int, taken: Dictionary
+	grid: Grid,
+	zone_cells: Array[Vector2i],
+	count: int,
+	taken: Dictionary,
+	step_height: float = Unit.BASE_STEP_HEIGHT
 ) -> Array[Vector2i]:
-	var pathfinder := Pathfinder.new(grid)
+	var pathfinder := Pathfinder.new(grid, false, step_height)
 	var placed: Array[Vector2i] = []
 	var queue: Array[Vector2i] = zone_cells.duplicate()
 	var visited: Dictionary = {}
@@ -179,24 +206,21 @@ static func _placement_cells(
 	return placed
 
 
-static func _spawn_squad(
-	roster: Array[BoutRosterEntry], squad_id: int, placement_cells: Array[Vector2i]
-) -> Array[Unit]:
+## tb62 Pass A: **assembly, with no board involved.** Split from seating because the
+## roster's own `step_height` is an input to generating the map it will stand on, and a
+## body cannot be asked what it steps until it has been built. Units come back at the
+## marker-less `Vector2i(i, squad_id)` positions; `_seat_squad` moves them once the board
+## exists.
+static func _spawn_squad(roster: Array[BoutRosterEntry], squad_id: int) -> Array[Unit]:
 	var units: Array[Unit] = []
 	for i in range(roster.size()):
 		var entry: BoutRosterEntry = roster[i]
 		var matrix := Matrix.new()
 		matrix.id = StringName("%s_%d" % [entry.profile.preset_name, i])
 		matrix.ai_profile = entry.ai_profile
-		# `BR51.19`: one distinct cell per unit, chosen by `_placement_cells` and already
-		# checked to be walkable. The old `spawn_cells[i % spawn_cells.size()]` wrap is
-		# what stacked every unit past the fourth. The `Vector2i(i, squad_id)` fallback
-		# survives only for a grid carrying no spawn markers at all, where there is no
-		# zone to spill from — still distinct per unit, which is what it was always for.
-		var cell: Vector2i = (
-			placement_cells[i] if i < placement_cells.size() else Vector2i(i, squad_id)
+		var unit: Unit = DeepStrike.assemble_from_preset(
+			entry.profile, matrix, Vector2i(i, squad_id), squad_id
 		)
-		var unit: Unit = DeepStrike.assemble_from_preset(entry.profile, matrix, cell, squad_id)
 		if unit != null:
 			# taskblock-28 Pass B: "a bout starts by units equipping
 			# themselves from their kit" — a no-op for the overwhelming
@@ -207,6 +231,30 @@ static func _spawn_squad(
 				KitEquipper.equip(unit, entry.profile.kit)
 			units.append(unit)
 	return units
+
+
+## `BR51.19`, unchanged in rule and moved in time: one distinct cell per unit, chosen by
+## `_placement_cells` and already checked walkable. The old `spawn_cells[i %
+## spawn_cells.size()]` wrap is what stacked every unit past the fourth. The
+## `Vector2i(i, squad_id)` fallback survives only for a grid carrying no spawn markers at
+## all, where there is no zone to spill from — still distinct per unit, which is what it
+## was always for, and it is also the position `_spawn_squad` already assembled at.
+##
+## **One deliberate difference from the pre-tb62 shape**, stated rather than left to be
+## found: cells are handed out by *seated* index, not by *roster* index, so a roster entry
+## that failed to assemble no longer burns the spawn cell it would have stood on. Only
+## reachable when `assemble_from_preset` returns null, which `build_bout` already treats as
+## a broken roster.
+static func _seat_squad(
+	units: Array[Unit], squad_id: int, placement_cells: Array[Vector2i]
+) -> void:
+	var seated: int = 0
+	for unit: Unit in units:
+		if unit.squad_id != squad_id:
+			continue
+		if seated < placement_cells.size():
+			unit.cell = placement_cells[seated]
+		seated += 1
 
 
 static func _cells_of_marker(grid: Grid, marker: int) -> Array[Vector2i]:

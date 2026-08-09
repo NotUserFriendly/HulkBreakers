@@ -39,10 +39,18 @@ enum Phase {
 
 ## How a ModSource combines with what came before it in StatResolver
 ## (docs/08). A closed, small set of arithmetic operations — not open data.
+## tb62 Pass A: `MAX` — the largest of what several parts each OFFER, rather than
+## the sum of what they each contribute. Added for `step_height`, and the
+## distinction it draws is real rather than convenient: an agility bonus is a
+## contribution and two of them are worth more than one, but a **stride is set by the
+## longest leg, not by the leg count**. Summing it made a four-legged shell step twice
+## as high as a two-legged one wearing identical legs, which is not a balance
+## disagreement — it is the wrong shape of arithmetic.
 enum ModOp {
 	ADD,
 	MULTIPLY,
 	OVERRIDE,
+	MAX,
 }
 
 ## Where a stat modifier came from (docs/08) — a closed structural

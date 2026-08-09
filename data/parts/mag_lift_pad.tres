@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Part" format=3]
+
+[ext_resource type="Script" path="res://src/data/part.gd" id="1_magliftp"]
+
+[resource]
+script = ExtResource("1_magliftp")
+id = &"mag_lift_pad"
+display_name = "Mag Lift Pad"
+material = &"steel"
+attaches_to = Array[StringName]([&"LEDGE"])
+tags = Array[StringName]([&"mag_lift", &"terrain"])
+hp = 6
+max_hp = 6
+mass = 4.0

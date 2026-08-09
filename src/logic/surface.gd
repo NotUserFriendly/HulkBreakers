@@ -56,6 +56,23 @@ const RAMP_TAG: StringName = &"ramp"
 ## `Pathfinder` treat the ladder's own cell as a destination at the ladder's height.
 const LADDER_TAG: StringName = &"ladder"
 
+## tb62 Pass B: the open tag a placed **mag lift pad** carries. A lift is a *pair* of
+## these — one on the low cell, one on the raised cell it serves — and stepping between
+## them is a teleport costing 1 AP (`MagLiftAction`), never a traversal.
+##
+## **Not `walkable`, for the same reason a ladder is not**: the pad is a terminus marker,
+## not a floor. Standing at either end is the ordinary floor's job, and tagging the pad
+## walkable would put a second walkable surface in a cell that already has one — which
+## `first_walkable` resolves by taking whichever was placed first, i.e. by accident.
+##
+## **The pad authors no `volume` at all**, which is what makes *"neither surface blocks
+## shots"* structurally true rather than approximately true. `UnitGeometry.
+## assembly_placements` yields nothing for it, so `RayCaster`, `ShotPlane` and
+## `BoardView._build_tiles` all have nothing to find — there is no thin box to get the
+## thickness of wrong. Its whole appearance is `BoardView`'s mag-lift overlay, which is an
+## annotation about a cell rather than a thing at an elevation (`OverlayMarkers`).
+const MAG_LIFT_TAG: StringName = &"mag_lift"
+
 ## How much height one ladder segment serves, above its own placed height.
 ##
 ## **Flagged, not designed** (CLAUDE.md). `UnitGeometry.LEVEL_HEIGHT` is 1.0 and
@@ -151,3 +168,50 @@ static func ladder_serves_climb(grid: Grid, from_cell: Vector2i, to_cell: Vector
 	if destination == null:
 		return false
 	return destination.height <= reach + 0.001
+
+
+## tb62 Pass B: true if any mag lift pad is placed at `cell`. The shape's twin is
+## `has_ladder_at`, and deliberately so — one shared formula per route-up, so an action
+## and the pathfinder cannot develop separate ideas of what a lift is.
+static func has_mag_lift_at(grid: Grid, cell: Vector2i) -> bool:
+	for surface: Surface in grid.surfaces_at(cell):
+		if MAG_LIFT_TAG in surface.part.tags:
+			return true
+	return false
+
+
+## **The upper terminus of a lift whose lower pad stands at `from_cell`, or null.**
+##
+## A lift is a *pair*: a pad on the low cell and a pad on the raised cell it serves, both
+## placed by the same generator branch that would have stood a ladder. This resolves the
+## pair by looking for the other pad among `from_cell`'s neighbours, and it is the one
+## place that does — `MagLiftAction` and anything scoring a lift read this rather than
+## re-deriving the pairing.
+##
+## **Strictly upward, and the nearest such cell wins.** Downward is what a hop-down is
+## for, so a lift never competes with free descent; and taking the lowest qualifying
+## neighbour keeps two lifts placed near each other from claiming each other's pads —
+## which is a real possibility on a terraced board, not a hypothetical.
+##
+## Returns the destination CELL rather than the pad `Surface`, because that is what an
+## action needs and what a caller can do anything with. The pad itself is a marker; the
+## cell is the position.
+static func mag_lift_destination(grid: Grid, from_cell: Vector2i) -> Variant:
+	if not has_mag_lift_at(grid, from_cell):
+		return null
+	var here: Surface = first_walkable(grid.surfaces_at(from_cell))
+	if here == null:
+		return null
+	var best: Variant = null
+	var best_height: float = INF
+	for neighbour: Vector2i in grid.neighbors(from_cell):
+		if not has_mag_lift_at(grid, neighbour):
+			continue
+		var landing: Surface = first_walkable(grid.surfaces_at(neighbour))
+		if landing == null or landing.height <= here.height + 0.001:
+			continue
+		if landing.height >= best_height:
+			continue
+		best_height = landing.height
+		best = neighbour
+	return best

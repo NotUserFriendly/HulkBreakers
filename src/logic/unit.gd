@@ -28,8 +28,34 @@ const AGILITY_STAT_KEY: StringName = &"agility"
 ## Everything downstream derives from this rather than assuming it: `MapGen` sizes a stair at
 ## `ceil(rise / step_height)` steps — three at this value, matching the stated intent — so
 ## retuning the number re-shapes every generated stair with no further edit.
+## tb62 Pass A: **still 0.4, and it now means something narrower.** It is what a body
+## with NO authored legs at all is assumed to step — every hand-built fixture, every
+## bare test shell, every caller with no roster in hand. `leg.tres` authors its own
+## 0.4 separately and deliberately: the constant is the assumption, the data is the
+## claim, and a leg part that changed its stride should not have to edit engine code
+## to do it.
 const BASE_STEP_HEIGHT: float = 0.4
+
+## tb62 Pass A: **what a leg OFFERS, resolved as a maximum, and gated on having two.**
+##
+## The supervisor's model, 2026-08-09, and each clause of it does real work:
+##
+## - **A leg's authored value is an absolute offer, not a delta.** `leg.tres` offers 0.4,
+##   the height *"almost every robot can step"*. A longer leg offers more by authoring
+##   more; it does not author the difference.
+## - **The shell takes the largest offer, never the sum** (`Enums.ModOp.MAX`). A stride is
+##   set by the longest leg, so a normal leg at 0.4 beside a long one at 0.6 steps 0.6.
+##   Summing would have made stride a function of leg *count* — four short legs
+##   out-striding two long ones, which is the wrong shape of arithmetic rather than a
+##   number needing tuning. It was summing until this pass; nothing had two authored legs
+##   for it to be wrong about.
+## - **Two legs, or you do not step up at all.** Stepping up needs a leg to rise with and
+##   a leg to push from, so a single authored leg offers a height it cannot use and
+##   resolves to 0.0. Not a penalty applied to a stride — an absent capability.
 const STEP_HEIGHT_STAT_KEY: StringName = &"step_height"
+## How many authored legs it takes to step up at all. Named rather than inlined because
+## the rule is "a leg to rise with and a leg to push from", not "the number two".
+const LEGS_TO_STEP_UP: int = 2
 ## Float slack for a rise compared against a step height. The same 0.001 every other
 ## height comparison in this codebase uses — a stair authored at exactly the step height
 ## must be walkable, not a coin flip on the last bit.
@@ -268,14 +294,44 @@ func mp_per_ap(operable: Array[Part] = []) -> float:
 ##
 ## **A per-unit stat is the thing a ramp could never express.** Long legs step higher; a
 ## tracked chassis steps nowhere at all. `operable_parts()`, not `living_parts()`: a
-## wound-disabled leg stops contributing reach the same way it stops contributing agility.
+## wound-disabled leg stops contributing reach the same way it stops contributing agility —
+## and because the count below reads the same list, **a body that loses a leg mid-bout loses
+## the ability to step up**, without any code here knowing that a leg can be destroyed.
+##
+## tb62 Pass A: three cases, and the middle one is the only new behaviour.
+##
+## - **Nothing authors a step height at all** — a hand-built fixture, a bare shell, a part
+##   library that predates the stat — and the answer is `BASE_STEP_HEIGHT`. Absence is an
+##   assumption about an unmodified body, never a claim that the body has no legs.
+## - **One authored leg** and the answer is 0.0: an offer with nothing to push off. See
+##   `LEGS_TO_STEP_UP`.
+## - **Two or more** and the answer is the largest offer among them.
+##
+## The count comes back out of `StatResolver.gather_part_sources` rather than from a second
+## walk over the parts' own modifier dictionaries. That function is the only thing in `src/`
+## permitted to read them — `test_stat_resolver.gd` enforces it with a **literal** grep, so
+## even naming the field in a comment here fails the suite, which is how this paragraph came
+## to be worded around it. The rule underneath is the real point: "how many legs authored an
+## offer" has to be answered by the same read that answers "what did they offer", or the two
+## can disagree.
 ##
 ## `operable` lets a caller that has already walked the socket tree hand the list in, the
 ## same amortization `mp_per_ap` takes.
 func step_height(operable: Array[Part] = []) -> float:
+	var parts: Array[Part] = operable if not operable.is_empty() else shell.operable_parts()
+	var offers: Array[ModSource] = StatResolver.gather_part_sources(
+		STEP_HEIGHT_STAT_KEY, parts, Enums.ModOp.MAX
+	)
+	if offers.is_empty():
+		return BASE_STEP_HEIGHT
+	if offers.size() < LEGS_TO_STEP_UP:
+		return 0.0
 	var context := ResolverContext.new()
-	context.base = BASE_STEP_HEIGHT
-	context.parts = operable if not operable.is_empty() else shell.operable_parts()
+	# Base 0.0, and the offers arrive as `extra_sources` rather than through `context.parts`:
+	# `resolve` gathers its own PART sources as `ADD`, so handing it the parts as well would
+	# add every offer on top of the maximum of them. One read, one combination rule.
+	context.base = 0.0
+	context.extra_sources = offers
 	return StatResolver.resolve(STEP_HEIGHT_STAT_KEY, context).current
 
 
@@ -283,6 +339,14 @@ func step_height(operable: Array[Part] = []) -> float:
 ## judged against**, since a rise that is free for the long-legged and not for everyone else
 ## strands whoever is shortest. `BASE_STEP_HEIGHT` for an empty roster, so a generator running
 ## before any unit exists assumes the unmodified body rather than assuming nothing.
+##
+## tb62 Pass A: **0.0 is now a real answer**, for a roster holding a unit with fewer than
+## `LEGS_TO_STEP_UP` authored legs. A generator handed 0.0 degrades honestly rather than
+## dangerously — `MapGen._connect_with_a_stair` sizes a stair at `ceil(rise / step_height)`,
+## finds no run long enough to fit, stamps nothing, and `_repair_stranded_elevation`
+## flattens the room. A board with no rises on it is the correct board for a roster that
+## cannot cross one; it is not a hang and it is not silent, because the flattening is what
+## the elevation sweeps already report on.
 static func lowest_step_height(units: Array[Unit]) -> float:
 	var lowest: float = BASE_STEP_HEIGHT
 	var seen := false

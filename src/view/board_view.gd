@@ -153,6 +153,29 @@ const EMPTY_FILL_SIZE := 0.8
 ## overlay" tier as the rest of this file's height ladder above, between
 ## `WALL_CROSS_HEIGHT` (0.03) and `HitVolumeView.TEAM_MARKER_Y` (0.06).
 ## Placeholder color, flagged/tunable like every other marker color here.
+## tb62 Pass B: **the mag lift pad, to the supervisor's own spec (2026-08-09)** — *"the top
+## and bottom surfaces both a 50% opacity navy blue square, with a 100% opacity, narrow,
+## navy blue border."* Two elements, so two rungs, and they take the next free pair on the
+## ground-overlay height ladder enumerated at `EXTRACTION_CELL_HEIGHT` rather than values
+## picked independently: 0.035 and 0.040, above the ghost rung (0.03) and below the field
+## item marker (0.045). The border sits above the fill because a hollow outline's bars
+## overlap the fill's outer band, and the 100% edge is what has to win there.
+##
+## **Navy is literal `#000080`**, not a shade chosen to look good — flagged and tunable like
+## every other palette entry here. The pad reads against the tile colour beneath it, not
+## against the backdrop.
+##
+## **This is the pad's ONLY appearance.** `mag_lift_pad` authors no `volume`, so
+## `_build_tiles` draws nothing for it and there is no box for this to be a second drawing
+## of — the co-planar pairing taskblock-55 Pass B deleted cannot recur here.
+const MAG_LIFT_COLOR := Color("#000080")
+const MAG_LIFT_FILL_ALPHA := 0.5
+const MAG_LIFT_FILL_HEIGHT := 0.035
+const MAG_LIFT_BORDER_HEIGHT := 0.040
+## Narrow, per the spec — roughly a third of `OverlayMarkers.RING_THICKNESS`, which is sized
+## to read as a waypoint outline rather than as a trim line.
+const MAG_LIFT_BORDER_THICKNESS := 0.03
+
 const FIELD_ITEM_MARKER_HEIGHT := 0.045
 const FIELD_ITEM_MARKER_COLOR := Color(0.75, 0.65, 0.35)
 
@@ -329,6 +352,7 @@ func build(
 	_log_build_step(&"grid_lines", grid.width * grid.rows, "cell borders")
 	_log_build_step(&"empty_cells", _build_empty_indicators(grid), "unfloored cells")
 	_log_build_step(&"extraction_cells", _build_extraction_cells(team_extraction_cells), "cells")
+	_log_build_step(&"mag_lifts", _build_mag_lift_pads(grid), "lift pads")
 
 	var walls := 0
 	var cover := 0
@@ -450,6 +474,40 @@ func _build_extraction_cells(team_extraction_cells: Dictionary) -> int:
 			_static.add_child(_marker(cell, color, EXTRACTION_CELL_HEIGHT))
 			count += 1
 	return count
+
+
+## tb62 Pass B: **every placed mag lift pad, as the supervisor's navy square.** Returns how
+## many it drew, same reasoning as `_build_empty_indicators`.
+##
+## **Driven off the placements, never off a cell sweep.** A pad is a real `Surface` at a real
+## height, so `grid.placements()` already knows where every one of them is and at what
+## elevation — and the pair's two ends genuinely sit at different heights, which a per-cell
+## walk asking `true_height_for_cell` would have flattened onto the floor beneath each.
+func _build_mag_lift_pads(p_grid: Grid) -> int:
+	var drawn := 0
+	for surface: Surface in p_grid.placements():
+		if not Surface.MAG_LIFT_TAG in surface.part.tags:
+			continue
+		var fill: Color = MAG_LIFT_COLOR
+		fill.a = MAG_LIFT_FILL_ALPHA
+		# The pad's own placed height, not the cell's walkable height: an upper pad sits at
+		# the ledge it delivers to, and reading the cell would draw it on the floor below.
+		_static.add_child(
+			OverlayMarkers.flat_box(
+				surface.cell, fill, surface.height + MAG_LIFT_FILL_HEIGHT, OVERLAY_SIZE
+			)
+		)
+		_static.add_child(
+			OverlayMarkers.hollow_box(
+				surface.cell,
+				MAG_LIFT_COLOR,
+				surface.height + MAG_LIFT_BORDER_HEIGHT,
+				OVERLAY_SIZE,
+				MAG_LIFT_BORDER_THICKNESS
+			)
+		)
+		drawn += 1
+	return drawn
 
 
 ## docs/10 taskblock02 G3 / taskblock03 I: "the ground is a flat green plane

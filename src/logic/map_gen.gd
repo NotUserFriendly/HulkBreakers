@@ -62,6 +62,19 @@ const RAISED_ROOM_LEVEL: int = 1
 ## the sweep test is what would notice it being too low.
 const NAVIGABILITY_REPAIR_PASSES: int = 6
 
+## tb62 Pass B: what share of the routes-up this generator opens are **mag lifts** rather
+## than ladders. **Flagged, not designed** — an even split is the honest placeholder for
+## "both should appear", and it is the number to move once there is any evidence about
+## which route a bout actually wants. The two are not interchangeable: a ladder costs MP
+## and a lift costs AP, so the share decides how often a unit's route up competes with its
+## shooting rather than with its walking.
+##
+## **Only consulted when an RNG is handed in.** `guarantee_navigability` is called by the
+## editor and by tests with no RNG at all, and those callers keep stamping ladders exactly
+## as they did — a repair that varied by whether its caller happened to have randomness
+## would be a repair nobody could reproduce.
+const LIFT_SHARE: float = 0.5
+
 
 ## tb60 Pass A: **`step_height` is a parameter, because the invariant this generator owes is
 ## owed to the shortest unit that will play on the board.** Defaults to
@@ -116,7 +129,11 @@ static func generate(
 	# `Grid` rather than on the scratch, because that is where real surfaces, heights and
 	# heights live — and it is what `MapNavigability` measures, so the repair and the
 	# check cannot disagree about what a legal step is.
-	guarantee_navigability(grid, step_height)
+	# tb62 Pass B: the RNG reaches the repair so a route up can be a mag lift instead of a
+	# ladder. **Drawn here, after everything else** — no earlier draw moves, so every seed
+	# still carves the same rooms, raises the same floors and scatters the same cover as it
+	# did before lifts existed. What changes is only which fixture stands in a repaired cell.
+	guarantee_navigability(grid, step_height, rng)
 
 	return grid
 
@@ -145,14 +162,16 @@ static func generate(
 ## deeper shelf inside it that was never reachable to begin with. Bounded rather than
 ## looped-until-stable so a pathological board cannot hang generation; the remaining cells
 ## are left rather than forced, and the sweep test is what would notice a bound set too low.
-static func guarantee_navigability(grid: Grid, step_height: float = Unit.BASE_STEP_HEIGHT) -> void:
+static func guarantee_navigability(
+	grid: Grid, step_height: float = Unit.BASE_STEP_HEIGHT, rng: RandomNumberGenerator = null
+) -> void:
 	for _attempt: int in range(NAVIGABILITY_REPAIR_PASSES):
 		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid, step_height)
 		if stranded.is_empty():
 			return
 		var opened := 0
 		for cell: Vector2i in stranded:
-			if _open_a_route_out(grid, cell):
+			if _open_a_route_out(grid, cell, rng):
 				opened += 1
 		# Nothing left that this rule knows how to fix. Stopping is honest; looping would
 		# spin.
@@ -169,9 +188,16 @@ static func guarantee_navigability(grid: Grid, step_height: float = Unit.BASE_ST
 ## direction from — and getting that direction from an 8-way neighbour list while the other
 ## stamping path used 4 is exactly what `BR56.01` was. A ladder is vertical and faces
 ## nothing, so the whole question is gone rather than answered.
-static func _open_a_route_out(grid: Grid, cell: Vector2i) -> bool:
+## tb62 Pass B: **a mag lift is the other thing this can stamp**, and it is the same slot
+## doing the same job in a different currency. The chosen neighbour's identity started
+## mattering again for exactly one reason — a lift is a *pair*, so the upper pad has to go
+## somewhere, and that somewhere is the cell whose rise the route was sized to.
+static func _open_a_route_out(
+	grid: Grid, cell: Vector2i, rng: RandomNumberGenerator = null
+) -> bool:
 	var here: float = UnitGeometry.true_height_for_cell(cell, grid)
 	var best_rise: float = INF
+	var best_neighbour: Variant = null
 	for neighbour: Vector2i in grid.neighbors(cell):
 		if grid.blockers.has(neighbour):
 			continue
@@ -181,8 +207,14 @@ static func _open_a_route_out(grid: Grid, cell: Vector2i) -> bool:
 		if rise <= 0.001 or rise >= best_rise:
 			continue
 		best_rise = rise
+		best_neighbour = neighbour
 	if is_inf(best_rise):
 		return false
+	if rng != null and rng.randf() < LIFT_SHARE:
+		if _stamp_mag_lift(grid, cell, best_neighbour as Vector2i, here, here + best_rise):
+			return true
+		# A lift the attachment grammar refused is not a reason to leave the cell stranded —
+		# fall through to the ladder, which is the route that needs one cell and no partner.
 	return _stamp_ladder(grid, cell, here, best_rise)
 
 
@@ -198,6 +230,40 @@ static func _stamp_ladder(grid: Grid, cell: Vector2i, height: float, rise: float
 		if GridPlacement.place(grid, cell, DataLibrary.get_part(&"ladder"), at) != null:
 			placed += 1
 	return placed > 0
+
+
+## tb62 Pass B: **stands a mag lift pair — the low pad and the pad it delivers to.**
+##
+## Placed through `GridPlacement` for the same reason the ladder is: the generator is held
+## to the attachment grammar an author would be, so a lift the grammar refuses is a lift
+## that should not exist. Both ends go through it, which is what makes the pair either
+## whole or absent.
+##
+## **All or nothing, checked before anything is written.** A lower pad with no upper pad is
+## a route that visibly promises a way up and has none — worse than no route at all, which
+## is exactly why `_stair_run_fits` checks a whole stair run before stamping a tread. Both
+## ends are cleared through `GridPlacement.can_place` first, so there is no half-lift to
+## unwind and the caller can fall back to a ladder cleanly.
+##
+## **A duplicate per pad**, unlike `_stamp_ladder`'s shared template: a side attachment
+## really occupies its host's socket (`PartGraph.attach`), so two pads that are the same
+## object would be one part claiming two sockets.
+static func _stamp_mag_lift(
+	grid: Grid, cell: Vector2i, landing: Vector2i, height: float, landing_height: float
+) -> bool:
+	var pad: Part = DataLibrary.get_part(&"mag_lift_pad")
+	if pad == null:
+		return false
+	var lower: Part = pad.duplicate(true)
+	var upper: Part = pad.duplicate(true)
+	if not GridPlacement.can_place(grid, cell, lower, height):
+		return false
+	if not GridPlacement.can_place(grid, landing, upper, landing_height):
+		return false
+	return (
+		GridPlacement.place(grid, landing, upper, landing_height) != null
+		and GridPlacement.place(grid, cell, lower, height) != null
+	)
 
 
 static func _split_and_carve(

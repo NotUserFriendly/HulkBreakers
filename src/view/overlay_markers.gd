@@ -15,6 +15,20 @@ extends RefCounted
 const RING_THICKNESS := 0.09
 
 
+## tb62 Pass B: **a marker colour carrying alpha gets an alpha-blended material.**
+##
+## `WorldPalette.overlay_material` does not set `TRANSPARENCY_ALPHA`, so a colour authored
+## at 50% opacity renders fully opaque and the authoring silently does nothing — the
+## reported-bug shape this project keeps hitting, where the data says one thing and the
+## screen says another. Deciding it from the colour rather than from a flag means no caller
+## can forget: every existing marker colour is alpha 1.0 and takes the same path it always
+## did.
+static func _material(color: Color) -> StandardMaterial3D:
+	if color.a < 1.0:
+		return WorldPalette.translucent_material(color)
+	return WorldPalette.overlay_material(color)
+
+
 ## **A hollow square outline**, four thin bars, centred on a cell.
 ##
 ## `BR30.04`: the supervisor asked for *"a hollow box drawn on the walkable terrain underneath"*.
@@ -38,7 +52,7 @@ static func hollow_box(
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = bar[1]
-		box_mesh.material = WorldPalette.overlay_material(color)
+		box_mesh.material = _material(color)
 		instance.mesh = box_mesh
 		instance.position = bar[0]
 		holder.add_child(instance)
@@ -65,7 +79,7 @@ static func flat_box(cell: Vector2i, color: Color, world_y: float, size: float) 
 	var instance := MeshInstance3D.new()
 	var box_mesh := BoxMesh.new()
 	box_mesh.size = Vector3(size, 0.02, size)
-	box_mesh.material = WorldPalette.overlay_material(color)
+	box_mesh.material = _material(color)
 	instance.mesh = box_mesh
 	instance.position = Vector3(
 		cell.x * UnitGeometry.CELL_SIZE, world_y, cell.y * UnitGeometry.CELL_SIZE

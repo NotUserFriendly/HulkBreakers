@@ -32,3 +32,6 @@ volume = Array[ExtResource("4_qux8m")]([SubResource("Resource_jnai1")])
 hp = 6
 max_hp = 6
 mass = 6.0
+stat_mods = {
+&"step_height": 0.4
+}
