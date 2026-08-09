@@ -990,6 +990,44 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   the targeting logic itself. Recommend a live re-check before further investigation here; stays
   Active, not Pending, since no fix was made.
 
+- **2026-08-09 (supervisor, taskblock-61 Pass D) — still happening, and a sharper mechanism than
+  anything in this entry so far.** *"32.07 is definitely still happening. Looks like if anything
+  interrupts the raycast to the clicked object it just silently fails."*
+  - **This reframes the entry twice over.** It is not necessarily burst-specific — the original
+    report and the tb32 framing both said burst, and tb35 then proved the whole aim chain generic
+    over action id. If the real condition is *something intervenes between the camera and the thing
+    you clicked*, then burst was incidental and the entry has been hunting the wrong axis since
+    taskblock-32.
+  - **It also explains tb35's negative result rather than contradicting it.** That pass drove the
+    chain headlessly with a clicked cell handed in directly and found no break — which is exactly
+    what you would see if the defect is in turning a *screen click* into a target at all, upstream
+    of everything it tested. A headless test that supplies the cell has already skipped the step
+    that fails.
+  - **"Silently" is the second half and is its own defect.** Whatever rejects the click says nothing
+    — no log line, no refusal, no feedback. This entry's own earlier note asked whether *"the
+    intent/outcome logging idea in PLAN would have surfaced it"*; the answer is that nothing on this
+    path announces a decision at all, so no amount of live looking will produce evidence until it
+    does.
+  - **Next step is instrumentation before repair** — the same order that settled `BR32.05`. Make the
+    click-to-target path announce what the ray met and why a target was or was not accepted, then
+    one live click produces the answer instead of another theory. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
+- **2026-08-09 (taskblock-61 Pass D — instrumented, not fixed)** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`].
+  Every board click now emits a `board_click` line: what the ray met (`kind`, struck part or unit,
+  cell), what was armed, which branch ran, and — where a branch swallows the click — why. Per
+  click, not per frame, so there is no volume ceiling to design around.
+  - **A genuinely silent branch found while wiring it, and it matches the supervisor's reading.**
+    `_cell_at` returns the **nearest** thing on the ray, and the dispatch tests "did the ray meet
+    the already-selected unit" **before** anything else: if so the click becomes a facing drag and
+    returns, with an action armed and nothing said. A click aimed past the shooter's own shoulder
+    at a wall behind it lands on the shooter and evaporates. **That is a hypothesis, not the
+    diagnosis** — it is announced rather than fixed, because three separate CC theories were
+    disproved by live evidence in this taskblock alone.
+  - **To settle it:** reproduce the failure once, then read the `board_click` line for that click.
+    `met unit (3) ... armed burst -> facing_drag (ray met the selected unit first)` confirms the
+    branch above. `met part (wall) ... -> click_part` means the click was accepted and the failure
+    is downstream of the pick. `met nothing` means the ray missed the board entirely.
+  - Pinned by two tests: a swallowed click still produces a line, and an ordinary one does too —
+    *"it did the right thing"* and *"it did nothing"* are only distinguishable if both are written.
 ### BR34.03 — Active — owner: `SUPERVISOR`
 **`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
 - **cluster:** `input-affordance`

@@ -2,6 +2,30 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D2 — the board click says what it did, including when it does nothing
+
+**`BR32.07` instrumented rather than fixed**, on a fresh supervisor lead: *"definitely still
+happening. Looks like if anything interrupts the raycast to the clicked object it just silently
+fails."*
+
+**That reframes the entry twice.** It is not necessarily burst-specific — burst was the original
+framing and taskblock-35 then proved the whole aim chain generic over action id. And it explains
+tb35's negative result rather than contradicting it: that pass drove the chain with a cell handed
+in directly, skipping the very step that turns a screen position into a target. A headless test
+that supplies the cell has already skipped what fails.
+
+**Every board click now emits a `board_click` line** — what the ray met (kind, struck part or unit,
+cell), what was armed, which branch ran, and where a branch swallows the click, why. Per click, not
+per frame.
+
+**A genuinely silent branch found while wiring it.** `_cell_at` returns the **nearest** thing on the
+ray, and the dispatch asks "did the ray meet the already-selected unit" **first**: if so the click
+becomes a facing drag and returns — action armed, nothing said. A click aimed past the shooter's own
+shoulder at a wall behind it lands on the shooter and evaporates. **Announced, not fixed.** Three
+separate CC theories were disproved by live evidence in this taskblock alone, and this one is a
+hypothesis until a `board_click` line says otherwise.
+
+
 ### Pass D1 — aim-layer scrolling retired, and the wheel handed to step-out
 
 **`BR33.01` closed `Obsolete` on the supervisor's instruction** — *"the feature goes"* — and

@@ -792,3 +792,57 @@ func test_a_real_aim_state_change_still_emits_aim_changed() -> void:
 	controller.cancel_aim()
 
 	assert_gt(aim_emits[0], 0, "ending aim is an aim-state change")
+
+
+## **`BR32.07`: the click path says what it did, including when it did nothing.** The supervisor
+## reports a click that *"just silently fails"* when something interrupts the ray to the thing being
+## clicked. taskblock-35 could not reproduce it because it drove the chain with a cell handed in
+## directly — skipping the step that turns a screen position into a target. Nothing on this path
+## announced a decision, so no live session could produce evidence rather than an impression.
+##
+## This drives the branch that swallows a click outright: the ray meeting the already-selected unit
+## turns the click into a facing drag and returns. Whether that is the supervisor's defect is not
+## claimed here — what is pinned is that it can no longer happen without saying so.
+func test_a_click_swallowed_by_the_selected_units_own_body_is_announced() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	var sink := MemorySink.new()
+	controller.selection.state.combat_log.add_sink(sink)
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller._log_click(
+		{"kind": Enums.HitKind.UNIT, "unit": a, "cell": a.cell},
+		"facing_drag",
+		"ray met the selected unit first"
+	)
+
+	var clicks: Array[LogEvent] = sink.events_of_kind(&"board_click")
+	assert_eq(clicks.size(), 1, "a swallowed click must still produce a line")
+	var data: Dictionary = clicks[0].data
+	assert_eq(data["outcome"], "facing_drag", "the branch taken is named")
+	assert_eq(data["armed"], &"shoot", "and what was armed when it happened")
+	assert_eq(data["unit"], a.id, "and which body the ray actually met")
+	assert_true("selected unit" in String(data["note"]), "and why the click went nowhere")
+
+
+## The companion: an ordinary, working click is announced too. "It did the right thing" and "it did
+## nothing" are only distinguishable in a log if both are written.
+func test_an_ordinary_click_on_an_enemy_is_announced_as_entering_aim() -> void:
+	var a := _make_armed_unit(Vector2i(0, 0), 0)
+	var b := _make_armed_unit(Vector2i(5, 5), 1)
+	var built: Dictionary = _setup([a, b])
+	var controller: TacticsController = built.controller
+	var sink := MemorySink.new()
+	controller.selection.state.combat_log.add_sink(sink)
+
+	controller.click_cell(Vector2i(0, 0))
+	controller.arm_action(&"shoot")
+	controller._log_click({"kind": Enums.HitKind.UNIT, "unit": b, "cell": b.cell}, "click_unit", "")
+
+	var clicks: Array[LogEvent] = sink.events_of_kind(&"board_click")
+	assert_eq(clicks.size(), 1)
+	assert_eq(clicks[0].data["outcome"], "click_unit")
+	assert_eq(clicks[0].data["unit"], b.id)

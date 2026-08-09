@@ -351,28 +351,42 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 			# docs/10 taskblock03 E1: press-and-hold on the already-selected
 			# unit's own body starts a facing drag — a plain click here
 			# would just be a no-op reselect anyway.
+			#
+			# `BR32.07`: **this is a silent swallow when the ray never meant to end here.** The
+			# supervisor's own reading — *"if anything interrupts the raycast to the clicked
+			# object it just silently fails"* — and `_cell_at` returns the NEAREST thing on the
+			# ray, so a click aimed past the shooter's own shoulder lands on the shooter and
+			# becomes a facing drag with an action armed and nothing said. Announced rather than
+			# fixed on a theory: the log line is what turns the next live click into evidence.
+			_log_click(hit_dict, "facing_drag", "ray met the selected unit first")
 			_facing_drag_active = true
 			return
 		# docs/10 taskblock05 A1: dispatch on the actual hit directly — a
 		# unit ray-hit is never collapsed into a cell and re-derived.
 		if aiming_at != null or stepping_out_at != null:
+			_log_click(hit_dict, "confirm_shot", "")
 			confirm_shot()
 		elif hit_dict.is_empty():
 			# docs/10 taskblock02 F2: clicking off the board entirely is
 			# "away" — deselect. A click still on the board but out of
 			# reach is a different thing (the player is aiming for a cell
 			# they can't use yet, not backing out) and stays a no-op.
+			_log_click(hit_dict, "deselect", "ray met nothing at all")
 			deselect()
 		elif hit_dict["kind"] == Enums.HitKind.UNIT:
+			_log_click(hit_dict, "click_unit", "")
 			_click_unit(hit_dict["unit"])
 		elif hit_dict["kind"] == Enums.HitKind.PART:
+			_log_click(hit_dict, "click_part", "")
 			_click_part(hit_dict["part"], hit_dict["cell"])
 		else:
 			# A cell click with a unit selected is a move order and stays one — Pass K adds
 			# cell selection where there was previously nothing, and takes nothing away.
 			if selection.selected_unit != null:
+				_log_click(hit_dict, "queue_move", "")
 				selection.queue_move(hit_dict["cell"])
 			else:
+				_log_click(hit_dict, "select_cell", "")
 				selection.select_target(SelectionTarget.from_hit(hit_dict))
 				selection_changed.emit()
 			_refresh_overlay()
@@ -439,6 +453,75 @@ func _handle_rmb_release() -> void:
 ## instead of falling through to bare `CELL`, so a wall/cover/downed
 ## object/field item can be targeted at all (today, `CELL` clicks only
 ## ever queue a move).
+## **What one board click met, and what was done about it.** `BR32.07`, taskblock-61 Pass D.
+##
+## The supervisor reports a click that *"just silently fails"* when something interrupts the ray to
+## the thing being clicked, and taskblock-35 could not reproduce it because it drove the chain with
+## a cell handed in directly — skipping the very step that turns a screen position into a target.
+## Nothing on this path announced a decision, so no amount of live looking could produce evidence.
+##
+## One line per board click, naming the ray's own answer (`kind`, the struck part or unit, the
+## cell) beside the branch taken and, where a branch swallows the click, why. **Per click, not per
+## frame** — a click is a rare, deliberate event, unlike the cutout's own per-frame feed, so there
+## is no volume ceiling to design around here.
+##
+## Deliberately reports the branch even when the branch is correct: *"it did the right thing"* and
+## *"it did nothing"* are only distinguishable if both are recorded.
+func _log_click(hit_dict: Dictionary, outcome: String, note: String) -> void:
+	if selection == null or selection.state == null:
+		return
+	var kind: Variant = hit_dict.get("kind")
+	var part: Part = hit_dict.get("part")
+	var unit: Unit = hit_dict.get("unit")
+	var data: Dictionary = {
+		"kind": kind if kind != null else -1,
+		"part": part.id if part != null else &"",
+		"unit": unit.id if unit != null else -1,
+		"cell": hit_dict.get("cell", Vector2i(-1, -1)),
+		"armed": armed_action.id if armed_action != null else &"",
+		"outcome": outcome,
+		"note": note,
+	}
+	(
+		selection
+		. state
+		. combat_log
+		. emit(
+			(
+				LogEvent
+				. new(
+					selection.state.round_number,
+					Enums.Phase.TACTICS,
+					selection.selected_unit.id if selection.selected_unit != null else -1,
+					&"board_click",
+					data,
+					(
+						"board click: met %s (%s) at %s, armed %s -> %s%s"
+						% [
+							_hit_kind_name(kind),
+							part.id if part != null else (str(unit.id) if unit != null else "-"),
+							str(data["cell"]),
+							data["armed"] if data["armed"] != &"" else "-",
+							outcome,
+							" (%s)" % note if note != "" else "",
+						]
+					)
+				)
+			)
+		)
+	)
+
+
+static func _hit_kind_name(kind: Variant) -> String:
+	if kind == Enums.HitKind.UNIT:
+		return "unit"
+	if kind == Enums.HitKind.PART:
+		return "part"
+	if kind == Enums.HitKind.CELL:
+		return "cell"
+	return "nothing"
+
+
 func _cell_at(from: Vector3, dir: Vector3) -> Variant:
 	var part_hit: Dictionary = PartPicker.hit(
 		selection.state.units, selection.state.grid, from, dir
