@@ -375,3 +375,113 @@ func test_the_cutout_log_names_the_cell_it_blamed() -> void:
 		"2.3",
 		"the log must name the wall cell the gate actually found, not just that it found one"
 	)
+
+
+## **`BR32.04`: the hole must follow the body it is cutting for, not the model's already-arrived
+## cell.** `resolve_to_marker()` mutates `unit.cell` synchronously, so the logical body is at the
+## destination the frame Resolve is clicked while `ResolutionPlayer` is still tweening the visible
+## one across it — the cutout jumped ahead and cut around a body that was not there yet.
+##
+## Driven the way the real thing drives it: `ResolutionPlayer._apply_display_transform` writes
+## `HitVolumeView.position`/`basis` on every tween tick, so this sets that same transform on a real
+## node and reads the fed uniform back out (`docs/00`: read the real node back). The expected screen
+## position is stated as a world point the test itself chose, not recomputed with the same formula.
+func test_the_cutout_follows_the_rendered_body_mid_slide() -> void:
+	var grid := GridFixture.flat(5, 12)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var unit := _torso_unit(Vector2i(2, 6))
+	var body := HitVolumeView.new()
+	add_child_autofree(body)
+	body.setup(unit, DataLibrary.material_table())
+	view.wall_cutout_units = [unit]
+	view.wall_cutout_views = [body]
+
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, -5)
+	camera.look_at(UnitGeometry.bounding_sphere(unit).center, Vector3.UP)
+
+	# Still at rest: the view transform is identity, so nothing about the fed position changes.
+	view.update_wall_cutout(camera)
+	var at_rest: Vector2 = (
+		_cutout_material(view).get_shader_parameter("unit_screen_positions") as PackedVector2Array
+	)[0]
+	assert_almost_eq(
+		at_rest.distance_to(camera.unproject_position(UnitGeometry.bounding_sphere(unit).center)),
+		0.0,
+		0.01,
+		"an unanimated unit must feed exactly what it fed before this existed"
+	)
+
+	# Mid-slide: the body is drawn two cells short of the cell the model already holds.
+	var lagging: Vector3 = UnitGeometry.bounding_sphere(unit).center - Vector3(0, 0, 2)
+	body.position = Vector3(0, 0, -2)
+	view.update_wall_cutout(camera)
+	var mid_slide: Vector2 = (
+		_cutout_material(view).get_shader_parameter("unit_screen_positions") as PackedVector2Array
+	)[0]
+
+	assert_almost_eq(
+		mid_slide.distance_to(camera.unproject_position(lagging)),
+		0.0,
+		0.01,
+		"the hole must be cut where the body is DRAWN, two cells back from its logical cell"
+	)
+	assert_gt(
+		mid_slide.distance_to(at_rest),
+		1.0,
+		"sanity: the two positions must actually differ, or this test proves nothing"
+	)
+
+
+## The fallback has to be total, not partial: a `BoardView` with no view array (a spectator load
+## before views exist, every headless fixture) must behave exactly as it did before `BR32.04`.
+func test_a_unit_with_no_rendered_view_falls_back_to_its_logical_position() -> void:
+	var grid := GridFixture.flat(5, 12)
+	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	var view := BoardView.new()
+	add_child_autofree(view)
+	view.build(grid, DataLibrary.material_table())
+
+	var unit := _torso_unit(Vector2i(2, 6))
+	view.wall_cutout_units = [unit]
+	assert_true(view.wall_cutout_views.is_empty(), "sanity: no views wired at all")
+
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(2, 5, -5)
+	camera.look_at(UnitGeometry.bounding_sphere(unit).center, Vector3.UP)
+
+	view.update_wall_cutout(camera)
+
+	assert_eq(
+		_cutout_material(view).get_shader_parameter("unit_count"),
+		1,
+		"no view is not a reason to stop cutting — membership never came from the view array"
+	)
+
+
+## **The view array must be shared, not copied.** `BattleScene.load_battle` hands
+## `board_view.wall_cutout_views = unit_views` once, and `sync_unit_views()` appends to that same
+## array for every unit spawned afterwards. If the assignment copied — which a typed-array mismatch
+## would silently cause — every later unit would fall back to its logical position and `BR32.04`
+## would quietly come back for exactly the units nobody thought to check.
+func test_the_view_array_is_shared_with_the_scene_not_copied() -> void:
+	var view := BoardView.new()
+	add_child_autofree(view)
+	var scene_views: Array[HitVolumeView] = []
+	view.wall_cutout_views = scene_views
+
+	var body := HitVolumeView.new()
+	add_child_autofree(body)
+	scene_views.append(body)
+
+	assert_eq(
+		view.wall_cutout_views.size(),
+		1,
+		"appending to the scene's own array must be visible here — a copy would read 0"
+	)

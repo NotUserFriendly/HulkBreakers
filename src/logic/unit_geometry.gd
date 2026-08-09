@@ -189,6 +189,18 @@ static func _walk(
 ## center of every corner; radius is half that AABB's diagonal. Not the
 ## tightest possible enclosing sphere, but simple, correct for arbitrarily
 ## rotated boxes, and tight enough for a framing margin check.
+## **The cell a world point stands over**, the inverse of the `cell.x * CELL_SIZE` every position
+## in this class is built with. taskblock-61 Pass C1.
+##
+## Added because a third hand-rolled copy was about to be written: `BoardPicker` already did this
+## and `WallLegibility` needed it for the camera's own ground cell — and the copy CC drafted had
+## quietly dropped the `/ CELL_SIZE`, which is right only while a cell happens to be 1.0 across.
+## Y is ignored on purpose: a cell is a ground-plane address and carries no elevation
+## (`Grid.level` was retired for saying otherwise).
+static func cell_of(world: Vector3) -> Vector2i:
+	return Vector2i(roundi(world.x / CELL_SIZE), roundi(world.z / CELL_SIZE))
+
+
 static func bounding_sphere(unit: Unit, orientation_override: Variant = null) -> Dictionary:
 	return sphere_of_box(bounding_box(unit, orientation_override))
 

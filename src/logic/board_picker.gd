@@ -55,9 +55,7 @@ static func _resolve(from: Vector3, dir: Vector3, grid: Grid) -> Variant:
 		if t < 0.0:
 			return null
 		var world: Vector3 = from + dir * t
-		var candidate := Vector2i(
-			roundi(world.x / UnitGeometry.CELL_SIZE), roundi(world.z / UnitGeometry.CELL_SIZE)
-		)
+		var candidate: Vector2i = UnitGeometry.cell_of(world)
 		if has_cell and candidate == cell:
 			break
 		cell = candidate

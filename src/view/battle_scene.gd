@@ -402,6 +402,12 @@ func load_battle(state: CombatState, p_mission: MissionState) -> void:
 	# one place that owns both `board_view` and `combat_state` for every
 	# bout load path.
 	board_view.wall_cutout_units = combat_state.units
+	# `BR32.04`: the live view array, so the cutout can read where each body is actually DRAWN
+	# rather than where the model already says it is. Membership still comes from
+	# `wall_cutout_units` above — see `BoardView.wall_cutout_views`. Assigned here because this is
+	# the one function that owns both objects on every bout-load path, which is the same reason the
+	# line above it lives here (`BR32.01`'s own stale-feed fix).
+	board_view.wall_cutout_views = unit_views
 	camera_rig.center_on(
 		Vector3(
 			(combat_state.grid.width - 1) * UnitGeometry.CELL_SIZE * 0.5,

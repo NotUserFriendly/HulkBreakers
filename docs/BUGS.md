@@ -947,7 +947,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   either grow the color palette past 4, or exclude free step-out legs from the color-cycling index so
   only "real" queued legs consume a color slot.
 
-### BR32.04 — Active — owner: `SUPERVISOR`
+### BR32.04 — Pending — owner: `SUPERVISOR`
 **Clicking Resolve snaps the wall-cutout hole to the destination before the move animation catches up**
 - **cluster:** `wall-cutout`
 - **Source:** `SUPERVISOR`
@@ -991,6 +991,36 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     correctly scoping the override's own lifecycle (when it's cleared, so a stale display position
     can't itself become a new staleness bug) wants its own careful pass, not a rushed one at the tail
     of an already-long taskblock.
+
+- **2026-08-09 (taskblock-61 Pass C1 — fixed; `Pending`)** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`].
+  **The tb35 diagnosis was exactly right and its recorded fix shape is no longer the cheapest one.**
+  That note proposed a `Dictionary[int, Vector3]` of display positions written by `_set_slide_anchor`
+  every tween tick, and flagged the **override lifecycle** — when it is cleared, so a stale display
+  position does not itself become a new staleness bug — as the reason it was not attempted.
+  - **There is no lifecycle to manage, because the node already holds the answer.**
+    `ResolutionPlayer._apply_display_transform` writes the real `HitVolumeView.position`/`basis` on
+    every tween tick and leaves both at **identity** whenever nothing is animating. So
+    `view.global_transform * logical_point` is the rendered position at all times, with nothing
+    cached and nothing to invalidate — `docs/00`'s *"read the real node back, don't re-derive it"*
+    applied literally, which is what the tb35 note itself argued for.
+  - **`BoardView.wall_cutout_views` is a display-position source and explicitly not a membership
+    one.** `wall_cutout_units` still decides who gets a cutout; a unit with no view falls back to
+    its logical position, which is the pre-fix behaviour. An out-of-date entry therefore cannot
+    remove a cutout or invent one — the worst it can do is draw the hole where the body already is.
+    That asymmetry is deliberate, given `BR32.01`/`BR32.03` were both stale-feed defects.
+  - **The array is shared with `BattleScene.unit_views`, not copied**, so units spawned later
+    through `sync_unit_views()` are covered. Pinned by its own test, because a typed-array mismatch
+    would have copied silently and brought this bug back for exactly the units nobody re-checks.
+  - **Sample points are transformed individually, not the AABB.** A yaw-rotated AABB has to be
+    re-enclosed and grows; three points transform exactly.
+  - **Test fails without the fix**, and carries a sanity assertion that the at-rest and mid-slide
+    screen positions genuinely differ (they were identical before, by 0.0).
+  - **To see it:** queue a move of several cells and click Resolve. The porthole should travel with
+    the body across the whole slide instead of appearing at the destination immediately. **A hole
+    that leads the body, or one that no longer appears at all mid-move, is the regression.**
+  - **The same defect exists next door and is filed as `BR61.05`, not fixed here** —
+    `BattleScene._occluding_friendlies` reads logical positions for the friendly-fade ghost. Left
+    alone deliberately so this entry can be verified on its own.
 
 ### BR32.05 — Pending — owner: `SUPERVISOR`
 **Wall cutout cuts walls that aren't between camera and unit (coarse heuristic)**
@@ -2862,3 +2892,22 @@ already passes `weapon.id` into `ActionCatalog.build_firing_action` a few lines 
   together with `BR32.04`, which needs the rendered position for the same call.
 - **Deliberately not fixed in Pass C1**, which was hunting `BR32.05`/`BR32.08`. Recorded with the
   measurement so it is not re-derived.
+
+### BR61.05 — Active — owner: `CC`
+**The friendly-fade ghost reads logical positions while bodies are still animating**
+- **cluster:** `wall-cutout`
+- **Source:** `CC`  ·  **CC session:** `74ebb574-245b-48e8-aed2-e1d09ea25527`
+- **2026-08-09 (taskblock-61 Pass C1).** `BR32.04` in a second place. `BattleScene.
+  _occluding_friendlies` decides which squadmates to ghost from `UnitGeometry.bounding_sphere(unit).
+  center` for both the active unit and each candidate — the **logical** body. `resolve_to_marker()`
+  mutates `unit.cell` synchronously while `ResolutionPlayer` tweens the visible body over several
+  frames, so during any slide the fade is computed against positions nobody is looking at: a
+  friendly can ghost before it has visibly moved into the way, or stay solid while visibly standing
+  in it.
+- **Not a guess** — the same function, the same call, the same frame as the cutout defect fixed in
+  this pass; it was found by reading the code next to it.
+- **Fix direction:** the same one, and cheaper here — `BattleScene` already holds `unit_views`, so
+  it needs no new plumbing at all, just `view.global_transform * position` per unit.
+- **Deliberately not fixed alongside `BR32.04`.** That entry is `SUPERVISOR`-owned and awaiting a
+  look; changing a second visible effect in the same commit would make what the supervisor sees
+  harder to attribute. One change at a time on a subsystem under verification.

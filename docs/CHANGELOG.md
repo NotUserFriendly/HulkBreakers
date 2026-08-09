@@ -2,6 +2,50 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass C2 — the cutout hole follows the body it is cutting for
+
+**`BR32.04` to `Pending`, and Pass C's three entries are now all worked.** The tb35 diagnosis of
+this was exactly right and its recorded fix shape turned out to be the expensive way to do it.
+
+**That note proposed a `Dictionary[int, Vector3]` of display positions written by
+`_set_slide_anchor` every tween tick, and named the override lifecycle as why it was not
+attempted** — when the entry is cleared, so a stale display position does not become a new
+staleness bug in its own right. **There is no lifecycle, because the node already holds the
+answer.** `ResolutionPlayer._apply_display_transform` writes the real `HitVolumeView.position`/
+`basis` on every tick and leaves both at **identity** when nothing is animating, so
+`view.global_transform * logical_point` is the rendered position at all times, cached nowhere. That
+is `docs/00`'s "read the real node back" applied literally — which is what the tb35 note was
+arguing for when it reached for a cache instead.
+
+**`wall_cutout_views` is a display-position source and explicitly not a membership one.**
+`wall_cutout_units` still decides who gets a cutout; a unit with no view falls back to its logical
+position, which is the pre-fix behaviour exactly. So an out-of-date entry cannot remove a cutout or
+invent one — the worst it can do is draw a hole where the body already is. Given `BR32.01` and
+`BR32.03` were both stale-feed defects, that asymmetry is the point.
+
+**Three things pinned that would otherwise fail quietly:**
+- The mid-slide test fails without the fix, and asserts that the at-rest and mid-slide screen
+  positions genuinely differ — they were identical before, by 0.0.
+- A unit with **no** view still gets its cutout, so the fallback is total rather than partial.
+- The view array is **shared** with `BattleScene.unit_views`, not copied. A typed-array mismatch
+  would have copied silently, and every unit spawned later through `sync_unit_views()` would have
+  quietly reverted to logical positions — the bug returning for exactly the units nobody re-checks.
+
+**`UnitGeometry.cell_of` added, and a third copy of it avoided.** `BoardPicker` already converted
+world to cell by hand and `WallLegibility` needed the same for the camera's ground cell — and the
+copy CC had just drafted **dropped the `/ CELL_SIZE`**, which is correct only while a cell happens
+to be 1.0 across. One function now, read by all three.
+
+**Sample points are transformed individually rather than the AABB**, because a yaw-rotated AABB has
+to be re-enclosed and grows; three points transform exactly.
+
+**`BR61.05` filed rather than fixed:** `BattleScene._occluding_friendlies` has the identical defect
+for the friendly-fade ghost, reading logical positions while bodies animate. Found by reading the
+code beside this fix, and left alone deliberately — `BR32.04` is supervisor-owned and awaiting a
+look, and changing a second visible effect in the same commit would make what they see harder to
+attribute.
+
+
 ### Pass C1 follow-up 3 — a cutout tag, replacing a hardcoded part id
 
 **The supervisor: cover items were blocking the "is this unit obscured" ray, and only things

@@ -190,6 +190,21 @@ var grid: Grid
 ## for "is any OTHER unit blocking the active unit's own aim" — one
 ## source of "every unit on the board," not two.
 var wall_cutout_units: Array[Unit] = []
+## `BR32.04`: the live `BattleScene.unit_views` array, or empty. **A display-position source, never
+## a membership one** — `wall_cutout_units` still decides who gets a cutout, and a unit with no
+## view here simply falls back to its logical position, which is exactly the behaviour before this
+## existed. So an out-of-date entry cannot remove a cutout or invent one; the worst it can do is
+## place a hole where the body already is.
+##
+## **Why the view at all.** `resolve_to_marker()` mutates `unit.cell` synchronously, so the logical
+## body arrives at the destination the frame Resolve is clicked, while `ResolutionPlayer` is still
+## tweening the visible one across several frames. Reading the position from `unit.cell` therefore
+## cut the hole at the destination around a body that had not got there — the reported symptom.
+## `ResolutionPlayer._apply_display_transform` writes this node's own `position`/`basis` on every
+## tween tick and leaves them at identity when nothing is animating, so the rendered transform is
+## always current with no cache to invalidate. `docs/00`: read the real node back rather than
+## deriving a second opinion about where the body is.
+var wall_cutout_views: Array[HitVolumeView] = []
 ## tb32 Pass B: "in dartboard/aiming view only" — the shooter whose own
 ## read of its shot is worth protecting RIGHT NOW (`selection.
 ## selected_unit`, not `aiming_at` — the target). Null whenever the
@@ -719,6 +734,7 @@ func update_wall_cutout(camera: Camera3D) -> void:
 	radii.resize(WALL_CUTOUT_MAX_UNITS)
 	var count := 0
 	var blocked_by: Array = []
+	var display: Dictionary = _display_transforms()
 	if camera != null and is_inside_tree():
 		var camera_position: Vector3 = camera.global_position
 		var viewport_height: float = float(get_viewport().size.y)
@@ -732,15 +748,22 @@ func update_wall_cutout(camera: Camera3D) -> void:
 			# fed position. Two walks per unit per frame took the feed 3 020 -> 5 281 usec.
 			if is_excluded_from_occlusion(unit.id) or not WallLegibility.is_cutout_subject(unit):
 				continue
-			var box: AABB = UnitGeometry.bounding_box(unit)
-			var position: Vector3 = box.get_center()
+			# `BR32.04`: the body where it is DRAWN, not where the model says it is. Identity for
+			# anything not mid-animation, so this is a no-op except during a slide or a turn.
+			var shown: Transform3D = display.get(unit.id, Transform3D.IDENTITY)
+			var points: Array[Vector3] = WallLegibility.body_sight_points(
+				UnitGeometry.bounding_box(unit)
+			)
+			for i in range(points.size()):
+				points[i] = shown * points[i]
+			var position: Vector3 = points[0]
 			# Behind the camera: unproject_position() gives nonsense screen coordinates for a
 			# point the camera isn't looking at — nothing is occluded for a unit that is off screen,
 			# and this rejects before the sight gate rather than after it.
 			if camera.is_position_behind(position):
 				continue
 			var blamed: Variant = WallLegibility.blocking_cell(
-				grid, camera_position, unit.cell, box
+				grid, camera_position, UnitGeometry.cell_of(position), points
 			)
 			if blamed == null:
 				continue
@@ -768,6 +791,19 @@ func update_wall_cutout(camera: Camera3D) -> void:
 	_wall_cutout_material.set_shader_parameter("unit_radii_px", radii)
 	_wall_cutout_material.set_shader_parameter("unit_count", count)
 	_cutout_log.emit(build_log, screen_positions, count, blocked_by)
+
+
+## Every rendered unit's own current transform, keyed by unit id — rebuilt each frame from the live
+## view array rather than cached, so there is nothing to invalidate and nothing to go stale. Empty
+## whenever `wall_cutout_views` is (a spectator load before views exist, or any headless test that
+## never builds them), which is what makes the fallback to logical positions total rather than
+## partial.
+func _display_transforms() -> Dictionary:
+	var transforms: Dictionary = {}
+	for view: HitVolumeView in wall_cutout_views:
+		if view != null and is_instance_valid(view) and view.unit != null:
+			transforms[view.unit.id] = view.global_transform
+	return transforms
 
 
 func _process(_delta: float) -> void:

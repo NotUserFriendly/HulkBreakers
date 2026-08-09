@@ -159,20 +159,24 @@ static func is_cutout_subject(unit: Unit) -> bool:
 static func sight_blocked_to_body(
 	grid: Grid, camera_position: Vector3, cell: Vector2i, box: AABB
 ) -> bool:
-	return blocking_cell(grid, camera_position, cell, box) != null
+	return blocking_cell(grid, camera_position, cell, body_sight_points(box)) != null
 
 
+## **Takes the sample points already positioned**, not a box, because `BoardView` displaces them
+## through the unit's own rendered transform first (`BR32.04`) — an AABB rotated by a yaw would
+## have to be re-enclosed, growing the box, where transforming the three points is exact.
+##
 ## The same question, answering **which cell** rather than merely whether — what the cutout log
 ## records so a disagreement about "there was nothing between" can be checked against the board
 ## instead of argued. `null` when nothing is in the way.
 static func blocking_cell(
-	grid: Grid, camera_position: Vector3, cell: Vector2i, box: AABB
+	grid: Grid, camera_position: Vector3, cell: Vector2i, points: Array[Vector3]
 ) -> Variant:
 	var exclude: Array[Part] = grid.parts_at(cell)
-	var camera_cell := Vector2i(roundi(camera_position.x), roundi(camera_position.z))
+	var camera_cell: Vector2i = UnitGeometry.cell_of(camera_position)
 	var cells: Array[Vector2i] = Grid.line(camera_cell, cell)
 	return RayCaster.blocker_obstructed_among(
-		grid, cells, camera_position, body_sight_points(box), exclude, CUTOUT_TAG
+		grid, cells, camera_position, points, exclude, CUTOUT_TAG
 	)
 
 
