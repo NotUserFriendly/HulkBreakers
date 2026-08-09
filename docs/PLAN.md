@@ -7,6 +7,11 @@ defects → `BUGS.md`.
 because of how big it is, how interesting it is, or when it was written down. A one-line change and a
 whole system are peers here: work is single-threaded, so size never affects what comes first.
 
+**QUEUED is grouped under `##` headings, and the grouping carries no order.** A heading says *these
+items share a subject and are cheaper read together*; it does not say the group is next, or that its
+members must land together. **Order still lives in the sequence, not in the headings** — an item's
+position is its schedule whether or not it sits under a heading.
+
 **Size means nothing here; position means everything.** An item may be a single pass, a whole taskblock,
 or several — that is what the flat structure is for, and sizing items to fit a block would just be a
 second bucket system wearing a different hat. **An item's position in this file is its schedule.** What
@@ -86,7 +91,106 @@ results are then consumed in turn order — never to the acting itself.
 
 # NEXT
 
-### 1. Do the tests approximate things the game already defines?
+### 1. Author `step_height` onto parts
+**Needs:** `step_height` existing, which landed at taskblock-60 Pass A. **Unblocks:** step height
+reading as *chassis* rather than as a constant.
+
+**The number itself is settled: `Unit.BASE_STEP_HEIGHT` is 0.4**, the supervisor's call on
+2026-08-07 — three steps to climb one level, with 0.5 rejected as too generous a slope. The 0.3
+that shipped in Pass A was a misreading: `PLAN`'s own *"two ordinary tiles at 0.3 and 0.6"* names
+tile **heights**, and that flight's steps are 0.3, 0.3 and **0.4**, so the example needs 0.4 to
+work at all. Measured at 40x30 over eight seeds: **15.7% of walkable cells raised and 0 stranded**,
+against the retired ramps' 15.8% — so the retirement cost essentially no elevation at this value.
+
+**What is left is the per-unit half, which is real and untested by content.** Nothing carries a
+`step_height` modifier, so `Unit.lowest_step_height` always returns the base today.
+
+- **Legs are the obvious home**, and **long legs stepping higher is the thing a ramp could never
+  express** — it is the whole reason the stat is per-unit rather than a constant.
+- **A chassis with no step height at all is why ramps come back.** *That* is a real mechanical
+  category — tracked, legless, needing a continuous slope — and it is about the chassis, not about
+  a cell being labelled. It needs authored parts that set the stat to zero before it can be built,
+  which is why it sits behind this.
+
+### 2. Multi-level cleanup
+**Needs:** nothing. **Unblocks:** vertical movement being as legible and as interruptible as
+horizontal movement.
+
+**Most of this item has landed.** `BR46.02` (one-way ground) closed in taskblock-53 Pass D when the
+generator took on navigability; ramps-where-missing landed with it; a climb became interruptible in
+Pass E; ladders arrived as the route that does not need a capability. **What is left is the tail.**
+
+- **A hop-down cannot be interrupted.** taskblock-53 Pass E made `ClimbAction` check the overwatch hook
+  on the cell it steps onto — `HopDownAction` still checks nothing. Half a pass, and the inconsistency
+  is the argument: *every real exposure the same* (`docs/09`).
+- **The planner does not know a hop-down is one-way.** A unit that drops off a ledge to reach something
+  strands itself for the rest of the bout. "Can I get back?" belongs in the decision rather than being
+  discovered afterwards. **Stranding is a legitimate outcome** — a player knocking someone into a pit is
+  the game working — but a unit choosing it *unknowingly* is not.
+- **Prefer access routes: penalise ungated descent, exempt ramps.** Weight a candidate cell *slightly*
+  worse when reaching it means dropping a level, and not at all via a ramp. Units then route through
+  ramps without any rule naming ramps, and a ramp is two-way. **"Slightly" is load-bearing:** a hop-down
+  to reach an otherwise unreachable target must still win when the reason is good enough. It is a
+  consideration weight, so it is data. **Deliberately held until after the one-way awareness above** —
+  with the generator already guaranteeing a route out, this is a *preference*, and landing both at once
+  would hide which one did the work.
+- **A confined unit should be legible, not silent.** Escalate to an **agitated roam** or **pace** —
+  visibly restless rather than idle — and after a few turns of no progress, **shut down**. This does not
+  fix terrain and must not be logged as though it did; it stops a stranded unit from being
+  indistinguishable from a hang.
+
+**Not doing: authoring a `CLIMBER` part.** Climbing parts are the exception, not the rule, and **a map
+must be navigable without one** — which is what ladders are for. `Shell.can_climb()` reads a tag no part
+carries, and that is correct rather than a gap.
+
+**The AI queuing a vertical move is its own item** below, not part of this one.
+
+### 3. A climb needs a position along it
+**Needs:** nothing. **Unblocks:** partial climbs, mid-action terrain destruction, and the
+destroyed-ladder fall — see the fourth bullet.
+
+**A climb needs a position along it, and that unlocks four things at once.** taskblock-53 made a climb
+interruptible, but a climb is still *atomic in cost*: `ClimbAction` charges the whole rise as one
+action, which is why a four-level ladder priced at 16 MP and was unaffordable outright until
+`LADDER_COST_SCALE` was corrected. **If a climb can be interrupted midway it should be payable midway
+too** — pay what this turn affords, finish next turn.
+
+- **That is the real fix for tall ladders**, not a cheaper scale factor. A tall climb costing several
+  turns is correct; a tall climb being unpurchasable is not.
+- **It sharpens the intended contrast.** A **ladder is direct but exposed**; a **ramp is indirect but
+  safe**. A four-level ladder may be the *only* way up, and paying for it across turns while standing on
+  it is exactly the exposure that should cost something. A ramp reaching the same height needs a long
+  circuitous route — slower, safer, and a real choice rather than a strictly-worse one.
+- **It is the missing piece under the destroyed-ladder fall.** That needs four things this project does
+  not have: **terrain destruction affecting whatever stands on or attaches to it**, **a unit occupying a
+  position partway up**, **interrupts firing mid-action** (landed, taskblock-53), and **falls / throws /
+  knockback as real movement**. Partial climb and mid-action destruction are the same "a climb has a
+  position along it" concept — build that and two of the four are one piece of work.
+- **Falls, throws and knockback share machinery with *Forced movement* and with `eject`**, which waits
+  on the same ballistic motion. Three items, one dependency.
+
+### 4. The AI can queue a vertical move
+**Needs:** nothing — `ClimbAction`/`HopDownAction` exist, are interruptible, and ladders are
+authored and placed by the generator (tb53 C/D/E). **Unblocks:** vertical maps being played
+rather than merely built.
+
+**No AI path has ever queued either action.** The planner moves exclusively via `MoveAction`, so
+vertical movement has never happened in a real bout — a fact that survived taskblock-37 building
+both actions and taskblock-53 making them safe to be caught in. With ladders now authored and the
+generator placing routes, this is the difference between a usable map and a decorative one.
+
+- **The scoring already knows about height.** `UtilityContext._closes_distance` reads PATH
+  distance from a flood rooted at the target, and `Pathfinder.move_cost` already prices a climb
+  and a ladder edge. What is missing is the **executor**: the step that turns "the best cell is
+  up there" into a queued `ClimbAction` instead of a `MoveAction` that cannot make the step.
+- **Split from taskblock-53 Pass E deliberately.** The interruption half landed there and is
+  self-contained; this half touches `UtilityExecutors` and the planner's action construction,
+  which is where a regression would be hardest to attribute. Doing both in one pass would have
+  meant a planner change riding along with a movement change.
+- **The proving ground is the test surface** — a generated map may or may not produce the
+  geometry that exercises this; the authored one is built to.
+
+### 5. Do the tests approximate things the game already defines?
 **Needs:** nothing. **Unblocks:** trusting a headless measurement; the class of failure taskblock-61
 repeated four times.
 
@@ -114,7 +218,658 @@ breaks. A fixture that only passes with a one-box stand-in is telling you someth
 **An audit, not a sweep.** It produces evidence and a list; acting on it is separate, under
 `TEST-AUDIT.md`'s cut rule.
 
-### 2. Rename the terrain parts to sort together, and mark them as placeholders
+# QUEUED
+
+
+<!-- ------------------------------------------------------------------------ -->
+## Aiming and the camera
+
+### Aiming and the third-person camera, rebuilt
+**Needs:** nothing. **Unblocks:** closing `BR34.04`; the dartboard scaling correctly; a shot refusal
+that says why. **Supersedes the narrower "cut the sniper camera" framing.**
+
+**The supervisor, 2026-08-09:** *"I've realized that I've designed aiming in a strange way, and it's
+made a bit of a code mess that needs to be cleaned up or excised."*
+
+**Pull the OTS camera out and replace it rather than fixing it.**
+
+- **A true third-person camera** — behind, up, and to the right of the firing unit, **toggleable to the
+  left with `B`**.
+- **Simple FOV zoom replaces the sniper view entirely.** `SNIPER_UP_OFFSET`,
+  `SNIPER_FRAME_DISTANCE`, `SNIPER_ZOOM_SLACK` and the distance branch in `CameraRig.ease_to_framing`
+  all go. **Tuning any of them is work this discards** — which is the trap `BR35.02` sat in for three
+  blocks, and why `BR34.04` is `Active` and must not be worked before this.
+- **The dartboard goes where the raycast lands, with no guessing about intent.** If something
+  interrupts the shot, the dartboard **jumps forward to the interrupter**. No reasoning about what
+  *might* be aimed at.
+- **Scatter weapons cast a group**, and **the shortest hit places the dartboard.**
+- **Do every calculation from static, non-camera objects.** This is the constraint that matters most:
+  `BR51.01` was a cell address in a plane-space slot, and three earlier hypotheses all measured real
+  camera-related things and none of them was the cause. **A camera-derived quantity in an aiming
+  calculation is the defect shape this rebuild exists to remove.**
+
+**It probably subsumes two open entries** — the dartboard not scaling with distance, and the silent
+refusal — since both are on the aiming path. Confirm rather than assume.
+
+### Take the camera out of shot processing
+**Needs:** nothing. **Unblocks:** `BR61.02`; aiming being a property of the gun rather than of the
+view.
+
+**Corrected at tb61: this does NOT unblock `BR51.01`, which it used to claim.** That entry's root
+cause turned out to be a cell address returned where a plane point belonged, and it is fixed. The
+camera lean is a **separate, smaller, still-live** defect — measured at 1.5 cells of aim-point
+movement for a stationary cursor — now filed as `BR61.02`. **Removing the lean was tried and
+reverted**: the supervisor wants the flourish disconnected from the result, not deleted.
+
+**The supervisor's specification, recorded against `BR51.01` and lifted here because it is
+architecture rather than a bug fix:**
+
+> *"The camera shouldn't be involved in actual shot processing at all. Like you said, it's a
+> flourish, so why is it affecting aim? The purpose is for the camera to give a better view of the
+> target. The mouse cursor, when clicked, is aimed at a point on a part the player wants to aim at.
+> The player camera should not be involved in drawing a line from the shooter's gun to that clicked
+> point."*
+
+**The defect it closes.** `CameraRig.aim_at` rotates the real `Camera3D` by up to `MAX_LEAN_DEG`
+(5.0) toward the reticle, and `TacticsController` caches that same camera — so every
+`project_ray_origin`/`project_ray_normal` casts through a camera turned away from where the player
+believes they are sighting. **A rotational offset on the whole ray**, which is exactly the widened
+symptom: shots landing left *and* down together, not a sign flip on one axis.
+
+- **The shape is a two-step split.** The camera converts a cursor pixel into **a world point on a
+  part** — that much it must do, since the cursor only exists in screen space. The shot is then
+  resolved **gun to that point**, with no camera in the expression. Today the second step reuses the
+  first step's ray.
+- **Un-leaning the projection is NOT the fix**, and was explicitly rejected: it keeps the camera in
+  the loop and merely changes its pose.
+- **It is a feedback loop today** — the lean is computed *from* the reticle point and the reticle is
+  computed by projecting *through* the leaned camera. Establish whether the offset is stable or
+  compounds across frames before choosing a fix; that answer changes what a test has to pin.
+- **Any new test must compare against the camera pose the player is looking through**, not against
+  the other consumer of the same ray. The frame-mismatch measurement came back clean at 0.0000 cells
+  precisely because the reticle and the resolver are handed the *same* wrong ray.
+- **Its own item rather than a hunt entry** (taskblock-61 Pass A's call): inside a hunt pass it
+  would either be half-built or become the whole block.
+
+### Aiming detaches from unit lock; `Set Cell Level` steps by 0.5
+**Needs:** nothing. **Unblocks:** possibly obsoletes `BR33.01`.
+
+Two supervisor design notes from taskblock-51's hunt, recorded here rather than in `BUGS.md` because
+neither is a defect.
+
+- **The dartboard should stop being locked to one unit.** Clicking a unit opens the aim view as now,
+  but **mousing off it onto anything else targetable cycles the aim to that thing** — targets are
+  chosen by pointing rather than by re-entering aim mode. **This may obsolete `BR33.01`** (aim-view
+  scroll cycles walls, layer labels read as part names), which the supervisor says is *"not what I
+  originally intended, more likely to be obsoleted than fixed"* — so `BR33.01` should not be fixed
+  ahead of this decision.
+- **Tabs on the debug panel.** Split the existing menu into `Part Manipulation` and `Other` to start.
+  More categories are welcome; **do not filter it down too far** — a panel with twelve tabs is a panel
+  nobody can find anything in.
+- **The panel drags anywhere on screen.** Currently fixed, and it covers exactly the things being
+  inspected.
+- **Cut the clicks-to-goal on several verbs.** Redundant cells in memory, a button *and* a checkbox
+  doing what two buttons would do. These are per-verb ergonomics, not one change — worth a pass through
+  `DebugVerbs` with "how many clicks to the common case" as the only question.
+- **`UI Element Control` landed in taskblock-51** as a `DebugVerbs`-shaped list entry, so a new
+  toggleable element is a table row rather than UI code. The three notes above are what is left of that
+  same session's list.
+- **`Set Cell Level` should increment by 0.5**, not 1. A one-line step change on the debug panel's
+  spin box; noted here so it is not lost between hunts.
+
+### Two aim questions from the seventh hunt
+**Needs:** nothing. **Unblocks:** `BR51.01`'s diagnosis, possibly.
+
+Neither is a filed defect; both are conformance questions with short answers that nobody has written
+down, and the first bears directly on an open bug.
+
+- ~~**Where does a shot actually aim, and does player control differ from AI control?**~~ **Answered
+  (taskblock-56 Pass B), written into `docs/02`.** They agree, and structurally:
+  `ActionCatalog.build_firing_action` is the only firing-action construction site in `src/`, and every
+  firing action resolves through one expression. The AI leaves the offset at its default; the player has
+  a knob. **That removes a suspect from `BR51.01`.** It also turned up that the aim point is the centre
+  of the target's *frontmost region* — not the body's centre and not a point on the muzzle-to-target
+  axis — which **confirms `BR54.01`'s stated unverified suspect** without accounting for all of it. The
+  design question that finding opens (should the aim point be the frontmost region, the centroid, or a
+  point on the axis?) is a supervisor call and is recorded in `docs/02` as a finding, not a spec.
+- ~~**Is explosion damage affected by DT?**~~ **Answered: no.** `Detonation` calls
+  `DamageResolver.apply_damage_to_part` — bare subtraction, no threshold or armor. Not filed as a
+  defect: it is the HE type not being built yet, and it belongs to *Explosions: three types on one
+  substrate*.
+
+### AI-produced dartboards and an aim beat
+**Needs:** nothing mechanical; it's playback and timing work.
+
+Only the player's shot ever draws a dartboard — an AI attack resolves straight from the planner's decision with
+no on-screen wind-up. `ShotScatter.for_shot` is now the one place range→radius truth lives, so it's a
+ready-made primitive to drive an enemy-side draw. The real work is *when* the beat plays, how long it holds,
+and how it interacts with other AI units resolving in the same batch.
+
+
+### Player-facing LOS/LOF conflation
+**Needs:** eyes on the targeting UX first.
+
+tb33 fixed the AI's confusion of "can see" with "can hit," but the player's own attack legality still gates on
+`LoS.has_los` rather than the LOF predicate. A different problem from the AI's silent 81%-into-walls case,
+because the player sees both the dartboard and the wall and can choose to fire anyway. Swapping it needs a UX
+decision first — does the dartboard say "no shot" before the player commits AP? — not a mechanical copy of the
+AI fix.
+
+
+<!-- ------------------------------------------------------------------------ -->
+## Blockers, stacking and veneers
+
+### Blockers need a real transform, and the veneer's facing waits on it
+**Needs:** a blocker's placement carrying an orientation through `Grid` to `BoardView`. **Unblocks:**
+ledge veneers facing the edge they hang off; ladders on any side of a cell; any terrain part whose
+meaning depends on which way it points.
+
+**Supervisor's call, 2026-08-06: blockers need a real transform** — not quarter-turn rotation baked
+into the boxes.
+
+**Reported as a veneer defect**: *"veneers don't respect the facing of the clicked side of a thing.
+They also always place on one edge of a top face, and should align their facing to the edge. They're
+already getting the 'grow to' height from a piece, so they should face it as well. Ladders may need
+this behavior as well."* All true, and the cause is one layer below the veneer.
+
+**A blocker's facing does not survive being placed.** `MapPlacement.facing` is documented *"Surfaces
+only: radians... What makes a ramp directional"*, `MapSerializer.to_grid` stores a blocker as
+`grid.blockers[cell] = part` with no orientation anywhere, and `BoardView._spawn_blocker` draws it
+at facing `0.0`. So a `ledge_veneer` — which authors its box against **+Z** and is a `KIND_BLOCKER`
+— can only ever appear on one edge of a cell, whichever edge the author meant.
+
+**The deriving half was built and then reverted, deliberately.** A side click can face the veneer
+back at the ledge it hangs from, and a top click can read the struck point to pick the nearest cell
+edge — both landed and tested. **They were backed out because the drawing half does not exist**, and
+a placement carrying a facing that nothing renders is precisely the visual/logic disagreement this
+project spent taskblock-59 removing. *Both halves need to be possible first.* The derivation is
+small and can be rebuilt in an afternoon; it is not the work.
+
+- **Why not bake rotation into the boxes**, which is how `size` and `offset` already reach the
+  board: a `Box` is axis-aligned, so that buys quarter turns only. Enough for four cell edges and
+  wrong as a foundation — the supervisor's answer is a real transform, which also serves a ladder on
+  an arbitrary face and anything later that is not axis-aligned.
+- **`Grid.blockers` is `Vector2i -> Part`**, so there is nowhere to put an orientation today. That
+  is the same storage limit as *A cell holds one blocker*, and the two want doing together: both
+  need the blocker entry to become something richer than a bare `Part`.
+- **`UnitGeometry.assembly_placements` already takes an orientation** and `RayCaster`, `SightSpans`
+  and `PartPicker` all read the boxes it produces — so once a blocker can carry one, geometry,
+  picking and sight follow with no further change. It is the storage that is missing, not the maths.
+
+### A cell holds one blocker, so nothing stacks vertically
+**Needs:** `Grid.blockers` becoming a list per cell, or a placement carrying enough position to be
+addressed below another. **Unblocks:** stacking a pillar on a pillar; a wall taller than its part.
+
+taskblock-59 Pass A refused the gesture rather than letting it corrupt the editor: `Grid.blockers` is
+`Vector2i -> Part` and `MapPlacement.height` is documented as a surface's field, so a second blocker
+on a cell is a thing the format cannot express. The click now says so and the ghost declines to
+preview it.
+
+**The author's route to a taller wall is the Scale tool** (Pass C), which is the better verb for it —
+one part at a designed size rather than two pretending. What is genuinely missing is *stacking
+distinct things*: a crate on a pillar, a barrel on a crate.
+
+- `MapPlacement.offset` (Pass C) already carries a sub-cell displacement, so the **geometry** of a
+  stack is expressible today. What is not is the **grid's** idea of it: `blockers[cell]` holds one
+  part, and the pathfinder and `Grid.blockers` sweeps ask in whole cells.
+- **That limit is already live and is not new here.** A 3 x 3 wall authored by Pass C is one blocker
+  on one cell while covering nine, and an offset placement blocks the cell it was authored at
+  whatever its geometry overlaps. Stated in `MapPlacement.offset`'s own note rather than left to be
+  found.
+
+**Re-asked by the supervisor after taskblock-59 and scoped rather than started** — *"pillars and
+other terrain features should stack atop each other. This might be a big ask, so check before
+implementing."* It is. **Measured 2026-08-06: `grid.blockers` is read at 84 sites across 28 files**,
+41 of them in production logic:
+
+| pattern | sites | difficulty |
+|---|---|---|
+| `blockers.has(cell)` guards | 14 | mechanical — becomes *"is anything here"* |
+| `for cell in blockers` iteration | 14 | mechanical, but it is the ray marcher, sight spans and detonation |
+| `blockers[cell] = part` writes | 13 | mostly `MapGen` and `BoutInjector` |
+| `blockers[cell]` indexed reads | 5 | **the real decisions** — *which* one? |
+| `size`/`erase`/`keys` | 7 | mechanical |
+
+**The count is not the hard part.** Most readers genuinely need **every** blocker rather than the
+first — `RayCaster` marches geometry, `SightSpans` derives occlusion, `ShotPlane` projects, `Cover`
+and `VisibilityField` ask about blocking — while `DamageResolver` and `Detonation` do *identity*
+checks (`blockers[cell] == part`) that need list semantics to stay correct. `Grid.shootable_part_at`
+and `cell_of_blocker` both assume one.
+
+**Two cheaper things already work and should be weighed before starting.** A *taller* pillar is
+authorable now — Pass C's Scale drag on the top face gives one part at the authored height with
+proportional hp, which is better than two parts pretending. And `Grid.field_items` already holds an
+ordered array per cell and `BoardView` draws it through `_spawn_blocker`'s own geometry, so several
+parts in one cell already **draw**; what they do not do is block, because `Pathfinder` and
+`ShotPlane` never read `field_items`. **The open design question is therefore what distinguishes a
+blocker from a field item** once a cell can hold several of either — answer that before the
+refactor, not during it.
+
+### A veneer grown upward can never snap to anything
+**Needs:** a pick that reports **which** surface of a stack was struck, rather than the stack's own
+top. **Unblocks:** the anchored half of *"it grows both ways and snaps to what it meets"*.
+
+taskblock-59 Pass D landed the veneer's click and found this while testing it. `LedgeVeneer.span_up`
+handles an anchor above and taskblock-58 tested it — but through a click it is unreachable. A
+top-face pick strikes the top of whatever is at that cell **by definition**, and the placement lands
+on that same cell, so "the nearest surface strictly above the face you struck" is empty every time.
+Growing up therefore always takes `UNANCHORED_RISE`.
+
+**Growing down is unaffected and does snap**, to the deck under the landing cell — which is the
+common gesture and the one the feature was described by. This is the other half.
+
+Pinned by a named test (`test_growing_up_always_takes_the_default_because_nothing_is_ever_above`) so
+it is a recorded limit rather than a rediscovery.
+
+<!-- ------------------------------------------------------------------------ -->
+## The test suite
+
+### The scripted bout, and why 133 files build state by hand
+**Needs:** nothing. **Unblocks:** most of the remaining suite cost, and combat tests that exercise the
+real path instead of an approximation of it.
+
+**133 test files construct state directly** through `CombatState.new` or `GridFixture` rather than
+playing a bout. Some of that is correct and some of it is a workaround, and nobody has drawn the line —
+*"they have always been that way"* is not a reason.
+
+**A scripted bout removes the thing they were avoiding.** Preset seed, every action predetermined, no
+planner in the loop. That gives a combat or movement test the real resolution path — two-phase turns,
+the action queue, the log — without the AI as a failure point. The precedent is in the tree:
+`test_work_counters.gd` drives a turn by hand through `CombatState.advance_turn` and asserts that a
+scripted turn counts while building no bout, and taskblock-47 Pass E retargeted the tb38 flat-bout guard
+from a planner-driven bout to a scripted queue with no loss of coverage.
+
+**Two corpora, for two different questions:**
+- **Sampled** — the AI's behaviour *is* the subject. Random seeds, real planning, `test_full_mission`.
+- **Scripted** — everything else. One preset playthrough, predetermined actions, many tests asserting
+  against it.
+
+**The audit is the valuable half, and it has three outcomes per file**, not two:
+- **Hand-built is right.** A test of a pure function over a grid and two positions needs no bout, and
+  forcing one on it would be slower and less focused. Leave it and say so.
+- **Hand-built was avoiding the AI.** Move it onto the scripted bout — more realistic, and it stops
+  every file re-authoring its own setup.
+- **Hand-built is quietly wrong** — the fixture has drifted from what the game actually produces, and
+  the test passes against a board that could not occur. This is the outcome worth finding.
+
+### Act on the suite audit
+**Needs:** the audit index — **built** (taskblock-49, `test/suite_audit.csv`, 2431 rows classified
+under 328 rules). **Unblocks:** a suite whose cost is proportional to what it actually guards.
+
+The index exists; **nothing has been cut, by design** — taskblock-49 was scoped to evidence. This item
+is the acting-on, under `docs/TEST-AUDIT.md`'s cut rule: *a test may only be cut if breaking the rule it
+guards makes a different test fail*, **demonstrated rather than asserted**, with the covering test
+recorded beside the cut.
+
+Three specific things the index put on the table, in value order:
+
+**Two of the three findings below have since been acted on, and the third is no longer expensive.**
+Recorded corrected rather than deleted, because the *shape* of each is still the thing this item is for.
+
+- ~~**Eight name defects**~~ **— closed, taskblock-50 Pass E3.** The `description` column is empty
+  across all 2668 rows. The lesson stands: a filled description is a defect report, and the column
+  should stay empty.
+- ~~**`test_full_mission::test_bout_completion_rate_meets_the_measured_floor`, a 62.6 s sole guard**~~
+  **— retired, taskblock-50 Pass D.** Replaced by `test_seeds_to_first_completion_stays_low`, and
+  `test_full_mission.gd` now costs **1.2 s**. It was exactly the row someone proposes cutting on cost
+  alone, and it was retired by making the measurement cheaper rather than by cutting the guard.
+- **`test_completion_sampler::test_the_in_window_verb_reports_the_same_sample_and_changes_nothing`**
+  still exists, but its file is **6.2 s**, not the 102.3 s recorded here. **The corpus lever is no
+  longer worth a supervisor call.** Six other tests guard the same rule for ~0.001 s each, so the
+  cut-rule question remains open on its merits, at a fraction of the stakes.
+
+**The audit's headline finding was not the predicted one, and that shapes this item.** `TEST-AUDIT.md`
+expects expensive rows sharing a rule with cheap ones to be the output. They exist — but in every case
+checked the cheap peer guards the rule at *unit* level and the expensive one guards it end-to-end
+through a real bout, so breaking bout-level determinism does not redden the cheap peer and the cut rule
+correctly refuses the cut. **The real question the index answers is per rule: does this rule need a
+bout-level rung at all?** Answering that for the ~10 rules that own a bout-playing test is the work.
+
+### Review pass over the test suite — *the survey half; the index landed in taskblock-49*
+**Needs:** nothing.
+
+**Superseded in part.** The per-test index and the rule classification this item asked for are built
+(taskblock-49; see `CHANGELOG.md`). What remains here is the *qualitative* half below — tests that pin a
+bug as though it were a rule — which the index does not answer, because a test asserting the wrong thing
+still classifies cleanly under the rule it claims to defend.
+
+2038 test functions across 214 files run on every change, and the suite has never been audited as a
+whole — only ever added to. The suspicion is that a meaningful share is redundant, exercises systems
+that have since been retired or reshaped, or asserts an old model's own limitations rather than a real
+invariant.
+
+That last category is the dangerous one and it has a proven instance: tb36 found
+`test_prone_pose_changes_the_projected_shot_plane_vs_idle` asserting exactly one projected region,
+which encoded the four-face model's *gap* as though it were a rule. It passed for fifteen taskblocks
+while a prone unit was, in real play, unhittable from the front. **A test that pins a bug is worse than
+no test** — it converts a defect into a defended invariant, and every future change that would have
+fixed it looks like a regression instead.
+
+Concrete starting signals, not a full audit:
+- **`checkpoint` appears in 6 test files** — that ritual is retired (`SUPERSEDED.md`); `test_checkpoint_
+  1–4.gd` survive as ordinary regression tests but are still named for a mechanism nobody runs, and the
+  rename is already scoped in the checkpoint-machinery item.
+- **`vertical_slope` and `grid.height` each still appear in a test file**, both retired in tb36 — worth
+  confirming those are deliberate historical references (the `grid.height` one is the rename's own
+  guard test, which necessarily quotes the banned string) rather than stragglers.
+- **Four files exceed 850 lines** (`test_body_projector`, `test_damage_resolver`,
+  `test_resolution_player`, `test_inspect_panel`) — worth checking whether they've accreted overlapping
+  coverage of the same paths, since several were split at gdlint's cap rather than along a seam.
+
+**Separate tests that PIN behaviour from tests that SAMPLE a distribution — mixing them is what
+creates a re-pick treadmill.** A pinning test fixes its inputs and must go red the instant behaviour
+changes; that's its whole job. A sampling test asks a statistical question ("are missions completable
+at all?") and should run N cases and assert a *rate*, never a single frozen seed.
+
+`test_full_mission.gd` **was** the worked example, and tb39 Pass A fixed it: it asked an existence
+question ("a mission can be completed") but was implemented as a pinned seed, so every real mechanics
+change forced a re-pick — six of them, and that churn absorbed a real AI line-of-fire bug as noise
+instead of surfacing it. A tb38 investigation of seeds 12373–12383 found only **2 of 11** complete,
+with the failures concentrated in AI-stuck behaviour rather than impossible maps. It now samples 12
+seeds and asserts a completion rate (`MIN_COMPLETION_RATE`), which needs no re-picking and collapses
+visibly when the AI actually regresses.
+
+**The audit's job is to find the others.** One instance is fixed; the confusion it came from is a
+suite-wide habit, and any other test asserting an existence or capability claim through a frozen seed
+has the same defect. A re-pick in a test's own header is the tell.
+
+**Deliverable is a written audit, not a deletion spree.** Per test or cluster: what it covers, whether
+anything else already covers it, and whether it asserts a real invariant or an implementation
+accident. **Deleting a redundant test and deleting the only test of a real rule look identical in the
+diff** — so a test found genuinely load-bearing is a result worth recording, exactly like the
+correct-as-is findings in the tb35 wall audit. Runtime is a secondary benefit; correctness of what the
+suite *claims* is the point.
+
+---
+
+**Three small items folded in here**, because they are the same surface and none is worth its own entry:
+
+- **Retire `MIN_COMPLETION_RATE`.** **Nothing reads it.** taskblock-50 Pass D replaced the rate with
+  `seeds_to_first_win`, and every surviving mention across four files is a *comment about* the constant
+  — `test_full_mission.gd` says so in its own header. **It does not need a number picked; it needs
+  deleting.** Keep the cautionary story where `suite_budget.gd:10` and `completion_sampler.gd:89`
+  already tell it better: a threshold on a small integer count sat less than one seed from red and the
+  response was to lower it.
+- **The audit's Tier 2 merges** — three clusters that are same-rule *and* same-scope, so the cut rule
+  applies rather than correctly refusing. Roughly 35 s and ten tests. **Filed because the CSV they came
+  from is deliberately stale, so this finding does not regenerate itself.**
+
+  | rule | rows | cost |
+  |---|---:|---:|
+  | the run panel reports the real rung and the real verdict | 9 | 20.6 s |
+  | the gate's exit code reflects the run's real verdict | 4 | 12.3 s |
+  | every spawn zone is walkable and reachable | 8 | 17.0 s |
+
+  Costs are as-measured then and want re-taking; taskblock-50 moved a great deal underneath them.
+  **Merged tests keep distinct assertion messages** or a failure stops naming which fact broke.
+- **`test_completion_sampler.gd` is no longer the problem it was cited as.** taskblock-47 took it
+  437 s → 207 s and taskblock-50's corpus and stubbing work took it to **6.2 s**. What remains is
+  genuine — it plays real missions to check the sampler reports them correctly. **Confirm it is right
+  and close the question**, rather than cutting.
+
+**A note on cost figures in this file.** Three of the numbers above were stale enough to invert a
+conclusion — an item proposing a supervisor decision about a 102-second lever that had become a
+six-second one. **A cost recorded here should carry the taskblock that measured it**, or it reads as
+current forever.
+
+### The review layer earns its keep
+**Needs:** taskblock-48 Pass B2 (replay of failures). **Unblocks:** the supervisor being able to spot
+anomalies at all.
+
+The replay currently shows **only failures**, and an anomaly is not identifiable without a reference for
+normal. That is the likeliest reason the human-review layer has not yet paid off — it has been showing
+exceptions with nothing to compare them against.
+
+- **Queue one representative success per test, not every success.** A passing test contributes one
+  arbitrary replay; a failing one contributes its failure. The queue then teaches what right looks like
+  in the same sitting as what wrong looks like. Cap it — a representative sample, with an option to sit
+  through everything.
+- **A chime when the run finishes.** The window is watched intermittently by definition; a run that ends
+  silently wastes the gap.
+- **Order tests by observed failure frequency.** Most-frequently-failing first, so a red suite goes red
+  early instead of at minute nine. Needs a small persisted history of which tests failed how often —
+  new data, and the only genuinely new machinery in this item.
+- **A failure must not stall the queue.** GUT already runs past a failing test; the gap is on CC's side,
+  where a failure at minute two is not actionable until the run ends. Surface failures as they land so
+  the fix can start while the rest continues.
+
+**A caution on reordering:** a suite whose order depends on recorded history is a suite whose order is
+not reproducible across machines or checkouts. Keep the *ordering* advisory and the *set* fixed — the
+same tests always run, only the sequence adapts — or a green run stops meaning the same thing twice.
+
+### Replay a handle on demand, and decide the checkpoints' future
+**Needs:** taskblock-48 Pass B2 (the replay panel and `ReplayHandle`). **Unblocks:** retiring a third
+renderer instead of keeping it alive by inertia.
+
+taskblock-48 landed the surface: the run panel launches any rung, tails it live, and replays the first
+few failures that have a visual form as real playing bouts. What it will not do is show you something
+**nothing has failed about** — a replay is offered off a failure, so the map-generation sweeps are only
+watchable when they break.
+
+- **Replay a handle without a failure.** A list of declared handles with a "show me" button. Small
+  addition to the panel, not a new mechanism, and it is the missing piece for everything below.
+- **Then decide about `checkpoint_8`/`checkpoint_9`.** A checkpoint is "a visual test whose assertion is
+  a human", which is what a replayed handle already is — and `checkpoint_9` drives `load_battle` from a
+  `GridFixture`, the same path `ReplayHandle` uses. Once handles are viewable on demand the checkpoints
+  are doing nothing the panel cannot, and keeping a third renderer compiling has a cost the parse guard
+  only partly hides.
+- **Declare handles more widely.** Three files have them. The determinism checks and the remaining
+  spatial sweeps are the obvious next ones; a handle is a few lines and self-declaring.
+- **A `launch test` verb on the debug panel.** Any test that builds a room, fires shots or stages real
+  units should be launchable from a list: pick it, the view resets, the test runs under the ordinary
+  spectator view. **The general form of the replay work** — taskblock-51 made a *failing* test's fixture
+  watchable; this makes any staged test watchable on demand, which turns a test into a scenario the
+  supervisor can inspect rather than a result they are handed.
+- **Watched and headless must keep agreeing.** That equivalence is the foundation — if a watched seed and
+  its headless counterpart ever disagree, every number the sampler has produced is suspect. Asserted
+  once; it should stay asserted as this grows.
+
+<!-- ------------------------------------------------------------------------ -->
+## Combat log
+
+### Combat log paths are a workflow choice, not a constant
+**Needs:** nothing. **Unblocks:** the supervisor and CC working at the same time.
+
+**Filed as `BR61.01`:** headless and non-headless runs write to the same files, so a test run and a
+played session stamp on each other and **neither party can work while the other does.**
+
+**Two shapes, and the second is better:**
+
+- **Tag test output as test output.** Minimal, fixes the collision, leaves the path hardcoded.
+- **Make the log destination a parameter**, documented, with the game using today's default and tests
+  writing wherever they are told. **Then a log landing somewhere odd is a workflow decision rather than
+  a code change** — which is what keeps this from recurring the next time something else wants its own
+  stream.
+
+**Prefer the second.** The capability survives into later phases where a replay, a server, or a second
+observer wants its own destination, and none of those should need a code edit.
+
+### Keep the rotated combat logs from ballooning
+**Needs:** per-session log rotation — **built** (taskblock-52, `FileSink.ARCHIVE_DIR`, `out/logs/`).
+**Unblocks:** nothing; this is housekeeping that will otherwise become a chore nobody scheduled.
+
+Every session now leaves a file in `out/logs/`. Nothing removes them, so the directory grows once per
+run forever. **The supervisor's own framing is the answer: "it'll probably be the same as the finished
+taskblocks."** That is the `reports/` rolling-window rule and the `taskblock_done/` archive — keep a
+fixed number of the most recent, delete the rest in the same commit that adds a new one.
+
+- **The obvious shape:** `FileSink` prunes `out/logs/` to the N most recent on rotation, N being a
+  flagged constant. Sortable names are already in place (`combat-YYYYMMDD-HHMMSS.log`), so "most
+  recent" is a directory listing and a slice, not a stat call per file.
+- **Two things to decide rather than assume.** What N is — `reports/` keeps five, which is a
+  precedent rather than a reason. And whether pruning belongs in `FileSink` at all: a logger that
+  deletes files is doing two jobs, and the alternative is a housekeeping call at startup that
+  `BattleScene` makes explicitly.
+- **Not urgent.** A session log is tens to hundreds of KB, so this is a real problem at hundreds of
+  sessions rather than at ten. Filed now because the growth was introduced deliberately and should not
+  be rediscovered later as a mystery.
+
+### Nothing in a BOUT emits an announcement yet
+
+**Needs:** nothing. **Unblocks:** the announcement position doing anything during a battle.
+
+taskblock-57 Pass E built the mechanism end to end — `Announcement`'s priority table,
+`AnnouncementFeed` as a `LogSink`, `AnnouncementsModule` at the table's own position, and
+`Announcement.tag` as the one way in.
+
+**Pass G2 gave it its first customer, and the item narrowed rather than closing.** The editor's
+navigability warnings tag themselves `ALERT` (`EditorLog`), so the position is no longer correct and
+empty — it works, in the editor, with a test that drives one warning into both surfaces from one
+emit. **No call site in a bout tags anything**, which is the half that is still open.
+
+**That is deliberate, not an omission.** Choosing which battle events shout at the player is a design
+decision the taskblock does not make, and inventing a list would be exactly the "never invent balance
+numbers and present them as design" failure one category over.
+
+**Worth a supervisor pass over "what should announce"** — unit down, mission outcome, a matrix
+ejected, an objective taken. Each is one `Announcement.tag(data, priority)` at an existing emit, with
+no new path, and G2's warnings are the worked example of what that costs.
+
+**The priority table's own numbers are the tuning pass's**, not this item's: 3/5/8 seconds and three
+`HulkTheme` tiers, ordered rather than tuned, and `EditorLog` picking `ALERT` over `CRITICAL` for an
+authoring warning on the grounds that the loudest tier is reserved for what ends a mission.
+
+<!-- ------------------------------------------------------------------------ -->
+## Small UI leftovers
+
+### Two chromes no shipped mode uses
+
+**Needs:** nothing. **Unblocks:** nothing — this is a "is it dead or is it a spare" question, and it
+wants an answer rather than a sweep.
+
+taskblock-57 moved the last two modes off them: Pass C took the player mode to `BATTLE_LAYOUT`, and
+Pass G1 took the spectator and the editor there too, because the editor's bar and the spectator's bar
+both live in the placement table's action row. **`ModeChrome.PLAYER_COLUMNS` and
+`ModeChrome.TOP_LEFT_ROWS` are now named by no `ViewModes` entry.**
+
+**They are not obviously dead**, which is the whole reason this is recorded rather than actioned.
+A chrome is *data a mode names*, and both are still reachable, still built, and still exercised —
+`test_view_modes.gd` mounts an invented mode against `TOP_LEFT_ROWS`, and `test_three_bars.gd` asserts
+that the pacing row still resolves under it. The slot vocabulary they publish (`LEFT_COLUMN`,
+`INVENTORY_ROW`, `TOP_RIGHT`, `BOTTOM_RIGHT`, `READOUT_COLUMN`) is likewise named by nothing that
+mounts today.
+
+**The failure mode to avoid is the one this project has hit before**: `ClaimVolumeModule` sat correct
+and unreachable for a whole block. The difference is that a chrome nobody names costs nothing at
+runtime and deleting one is a real reduction in what a future mode can ask for. **Decide, do not
+drift** — either they are the spare layouts a fifth mode picks up, and say so in `ModeChrome`'s
+header, or they go with their slot names.
+
+### "Resolve to Here" has logic and no UI
+
+**Needs:** nothing. **Unblocks:** partial resolution being reachable again.
+
+`BR27.08` moved *Resolve to Here* out of the turn-control column and onto a per-row button in the
+queue panel, which was the right shape while there was a queue panel. **taskblock-57 Pass D retired
+the panel**, so the rows went and the only way to reach the verb went with them.
+
+**The logic is untouched and still tested** — `SelectionController.keep_queue_suffix`,
+`TacticsController.queue_partially_resolved`, and `resolve_until` with a player-placed stop point.
+What is missing is an affordance.
+
+**Recorded rather than absorbed into the retirement**, because the taskblock's own stop-and-report
+rule names only `queue_panel`'s *confirmation* role as the coverage at risk, and this is a second
+thing that went with it. The replacement for confirmation landed (the combat log's queueing
+entries); this had no replacement and was not asked for one.
+
+**Where it might go:** waypoints and ghosts are what the taskblock says carry the queue's load now,
+so a stop marker on a ghost leg is the obvious home — that is also what `resolve_until` already
+takes. Not designed here.
+
+### Player-facing labels for actions that have none
+
+**Needs:** nothing. **Unblocks:** any surface that names an action to a player rather than to a
+developer.
+
+`CombatAction.describe()` defaults to a debug shape — `EndTurnAction(unit=0)`, `HoldAction(unit=0)` —
+and only `MoveAction` overrides `short_describe()`. That was invisible while the only reader was the
+queue panel; **taskblock-57 Pass D moved the same text into the combat log**, where a player reads
+`unit 0 queued action: EndTurnAction(unit=0)`.
+
+**No regression** — the retired panel showed the identical string — but the log is a player-facing
+surface in a way a debug row was not. The taskblock's own example reads `unit 0 queued action:
+burst`, so the shape wanted is a short authored name per action. **Not invented here**: naming is a
+design call and `docs/08`'s rule is that the view never births a string.
+
+### Action-cost affordances, and camera keys
+**Needs:** nothing.
+
+Supervisor design notes from taskblock-51's third hunt — neither is a defect, so neither is in
+`BUGS.md`.
+
+- **Hovering a hotbar action shows its AP or MP cost**, and *selecting* one makes the matching pips
+  pulse: an action costing 3 AP slow-pulses the 4th–6th pip orange; one costing 3 MP pulses 2 MP teal
+  and one AP orange, because that is how the conversion actually spends. The cost model already exists
+  — `ActionCatalog` knows what a provider authors and `test_ap_mp_pips.gd` already pins that the pip
+  row shows exactly what the unit has. This is presentation over facts the game already holds.
+- **`WASD` pans the camera in the player view; `Spacebar` toggles play/pause in the spectator.**
+
+### The bout launcher spans the screen
+**Needs:** nothing. **Unblocks:** nothing.
+
+Full-screen-width after the module collapse. Cosmetic, and the supervisor has said it is **not worth a
+pass of its own** — fold it into whatever next touches that surface.
+
+### The debug menu's drag-resizable height
+
+**Needs:** the debug-menu redesign, which taskblock-57 explicitly excluded (*"It gets a placement
+here and nothing more"*). **Unblocks:** nothing.
+
+taskblock-57's placement table says the debug menu has a *"drag-resizable height"*. The placement
+landed; the resize did not, because the same block's "Not this block's job" list rules out touching
+the menu beyond putting it somewhere. **Recorded so the unmet half of a shipped table row is not
+mistaken for an oversight.**
+
+**Also unresolved and worth a measurement rather than a guess:** the table gives the menu a quarter
+of the 16:9 safe width — 480 px at 1x — while `DebugControlPanel` carries a 520 px minimum, so it
+overhangs its slot by 40. Positioned by the slot and sized by its own content today; either number
+can move in the tuning pass.
+
+### Two unauthored defaults carry a shipped material's whole feel
+**Needs:** nothing. **Unblocks:** armour and weapon balance being authored rather than inherited.
+
+**Salvaged from `BR52.13` when that entry closed** (taskblock-60 follow-up), because it is a real
+decision and a closed bug report is the wrong place to keep one.
+
+**`steel.tres` authors no `deflect_threshold_deg`**, so it takes `MaterialEntry`'s **30.0**
+default — and a representative engagement measured at the time sat at **~31 degrees** incidence,
+one degree the wrong side of it. Combined with weapon damage figures that decide penetration
+outright (a chaingun's 1.6 effective against steel's `dt` of 6.0 **cannot** penetrate, ever), a
+shipped material's entire feel rests on two numbers nobody chose.
+
+- **This is not a bug and was never reported as one.** Re-measured across six real bouts, the
+  resolver behaves: 15.5% of 2450 impacts penetrate, 33.5% stop dead, 51.0% deflect. The original
+  "nothing ever penetrates" reading came from a sample drawn entirely from a pairing that cannot.
+- **What it wants is authoring, not a fix** — a deflect threshold chosen per material, and a look
+  at whether the damage-versus-`dt` cliff is meant to be a cliff. **Balance numbers, so not
+  invented here.**
+- **Worth doing before any armour tuning pass**, or that pass will be tuning against defaults and
+  attributing the results to its own changes.
+
+### The `mouse_filter` sweep
+**Needs:** nothing, but **best done with *One view, toggleable modules*** — same files, same class of
+defect, and both close a category of UI bug structurally rather than one instance at a time. **Unblocks:** closing a recurring class of UI bug instead of one instance at a time.
+
+Four separate bugs have now been the same defect: a full-rect `Control` whose `mouse_filter` doesn't match
+what it actually draws. `BR31.01` (turn controls vs. tooltip), the `TopLeftControls` fix, `BR34.02` (the log
+ate clicks through a fully transparent region), `BR30.05` (the debug panel let clicks through a fully opaque
+one — the same mistake inverted). Each was found by a human noticing, then fixed alone. `BR30.05` asked for
+the sweep by name and was closed without it.
+
+Two rules, both already written down and both now testable:
+- **Renders nothing → must not take the mouse.** docs/09 taskblock-07 Pass B4's rule, correct as far as it
+  goes.
+- **Draws a real background → must take the mouse over what it draws.** `BR34.02`'s own resolution, and the
+  half B4 never covered. A panel honest about occupying space is not a bug.
+
+`test_battle_scene_input.gd`'s audit already encodes both and walks `BattleScene`'s live tree — but only what
+that scene happens to build. The sweep is: run it over every `Control`-bearing scene, and fix what it names.
+Cheap, mechanical, and it converts "someone will notice the fifth one" into a red test.
+
+<!-- ------------------------------------------------------------------------ -->
+## Everything else
+
+### Rename the terrain parts to sort together, and mark them as placeholders
 
 **Needs:** nothing. **Unblocks:** an author finding a floor in the part list; the tag work below
 having something coherent to tag.
@@ -146,7 +901,7 @@ review passes.
 **Not a rename of the `walkable` tag or of `GROUND`.** Those are vocabulary the rules read; this is
 content identity.
 
-### 3. Rework the gizmo as a real CAD tool
+### Rework the gizmo as a real CAD tool
 
 **Needs:** nothing. **Unblocks:** authoring geometry by direct manipulation rather than by typing
 numbers into a panel.
@@ -180,7 +935,7 @@ condition and is *more* at risk under this design rather than less: a select too
 gizmo is very close to a selection of its own. Whatever the editor already treats as "the thing
 being pointed at" is what the gizmo must read.
 
-### 4. Elevated tiles lost their line borders
+### Elevated tiles lost their line borders
 **Needs:** nothing. **Unblocks:** reading a stepped board by eye.
 
 Grid lines went flat when taskblock-55 deleted the ground quad, and lines-at-tile-height was **passed on
@@ -191,7 +946,7 @@ without them, so **the judgement call is due for revisiting rather than being a 
 If the answer is to draw them, the co-planarity is the problem to solve — a small offset, a different
 primitive, or the tile's own edge geometry doing the work.
 
-### 5. Attributes
+### Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;
@@ -212,56 +967,6 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 **Acceptance:** six attributes and modifiers on the matrix; personal_speed reads from Dex with no
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
-
-# QUEUED
-
-### Author `step_height` onto parts
-**Needs:** `step_height` existing, which landed at taskblock-60 Pass A. **Unblocks:** step height
-reading as *chassis* rather than as a constant.
-
-**The number itself is settled: `Unit.BASE_STEP_HEIGHT` is 0.4**, the supervisor's call on
-2026-08-07 — three steps to climb one level, with 0.5 rejected as too generous a slope. The 0.3
-that shipped in Pass A was a misreading: `PLAN`'s own *"two ordinary tiles at 0.3 and 0.6"* names
-tile **heights**, and that flight's steps are 0.3, 0.3 and **0.4**, so the example needs 0.4 to
-work at all. Measured at 40x30 over eight seeds: **15.7% of walkable cells raised and 0 stranded**,
-against the retired ramps' 15.8% — so the retirement cost essentially no elevation at this value.
-
-**What is left is the per-unit half, which is real and untested by content.** Nothing carries a
-`step_height` modifier, so `Unit.lowest_step_height` always returns the base today.
-
-- **Legs are the obvious home**, and **long legs stepping higher is the thing a ramp could never
-  express** — it is the whole reason the stat is per-unit rather than a constant.
-- **A chassis with no step height at all is why ramps come back.** *That* is a real mechanical
-  category — tracked, legless, needing a continuous slope — and it is about the chassis, not about
-  a cell being labelled. It needs authored parts that set the stat to zero before it can be built,
-  which is why it sits behind this.
-
-### Aiming and the third-person camera, rebuilt
-**Needs:** nothing. **Unblocks:** closing `BR34.04`; the dartboard scaling correctly; a shot refusal
-that says why. **Supersedes the narrower "cut the sniper camera" framing.**
-
-**The supervisor, 2026-08-09:** *"I've realized that I've designed aiming in a strange way, and it's
-made a bit of a code mess that needs to be cleaned up or excised."*
-
-**Pull the OTS camera out and replace it rather than fixing it.**
-
-- **A true third-person camera** — behind, up, and to the right of the firing unit, **toggleable to the
-  left with `B`**.
-- **Simple FOV zoom replaces the sniper view entirely.** `SNIPER_UP_OFFSET`,
-  `SNIPER_FRAME_DISTANCE`, `SNIPER_ZOOM_SLACK` and the distance branch in `CameraRig.ease_to_framing`
-  all go. **Tuning any of them is work this discards** — which is the trap `BR35.02` sat in for three
-  blocks, and why `BR34.04` is `Active` and must not be worked before this.
-- **The dartboard goes where the raycast lands, with no guessing about intent.** If something
-  interrupts the shot, the dartboard **jumps forward to the interrupter**. No reasoning about what
-  *might* be aimed at.
-- **Scatter weapons cast a group**, and **the shortest hit places the dartboard.**
-- **Do every calculation from static, non-camera objects.** This is the constraint that matters most:
-  `BR51.01` was a cell address in a plane-space slot, and three earlier hypotheses all measured real
-  camera-related things and none of them was the cause. **A camera-derived quantity in an aiming
-  calculation is the defect shape this rebuild exists to remove.**
-
-**It probably subsumes two open entries** — the dartboard not scaling with distance, and the silent
-refusal — since both are on the aiming path. Confirm rather than assume.
 
 ### `BR60.01`'s repair — unreachable raised ground is detected and measured, and nothing repairs it
 **Needs:** a decision on which of three repairs is wanted (below). **Unblocks:** closing `BR60.01`,
@@ -367,240 +1072,6 @@ them. Same seed, same candidates in the same order, both paths abort identically
   was flaky rather than red** — it passed in isolation and failed under full-suite load, which is
   the failure mode to expect elsewhere. Both raises come out when this lands.
 
-### Nothing in a BOUT emits an announcement yet
-
-**Needs:** nothing. **Unblocks:** the announcement position doing anything during a battle.
-
-taskblock-57 Pass E built the mechanism end to end — `Announcement`'s priority table,
-`AnnouncementFeed` as a `LogSink`, `AnnouncementsModule` at the table's own position, and
-`Announcement.tag` as the one way in.
-
-**Pass G2 gave it its first customer, and the item narrowed rather than closing.** The editor's
-navigability warnings tag themselves `ALERT` (`EditorLog`), so the position is no longer correct and
-empty — it works, in the editor, with a test that drives one warning into both surfaces from one
-emit. **No call site in a bout tags anything**, which is the half that is still open.
-
-**That is deliberate, not an omission.** Choosing which battle events shout at the player is a design
-decision the taskblock does not make, and inventing a list would be exactly the "never invent balance
-numbers and present them as design" failure one category over.
-
-**Worth a supervisor pass over "what should announce"** — unit down, mission outcome, a matrix
-ejected, an objective taken. Each is one `Announcement.tag(data, priority)` at an existing emit, with
-no new path, and G2's warnings are the worked example of what that costs.
-
-**The priority table's own numbers are the tuning pass's**, not this item's: 3/5/8 seconds and three
-`HulkTheme` tiers, ordered rather than tuned, and `EditorLog` picking `ALERT` over `CRITICAL` for an
-authoring warning on the grounds that the loudest tier is reserved for what ends a mission.
-
-### Two chromes no shipped mode uses
-
-**Needs:** nothing. **Unblocks:** nothing — this is a "is it dead or is it a spare" question, and it
-wants an answer rather than a sweep.
-
-taskblock-57 moved the last two modes off them: Pass C took the player mode to `BATTLE_LAYOUT`, and
-Pass G1 took the spectator and the editor there too, because the editor's bar and the spectator's bar
-both live in the placement table's action row. **`ModeChrome.PLAYER_COLUMNS` and
-`ModeChrome.TOP_LEFT_ROWS` are now named by no `ViewModes` entry.**
-
-**They are not obviously dead**, which is the whole reason this is recorded rather than actioned.
-A chrome is *data a mode names*, and both are still reachable, still built, and still exercised —
-`test_view_modes.gd` mounts an invented mode against `TOP_LEFT_ROWS`, and `test_three_bars.gd` asserts
-that the pacing row still resolves under it. The slot vocabulary they publish (`LEFT_COLUMN`,
-`INVENTORY_ROW`, `TOP_RIGHT`, `BOTTOM_RIGHT`, `READOUT_COLUMN`) is likewise named by nothing that
-mounts today.
-
-**The failure mode to avoid is the one this project has hit before**: `ClaimVolumeModule` sat correct
-and unreachable for a whole block. The difference is that a chrome nobody names costs nothing at
-runtime and deleting one is a real reduction in what a future mode can ask for. **Decide, do not
-drift** — either they are the spare layouts a fifth mode picks up, and say so in `ModeChrome`'s
-header, or they go with their slot names.
-
-### The cursor never shows what is being placed
-
-**Needs:** nothing. **Unblocks:** nothing — the requirement is met by its alternative.
-
-taskblock-57 G2: *"Current tool shows on the cursor — a small icon of what is being placed — **or**
-is carried by the action bar's own highlight. Either is fine; neither is not."* **The bar's highlight
-is what shipped**, for a stated reason: a cursor icon is a `Control` tracking the mouse over a 3D
-board, with its own z-order and hit-testing questions, where the buttons that set the tool are
-already on screen and already know which was pressed.
-
-**So this is not an unmet requirement**, and it is recorded only so a later reader does not find the
-sentence, look for the icon, and mistake a taken option for a missed one. If the highlight proves too
-quiet in practice, the icon is the other half of a specified either-or rather than a new idea.
-
-### "Resolve to Here" has logic and no UI
-
-**Needs:** nothing. **Unblocks:** partial resolution being reachable again.
-
-`BR27.08` moved *Resolve to Here* out of the turn-control column and onto a per-row button in the
-queue panel, which was the right shape while there was a queue panel. **taskblock-57 Pass D retired
-the panel**, so the rows went and the only way to reach the verb went with them.
-
-**The logic is untouched and still tested** — `SelectionController.keep_queue_suffix`,
-`TacticsController.queue_partially_resolved`, and `resolve_until` with a player-placed stop point.
-What is missing is an affordance.
-
-**Recorded rather than absorbed into the retirement**, because the taskblock's own stop-and-report
-rule names only `queue_panel`'s *confirmation* role as the coverage at risk, and this is a second
-thing that went with it. The replacement for confirmation landed (the combat log's queueing
-entries); this had no replacement and was not asked for one.
-
-**Where it might go:** waypoints and ghosts are what the taskblock says carry the queue's load now,
-so a stop marker on a ghost leg is the obvious home — that is also what `resolve_until` already
-takes. Not designed here.
-
-### Player-facing labels for actions that have none
-
-**Needs:** nothing. **Unblocks:** any surface that names an action to a player rather than to a
-developer.
-
-`CombatAction.describe()` defaults to a debug shape — `EndTurnAction(unit=0)`, `HoldAction(unit=0)` —
-and only `MoveAction` overrides `short_describe()`. That was invisible while the only reader was the
-queue panel; **taskblock-57 Pass D moved the same text into the combat log**, where a player reads
-`unit 0 queued action: EndTurnAction(unit=0)`.
-
-**No regression** — the retired panel showed the identical string — but the log is a player-facing
-surface in a way a debug row was not. The taskblock's own example reads `unit 0 queued action:
-burst`, so the shape wanted is a short authored name per action. **Not invented here**: naming is a
-design call and `docs/08`'s rule is that the view never births a string.
-
-### The debug menu's drag-resizable height
-
-**Needs:** the debug-menu redesign, which taskblock-57 explicitly excluded (*"It gets a placement
-here and nothing more"*). **Unblocks:** nothing.
-
-taskblock-57's placement table says the debug menu has a *"drag-resizable height"*. The placement
-landed; the resize did not, because the same block's "Not this block's job" list rules out touching
-the menu beyond putting it somewhere. **Recorded so the unmet half of a shipped table row is not
-mistaken for an oversight.**
-
-**Also unresolved and worth a measurement rather than a guess:** the table gives the menu a quarter
-of the 16:9 safe width — 480 px at 1x — while `DebugControlPanel` carries a 520 px minimum, so it
-overhangs its slot by 40. Positioned by the slot and sized by its own content today; either number
-can move in the tuning pass.
-
-### Author the intelligence tiers onto units — **LANDED (taskblock-59 Passes E and F)**
-**Needs:** the tier table, which landed as taskblock-46. **Unblocks:** intelligence reading as
-character rather than as difficulty; any completion measurement that includes a tier other than Trained.
-
-`Unit.intelligence_tier` defaults to `TRAINED` and **nothing sets it** — no preset, no matrix, no roster
-entry. So the Mindless, Grunt and Elite rows of `docs/11`'s table, the memory and blackboard gates, and
-the whole Elite lookahead are reachable from tests and by hand only. Every completion rate ever measured
-on this game has been an all-Trained rate.
-
-- **Author it where a unit is authored** — `BotPreset`, so a generated bout has a spread of tiers rather
-  than one.
-- **Then re-measure completion per tier.** The current number describes one row of a four-row table.
-- **Tier should derive from Attributes** by the time this lands, rather than staying authored — which is
-  why this sits behind *Attributes* in NEXT rather than in front of it.
-
-**Acceptance:** a generated bout contains units of at least three tiers; the completion sample reports a
-rate per tier; a Mindless unit and an Elite unit on the same seed visibly do different things in the
-combat log.
-
-### Blockers need a real transform, and the veneer's facing waits on it
-**Needs:** a blocker's placement carrying an orientation through `Grid` to `BoardView`. **Unblocks:**
-ledge veneers facing the edge they hang off; ladders on any side of a cell; any terrain part whose
-meaning depends on which way it points.
-
-**Supervisor's call, 2026-08-06: blockers need a real transform** — not quarter-turn rotation baked
-into the boxes.
-
-**Reported as a veneer defect**: *"veneers don't respect the facing of the clicked side of a thing.
-They also always place on one edge of a top face, and should align their facing to the edge. They're
-already getting the 'grow to' height from a piece, so they should face it as well. Ladders may need
-this behavior as well."* All true, and the cause is one layer below the veneer.
-
-**A blocker's facing does not survive being placed.** `MapPlacement.facing` is documented *"Surfaces
-only: radians... What makes a ramp directional"*, `MapSerializer.to_grid` stores a blocker as
-`grid.blockers[cell] = part` with no orientation anywhere, and `BoardView._spawn_blocker` draws it
-at facing `0.0`. So a `ledge_veneer` — which authors its box against **+Z** and is a `KIND_BLOCKER`
-— can only ever appear on one edge of a cell, whichever edge the author meant.
-
-**The deriving half was built and then reverted, deliberately.** A side click can face the veneer
-back at the ledge it hangs from, and a top click can read the struck point to pick the nearest cell
-edge — both landed and tested. **They were backed out because the drawing half does not exist**, and
-a placement carrying a facing that nothing renders is precisely the visual/logic disagreement this
-project spent taskblock-59 removing. *Both halves need to be possible first.* The derivation is
-small and can be rebuilt in an afternoon; it is not the work.
-
-- **Why not bake rotation into the boxes**, which is how `size` and `offset` already reach the
-  board: a `Box` is axis-aligned, so that buys quarter turns only. Enough for four cell edges and
-  wrong as a foundation — the supervisor's answer is a real transform, which also serves a ladder on
-  an arbitrary face and anything later that is not axis-aligned.
-- **`Grid.blockers` is `Vector2i -> Part`**, so there is nowhere to put an orientation today. That
-  is the same storage limit as *A cell holds one blocker*, and the two want doing together: both
-  need the blocker entry to become something richer than a bare `Part`.
-- **`UnitGeometry.assembly_placements` already takes an orientation** and `RayCaster`, `SightSpans`
-  and `PartPicker` all read the boxes it produces — so once a blocker can carry one, geometry,
-  picking and sight follow with no further change. It is the storage that is missing, not the maths.
-
-### A cell holds one blocker, so nothing stacks vertically
-**Needs:** `Grid.blockers` becoming a list per cell, or a placement carrying enough position to be
-addressed below another. **Unblocks:** stacking a pillar on a pillar; a wall taller than its part.
-
-taskblock-59 Pass A refused the gesture rather than letting it corrupt the editor: `Grid.blockers` is
-`Vector2i -> Part` and `MapPlacement.height` is documented as a surface's field, so a second blocker
-on a cell is a thing the format cannot express. The click now says so and the ghost declines to
-preview it.
-
-**The author's route to a taller wall is the Scale tool** (Pass C), which is the better verb for it —
-one part at a designed size rather than two pretending. What is genuinely missing is *stacking
-distinct things*: a crate on a pillar, a barrel on a crate.
-
-- `MapPlacement.offset` (Pass C) already carries a sub-cell displacement, so the **geometry** of a
-  stack is expressible today. What is not is the **grid's** idea of it: `blockers[cell]` holds one
-  part, and the pathfinder and `Grid.blockers` sweeps ask in whole cells.
-- **That limit is already live and is not new here.** A 3 x 3 wall authored by Pass C is one blocker
-  on one cell while covering nine, and an offset placement blocks the cell it was authored at
-  whatever its geometry overlaps. Stated in `MapPlacement.offset`'s own note rather than left to be
-  found.
-
-**Re-asked by the supervisor after taskblock-59 and scoped rather than started** — *"pillars and
-other terrain features should stack atop each other. This might be a big ask, so check before
-implementing."* It is. **Measured 2026-08-06: `grid.blockers` is read at 84 sites across 28 files**,
-41 of them in production logic:
-
-| pattern | sites | difficulty |
-|---|---|---|
-| `blockers.has(cell)` guards | 14 | mechanical — becomes *"is anything here"* |
-| `for cell in blockers` iteration | 14 | mechanical, but it is the ray marcher, sight spans and detonation |
-| `blockers[cell] = part` writes | 13 | mostly `MapGen` and `BoutInjector` |
-| `blockers[cell]` indexed reads | 5 | **the real decisions** — *which* one? |
-| `size`/`erase`/`keys` | 7 | mechanical |
-
-**The count is not the hard part.** Most readers genuinely need **every** blocker rather than the
-first — `RayCaster` marches geometry, `SightSpans` derives occlusion, `ShotPlane` projects, `Cover`
-and `VisibilityField` ask about blocking — while `DamageResolver` and `Detonation` do *identity*
-checks (`blockers[cell] == part`) that need list semantics to stay correct. `Grid.shootable_part_at`
-and `cell_of_blocker` both assume one.
-
-**Two cheaper things already work and should be weighed before starting.** A *taller* pillar is
-authorable now — Pass C's Scale drag on the top face gives one part at the authored height with
-proportional hp, which is better than two parts pretending. And `Grid.field_items` already holds an
-ordered array per cell and `BoardView` draws it through `_spawn_blocker`'s own geometry, so several
-parts in one cell already **draw**; what they do not do is block, because `Pathfinder` and
-`ShotPlane` never read `field_items`. **The open design question is therefore what distinguishes a
-blocker from a field item** once a cell can hold several of either — answer that before the
-refactor, not during it.
-
-### A veneer grown upward can never snap to anything
-**Needs:** a pick that reports **which** surface of a stack was struck, rather than the stack's own
-top. **Unblocks:** the anchored half of *"it grows both ways and snaps to what it meets"*.
-
-taskblock-59 Pass D landed the veneer's click and found this while testing it. `LedgeVeneer.span_up`
-handles an anchor above and taskblock-58 tested it — but through a click it is unreachable. A
-top-face pick strikes the top of whatever is at that cell **by definition**, and the placement lands
-on that same cell, so "the nearest surface strictly above the face you struck" is empty every time.
-Growing up therefore always takes `UNANCHORED_RISE`.
-
-**Growing down is unaffected and does snap**, to the deck under the landing cell — which is the
-common gesture and the one the feature was described by. This is the other half.
-
-Pinned by a named test (`test_growing_up_always_takes_the_default_because_nothing_is_ever_above`) so
-it is a recorded limit rather than a rediscovery.
-
 ### `overwatch` starts at TRAINED, and the tier table says GRUNT
 **Needs:** a balance decision. **Unblocks:** nothing; it is a disagreement to resolve, not a gap.
 
@@ -612,84 +1083,6 @@ content is what runs**, so a `GRUNT` today shoots and takes cover and does not o
 Left as authored: which tier gains overwatch is a decision about how capable a second-rung enemy is,
 and moving it because a summary table said so would be an invented balance number. Pinned by a named
 test so the disagreement stays visible.
-
-### Multi-level cleanup
-**Needs:** nothing. **Unblocks:** vertical movement being as legible and as interruptible as
-horizontal movement.
-
-**Most of this item has landed.** `BR46.02` (one-way ground) closed in taskblock-53 Pass D when the
-generator took on navigability; ramps-where-missing landed with it; a climb became interruptible in
-Pass E; ladders arrived as the route that does not need a capability. **What is left is the tail.**
-
-- **A hop-down cannot be interrupted.** taskblock-53 Pass E made `ClimbAction` check the overwatch hook
-  on the cell it steps onto — `HopDownAction` still checks nothing. Half a pass, and the inconsistency
-  is the argument: *every real exposure the same* (`docs/09`).
-- **The planner does not know a hop-down is one-way.** A unit that drops off a ledge to reach something
-  strands itself for the rest of the bout. "Can I get back?" belongs in the decision rather than being
-  discovered afterwards. **Stranding is a legitimate outcome** — a player knocking someone into a pit is
-  the game working — but a unit choosing it *unknowingly* is not.
-- **Prefer access routes: penalise ungated descent, exempt ramps.** Weight a candidate cell *slightly*
-  worse when reaching it means dropping a level, and not at all via a ramp. Units then route through
-  ramps without any rule naming ramps, and a ramp is two-way. **"Slightly" is load-bearing:** a hop-down
-  to reach an otherwise unreachable target must still win when the reason is good enough. It is a
-  consideration weight, so it is data. **Deliberately held until after the one-way awareness above** —
-  with the generator already guaranteeing a route out, this is a *preference*, and landing both at once
-  would hide which one did the work.
-- **A confined unit should be legible, not silent.** Escalate to an **agitated roam** or **pace** —
-  visibly restless rather than idle — and after a few turns of no progress, **shut down**. This does not
-  fix terrain and must not be logged as though it did; it stops a stranded unit from being
-  indistinguishable from a hang.
-
-**Not doing: authoring a `CLIMBER` part.** Climbing parts are the exception, not the rule, and **a map
-must be navigable without one** — which is what ladders are for. `Shell.can_climb()` reads a tag no part
-carries, and that is correct rather than a gap.
-
-**The AI queuing a vertical move is its own item** below, not part of this one.
-
-### A climb needs a position along it
-**Needs:** nothing. **Unblocks:** partial climbs, mid-action terrain destruction, and the
-destroyed-ladder fall — see the fourth bullet.
-
-**A climb needs a position along it, and that unlocks four things at once.** taskblock-53 made a climb
-interruptible, but a climb is still *atomic in cost*: `ClimbAction` charges the whole rise as one
-action, which is why a four-level ladder priced at 16 MP and was unaffordable outright until
-`LADDER_COST_SCALE` was corrected. **If a climb can be interrupted midway it should be payable midway
-too** — pay what this turn affords, finish next turn.
-
-- **That is the real fix for tall ladders**, not a cheaper scale factor. A tall climb costing several
-  turns is correct; a tall climb being unpurchasable is not.
-- **It sharpens the intended contrast.** A **ladder is direct but exposed**; a **ramp is indirect but
-  safe**. A four-level ladder may be the *only* way up, and paying for it across turns while standing on
-  it is exactly the exposure that should cost something. A ramp reaching the same height needs a long
-  circuitous route — slower, safer, and a real choice rather than a strictly-worse one.
-- **It is the missing piece under the destroyed-ladder fall.** That needs four things this project does
-  not have: **terrain destruction affecting whatever stands on or attaches to it**, **a unit occupying a
-  position partway up**, **interrupts firing mid-action** (landed, taskblock-53), and **falls / throws /
-  knockback as real movement**. Partial climb and mid-action destruction are the same "a climb has a
-  position along it" concept — build that and two of the four are one piece of work.
-- **Falls, throws and knockback share machinery with *Forced movement* and with `eject`**, which waits
-  on the same ballistic motion. Three items, one dependency.
-
-### The AI can queue a vertical move
-**Needs:** nothing — `ClimbAction`/`HopDownAction` exist, are interruptible, and ladders are
-authored and placed by the generator (tb53 C/D/E). **Unblocks:** vertical maps being played
-rather than merely built.
-
-**No AI path has ever queued either action.** The planner moves exclusively via `MoveAction`, so
-vertical movement has never happened in a real bout — a fact that survived taskblock-37 building
-both actions and taskblock-53 making them safe to be caught in. With ladders now authored and the
-generator placing routes, this is the difference between a usable map and a decorative one.
-
-- **The scoring already knows about height.** `UtilityContext._closes_distance` reads PATH
-  distance from a flood rooted at the target, and `Pathfinder.move_cost` already prices a climb
-  and a ladder edge. What is missing is the **executor**: the step that turns "the best cell is
-  up there" into a queued `ClimbAction` instead of a `MoveAction` that cannot make the step.
-- **Split from taskblock-53 Pass E deliberately.** The interruption half landed there and is
-  self-contained; this half touches `UtilityExecutors` and the planner's action construction,
-  which is where a regression would be hardest to attribute. Doing both in one pass would have
-  meant a planner change riding along with a movement change.
-- **The proving ground is the test surface** — a generated map may or may not produce the
-  geometry that exercises this; the authored one is built to.
 
 ### Derive plane/picker membership instead of answering it in four places
 **Needs:** taskblock-52's ray chain (landed — it is the default resolver now). **Unblocks:** deleting
@@ -718,86 +1111,6 @@ visible. Default it off.
 carries an open perf entry (`BR51.14`); `BR35.01` closed on a re-measured 774 usec against a 214-blocker
 board, and that figure needs re-taking either side of this change. Folding it into the block that
 replaced the resolver would have made a regression impossible to attribute.
-
-### Replay a handle on demand, and decide the checkpoints' future
-**Needs:** taskblock-48 Pass B2 (the replay panel and `ReplayHandle`). **Unblocks:** retiring a third
-renderer instead of keeping it alive by inertia.
-
-taskblock-48 landed the surface: the run panel launches any rung, tails it live, and replays the first
-few failures that have a visual form as real playing bouts. What it will not do is show you something
-**nothing has failed about** — a replay is offered off a failure, so the map-generation sweeps are only
-watchable when they break.
-
-- **Replay a handle without a failure.** A list of declared handles with a "show me" button. Small
-  addition to the panel, not a new mechanism, and it is the missing piece for everything below.
-- **Then decide about `checkpoint_8`/`checkpoint_9`.** A checkpoint is "a visual test whose assertion is
-  a human", which is what a replayed handle already is — and `checkpoint_9` drives `load_battle` from a
-  `GridFixture`, the same path `ReplayHandle` uses. Once handles are viewable on demand the checkpoints
-  are doing nothing the panel cannot, and keeping a third renderer compiling has a cost the parse guard
-  only partly hides.
-- **Declare handles more widely.** Three files have them. The determinism checks and the remaining
-  spatial sweeps are the obvious next ones; a handle is a few lines and self-declaring.
-- **A `launch test` verb on the debug panel.** Any test that builds a room, fires shots or stages real
-  units should be launchable from a list: pick it, the view resets, the test runs under the ordinary
-  spectator view. **The general form of the replay work** — taskblock-51 made a *failing* test's fixture
-  watchable; this makes any staged test watchable on demand, which turns a test into a scenario the
-  supervisor can inspect rather than a result they are handed.
-- **Watched and headless must keep agreeing.** That equivalence is the foundation — if a watched seed and
-  its headless counterpart ever disagree, every number the sampler has produced is suspect. Asserted
-  once; it should stay asserted as this grows.
-
-### The scripted bout, and why 133 files build state by hand
-**Needs:** nothing. **Unblocks:** most of the remaining suite cost, and combat tests that exercise the
-real path instead of an approximation of it.
-
-**133 test files construct state directly** through `CombatState.new` or `GridFixture` rather than
-playing a bout. Some of that is correct and some of it is a workaround, and nobody has drawn the line —
-*"they have always been that way"* is not a reason.
-
-**A scripted bout removes the thing they were avoiding.** Preset seed, every action predetermined, no
-planner in the loop. That gives a combat or movement test the real resolution path — two-phase turns,
-the action queue, the log — without the AI as a failure point. The precedent is in the tree:
-`test_work_counters.gd` drives a turn by hand through `CombatState.advance_turn` and asserts that a
-scripted turn counts while building no bout, and taskblock-47 Pass E retargeted the tb38 flat-bout guard
-from a planner-driven bout to a scripted queue with no loss of coverage.
-
-**Two corpora, for two different questions:**
-- **Sampled** — the AI's behaviour *is* the subject. Random seeds, real planning, `test_full_mission`.
-- **Scripted** — everything else. One preset playthrough, predetermined actions, many tests asserting
-  against it.
-
-**The audit is the valuable half, and it has three outcomes per file**, not two:
-- **Hand-built is right.** A test of a pure function over a grid and two positions needs no bout, and
-  forcing one on it would be slower and less focused. Leave it and say so.
-- **Hand-built was avoiding the AI.** Move it onto the scripted bout — more realistic, and it stops
-  every file re-authoring its own setup.
-- **Hand-built is quietly wrong** — the fixture has drifted from what the game actually produces, and
-  the test passes against a board that could not occur. This is the outcome worth finding.
-
-### The review layer earns its keep
-**Needs:** taskblock-48 Pass B2 (replay of failures). **Unblocks:** the supervisor being able to spot
-anomalies at all.
-
-The replay currently shows **only failures**, and an anomaly is not identifiable without a reference for
-normal. That is the likeliest reason the human-review layer has not yet paid off — it has been showing
-exceptions with nothing to compare them against.
-
-- **Queue one representative success per test, not every success.** A passing test contributes one
-  arbitrary replay; a failing one contributes its failure. The queue then teaches what right looks like
-  in the same sitting as what wrong looks like. Cap it — a representative sample, with an option to sit
-  through everything.
-- **A chime when the run finishes.** The window is watched intermittently by definition; a run that ends
-  silently wastes the gap.
-- **Order tests by observed failure frequency.** Most-frequently-failing first, so a red suite goes red
-  early instead of at minute nine. Needs a small persisted history of which tests failed how often —
-  new data, and the only genuinely new machinery in this item.
-- **A failure must not stall the queue.** GUT already runs past a failing test; the gap is on CC's side,
-  where a failure at minute two is not actionable until the run ends. Surface failures as they land so
-  the fix can start while the rest continues.
-
-**A caution on reordering:** a suite whose order depends on recorded history is a suite whose order is
-not reproducible across machines or checkouts. Keep the *ordering* advisory and the *set* fixed — the
-same tests always run, only the sequence adapts — or a green run stops meaning the same thing twice.
 
 ### Plan the next AI turn while the current one is playing
 **Needs:** a resumable planner (part of *AI v2, part two* — landed taskblock-45) and *Player view and sim
@@ -961,67 +1274,6 @@ the wreck contributes no `agility`, no `step_height` and no locomotion — which
   honour `BodyProjector.projects` resurrected every destroyed wall as a sight blocker.
   `test_membership_disagreement.gd` characterises the current contradiction and will need rewriting
   rather than patching when this lands.
-
-### Take the camera out of shot processing
-**Needs:** nothing. **Unblocks:** `BR61.02`; aiming being a property of the gun rather than of the
-view.
-
-**Corrected at tb61: this does NOT unblock `BR51.01`, which it used to claim.** That entry's root
-cause turned out to be a cell address returned where a plane point belonged, and it is fixed. The
-camera lean is a **separate, smaller, still-live** defect — measured at 1.5 cells of aim-point
-movement for a stationary cursor — now filed as `BR61.02`. **Removing the lean was tried and
-reverted**: the supervisor wants the flourish disconnected from the result, not deleted.
-
-**The supervisor's specification, recorded against `BR51.01` and lifted here because it is
-architecture rather than a bug fix:**
-
-> *"The camera shouldn't be involved in actual shot processing at all. Like you said, it's a
-> flourish, so why is it affecting aim? The purpose is for the camera to give a better view of the
-> target. The mouse cursor, when clicked, is aimed at a point on a part the player wants to aim at.
-> The player camera should not be involved in drawing a line from the shooter's gun to that clicked
-> point."*
-
-**The defect it closes.** `CameraRig.aim_at` rotates the real `Camera3D` by up to `MAX_LEAN_DEG`
-(5.0) toward the reticle, and `TacticsController` caches that same camera — so every
-`project_ray_origin`/`project_ray_normal` casts through a camera turned away from where the player
-believes they are sighting. **A rotational offset on the whole ray**, which is exactly the widened
-symptom: shots landing left *and* down together, not a sign flip on one axis.
-
-- **The shape is a two-step split.** The camera converts a cursor pixel into **a world point on a
-  part** — that much it must do, since the cursor only exists in screen space. The shot is then
-  resolved **gun to that point**, with no camera in the expression. Today the second step reuses the
-  first step's ray.
-- **Un-leaning the projection is NOT the fix**, and was explicitly rejected: it keeps the camera in
-  the loop and merely changes its pose.
-- **It is a feedback loop today** — the lean is computed *from* the reticle point and the reticle is
-  computed by projecting *through* the leaned camera. Establish whether the offset is stable or
-  compounds across frames before choosing a fix; that answer changes what a test has to pin.
-- **Any new test must compare against the camera pose the player is looking through**, not against
-  the other consumer of the same ray. The frame-mismatch measurement came back clean at 0.0000 cells
-  precisely because the reticle and the resolver are handed the *same* wrong ray.
-- **Its own item rather than a hunt entry** (taskblock-61 Pass A's call): inside a hunt pass it
-  would either be half-built or become the whole block.
-
-### Two unauthored defaults carry a shipped material's whole feel
-**Needs:** nothing. **Unblocks:** armour and weapon balance being authored rather than inherited.
-
-**Salvaged from `BR52.13` when that entry closed** (taskblock-60 follow-up), because it is a real
-decision and a closed bug report is the wrong place to keep one.
-
-**`steel.tres` authors no `deflect_threshold_deg`**, so it takes `MaterialEntry`'s **30.0**
-default — and a representative engagement measured at the time sat at **~31 degrees** incidence,
-one degree the wrong side of it. Combined with weapon damage figures that decide penetration
-outright (a chaingun's 1.6 effective against steel's `dt` of 6.0 **cannot** penetrate, ever), a
-shipped material's entire feel rests on two numbers nobody chose.
-
-- **This is not a bug and was never reported as one.** Re-measured across six real bouts, the
-  resolver behaves: 15.5% of 2450 impacts penetrate, 33.5% stop dead, 51.0% deflect. The original
-  "nothing ever penetrates" reading came from a sample drawn entirely from a pairing that cannot.
-- **What it wants is authoring, not a fix** — a deflect threshold chosen per material, and a look
-  at whether the damage-versus-`dt` cliff is meant to be a cliff. **Balance numbers, so not
-  invented here.**
-- **Worth doing before any armour tuning pass**, or that pass will be tuning against defaults and
-  attributing the results to its own changes.
 
 ### Status effects and boosts
 **Needs:** nothing. **Unblocks:** perks, power and therms, wound thresholds.
@@ -1416,26 +1668,6 @@ implementation is knowingly smaller than what it models.
   invariant instead (merged thickness equals one part's own), which holds at any thickness.
   **Resolves itself** when *Wall coatings, and walls that are not cell-wide* authors one.
 
-### Seeing what you authored — three view gaps — **LANDED (taskblock-56 Pass E)**
-**Needs:** nothing. **Unblocks:** authoring sections without guessing.
-
-All three landed; detail in `CHANGELOG.md`. What remains open out of it:
-
-- **The dark forest green floor is temporary and its revert is one line**
-  (`WorldPalette.TEMPORARY_TILE_TINT = false`). **Revert it when tiles have their own look** — that is
-  a real outstanding action, not a note. It belongs with whatever gives tiles a material treatment.
-  **Needs:** tiles having a look of their own.
-- ~~**Claim volumes are drawn by a module no mode currently mounts.**~~ **Closed by taskblock-56
-  Pass F**: the editor mode mounts `ClaimVolumeModule` and authoring a claim draws it. The guard that
-  banned it from *every* mode is now "every play mode", with the authoring modes pinned in a
-  one-entry list.
-
-### The bout launcher spans the screen
-**Needs:** nothing. **Unblocks:** nothing.
-
-Full-screen-width after the module collapse. Cosmetic, and the supervisor has said it is **not worth a
-pass of its own** — fold it into whatever next touches that surface.
-
 ### Structure supports itself
 **Needs:** *Floors reference a location* — **the inversion landed in tb58 B**; a placement carries its
 own `cell` and the per-cell dictionary is an index over the store. **Unblocks:** moving decks
@@ -1591,43 +1823,6 @@ why it should be a decision rather than a side effect.
 `test_placement_position.gd::test_ground_still_refuses_a_second_placement_on_an_occupied_cell` pins
 the current reading, so the change has to be a deliberate edit to a named test.
 
-### The editor's Scale tool does not yet author a size — **LANDED (taskblock-59 Pass C)**
-**Needs:** nothing. **Unblocks:** an author actually making the 3 x 3 x 0.5 wall the data model now
-supports.
-
-**The data model landed and the authoring gesture did not.** taskblock-58 Pass F gave
-`MapPlacement` a `size`, made `MapSerializer` apply it, and made hp follow volume — measured, tested
-and reaching the board. **Nothing in the editor sets it.** `scale` exists as one of the seven tools
-(Pass D) and arms the gizmo's resize handles, which today resize a *claim*; `GizmoModule._drag_to`
-has no placement branch for a size the way it has one for a height.
-
-So a sized wall is currently reachable only by authoring a `.tres` by hand or building a `MapFile`
-in code. **That is a real gap rather than a nicety** — the taskblock's own framing is that map
-failure should be *"something an author shapes"*, and an author cannot yet shape it.
-
-- **The gizmo already has the shape of the answer.** Its resize handles drag one face and derive the
-  rest (`Gizmo.resized_box`, and the taskblock-57 H finding that snapping the *dragged face* rather
-  than the extent is what keeps the opposite face still). A placement's size wants the same handles
-  pointed at a different subject.
-- **`Scale`'s stated behaviour is unbuilt too**: *"the gizmo attaches to the face clicked; a top face
-  scales X and Y mirrored. Numeric readout while dragging."* Pass A's struck normal is what tells it
-  which face, and it is already threaded to the click path.
-
-### The ledge veneer is not placeable from the editor — **LANDED (taskblock-59 Pass D)**
-**Needs:** *The editor's Scale tool* is adjacent but not required. **Unblocks:** using the veneer at
-all.
-
-`LedgeVeneer` computes the span, `ledge_veneer` is an authored part tagged terrain, and the hp
-follows volume like everything else — all landed and tested in taskblock-58 Pass F. **What is
-missing is the gesture**: nothing calls `span_at` from a click, so a veneer cannot be placed on a
-board without hand-authoring.
-
-The wiring is small and named: *Place Terrain* offers the part already (it is terrain-tagged), and
-what it needs is to recognise a veneer, ask `LedgeVeneer.span_at` for the rise instead of taking the
-authored height, and carry the result as the placement's `size`. **Growing up versus growing down**
-is the one thing the click has to decide, and Pass A's struck normal is what decides it — a top face
-grows up, a side face grows down.
-
 ### The editor's remaining gestures
 **Needs:** nothing except where noted. **Unblocks:** authoring a board without knowing what the tools
 did not do.
@@ -1768,23 +1963,6 @@ nobody has looked — flat coordinate spaces, a single grid, `Grid.opacity` (ret
 2D cover check that is still flat. **Recording it as a hunt rather than a single audit, because the
 `Vector2` case is the one that has been noticed and probably not the only one.**
 
-### Combat log paths are a workflow choice, not a constant
-**Needs:** nothing. **Unblocks:** the supervisor and CC working at the same time.
-
-**Filed as `BR61.01`:** headless and non-headless runs write to the same files, so a test run and a
-played session stamp on each other and **neither party can work while the other does.**
-
-**Two shapes, and the second is better:**
-
-- **Tag test output as test output.** Minimal, fixes the collision, leaves the path hardcoded.
-- **Make the log destination a parameter**, documented, with the game using today's default and tests
-  writing wherever they are told. **Then a log landing somewhere odd is a workflow decision rather than
-  a code change** — which is what keeps this from recurring the next time something else wants its own
-  stream.
-
-**Prefer the second.** The capability survives into later phases where a replay, a server, or a second
-observer wants its own destination, and none of those should need a code edit.
-
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
 that cross a room boundary meaningfully.
@@ -1824,29 +2002,6 @@ which is precisely what a quantized model could not express.
 Every per-cell chance draws from the seeded RNG, in a **stable iteration order**, or the same seed
 produces different boards. Same rule as everywhere else, and easier to get wrong here because the
 iteration is over a dictionary of cells.
-
-### Map and section editors — **LANDED (taskblock-56 Pass F)**
-**Needs:** nothing further. **Unblocks:** *Main menu*.
-
-**The module system's own proof, and it held.** The editor is a `ViewModes` row declaring six
-existing modules plus one new `EditorModule` — no subclass, no new chrome, no duplicated panel.
-Detail in `CHANGELOG.md`. `ClaimVolumeModule` is mounted and reachable, which closes the second
-open item under *Seeing what you authored*.
-
-What remains open out of it:
-
-- **An authoring session still starts on top of a bout.** The editor mode installs over whatever
-  `BattleScene` already built, so units already on the board are relocated onto the authored one by
-  the same `BoardSwap` a map load uses. Harmless and visibly odd. The fix is an entry point that
-  builds a world with no bout in it, which is *Main menu*'s job — so this is a note on that item
-  rather than a defect against the editor. **Needs:** *Main menu*.
-- **A claim is authored one cell at a time and resized only through the controller.** `add_claim`
-  places a one-cell volume from the deck to a flagged 2.4; `resize_claim` takes an arbitrary `Box`
-  and is fully tested, but no drag gesture reaches it. Every authored extent is therefore expressible
-  and only the rectangular-drag *affordance* is missing. **Needs:** nothing; it is UI work.
-- **No section-stitch preview.** The editor authors one section; seeing two joined is
-  `SectionSerializer.stitch`'s job and belongs with the generator item below. **Needs:** *The
-  generator is stitching, not carving*.
 
 ### Main menu
 **Needs:** *Map and section editors* (landed, tb56). **Unblocks:** nothing.
@@ -1980,57 +2135,6 @@ Two small items that compound, because bouts are the testing surface for everyth
   replay.
 
 
-### The over-the-shoulder camera
-**Needs:** nothing.
-
-Two camera items from taskblock-51's fourth hunt. **The performance suite that shared this item is
-built** (taskblock-51; `PerfStats`/`PerfPanel` — see `CHANGELOG.md`).
-
-- **The over-the-shoulder camera needs a broader allowed angle and significantly more damping / edge
-  resistance.**
-- **A wall cutout attached to the player's camera** would stop the view going solid grey when the
-  over-the-shoulder camera ends up behind or inside a wall. Note this is a *different* cutout from the
-  unit-centred one `BR32.05` is about, and may be the better shape for both.
-
-### Action-cost affordances, and camera keys
-**Needs:** nothing.
-
-Supervisor design notes from taskblock-51's third hunt — neither is a defect, so neither is in
-`BUGS.md`.
-
-- **Hovering a hotbar action shows its AP or MP cost**, and *selecting* one makes the matching pips
-  pulse: an action costing 3 AP slow-pulses the 4th–6th pip orange; one costing 3 MP pulses 2 MP teal
-  and one AP orange, because that is how the conversion actually spends. The cost model already exists
-  — `ActionCatalog` knows what a provider authors and `test_ap_mp_pips.gd` already pins that the pip
-  row shows exactly what the unit has. This is presentation over facts the game already holds.
-- **`WASD` pans the camera in the player view; `Spacebar` toggles play/pause in the spectator.**
-
-### Aiming detaches from unit lock; `Set Cell Level` steps by 0.5
-**Needs:** nothing. **Unblocks:** possibly obsoletes `BR33.01`.
-
-Two supervisor design notes from taskblock-51's hunt, recorded here rather than in `BUGS.md` because
-neither is a defect.
-
-- **The dartboard should stop being locked to one unit.** Clicking a unit opens the aim view as now,
-  but **mousing off it onto anything else targetable cycles the aim to that thing** — targets are
-  chosen by pointing rather than by re-entering aim mode. **This may obsolete `BR33.01`** (aim-view
-  scroll cycles walls, layer labels read as part names), which the supervisor says is *"not what I
-  originally intended, more likely to be obsoleted than fixed"* — so `BR33.01` should not be fixed
-  ahead of this decision.
-- **Tabs on the debug panel.** Split the existing menu into `Part Manipulation` and `Other` to start.
-  More categories are welcome; **do not filter it down too far** — a panel with twelve tabs is a panel
-  nobody can find anything in.
-- **The panel drags anywhere on screen.** Currently fixed, and it covers exactly the things being
-  inspected.
-- **Cut the clicks-to-goal on several verbs.** Redundant cells in memory, a button *and* a checkbox
-  doing what two buttons would do. These are per-verb ergonomics, not one change — worth a pass through
-  `DebugVerbs` with "how many clicks to the common case" as the only question.
-- **`UI Element Control` landed in taskblock-51** as a `DebugVerbs`-shaped list entry, so a new
-  toggleable element is a table row rather than UI code. The three notes above are what is left of that
-  same session's list.
-- **`Set Cell Level` should increment by 0.5**, not 1. A one-line step change on the debug panel's
-  spin box; noted here so it is not lost between hunts.
-
 ### The framerate reads above the display's cap, and the `avg less top 1%` rule
 **Needs:** nothing; `PerfStats` is built (taskblock-51). **Unblocks:** trusting the perf panel's fourth
 figure.
@@ -2055,166 +2159,6 @@ Godot presentation behaviour (a frame counted on submission rather than on prese
   the top-1%-of-speed cut once that is known. Answering the first probably determines the second.
 - **Do not tune the constant to make the number look right.** A cut line chosen to produce a pleasing
   figure is a balance number invented to hide a measurement.
-
-### Two aim questions from the seventh hunt
-**Needs:** nothing. **Unblocks:** `BR51.01`'s diagnosis, possibly.
-
-Neither is a filed defect; both are conformance questions with short answers that nobody has written
-down, and the first bears directly on an open bug.
-
-- ~~**Where does a shot actually aim, and does player control differ from AI control?**~~ **Answered
-  (taskblock-56 Pass B), written into `docs/02`.** They agree, and structurally:
-  `ActionCatalog.build_firing_action` is the only firing-action construction site in `src/`, and every
-  firing action resolves through one expression. The AI leaves the offset at its default; the player has
-  a knob. **That removes a suspect from `BR51.01`.** It also turned up that the aim point is the centre
-  of the target's *frontmost region* — not the body's centre and not a point on the muzzle-to-target
-  axis — which **confirms `BR54.01`'s stated unverified suspect** without accounting for all of it. The
-  design question that finding opens (should the aim point be the frontmost region, the centroid, or a
-  point on the axis?) is a supervisor call and is recorded in `docs/02` as a finding, not a spec.
-- ~~**Is explosion damage affected by DT?**~~ **Answered: no.** `Detonation` calls
-  `DamageResolver.apply_damage_to_part` — bare subtraction, no threshold or armor. Not filed as a
-  defect: it is the HE type not being built yet, and it belongs to *Explosions: three types on one
-  substrate*.
-
-### Keep the rotated combat logs from ballooning
-**Needs:** per-session log rotation — **built** (taskblock-52, `FileSink.ARCHIVE_DIR`, `out/logs/`).
-**Unblocks:** nothing; this is housekeeping that will otherwise become a chore nobody scheduled.
-
-Every session now leaves a file in `out/logs/`. Nothing removes them, so the directory grows once per
-run forever. **The supervisor's own framing is the answer: "it'll probably be the same as the finished
-taskblocks."** That is the `reports/` rolling-window rule and the `taskblock_done/` archive — keep a
-fixed number of the most recent, delete the rest in the same commit that adds a new one.
-
-- **The obvious shape:** `FileSink` prunes `out/logs/` to the N most recent on rotation, N being a
-  flagged constant. Sortable names are already in place (`combat-YYYYMMDD-HHMMSS.log`), so "most
-  recent" is a directory listing and a slice, not a stat call per file.
-- **Two things to decide rather than assume.** What N is — `reports/` keeps five, which is a
-  precedent rather than a reason. And whether pruning belongs in `FileSink` at all: a logger that
-  deletes files is doing two jobs, and the alternative is a housekeeping call at startup that
-  `BattleScene` makes explicitly.
-- **Not urgent.** A session log is tens to hundreds of KB, so this is a real problem at hundreds of
-  sessions rather than at ten. Filed now because the growth was introduced deliberately and should not
-  be rediscovered later as a mystery.
-
-### Act on the suite audit
-**Needs:** the audit index — **built** (taskblock-49, `test/suite_audit.csv`, 2431 rows classified
-under 328 rules). **Unblocks:** a suite whose cost is proportional to what it actually guards.
-
-The index exists; **nothing has been cut, by design** — taskblock-49 was scoped to evidence. This item
-is the acting-on, under `docs/TEST-AUDIT.md`'s cut rule: *a test may only be cut if breaking the rule it
-guards makes a different test fail*, **demonstrated rather than asserted**, with the covering test
-recorded beside the cut.
-
-Three specific things the index put on the table, in value order:
-
-**Two of the three findings below have since been acted on, and the third is no longer expensive.**
-Recorded corrected rather than deleted, because the *shape* of each is still the thing this item is for.
-
-- ~~**Eight name defects**~~ **— closed, taskblock-50 Pass E3.** The `description` column is empty
-  across all 2668 rows. The lesson stands: a filled description is a defect report, and the column
-  should stay empty.
-- ~~**`test_full_mission::test_bout_completion_rate_meets_the_measured_floor`, a 62.6 s sole guard**~~
-  **— retired, taskblock-50 Pass D.** Replaced by `test_seeds_to_first_completion_stays_low`, and
-  `test_full_mission.gd` now costs **1.2 s**. It was exactly the row someone proposes cutting on cost
-  alone, and it was retired by making the measurement cheaper rather than by cutting the guard.
-- **`test_completion_sampler::test_the_in_window_verb_reports_the_same_sample_and_changes_nothing`**
-  still exists, but its file is **6.2 s**, not the 102.3 s recorded here. **The corpus lever is no
-  longer worth a supervisor call.** Six other tests guard the same rule for ~0.001 s each, so the
-  cut-rule question remains open on its merits, at a fraction of the stakes.
-
-**The audit's headline finding was not the predicted one, and that shapes this item.** `TEST-AUDIT.md`
-expects expensive rows sharing a rule with cheap ones to be the output. They exist — but in every case
-checked the cheap peer guards the rule at *unit* level and the expensive one guards it end-to-end
-through a real bout, so breaking bout-level determinism does not redden the cheap peer and the cut rule
-correctly refuses the cut. **The real question the index answers is per rule: does this rule need a
-bout-level rung at all?** Answering that for the ~10 rules that own a bout-playing test is the work.
-
-### Review pass over the test suite — *the survey half; the index landed in taskblock-49*
-**Needs:** nothing.
-
-**Superseded in part.** The per-test index and the rule classification this item asked for are built
-(taskblock-49; see `CHANGELOG.md`). What remains here is the *qualitative* half below — tests that pin a
-bug as though it were a rule — which the index does not answer, because a test asserting the wrong thing
-still classifies cleanly under the rule it claims to defend.
-
-2038 test functions across 214 files run on every change, and the suite has never been audited as a
-whole — only ever added to. The suspicion is that a meaningful share is redundant, exercises systems
-that have since been retired or reshaped, or asserts an old model's own limitations rather than a real
-invariant.
-
-That last category is the dangerous one and it has a proven instance: tb36 found
-`test_prone_pose_changes_the_projected_shot_plane_vs_idle` asserting exactly one projected region,
-which encoded the four-face model's *gap* as though it were a rule. It passed for fifteen taskblocks
-while a prone unit was, in real play, unhittable from the front. **A test that pins a bug is worse than
-no test** — it converts a defect into a defended invariant, and every future change that would have
-fixed it looks like a regression instead.
-
-Concrete starting signals, not a full audit:
-- **`checkpoint` appears in 6 test files** — that ritual is retired (`SUPERSEDED.md`); `test_checkpoint_
-  1–4.gd` survive as ordinary regression tests but are still named for a mechanism nobody runs, and the
-  rename is already scoped in the checkpoint-machinery item.
-- **`vertical_slope` and `grid.height` each still appear in a test file**, both retired in tb36 — worth
-  confirming those are deliberate historical references (the `grid.height` one is the rename's own
-  guard test, which necessarily quotes the banned string) rather than stragglers.
-- **Four files exceed 850 lines** (`test_body_projector`, `test_damage_resolver`,
-  `test_resolution_player`, `test_inspect_panel`) — worth checking whether they've accreted overlapping
-  coverage of the same paths, since several were split at gdlint's cap rather than along a seam.
-
-**Separate tests that PIN behaviour from tests that SAMPLE a distribution — mixing them is what
-creates a re-pick treadmill.** A pinning test fixes its inputs and must go red the instant behaviour
-changes; that's its whole job. A sampling test asks a statistical question ("are missions completable
-at all?") and should run N cases and assert a *rate*, never a single frozen seed.
-
-`test_full_mission.gd` **was** the worked example, and tb39 Pass A fixed it: it asked an existence
-question ("a mission can be completed") but was implemented as a pinned seed, so every real mechanics
-change forced a re-pick — six of them, and that churn absorbed a real AI line-of-fire bug as noise
-instead of surfacing it. A tb38 investigation of seeds 12373–12383 found only **2 of 11** complete,
-with the failures concentrated in AI-stuck behaviour rather than impossible maps. It now samples 12
-seeds and asserts a completion rate (`MIN_COMPLETION_RATE`), which needs no re-picking and collapses
-visibly when the AI actually regresses.
-
-**The audit's job is to find the others.** One instance is fixed; the confusion it came from is a
-suite-wide habit, and any other test asserting an existence or capability claim through a frozen seed
-has the same defect. A re-pick in a test's own header is the tell.
-
-**Deliverable is a written audit, not a deletion spree.** Per test or cluster: what it covers, whether
-anything else already covers it, and whether it asserts a real invariant or an implementation
-accident. **Deleting a redundant test and deleting the only test of a real rule look identical in the
-diff** — so a test found genuinely load-bearing is a result worth recording, exactly like the
-correct-as-is findings in the tb35 wall audit. Runtime is a secondary benefit; correctness of what the
-suite *claims* is the point.
-
----
-
-**Three small items folded in here**, because they are the same surface and none is worth its own entry:
-
-- **Retire `MIN_COMPLETION_RATE`.** **Nothing reads it.** taskblock-50 Pass D replaced the rate with
-  `seeds_to_first_win`, and every surviving mention across four files is a *comment about* the constant
-  — `test_full_mission.gd` says so in its own header. **It does not need a number picked; it needs
-  deleting.** Keep the cautionary story where `suite_budget.gd:10` and `completion_sampler.gd:89`
-  already tell it better: a threshold on a small integer count sat less than one seed from red and the
-  response was to lower it.
-- **The audit's Tier 2 merges** — three clusters that are same-rule *and* same-scope, so the cut rule
-  applies rather than correctly refusing. Roughly 35 s and ten tests. **Filed because the CSV they came
-  from is deliberately stale, so this finding does not regenerate itself.**
-
-  | rule | rows | cost |
-  |---|---:|---:|
-  | the run panel reports the real rung and the real verdict | 9 | 20.6 s |
-  | the gate's exit code reflects the run's real verdict | 4 | 12.3 s |
-  | every spawn zone is walkable and reachable | 8 | 17.0 s |
-
-  Costs are as-measured then and want re-taking; taskblock-50 moved a great deal underneath them.
-  **Merged tests keep distinct assertion messages** or a failure stops naming which fact broke.
-- **`test_completion_sampler.gd` is no longer the problem it was cited as.** taskblock-47 took it
-  437 s → 207 s and taskblock-50's corpus and stubbing work took it to **6.2 s**. What remains is
-  genuine — it plays real missions to check the sampler reports them correctly. **Confirm it is right
-  and close the question**, rather than cutting.
-
-**A note on cost figures in this file.** Three of the numbers above were stale enough to invert a
-conclusion — an item proposing a supervisor decision about a 102-second lever that had become a
-six-second one. **A cost recorded here should carry the taskblock that measured it**, or it reads as
-current forever.
 
 ### Review pass over map generation
 **Needs:** nothing further — multi-level's view-layer legibility landed in full (taskblock-40,
@@ -2550,60 +2494,6 @@ One interlocking spine (travel → time → fuel → heat → storage), not a li
   gate); **mission selection**; claims; the mission → credits → upgrade loop; **captured-matrix value**.
 
 
-### One view, toggleable modules — **LANDED (taskblock-56 Passes C and D)**
-**Needs:** nothing. **Unblocks:** the editor's claim that a whole new surface costs almost no view code.
-
-**Kept as a landed summary rather than deleted, because two things it predicted are now measured facts
-and one of its premises turned out to be wrong.** The build detail is in `CHANGELOG.md`.
-
-- **The four overlay subclasses are gone.** `SquadControlOverlay` (942), `SpectatorOverlay` (718),
-  `GenerateBoutOverlay` (373) and `SingleUnitOverlay` (54) are rows in `ViewModes`; `ControlOverlay` is
-  the one surface class. Seventeen `ViewModule`s in `src/view/modules/`.
-- **Display and input toggle on separate axes**, which is the axis the spectator view needed and could
-  not get from inheritance. Its contract is now `has_unit_input() == false` rather than the absence of
-  an inheritance edge.
-- **This item's own line counts were wrong**, and it is worth saying so since they were part of the
-  argument: it said 527 and 812 where the real figures at the time of the work were **718 and 942**. The
-  case was understated, not overstated, but the numbers had aged.
-
-**What it claimed about the bug class did NOT fully hold, and that is the residue.** The item said
-landing this "closes them as a class" for `BR27.04`, `BR32.09` and `BR35.02`. The first two were already
-`Resolved` before taskblock-56 began. **`BR35.02` did not evaporate**, and the reason is instructive: the
-stated shared cause was the spectator re-implementing the player view's panels, which was true of the
-other two and never true of it. Its blind `y == 0` plane math was not a second copy of anything done
-better elsewhere, so there was nothing to converge on. It stays open, in one module rather than one
-overlay, so whatever geometry check it eventually gets lands once.
-
-### The `mouse_filter` sweep
-**Needs:** nothing, but **best done with *One view, toggleable modules*** — same files, same class of
-defect, and both close a category of UI bug structurally rather than one instance at a time. **Unblocks:** closing a recurring class of UI bug instead of one instance at a time.
-
-Four separate bugs have now been the same defect: a full-rect `Control` whose `mouse_filter` doesn't match
-what it actually draws. `BR31.01` (turn controls vs. tooltip), the `TopLeftControls` fix, `BR34.02` (the log
-ate clicks through a fully transparent region), `BR30.05` (the debug panel let clicks through a fully opaque
-one — the same mistake inverted). Each was found by a human noticing, then fixed alone. `BR30.05` asked for
-the sweep by name and was closed without it.
-
-Two rules, both already written down and both now testable:
-- **Renders nothing → must not take the mouse.** docs/09 taskblock-07 Pass B4's rule, correct as far as it
-  goes.
-- **Draws a real background → must take the mouse over what it draws.** `BR34.02`'s own resolution, and the
-  half B4 never covered. A panel honest about occupying space is not a bug.
-
-`test_battle_scene_input.gd`'s audit already encodes both and walks `BattleScene`'s live tree — but only what
-that scene happens to build. The sweep is: run it over every `Control`-bearing scene, and fix what it names.
-Cheap, mechanical, and it converts "someone will notice the fifth one" into a red test.
-
-### Player-facing LOS/LOF conflation
-**Needs:** eyes on the targeting UX first.
-
-tb33 fixed the AI's confusion of "can see" with "can hit," but the player's own attack legality still gates on
-`LoS.has_los` rather than the LOF predicate. A different problem from the AI's silent 81%-into-walls case,
-because the player sees both the dartboard and the wall and can choose to fire anyway. Swapping it needs a UX
-decision first — does the dartboard say "no shot" before the player commits AP? — not a mechanical copy of the
-AI fix.
-
-
 ### Melee against non-unit PART targets
 **Needs:** a reach-measurement design call.
 
@@ -2612,15 +2502,6 @@ destroy cover, hole a wall) is naturally ranged. Melee was deliberately left unt
 `MeleeReach.in_reach(...)`, which needs a real target *Unit* body to measure against. Extending reach to a
 bare Part is its own question — does reach measure against the part's own box, or the whole blocker assembly's
 AABB? Melee correctly rejects a PART target today; this is the follow-up to make it possible, if wanted.
-
-
-### AI-produced dartboards and an aim beat
-**Needs:** nothing mechanical; it's playback and timing work.
-
-Only the player's shot ever draws a dartboard — an AI attack resolves straight from the planner's decision with
-no on-screen wind-up. `ShotScatter.for_shot` is now the one place range→radius truth lives, so it's a
-ready-made primitive to drive an enemy-side draw. The real work is *when* the beat plays, how long it holds,
-and how it interacts with other AI units resolving in the same batch.
 
 
 ### Animation, and the promise that what you see is what you get
