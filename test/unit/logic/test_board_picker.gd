@@ -71,3 +71,49 @@ func test_a_ray_over_a_flat_neighbor_of_a_raised_cell_stays_at_ground_level() ->
 	)
 
 	assert_eq(cell, Vector2i(0, 1))
+
+
+## **`BR35.02`, taskblock-61 Pass D.** `cell_at_ray` is blind plane math: it says which cell a ray
+## crosses, with no notion of what stands between. That was reliable while cover was short and
+## sparse; walls are 2.4m tall and dense now, so the tile-inspect click could open a cell on the
+## far side of a wall — one the player has never seen.
+func test_a_cell_hidden_behind_a_wall_is_not_visible_from_the_camera() -> void:
+	var grid := GridFixture.flat(10, 10)
+	grid.blockers[Vector2i(4, 4)] = DataLibrary.get_part(&"wall")
+	# Camera low and level, so the wall is squarely between it and the cell beyond.
+	var camera := Vector3(1.0, 1.2, 4.0)
+
+	assert_false(
+		BoardPicker.cell_visible_from(grid, camera, Vector2i(7, 4)),
+		"the wall at (4,4) stands between the camera and (7,4)"
+	)
+	assert_true(
+		BoardPicker.cell_visible_from(grid, camera, Vector2i(2, 4)),
+		"and a cell on this side of it is plainly visible"
+	)
+
+
+## **The endpoint exemption, and why it is not optional.** The thing being clicked must never count
+## as the thing hiding it — a wall cell has to stay inspectable by clicking the wall, and a floor
+## that blinded whoever clicked it would be the failure `LoS` warns about.
+func test_a_cell_is_never_hidden_by_whatever_stands_on_it() -> void:
+	var grid := GridFixture.flat(10, 10)
+	grid.blockers[Vector2i(4, 4)] = DataLibrary.get_part(&"wall")
+	var camera := Vector3(1.0, 1.2, 4.0)
+
+	assert_true(
+		BoardPicker.cell_visible_from(grid, camera, Vector2i(4, 4)),
+		"clicking the wall itself must still resolve to the wall"
+	)
+
+
+## A raised cell's own floor is under its surface point, not in front of it — the tile a click
+## lands on cannot be what occludes that click.
+func test_a_raised_cells_own_floor_does_not_hide_it() -> void:
+	var grid := GridFixture.flat(10, 10)
+	GridFixture.place_floor(grid, Vector2i(6, 4), 2.0)
+
+	assert_true(
+		BoardPicker.cell_visible_from(grid, Vector3(1.0, 6.0, 4.0), Vector2i(6, 4)),
+		"a raised tile is visible from above, not blinded by itself"
+	)

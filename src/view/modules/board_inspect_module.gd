@@ -159,6 +159,13 @@ func _click_at(screen_pos: Vector2, camera: Camera3D, battle: BattleScene) -> vo
 	var cell: Variant = BoardPicker.cell_at_ray(from, dir, battle.combat_state.grid)
 	if cell == null or not battle.combat_state.grid.in_bounds(cell as Vector2i):
 		return
+	# `BR35.02`: the line above is blind plane math with no idea what stands between the camera and
+	# what it resolved, so a click could open a cell hidden behind a wall — one the player has
+	# never seen. Checked only on this fallback, deliberately: the primary pick is `PartPicker`,
+	# real ray-vs-box against actual bodies, and a thing the ray genuinely struck is by definition
+	# not hidden.
+	if not BoardPicker.cell_visible_from(battle.combat_state.grid, from, cell as Vector2i):
+		return
 	var cell_root: Part = battle.combat_state.grid.blockers.get(cell)
 	if cell_root == null:
 		# **taskblock-57 Pass D: the floor tile, and only when it has been asked for.**

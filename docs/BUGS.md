@@ -1160,7 +1160,7 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   from a high angle. That is a solvable framing constraint rather than a bug in the solver, and it is
   the shape to aim at.
 
-### BR35.02 — Active — owner: `SUPERVISOR`
+### BR35.02 — Pending — owner: `SUPERVISOR`
 **Spectator's tile-inspect click can silently resolve to a cell hidden behind a wall**
 - **cluster:** `input-affordance`
 - **Source:** `CC`  ·  **CC session:** `16507d21-1035-4b1c-a0fe-72a911df7403`
@@ -1217,6 +1217,26 @@ deliberately not `Pending`.** CC session `4ec878cf-1434-4676-8bd3-05c92eed071a`.
   three to be re-checked after the collapse and "checked, still open, and here is why the stated
   cause was wrong" is the answer for this one.
 
+- **2026-08-09 (taskblock-61 Pass D — fixed; `Pending`)** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`].
+  `BoardPicker.cell_visible_from` casts from the camera to the resolved cell's own **surface
+  point** and rejects the click if anything real stands in the way.
+  - **This entry's own "do not fix this one individually" instruction no longer applies**, and that
+    is recorded rather than quietly ignored: taskblock-56 Pass D already found the set's framing
+    *"spent"* — the other two members closed, the class it blamed dissolved — and noted that
+    whatever check this got would *"land once"* in the module rather than per overlay. It did.
+  - **Gated on the fallback only, deliberately.** taskblock-51 Pass K made the primary pick
+    `PartPicker`, real ray-vs-box against bodies, blockers and field items — and a thing the ray
+    genuinely struck is by definition not hidden. Only `cell_at_ray`'s blind plane math needed a
+    guard, which is also why the symptom was narrow enough to survive this long.
+  - **The endpoint exemption is the subtlety.** The cell being clicked must never count as the
+    thing hiding it, or clicking a wall would stop inspecting that wall and a floor would blind
+    whoever clicked it — the failure `LoS` names in its own doc comment. `grid.parts_at(cell)` is
+    excluded, exactly as `LoS.has_los` excludes both endpoint cells.
+  - Three tests: a cell behind a wall is not visible, a wall is still inspectable by clicking it,
+    and a raised tile is not blinded by its own floor.
+  - **To see it:** spectate a bout with squads on different levels and click a wall face, then
+    click open ground you can see is hidden behind a wall. The first should inspect the wall; the
+    second should now do nothing rather than opening a cell you have never seen.
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
 - **cluster:** `camera`

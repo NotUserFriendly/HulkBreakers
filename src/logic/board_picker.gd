@@ -69,3 +69,28 @@ static func _resolve(from: Vector3, dir: Vector3, grid: Grid) -> Variant:
 	if final_t < 0.0:
 		return null
 	return {"cell": cell, "t": final_t}
+
+
+## **Can the camera actually see `cell`, or is something standing in front of it?** `BR35.02`,
+## taskblock-61 Pass D.
+##
+## `cell_at_ray` above is blind plane math — it answers *which cell does this ray cross at that
+## cell's own height*, with no notion of what stands between. That was reliable while cover was
+## short and sparse; walls are 2.4m tall and dense now, so a click that looks like it landed on a
+## wall's face, or on open ground actually hidden behind one, still resolves to whichever cell the
+## ray reaches — possibly a cell on the far side, never visible at all.
+##
+## **The endpoint exemption is the whole subtlety.** The thing being clicked must not count as the
+## thing hiding it — a floor that blinded whoever clicked it would be the same failure `LoS` warns
+## about — so the target cell's own parts are excluded, exactly as `LoS.has_los` excludes both of
+## its endpoint cells.
+##
+## Deliberately asks about the **cell's own surface point**, not its centre in the air: what the
+## caller resolved is a position on the ground, and that is what has to be visible.
+static func cell_visible_from(grid: Grid, from: Vector3, cell: Vector2i) -> bool:
+	var point := Vector3(
+		float(cell.x) * UnitGeometry.CELL_SIZE,
+		UnitGeometry.true_height_for_cell(cell, grid),
+		float(cell.y) * UnitGeometry.CELL_SIZE
+	)
+	return not RayCaster.obstructed(grid, from, point, grid.parts_at(cell))

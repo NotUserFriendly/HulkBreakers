@@ -2,6 +2,27 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D8 — tile-inspect stops opening cells nobody can see
+
+**`BR35.02` to `Pending`.** `BoardPicker.cell_visible_from` casts from the camera to the resolved
+cell's own surface point and rejects the click if anything real stands between.
+
+**The entry's own "do not fix this one individually" instruction is spent, and saying so is part of
+the fix.** taskblock-56 Pass D had already found the framing dead — the other two members of its set
+closed, the class it blamed dissolved — and recorded that whatever check this got would "land once"
+in the module rather than per overlay. It did.
+
+**Gated on the fallback only.** taskblock-51 Pass K made the primary pick `PartPicker`, real
+ray-vs-box against bodies, blockers and field items; a thing the ray genuinely struck cannot be
+hidden. Only `cell_at_ray`'s blind plane math needed a guard — which is also why the symptom stayed
+narrow enough to survive this long.
+
+**The endpoint exemption is the subtlety.** The cell being clicked must never count as the thing
+hiding it, or clicking a wall would stop inspecting that wall and a floor would blind whoever
+clicked it — the failure `LoS` names in its own doc comment. `grid.parts_at(cell)` is excluded,
+exactly as `LoS.has_los` excludes both of its endpoint cells.
+
+
 ### Pass D7 — waypoint style follows the leg, and the first obstructed burst is read
 
 **`BR30.04` corrected: "the most recent move's boxes", not "the most recent waypoint".** CC had read
