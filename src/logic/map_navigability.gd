@@ -109,6 +109,98 @@ static func spawn_cells(grid: Grid) -> Array[Vector2i]:
 	return cells
 
 
+## Every walkable cell that **no spawn can reach at all** — the blind spot `one_way_cells`
+## has by construction, and the other half of the question this class exists to ask.
+##
+## `BR60.01`: `one_way_cells` floods out from a spawn, floods back, and reports the
+## difference — *"you can get in and not out."* **A region you can never get into is not in
+## the outward flood, so it can never be in that difference.** `stranding_cells` therefore
+## returns empty on boards carrying hundreds of cells of unreachable raised ground, and does:
+## measured at 40x30, **twelve regions across sixty seeds, the largest 235 cells**, identical
+## before and after tb60's ramp retirement.
+##
+## The complement is the whole check — flood out from every spawn, union the results, and
+## report every walkable cell left over. Same `move_cost` edges as `flood`, so this cannot
+## develop its own idea of a legal step.
+##
+## **A cell carrying a live blocker is not walkable ground and never appears here.**
+## `Pathfinder._base_cost` refuses it, so a crate on a lone raised cell — unreachable by
+## construction, and somewhere no unit could stand whatever the terrain did — is correctly
+## invisible to a check about *ground*. `test_map_gen.gd::_raised_regions` excludes them for
+## exactly that reason and says so in its own header.
+##
+## A map with no spawns reports clean, the same posture `stranding_cells` takes and for the
+## same reason: an authored fragment is incomplete, not broken.
+static func unreachable_cells(
+	grid: Grid, step_height: float = Unit.BASE_STEP_HEIGHT
+) -> Array[Vector2i]:
+	var spawns: Array[Vector2i] = spawn_cells(grid)
+	if spawns.is_empty():
+		return []
+	var reached: Dictionary = {}
+	for spawn: Vector2i in spawns:
+		for cell: Variant in flood(grid, spawn, step_height):
+			reached[cell] = true
+
+	var pathfinder := Pathfinder.new(grid, false, step_height)
+	var orphaned: Array[Vector2i] = []
+	for y: int in range(grid.rows):
+		for x: int in range(grid.width):
+			var cell := Vector2i(x, y)
+			if reached.has(cell):
+				continue
+			if not pathfinder.is_walkable(cell):
+				continue
+			orphaned.append(cell)
+	orphaned.sort()
+	return orphaned
+
+
+## `unreachable_cells` grouped into 4-connected components, largest first — what a sweep
+## reports when "312 cells" needs to become "one 235-cell shelf and a scattering of ledges"
+## before a human can act on it. Region membership is contiguity alone; two regions may sit
+## at the same height and are still two regions if you cannot walk between them.
+static func unreachable_regions(grid: Grid, step_height: float = Unit.BASE_STEP_HEIGHT) -> Array:
+	var pending: Dictionary = {}
+	for cell: Vector2i in unreachable_cells(grid, step_height):
+		pending[cell] = true
+
+	var regions: Array = []
+	# Iterated in row-major order rather than over `pending`'s own key order, so the region
+	# list is a property of the board and not of dictionary insertion.
+	for y: int in range(grid.rows):
+		for x: int in range(grid.width):
+			var start := Vector2i(x, y)
+			if not pending.has(start):
+				continue
+			var region: Array[Vector2i] = []
+			var frontier: Array[Vector2i] = [start]
+			pending.erase(start)
+			while not frontier.is_empty():
+				var cell: Vector2i = frontier.pop_back()
+				region.append(cell)
+				for offset: Vector2i in [
+					Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
+				]:
+					var neighbour: Vector2i = cell + offset
+					if not pending.has(neighbour):
+						continue
+					pending.erase(neighbour)
+					frontier.append(neighbour)
+			region.sort()
+			regions.append(region)
+	# Largest first, and **tie-broken on the top-left cell** — `sort_custom` is not a stable
+	# sort, so size alone would let two equal regions swap between runs and a pinned sweep
+	# would flap for no reason at all.
+	regions.sort_custom(
+		func(a: Array, b: Array) -> bool:
+			if a.size() != b.size():
+				return a.size() > b.size()
+			return (a[0] as Vector2i) < (b[0] as Vector2i)
+	)
+	return regions
+
+
 ## The whole-map verdict: one-way cells reachable from **any** spawn, deduplicated. A map with
 ## no spawns has nothing to flood from and reports clean rather than erroring — an authored
 ## fragment is not a broken map, it is an incomplete one, and `MapSerializer.describe_problems`

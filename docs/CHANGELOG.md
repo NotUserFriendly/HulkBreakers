@@ -2,6 +2,45 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass E2 — the navigability invariant learns to ask the other half of its own question
+
+**`BR60.01` stays `Active`, and that is the finding rather than a shortfall.** The entry's title has
+two halves — *"a large raised region that is unreachable from either spawn, **and the navigability
+invariant cannot see it**"* — and this pass fixes the second half and measures the first.
+
+**`MapNavigability.unreachable_cells`** is the complement `one_way_cells` cannot express. Flooding
+out and back reports *"you can get in and not out"*; **a region you can never get into is not in the
+outward flood**, so it can never appear in that difference. The new check unions every spawn's flood
+and reports every walkable cell left over. `unreachable_regions` groups it 4-connected, largest
+first, **tie-broken on the top-left cell** — `sort_custom` is not stable, and equal-sized regions
+swapping between runs would make a pinned sweep flap for no reason.
+
+**`test_map_gen_reachability.gd` sweeps 40x30, the size `BattleScene` actually plays.** It
+reproduces every run where the 32x24 sweep finds nothing: **twelve regions over eight of fifty
+seeds, five of them 190+ cells** (232, 210, 209, 197, 192). 13.9 s, fast tier, pinned as equality so
+a repair turns it red rather than letting it pass silently.
+
+**The numbers are deliberately not tb60's and the entry says so.** tb60 counted *raised* regions
+with no reachable cell; this counts every *walkable* unreachable cell, a superset including flat
+pockets. **The single-cell entries here are therefore not tb60's "cover on a lone raised cell"** — a
+live blocker makes a cell unwalkable and this check never sees it, so a 1-cell entry is real ground
+nobody can stand on.
+
+**The `rooms[0]`-anchor theory was measured, per the entry's own "confirm before fixing": strongly
+supported, not sufficient.** Anchor raised and defective **7**, raised and clean **12**, flat and
+defective **1**, flat and clean **30**. Seven of eight defective boards have a raised anchor against
+a base rate of 19 in 50 — good at predicting risk — but twelve raised-anchor boards are clean and
+one defective board has a flat anchor. **So it is neither the whole mechanism nor the only route
+in**, and re-anchoring the repair would aim at a correlate.
+
+**No repair attempted, deliberately.** `guarantee_navigability` already repairs one-way ground by
+stamping a ladder, and the symmetric call would open a 232-cell shelf *by ladder* — while
+taskblock-61's own summary of this entry reads *"a large raised region reachable only by ladder"*.
+Flattening erases a fifth of seed 2's elevation; stairing needs a straight run a shelf may not have.
+**Which of the three is wanted is a design call about map character**, so it is queued in `PLAN.md`
+with all three costed rather than picked here.
+
+
 ### Pass E1 — a spawn zone holds four units, and the fifth was handed the first one's cell
 
 **`BR51.19` to `Pending`.** `MapGen.SPAWN_ZONE_SIZE` is 2, so `_mark_zone` marks a 2x2 zone —

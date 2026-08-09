@@ -208,6 +208,38 @@ against the retired ramps' 15.8% — so the retirement cost essentially no eleva
 
 # QUEUED
 
+### `BR60.01`'s repair — unreachable raised ground is detected and measured, and nothing repairs it
+**Needs:** a decision on which of three repairs is wanted (below). **Unblocks:** closing `BR60.01`,
+and generated 40x30 boards that do not hand a fifth of their elevation to nobody.
+
+**The detection half landed in taskblock-61 Pass E2** — `MapNavigability.unreachable_cells` /
+`unreachable_regions`, and `test_map_gen_reachability.gd` sweeping the 40x30 board `BattleScene`
+actually plays. It reproduces every run: **twelve regions over eight of fifty seeds, five of them
+190+ cells.** The sweep is pinned as equality, so the day this is repaired the list goes red and
+must shrink.
+
+**The `rooms[0]`-anchor theory was measured rather than assumed, and it is a correlate, not a
+cause.** Seven of the eight defective boards have a raised anchor against a base rate of 19 in 50;
+twelve raised-anchor boards are clean and one defective board has a flat anchor. So re-anchoring
+`_repair_stranded_elevation` at the spawn zones would aim at the right neighbourhood without being
+shown to be the mechanism.
+
+**Three repairs, and the choice is a design call about map character, not a code call:**
+
+- **Ladder in.** `guarantee_navigability` already repairs one-way ground by stamping a ladder
+  (`_open_a_route_out`), and the symmetric fix is the same call from a *reachable* cell adjacent to
+  the region — cheapest, and reuses the mechanism that exists. **But taskblock-61's own one-line
+  summary of this entry is *"a large raised region reachable only by ladder"***, so this may build
+  exactly what is being complained about.
+- **Flatten.** What `_repair_stranded_elevation` already does to ground it cannot reach. On seed 2
+  that erases a 232-cell shelf, which is a large change to what generated boards look like.
+- **Stair in.** `_connect_with_a_stair` is what the generator already uses to serve a raised room,
+  and reads best — but it needs a run of lower cells in a straight line out from the region, which
+  a shelf against the board edge may not have.
+
+**Do not pick one silently.** The measurement is in place either way, so whichever lands can be
+judged against a number instead of an impression.
+
 ### `board_view.gd` sits on `gdlint`'s file-size cap, and every change now pays a tax to fit
 **Needs:** nothing. **Unblocks:** changing the board view without first finding something to delete.
 

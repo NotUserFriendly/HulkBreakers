@@ -2321,6 +2321,42 @@ every run instead of by accident. `KNOWN_UNREACHABLE` is the mechanism already i
 results while the cause is found — it is currently empty, deliberately, and asserted as **equality**
 so that a reappearance is a red test rather than a silent pass.
 
+**taskblock-61 Pass E2 — the invariant can see it now, the sweep runs at the played size, and the
+anchor theory has numbers. Still `Active`: nothing is repaired.** CC session
+`906e0f07-5b0a-47bd-8444-fb42ed468da2`.
+
+- **`MapNavigability.unreachable_cells` closes the blind spot in the entry's own title.** The
+  complement of the outward flood: union every spawn's flood, report every walkable cell left over.
+  `unreachable_regions` groups it into 4-connected components, largest first, tie-broken on the
+  top-left cell so a pinned sweep cannot flap on `sort_custom` being unstable.
+- **`test_map_gen_reachability.gd` sweeps 40x30**, the size `BattleScene` plays, and it reproduces
+  every run: **twelve regions over eight of fifty seeds, five of them 190+ cells** (232, 210, 209,
+  197, 192). Pinned as equality in `KNOWN_UNREACHABLE`. Cost is 13.9 s and it is in the fast tier.
+- **These numbers are not tb60's and must not be diffed against them.** tb60 counted *raised*
+  regions with no reachable cell (twelve over **sixty** seeds, largest 235). This counts every
+  *walkable* cell no spawn can reach — a superset that includes flat pockets. **The single-cell
+  entries are consequently not tb60's "cover on a lone raised cell"**: a live blocker makes a cell
+  unwalkable and this check never sees it, so a 1-cell entry here is real walkable ground nobody
+  can stand on.
+- **The `rooms[0]`-anchor theory: strongly supported, not sufficient.** Measured over the same 50
+  seeds — anchor raised and board defective **7**, anchor raised and clean **12**, anchor flat and
+  defective **1**, anchor flat and clean **30**. Seven of the eight defective boards have a raised
+  anchor against a base rate of 19 in 50, so it predicts *risk* well; but twelve raised-anchor
+  boards are clean and one defective board has a flat anchor, so **it is neither the whole
+  mechanism nor the only route in**. Re-anchoring `_repair_stranded_elevation` at the spawn zones
+  would be aimed at a strong correlate rather than a confirmed cause.
+- **The repair is deliberately not attempted, and it is a design call rather than a code one.**
+  `guarantee_navigability` already owns "the generator owes navigability" and already repairs
+  one-way ground by stamping a ladder (`_open_a_route_out`). The symmetric repair is the same call
+  made from a *reachable* cell adjacent to the region — which would open a 232-cell shelf **by
+  ladder**, and taskblock-61's own one-line summary of this entry reads *"a large raised region
+  reachable only by ladder"*, so more ladders may be the thing being complained about rather than
+  the fix. The alternatives are flattening the region (the existing `_repair_stranded_elevation`
+  behaviour, which would erase a fifth of the board's elevation on seed 2) or stairing it
+  (`_connect_with_a_stair`, which the generator already uses for raised rooms and which needs a
+  run of lower cells in a straight line it may not have). **Which of those three is wanted is the
+  supervisor's, and it is why this stays open.**
+
 ### BR60.02 — Active — owner: `CC`
 **A mangled or disabled part is hittable and undrawn — the view and the shot plane disagree about which parts exist**
 - **cluster:** `view-model-membership`
