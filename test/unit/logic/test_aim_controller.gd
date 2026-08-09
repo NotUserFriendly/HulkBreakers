@@ -37,7 +37,7 @@ func _weapon(rings: Array[Ring]) -> Part:
 
 ## The load-bearing test (PLAN.md Phase 12.3): scrolling changes what's
 ## being read, never what the reticle actually resolves to.
-func test_scrolling_changes_reading_and_never_changes_resolves() -> void:
+func test_the_reading_names_the_named_body_and_never_changes_resolves() -> void:
 	var grid := Grid.new(10, 10)
 	var state := CombatState.new(grid)
 	var near_unit := _standing_unit(&"near", 0.5, Vector2i(2, 2))
@@ -50,10 +50,10 @@ func test_scrolling_changes_reading_and_never_changes_resolves() -> void:
 	var shooter := _shooter_unit(Vector2i(2, 0))
 
 	var at_layer_0: AimResult = AimController.resolve(
-		plane, reticle, 0, weapon, shooter, far_unit.cell, state
+		plane, reticle, near_unit, weapon, shooter, far_unit.cell, state
 	)
 	var at_layer_1: AimResult = AimController.resolve(
-		plane, reticle, 1, weapon, shooter, far_unit.cell, state
+		plane, reticle, far_unit, weapon, shooter, far_unit.cell, state
 	)
 
 	assert_eq(at_layer_0.reading, near_unit)
@@ -61,7 +61,7 @@ func test_scrolling_changes_reading_and_never_changes_resolves() -> void:
 	# Each resolve() call builds its own HitResult (docs/09 taskblock06 Pass
 	# A), so this compares what it resolved to, not object identity.
 	assert_eq(
-		at_layer_0.resolves.part, at_layer_1.resolves.part, "scrolling must never change resolves"
+		at_layer_0.resolves.part, at_layer_1.resolves.part, "the reading must never change resolves"
 	)
 	assert_eq(at_layer_0.resolves.part.id, &"near")
 
@@ -76,10 +76,10 @@ func test_layer_index_clamps_instead_of_going_out_of_bounds() -> void:
 	var shooter := _shooter_unit(Vector2i(2, 0))
 
 	var too_far: AimResult = AimController.resolve(
-		plane, Vector2(0, 0.5), 99, weapon, shooter, only_unit.cell, state
+		plane, Vector2(0, 0.5), only_unit, weapon, shooter, only_unit.cell, state
 	)
 	var negative: AimResult = AimController.resolve(
-		plane, Vector2(0, 0.5), -5, weapon, shooter, only_unit.cell, state
+		plane, Vector2(0, 0.5), null, weapon, shooter, only_unit.cell, state
 	)
 
 	assert_eq(too_far.reading, only_unit)
@@ -100,7 +100,7 @@ func test_a_near_body_fully_occluding_a_far_one_never_resolves_to_the_far_body()
 	var x := -2.0
 	while x <= 2.0:
 		var result: AimResult = AimController.resolve(
-			plane, Vector2(x, 0.5), 1, weapon, shooter, far_unit.cell, state
+			plane, Vector2(x, 0.5), far_unit, weapon, shooter, far_unit.cell, state
 		)
 		if result.resolves != null:
 			assert_ne(
@@ -129,10 +129,10 @@ func test_a_gap_in_the_near_body_lets_the_reticle_resolve_to_the_far_body() -> v
 	var shooter := _shooter_unit(Vector2i(2, 0))
 
 	var reading_near: AimResult = AimController.resolve(
-		plane, Vector2(0.0, 0.5), 0, weapon, shooter, far_unit.cell, state
+		plane, Vector2(0.0, 0.5), near_unit, weapon, shooter, far_unit.cell, state
 	)
 	var reading_far: AimResult = AimController.resolve(
-		plane, Vector2(0.0, 0.5), 1, weapon, shooter, far_unit.cell, state
+		plane, Vector2(0.0, 0.5), far_unit, weapon, shooter, far_unit.cell, state
 	)
 
 	assert_eq(reading_near.reading, near_unit)
@@ -152,7 +152,7 @@ func test_a_gap_in_the_near_body_lets_the_reticle_resolve_to_the_far_body() -> v
 	# Anchoring at near_unit's OWN cell, rather than far_unit's, is what
 	# makes "-1.5" actually land on its left strip.
 	var off_the_strip: AimResult = AimController.resolve(
-		plane, Vector2(-1.5, 0.5), 0, weapon, shooter, near_unit.cell, state
+		plane, Vector2(-1.5, 0.5), null, weapon, shooter, near_unit.cell, state
 	)
 	assert_eq(off_the_strip.resolves.part.id, &"near")
 
@@ -216,7 +216,7 @@ func test_resolve_widens_the_drawn_rings_to_match_a_fired_shots_scatter() -> voi
 	weapon.weapon_def.max_range = 10.0
 
 	var result: AimResult = AimController.resolve(
-		plane, Vector2(0, 0.5), 0, weapon, shooter, far_unit.cell, state
+		plane, Vector2(0, 0.5), null, weapon, shooter, far_unit.cell, state
 	)
 	var expected: Array[Ring] = ShotScatter.for_shot(shooter, weapon, far_unit.cell, state)
 
@@ -328,10 +328,10 @@ func test_resolve_carries_the_recoil_bound_and_pellet_circle_into_the_result() -
 	weapon.weapon_def.mechanical_accuracy = 0.5
 
 	var burst_result: AimResult = AimController.resolve(
-		plane, Vector2(0, 0.5), 0, weapon, shooter, far_unit.cell, state, [], &"burst"
+		plane, Vector2(0, 0.5), null, weapon, shooter, far_unit.cell, state, [], &"burst"
 	)
 	var shoot_result: AimResult = AimController.resolve(
-		plane, Vector2(0, 0.5), 0, weapon, shooter, far_unit.cell, state, [], &"shoot"
+		plane, Vector2(0, 0.5), null, weapon, shooter, far_unit.cell, state, [], &"shoot"
 	)
 
 	assert_gt(burst_result.recoil_bound_radius, 0.0, "armed to burst -- must carry a real bound")
@@ -363,7 +363,7 @@ func test_layer_count_matches_the_number_of_distinct_bodies() -> void:
 	var shooter := _shooter_unit(Vector2i(2, 0))
 
 	var result: AimResult = AimController.resolve(
-		plane, Vector2(0, 0.5), 0, weapon, shooter, Vector2i(2, 6), state
+		plane, Vector2(0, 0.5), null, weapon, shooter, Vector2i(2, 6), state
 	)
 	assert_eq(result.layers.size(), 3)
 
@@ -410,7 +410,7 @@ func test_resolves_equals_the_active_resolver_for_a_corpus_of_reticle_positions(
 		state.shot_resolver = resolver
 		for reticle: Vector2 in reticles:
 			var result: AimResult = AimController.resolve(
-				plane, reticle, 0, weapon, shooter, far_unit.cell, state
+				plane, reticle, near_unit, weapon, shooter, far_unit.cell, state
 			)
 			var muzzle: Vector3 = UnitGeometry.muzzle_point(shooter, weapon)
 			var expected: HitResult = _independently_resolved(

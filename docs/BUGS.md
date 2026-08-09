@@ -990,40 +990,6 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
   the targeting logic itself. Recommend a live re-check before further investigation here; stays
   Active, not Pending, since no fix was made.
 
-### BR33.01 — Suspected — owner: `SUPERVISOR`
-**Aim-view scroll cycles walls; layer labels read as part names**
-- **cluster:** `input-affordance`
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-23 (tb33 review). Scrolling while aiming "cycles parts on a unit (or at least
-  it looks that way)." The original intent: scrolling cycles between the current enemy and what stands
-  *behind* it — preferably other enemies, with cover acceptable now that cover is real.
-- **The mechanism is correct; the input to it isn't.** `AimController.layers_for` groups the shot
-  plane by `region.body` and sorts nearest-first — one layer per distinct body, which *is* the
-  intended "current enemy, then what's behind it." `ShotPlane.build` sets `region.body = unit` for a
-  unit's parts and `= part` for an unowned cover Part, so grouping is genuinely body-level, not
-  part-level.
-- **What changed:** tb31 C turned walls into cover-`Part`s that live in the shot plane, so **every
-  wall is its own body and therefore its own aim layer**. Scrolling a walled scene now cycles wall
-  after wall. Compounding it, `AimView._body_name` renders a non-Unit body as its raw part id
-  (`wall`, `scrap_pile`, `pillar`) — debug strings that read like part names, which is most likely
-  what makes it look like part-cycling. A three-blocks-earlier change to terrain quietly degraded
-  aiming; nobody connected the two.
-- **Suspected, and deliberately not fixed yet.** The supervisor will observe scroll behaviour on
-  tb34's finished aim view before deciding — the fix is a policy call, not a mechanism one.
-  **Options when decided:** skip walls by default (cover still reachable), rank enemies ahead of cover
-  regardless of depth, or collapse contiguous walls into a single layer; plus player-facing names
-  instead of `unit_3` / raw part ids.
-- **taskblock-51 Pass A — still reproduces, no new information.** The supervisor adds that **this
-  feature is not what they originally intended** and is *"more likely to be obsoleted than fixed"* —
-  the aim-view scroll cycling walls is a symptom of a design they no longer want, so effort spent
-  fixing it may be spent on something due for removal. **Do not fix ahead of that decision.**
-- **Re-verified in code, 2026-08-07 (taskblock-60 follow-up): unchanged, and still reproduces.**
-  `AimController.layers_for` still groups the plane by `region.body` and emits one layer per
-  distinct body, and `ShotPlane` still sets `region.body = part` for an unowned cover `Part` — so
-  every wall is still its own aim layer. **Nothing since taskblock-51 has touched either side.**
-  Status left at `Suspected` deliberately: the mechanism is understood and the open question is
-  whether the feature survives at all, which is a decision rather than a defect.
-
 ### BR34.03 — Active — owner: `SUPERVISOR`
 **`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
 - **cluster:** `input-affordance`

@@ -117,7 +117,7 @@ func test_the_aim_preview_reports_what_resolution_produces() -> void:
 
 	for aim in [Vector2(0.0, 1.0), Vector2(0.3, 1.4), Vector2(-0.3, 0.8), Vector2(0.0, 1.7)]:
 		var preview: AimResult = AimController.resolve(
-			[] as Array[Region], aim, 0, weapon, shooter, target_cell, state
+			[] as Array[Region], aim, null, weapon, shooter, target_cell, state
 		)
 		assert_not_null(preview.resolves, "the preview reports a hit for aim %s" % aim)
 
@@ -159,7 +159,7 @@ func test_the_preview_follows_the_flag() -> void:
 		var shooter: Unit = state.units[0]
 		var weapon: Part = shooter.shell.find_part(&"gun")
 		var preview: AimResult = AimController.resolve(
-			[] as Array[Region], aim, 0, weapon, shooter, Vector2i(14, 10), state
+			[] as Array[Region], aim, null, weapon, shooter, Vector2i(14, 10), state
 		)
 		assert_not_null(
 			preview.resolves, "%s: the preview resolves something" % state.shot_resolver

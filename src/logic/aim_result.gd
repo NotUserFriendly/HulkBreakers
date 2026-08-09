@@ -6,7 +6,8 @@ extends RefCounted
 
 ## Nearest-first, one entry per distinct body touched by the plane.
 var layers: Array[AimLayer]
-## The body `layer_index` currently reads — what the scroll selected.
+## The body the READING describes — the one that was clicked (`BR33.01` retired the scroll
+## selector; see `AimController.reading_layer_body`).
 var reading: Variant
 ## docs/09 taskblock06 Pass A: the ray-cast hit against the ENTIRE plane —
 ## what the reticle actually hits. Scrolling must never change this.

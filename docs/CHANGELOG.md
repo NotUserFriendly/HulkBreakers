@@ -2,6 +2,40 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D1 — aim-layer scrolling retired, and the wheel handed to step-out
+
+**`BR33.01` closed `Obsolete` on the supervisor's instruction** — *"the feature goes"* — and
+`Obsolete` rather than `Resolved` because nothing was verified fixed: the scroll-cycling of aim
+layers is removed, not repaired.
+
+**Pinning the reading to `layers[0]` would have been worse than the bug.** Layers are nearest-first,
+so with a wall between shooter and target the nearest layer IS the wall — a readout pinned to it
+would describe the wall permanently while you aim past it. What replaced the cycling is the half
+that was still wanted: **the READING names the body that was clicked**, with the nearest layer as a
+fallback only when the target has no layer of its own. `AimController.resolve` takes a `target_body`
+where it took an index.
+
+**The coupling that made this Pass D's first item.** The wheel binding tested `aiming_at` **first**,
+so step-out cell cycling was unreachable the moment aim opened. `BR27.15` needs the wheel while
+aiming; retiring layer scrolling is what frees it. Neither entry named this — it only appeared when
+both were read together.
+
+**A crash class the fast gate found and reasoning did not.** `layer.body == target_body` **throws**
+in GDScript when one side is an Object and the other is not, rather than answering false — a stale
+caller still passing the retired integer index took the aim path down. `layer_for_body` checks
+`typeof` first, and a non-match falls through to nearest.
+
+**One consolidation:** `layer_for_body` is now the single walk that finds the target among the
+layers; `reading_layer_body` wants its body and `window_depth` wants its frontmost depth, and both
+read the same match.
+
+**A test of CC's own caught a real defect in CC's own change.** The first version asserted the
+reading against the pre-clone unit and failed: `aim_state()` builds its plane from
+`queue.preview(state)`, so `region.body` is the preview's clone, and `_build_aim_state` re-resolves
+the target into that same clone — which is the only reason identity matching works at all. That is
+`BR51.01`'s trap, walked into again and caught by the assertion rather than in play.
+
+
 ### Pass C closed — `BR32.04`, `BR32.05` and `BR32.08` resolved on the owner's instruction
 
 **All three moved to `Resolved` and archived on the supervisor's own word** (*"all the 32. entries

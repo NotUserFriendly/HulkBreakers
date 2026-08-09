@@ -5,13 +5,49 @@ extends RefCounted
 ## dartboard UI reads from resolve()'s output and computes nothing itself
 ## (docs/08's three laws: no number is born in the view).
 ##
-## The load-bearing rule: scrolling changes what you're READING, never what
-## the reticle RESOLVES to. `reading` comes from `layers[layer_index]`;
-## `resolves` is always a real ray cast (docs/09 taskblock06 Pass A,
-## taskblock07 Pass A: `ShotPlane.resolve_ray`, not a plane-space lookup
-## anymore), computed independently of `layer_index` entirely. That's what
-## makes the sniper thread honest — the UI shows you a gap exists, it
-## doesn't grant you the target through it.
+## The load-bearing rule survives, with the scrolling gone: what you are READING is never what
+## the reticle RESOLVES to. `resolves` is always a real ray cast (docs/09 taskblock06 Pass A,
+## taskblock07 Pass A: `ShotPlane.resolve_ray`, not a plane-space lookup anymore), computed
+## independently of the reading entirely. That is what makes the sniper thread honest — the UI
+## shows you a gap exists, it does not grant you the target through it.
+##
+## **`BR33.01`, taskblock-61 Pass D: layer scrolling is retired.** `layer_index` and
+## `TacticsController.scroll_layer` are gone, on the supervisor's call that the feature is
+## *"more likely to be obsoleted than fixed"*. tb31 C had turned every wall into its own cover
+## `Part`, so every wall became its own body and therefore its own aim layer, and scrolling a
+## walled scene cycled wall after wall. **The reading now names the body you actually clicked**
+## — which is all that remained of the feature's own stated intent once the cycling went — and
+## the mouse wheel is free for step-out cell cycling (`BR27.15`), which needs it while aiming.
+
+
+## **The layer whose body is `target_body`, or the nearest one.** taskblock-61 Pass D.
+##
+## Nearest-first is the wrong default on its own and that is exactly `BR33.01`: with a wall
+## between shooter and target the nearest layer IS the wall, so a reading pinned to `layers[0]`
+## would permanently describe the wall while you aim at the enemy behind it. Falls back to
+## nearest when the target has no layer of its own (a shot at open ground, or a body that
+## projects nothing).
+static func reading_layer_body(layers: Array[AimLayer], target_body: Variant) -> Variant:
+	if layers.is_empty():
+		return null
+	var layer: AimLayer = layer_for_body(layers, target_body)
+	return layer.body if layer != null else layers[0].body
+
+
+## **The one walk that finds the target among `layers`**, or null. `reading_layer_body` wants its
+## body and `window_depth` wants its frontmost depth — two questions, one identity match, so the
+## match lives here rather than being written out twice.
+static func layer_for_body(layers: Array[AimLayer], target_body: Variant) -> AimLayer:
+	for layer: AimLayer in layers:
+		# **`typeof` first, because `==` between an Object and a non-Object THROWS in GDScript**
+		# rather than answering false — found by the fast gate when a stale caller still passed
+		# the retired integer index. A body that is not the same kind of thing cannot be the
+		# target, and answering that with a crash on a per-frame aim path is not a trade worth
+		# making. A genuine non-match falls through to the nearest layer, which is the same
+		# answer a target with no regions of its own already gets.
+		if typeof(layer.body) == typeof(target_body) and layer.body == target_body:
+			return layer
+	return null
 
 
 ## Groups `plane` into one AimLayer per distinct body (`Region.body`),
@@ -42,10 +78,11 @@ static func layers_for(plane: Array[Region]) -> Array[AimLayer]:
 	return layers
 
 
-## (plane, reticle, layer_index, weapon, shooter, target_cell, world) ->
-## {layers, reading, resolves, rings}. `layer_index` is clamped into range,
-## never out of bounds and never negative — scrolling past either end just
-## holds at the last real layer. `target_cell` (not a whole target Unit) is
+## (plane, reticle, target_body, weapon, shooter, target_cell, world) ->
+## {layers, reading, resolves, rings}. `target_body` names which body the READING describes:
+## the one the player clicked, falling back to the nearest layer when the target has none.
+##
+## `target_cell` (not a whole target Unit) is
 ## the ONLY thing about the target `_resolve_hit` needs — it just names the
 ## shooter->target dead-ahead axis `reticle`'s own lateral/vertical
 ## coordinates are expressed against (`AimPlaneGeometry`'s own convention).
@@ -70,7 +107,7 @@ static func layers_for(plane: Array[Region]) -> Array[AimLayer]:
 static func resolve(
 	plane: Array[Region],
 	reticle: Vector2,
-	layer_index: int,
+	target_body: Variant,
 	weapon: Part,
 	shooter: Unit,
 	target_cell: Vector2i,
@@ -79,10 +116,7 @@ static func resolve(
 	action_id: StringName = &""
 ) -> AimResult:
 	var layers: Array[AimLayer] = layers_for(plane)
-	var reading: Variant = null
-	if not layers.is_empty():
-		var clamped: int = clampi(layer_index, 0, layers.size() - 1)
-		reading = layers[clamped].body
+	var reading: Variant = reading_layer_body(layers, target_body)
 
 	var rings: Array[Ring] = ShotScatter.for_shot(
 		shooter, weapon, target_cell, world, extra_sources
@@ -149,9 +183,8 @@ static func pellet_circle_radius(weapon: Part) -> float:
 ## the target throughout — two different anchors for what's meant to read
 ## as one "painted on the target" surface. `target_body` identifies which
 ## of `layers` IS the target (`Region.body` identity, same as AimLayer's
-## own grouping) — independent of `layer_index`/READING entirely now, the
-## same "scrolling changes what you read, never what you're shooting at"
-## rule this file's own header already applies to `resolves`.
+## own grouping) — independent of the READING entirely, the same "what you read is never what
+## you are shooting at" rule this file's own header already applies to `resolves`.
 ## Pure math (headless-testable); the view only draws whatever this says.
 ## A body positioned "behind" the shooter along the fire line still gets a
 ## Region in the plane (ShotPlane.build projects every unit, not just ones
@@ -168,11 +201,8 @@ static func window_depth(
 	epsilon: float,
 	min_depth: float
 ) -> float:
-	var depth: float = target_depth
-	for layer: AimLayer in layers:
-		if layer.body == target_body:
-			depth = layer.frontmost_depth() - epsilon
-			break
+	var layer: AimLayer = layer_for_body(layers, target_body)
+	var depth: float = layer.frontmost_depth() - epsilon if layer != null else target_depth
 	return maxf(depth, min_depth)
 
 

@@ -3869,3 +3869,57 @@ evidently not what was reported.
   Fixed by `5416d2b` (taskblock-61 Pass C1) — the cutout feed reads `CombatState.can_take_a_turn`,
   so a corpse stops cutting and a downed unit keeps doing so. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
 
+### BR33.01 — Obsolete — owner: `SUPERVISOR`
+**Aim-view scroll cycles walls; layer labels read as part names**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-23 (tb33 review). Scrolling while aiming "cycles parts on a unit (or at least
+  it looks that way)." The original intent: scrolling cycles between the current enemy and what stands
+  *behind* it — preferably other enemies, with cover acceptable now that cover is real.
+- **The mechanism is correct; the input to it isn't.** `AimController.layers_for` groups the shot
+  plane by `region.body` and sorts nearest-first — one layer per distinct body, which *is* the
+  intended "current enemy, then what's behind it." `ShotPlane.build` sets `region.body = unit` for a
+  unit's parts and `= part` for an unowned cover Part, so grouping is genuinely body-level, not
+  part-level.
+- **What changed:** tb31 C turned walls into cover-`Part`s that live in the shot plane, so **every
+  wall is its own body and therefore its own aim layer**. Scrolling a walled scene now cycles wall
+  after wall. Compounding it, `AimView._body_name` renders a non-Unit body as its raw part id
+  (`wall`, `scrap_pile`, `pillar`) — debug strings that read like part names, which is most likely
+  what makes it look like part-cycling. A three-blocks-earlier change to terrain quietly degraded
+  aiming; nobody connected the two.
+- **Suspected, and deliberately not fixed yet.** The supervisor will observe scroll behaviour on
+  tb34's finished aim view before deciding — the fix is a policy call, not a mechanism one.
+  **Options when decided:** skip walls by default (cover still reachable), rank enemies ahead of cover
+  regardless of depth, or collapse contiguous walls into a single layer; plus player-facing names
+  instead of `unit_3` / raw part ids.
+- **taskblock-51 Pass A — still reproduces, no new information.** The supervisor adds that **this
+  feature is not what they originally intended** and is *"more likely to be obsoleted than fixed"* —
+  the aim-view scroll cycling walls is a symptom of a design they no longer want, so effort spent
+  fixing it may be spent on something due for removal. **Do not fix ahead of that decision.**
+- **Re-verified in code, 2026-08-07 (taskblock-60 follow-up): unchanged, and still reproduces.**
+  `AimController.layers_for` still groups the plane by `region.body` and emits one layer per
+  distinct body, and `ShotPlane` still sets `region.body = part` for an unowned cover `Part` — so
+  every wall is still its own aim layer. **Nothing since taskblock-51 has touched either side.**
+  Status left at `Suspected` deliberately: the mechanism is understood and the open question is
+  whether the feature survives at all, which is a decision rather than a defect.
+- **2026-08-09 — `Obsolete` on the supervisor's own instruction** (*"Obsolete it — the feature
+  goes"*), taskblock-61 Pass D. **`Obsolete`, deliberately not `Resolved`: nothing was verified
+  fixed.** The scroll-cycling of aim layers is removed rather than repaired, exactly as this entry
+  anticipated when it recorded the feature as *"more likely to be obsoleted than fixed"*.
+  - **What went:** `TacticsController.scroll_layer` and `layer_index`, and the wheel binding that
+    tested `aiming_at` first. `AimController.resolve` takes a `target_body` instead of an index.
+  - **What replaced it:** the READING names the body that was clicked
+    (`AimController.reading_layer_body`). **Pinning to `layers[0]` would have been worse than the
+    bug** — nearest-first means the wall between shooter and target IS layer 0, so the readout
+    would have described the wall permanently. The fallback to nearest survives only for a target
+    with no layer of its own.
+  - **The wheel is freed for `BR27.15`**, which needs it for step-out cell cycling while aiming and
+    could never have had it: the aim branches were tested first, so step-out cycling was
+    unreachable the moment aim opened. That coupling was invisible until both were worked together.
+  - **A crash class found by the fast gate, not by reasoning:** `layer.body == target_body` THROWS
+    in GDScript when one side is an Object and the other is not, rather than answering false. A
+    stale caller passing the retired integer took down the aim path. `layer_for_body` checks
+    `typeof` first.
+  - The label complaint in this entry (`unit_3`, raw part ids) is **closed unaddressed** with it.
+  - Recorded in `docs/SUPERSEDED.md`. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
+

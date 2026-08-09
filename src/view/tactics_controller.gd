@@ -16,7 +16,7 @@ extends Node
 ## AimController — translates input into their calls and keeps
 ## BoardView/AimView in sync. Every actual decision (what's reachable, what
 ## queues, what resolves, what's being read) lives in the pure controllers;
-## this Node only reads them. `click_cell`/`scroll_layer`/`confirm_shot`/
+## this Node only reads them. `click_cell`/`confirm_shot`/
 ## `cancel_aim` are split out from the raw input handlers so a test can
 ## drive them directly, with no live camera required.
 
@@ -111,7 +111,6 @@ var aiming_at: AimTarget = null
 ## only way to enter aim mode now); can be non-null on its own, between
 ## arming and the target click.
 var armed_action: ActionDef = null
-var layer_index: int = 0
 var reticle_offset: Vector2 = Vector2.ZERO
 ## tb34 Pass C: the Part the cursor currently sits over inside the aim
 ## window, independent of `reticle_offset`/`resolves` — "hovering reads,
@@ -383,13 +382,12 @@ func _handle_mouse_button(button_event: InputEventMouseButton) -> void:
 		# waits for release, once we know whether it turned into a drag.
 		_rmb_pressed = true
 		_rmb_dragged = false
-	elif button_event.button_index == MOUSE_BUTTON_WHEEL_UP and aiming_at != null:
-		scroll_layer(1)
-	elif button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and aiming_at != null:
-		scroll_layer(-1)
-	elif button_event.button_index == MOUSE_BUTTON_WHEEL_UP and stepping_out_at != null:
+	# `BR33.01`/`BR27.15`, taskblock-61 Pass D: the wheel used to be claimed by aim-layer
+	# scrolling, tested FIRST — so once aim opened, step-out cycling was unreachable. Layer
+	# scrolling is retired (see `AimController`'s own header), and the wheel is step-out's.
+	elif button_event.button_index == MOUSE_BUTTON_WHEEL_UP:
 		cycle_step_out_cell(1)
-	elif button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and stepping_out_at != null:
+	elif button_event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 		cycle_step_out_cell(-1)
 
 
@@ -813,7 +811,6 @@ func _click_part(part: Part, cell: Vector2i) -> void:
 
 func _enter_aim_mode(target: AimTarget) -> void:
 	aiming_at = target
-	layer_index = 0
 	reticle_offset = Vector2.ZERO
 	_aim_state_cache = {}
 	_aim_state_key = ""
@@ -937,17 +934,6 @@ func cycle_step_out_cell(delta: int) -> void:
 func _framing_shooter() -> Unit:
 	var previewed: Unit = selection.previewed_unit()
 	return previewed if previewed != null else selection.selected_unit
-
-
-## Steps the read layer without moving the reticle (docs/10's load-bearing
-## rule) — clamping to a valid layer is AimController's job, this just
-## accumulates the raw step.
-func scroll_layer(delta: int) -> void:
-	if input_locked:
-		return
-	if aiming_at != null:
-		layer_index += delta
-		reticle_changed.emit()
 
 
 ## A relative nudge, still used by anything that isn't a live cursor
@@ -1465,7 +1451,6 @@ func cancel_aim() -> void:
 		_returning_from_step_out = false
 	aiming_at = null
 	armed_action = null
-	layer_index = 0
 	reticle_offset = Vector2.ZERO
 	aim_hovered_part = null
 	camera_rig.stop_aiming()

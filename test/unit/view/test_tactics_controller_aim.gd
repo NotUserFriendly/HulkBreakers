@@ -75,7 +75,6 @@ func test_clicking_an_enemy_while_selected_enters_aim_mode() -> void:
 	controller.click_cell(Vector2i(5, 5))
 
 	assert_eq(controller.aiming_at.unit, b)
-	assert_eq(controller.layer_index, 0)
 	assert_eq(controller.reticle_offset, Vector2.ZERO)
 
 
@@ -223,21 +222,39 @@ func test_entering_aim_mode_disables_camera_zoom_cancelling_restores_it() -> voi
 	assert_null(controller.aiming_at)
 
 
-func test_scroll_layer_only_changes_layer_index_while_aiming() -> void:
+## `BR33.01`, taskblock-61 Pass D: **layer scrolling is retired** on the supervisor's call, and the
+## wheel belongs to step-out cell cycling now. What replaced it is that the READING names the body
+## that was clicked — so a wall standing between shooter and target no longer takes the readout,
+## which was the entry's own complaint and the reason nearest-first was the wrong default alone.
+func test_the_reading_names_the_clicked_target_not_the_nearest_body() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)
 	var built: Dictionary = _setup([a, b])
 	var controller: TacticsController = built.controller
-
-	controller.scroll_layer(1)
-	assert_eq(controller.layer_index, 0, "not aiming yet — nothing to scroll")
+	assert_false(
+		controller.has_method("scroll_layer"), "the scroll selector is gone, not merely unbound"
+	)
 
 	controller.click_cell(Vector2i(0, 0))
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))
-	controller.scroll_layer(1)
 
-	assert_eq(controller.layer_index, 1)
+	# docs/09: the plane is built from `queue.preview(state)`, a `CombatState.dup()`, so its
+	# `region.body` is the PREVIEW's clone — `_build_aim_state` re-resolves the target into that
+	# same clone, which is why identity matching works at all. Comparing against the pre-clone
+	# `b` is the `BR51.01` trap, and this test hit it before being corrected.
+	var aim: Dictionary = controller.aim_state()
+	var previewed: Unit = (aim["target"] as AimTarget).unit
+	assert_ne(previewed, b, "sanity: the aim state really is working against a clone")
+	assert_eq(previewed.id, b.id, "sanity: and it is a clone OF the clicked unit")
+
+	var layers: Array[AimLayer] = AimController.layers_for(aim["plane"])
+	assert_gt(layers.size(), 0, "sanity: the plane has at least one body in it")
+	assert_eq(
+		AimController.reading_layer_body(layers, previewed),
+		previewed,
+		"the reading must be the body that was clicked"
+	)
 
 
 func test_move_reticle_only_changes_offset_while_aiming() -> void:
@@ -381,13 +398,7 @@ func test_entering_aim_mode_reads_the_target_not_the_shooters_own_phantom_layer(
 	var target: AimTarget = aim["target"]
 	var target_point: Vector2 = ShotPlane.center_of(aim["plane"], target.unit)
 	var result: AimResult = AimController.resolve(
-		aim["plane"],
-		target_point,
-		controller.layer_index,
-		weapon,
-		aim["shooter"],
-		target.cell,
-		aim["state"]
+		aim["plane"], target_point, target.unit, weapon, aim["shooter"], target.cell, aim["state"]
 	)
 
 	assert_eq((result.reading as Unit).id, b.id, "layer 0 of the aim plane must be the target")
@@ -448,7 +459,7 @@ func test_aim_boards_range_follows_the_previewed_cell_not_the_turn_start_one() -
 	var far_result: AimResult = AimController.resolve(
 		far_aim["plane"],
 		far_point,
-		controller.layer_index,
+		far_target.unit,
 		far_weapon,
 		far_aim["shooter"],
 		far_target.cell,
@@ -466,7 +477,7 @@ func test_aim_boards_range_follows_the_previewed_cell_not_the_turn_start_one() -
 	var near_result: AimResult = AimController.resolve(
 		near_aim["plane"],
 		near_point,
-		controller.layer_index,
+		near_target.unit,
 		near_weapon,
 		near_aim["shooter"],
 		near_target.cell,
@@ -554,7 +565,7 @@ func test_end_turn_locks_input_and_emits_exactly_the_events_it_resolved() -> voi
 		)
 
 
-func test_input_locked_blocks_click_scroll_reticle_and_confirm() -> void:
+func test_input_locked_blocks_click_reticle_and_confirm() -> void:
 	var a := _make_armed_unit(Vector2i(0, 0), 0)
 	var b := _make_armed_unit(Vector2i(5, 5), 1)
 	var built: Dictionary = _setup([a, b])
@@ -564,9 +575,6 @@ func test_input_locked_blocks_click_scroll_reticle_and_confirm() -> void:
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(5, 5))  # enters aim mode
 	controller.input_locked = true
-
-	controller.scroll_layer(1)
-	assert_eq(controller.layer_index, 0, "locked input must not step the layer")
 
 	controller.move_reticle(Vector2(1, 1))
 	assert_eq(controller.reticle_offset, Vector2.ZERO, "locked input must not move the reticle")
@@ -769,9 +777,8 @@ func test_moving_the_reticle_emits_only_the_cheap_signal() -> void:
 
 	controller.move_reticle(Vector2(0.1, 0.0))
 	controller.move_reticle(Vector2(0.1, 0.0))
-	controller.scroll_layer(1)
 
-	assert_eq(reticle_emits[0], 3, "reticle and layer moves report as reticle changes")
+	assert_eq(reticle_emits[0], 2, "reticle moves report as reticle changes")
 	assert_eq(aim_emits[0], 0, "and never as an aim-state change")
 
 

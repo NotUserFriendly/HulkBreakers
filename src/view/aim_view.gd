@@ -258,13 +258,14 @@ func refresh() -> void:
 		_write_readout("[UNARMED]")
 		return
 
-	var aim_point: Vector2 = (
-		ShotPlane.center_of(plane, target.unit if target.unit != null else target.part)
-		+ tactics.reticle_offset
-	)
+	# `BR33.01`, taskblock-61 Pass D: the READING names the body that was actually clicked, which
+	# is the same body the aim point is already centred on — not a scroll index. One expression,
+	# used for both, so the thing you read and the thing you aim at cannot come apart.
+	var target_body: Variant = target.unit if target.unit != null else target.part
+	var aim_point: Vector2 = ShotPlane.center_of(plane, target_body) + tactics.reticle_offset
 	var action_id: StringName = tactics.armed_action.id if tactics.armed_action != null else &""
 	var result: AimResult = AimController.resolve(
-		plane, aim_point, tactics.layer_index, weapon, shooter, target.cell, state, [], action_id
+		plane, aim_point, target_body, weapon, shooter, target.cell, state, [], action_id
 	)
 
 	# docs/09 taskblock07 Pass D: "the shadow must use the same axis the ray
@@ -305,7 +306,6 @@ func refresh() -> void:
 	# tb32 Pass C: `window_depth` matches by body IDENTITY (`region.body`,
 	# already `Variant` — a Unit or a blocker/field-item root Part, see
 	# `ShotPlane.build`) — feed whichever one `target` actually is.
-	var target_body: Variant = target.unit if target.unit != null else target.part
 	var depth: float = AimController.window_depth(
 		result.layers, target_body, target_depth, WINDOW_DEPTH_EPSILON, MIN_WINDOW_DEPTH
 	)
@@ -337,15 +337,16 @@ func refresh() -> void:
 	_write_readout(_readout_text(result))
 
 
+## `BR33.01`: "layer N of M" described a scroll position, and there is no scrolling now. The
+## body count stays because it is still real information — how many things this fire line passes
+## through — but it no longer poses as a selector the player can move.
 func _readout_text(result: AimResult) -> String:
-	var layer_count: int = result.layers.size()
-	var clamped: int = clampi(tactics.layer_index, 0, max(layer_count - 1, 0))
 	var resolves_text := "miss"
 	if result.resolves != null:
 		resolves_text = "%s / %s" % [_body_name(result.resolves.body), result.resolves.part.id]
 	return (
-		"READING: %s (layer %d of %d)\nRESOLVES: %s"
-		% [_body_name(result.reading), clamped + 1, layer_count, resolves_text]
+		"READING: %s (%d on the line)\nRESOLVES: %s"
+		% [_body_name(result.reading), result.layers.size(), resolves_text]
 	)
 
 
