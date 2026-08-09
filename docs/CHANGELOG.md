@@ -2,6 +2,34 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D7 — waypoint style follows the leg, and the first obstructed burst is read
+
+**`BR30.04` corrected: "the most recent move's boxes", not "the most recent waypoint".** CC had read
+the original spec too narrowly and left every leg's trail cells solid. **Fixing it collapsed the
+code rather than adding to it** — once style follows the leg instead of the position, a waypoint
+stops being a separate thing to draw: one box per cell, solid on the latest leg, hollow everywhere
+else, and the separate waypoint pass is gone. Styling happens before anything is drawn, because
+legs are contiguous and the later leg has to win the cell they share.
+
+**Two of CC's own tests were wrong in instructive ways.** One asserted the earlier per-waypoint
+rule. The other compared a mesh's own `0.02` thickness and read zero every time — `BoxMesh.size`
+stores float32 and the literal is float64, so the comparison could never hold. Filtering on
+`BoxMesh` against the leg line's `ImmediateMesh` is the honest separator.
+
+**The first obstructed burst, read from the supervisor's log.** A chaingun burst at (14,14) from
+(5.93, 13.69) with a forklift in the way: four rounds `STOP_DEAD` into the forklift, which is then
+destroyed, and the remaining eight pass through it to the wall behind. **That is the reversal
+working exactly as asked** — the shot was refused outright before this pass.
+
+**`BR61.06` filed from the same four lines:** the forklift emits `part_destroyed` **and**
+`part_mangled` at one instant, for one part. Almost certainly `Part.failure_mode` defaulting to
+`MANGLE` with no cover or terrain part authoring one — the same default Pass B caught resurrecting
+destroyed walls. Harmless today only because `assembly_placements` gates on `hp > 0` while
+`BodyProjector.projects` accepts `is_mangled`; the contradiction is in the events, not yet in the
+behaviour. Filed `Suspected` and explicitly not to be fixed ahead of `BR60.02`'s refit, which owns
+the rule.
+
+
 ### Pass D6 — obstructed shots become legal, and two CC changes are undone
 
 **`BR32.07` to `Pending`: the `LoS.has_los` gate is gone** from `AttackAction` and `BurstAction`,

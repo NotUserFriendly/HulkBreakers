@@ -843,29 +843,30 @@ func show_reachable(cells: Array[Vector2i]) -> void:
 func show_ghost_paths(paths: Array, leg_costs: Array[float] = []) -> void:
 	_clear(_ghost_overlay)
 	var running_total: float = 0.0
-	# `BR30.04` follow-up: legs are contiguous, so leg N+1's first cell IS leg N's waypoint, and a
-	# trail marker there put a filled square under every hollow one — "not visually distinct from a
-	# full square". Collected across ALL legs: the covering marker belongs to a different leg than
-	# the waypoint it hides, so no per-leg check could catch it.
-	var waypoints: Dictionary = {}
-	for path: Array in paths:
-		if not path.is_empty():
-			waypoints[path[path.size() - 1]] = true
+	# `BR30.04`: **one box per cell, solid on the most recent leg and hollow everywhere else** —
+	# the supervisor's own reading, *"all boxes except the most recent move's boxes to be hollow."*
+	# Waypoints stopped being a separate thing to draw once style followed the leg rather than the
+	# position, which is what collapsed this from two passes into one.
+	#
+	# Styled before anything is drawn because legs are contiguous: leg N+1's first cell IS leg N's
+	# waypoint, so one cell belongs to two legs and the later leg has to win. Drawing per leg put a
+	# filled square on top of a hollow one and read as "not visually distinct from a full square".
+	var style: Dictionary = {}
+	for i in range(paths.size()):
+		var latest: bool = i == paths.size() - 1
+		for cell: Vector2i in paths[i]:
+			if latest or not style.has(cell):
+				style[cell] = latest
+	for cell: Vector2i in style:
+		var cell_y: float = GHOST_HEIGHT + _height_for(cell)
+		_ghost_overlay.add_child(
+			OverlayMarkers.waypoint_box(cell, WAYPOINT_COLOR, cell_y, OVERLAY_SIZE, style[cell])
+		)
 	for i in range(paths.size()):
 		var path: Array = paths[i]
-		# One colour throughout; the waypoint is a box, hollow except the most recent.
-		var is_latest: bool = i == paths.size() - 1
-		for cell: Vector2i in path:
-			if not waypoints.has(cell):
-				_ghost_overlay.add_child(_marker(cell, WAYPOINT_COLOR, GHOST_HEIGHT))
 		if path.is_empty():
 			continue
 		_ghost_overlay.add_child(_leg_line(path, WAYPOINT_COLOR))
-		var mark: Vector2i = path[path.size() - 1]
-		var mark_y: float = GHOST_HEIGHT + _height_for(mark)
-		_ghost_overlay.add_child(
-			OverlayMarkers.waypoint_box(mark, WAYPOINT_COLOR, mark_y, OVERLAY_SIZE, is_latest)
-		)
 		var leg_cost: float = leg_costs[i] if i < leg_costs.size() else 0.0
 		running_total += leg_cost
 		_ghost_overlay.add_child(

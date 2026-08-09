@@ -709,14 +709,22 @@ func test_every_queued_leg_is_drawn_in_the_one_waypoint_colour() -> void:
 	assert_true(colours.has(BoardView.WAYPOINT_COLOR), "and that colour is the waypoint colour")
 
 
-## The most recent waypoint is filled and every earlier one is hollow. Counted by mesh, because a
-## hollow box is four bars and a filled one is a single quad — which is the only way to tell them
-## apart without rendering.
-func test_only_the_most_recent_waypoint_is_filled() -> void:
+## **Every box on the most recent leg is filled; every earlier box is hollow.** The supervisor's
+## correction — *"all boxes except the most recent move's boxes to be hollow"* — is per LEG, not per
+## waypoint, which is what an earlier version of this got wrong.
+##
+## Counted by structure, because a hollow box is four bars under a holder and a filled one is a
+## single `BoxMesh` — the only way to tell them apart without rendering. The leg line is an
+## `ImmediateMesh`, so `BoxMesh` alone separates boxes from lines; an earlier version of this also
+## compared the mesh's own 0.02 thickness and read zero every time, because `BoxMesh.size` stores
+## float32 and the literal is float64.
+func test_only_the_most_recent_legs_boxes_are_filled() -> void:
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(GridFixture.flat(10, 10), DataLibrary.material_table())
 
+	# Leg 1 covers (0,0)->(1,0); leg 2 covers (1,0)->(2,0) and is the most recent. Cell (1,0)
+	# belongs to both, and the later leg must win it.
 	view.show_ghost_paths(
 		[[Vector2i(0, 0), Vector2i(1, 0)], [Vector2i(1, 0), Vector2i(2, 0)]] as Array
 	)
@@ -726,10 +734,10 @@ func test_only_the_most_recent_waypoint_is_filled() -> void:
 	for node: Node in view._ghost_overlay.get_children():
 		if node is Node3D and not (node is MeshInstance3D) and node.get_child_count() == 4:
 			hollow += 1
-		elif node is MeshInstance3D and (node.mesh as BoxMesh) != null:
+		elif (node as MeshInstance3D) != null and (node.mesh as BoxMesh) != null:
 			filled += 1
-	assert_eq(hollow, 1, "the earlier waypoint is a hollow outline")
-	assert_gt(filled, 0, "and the most recent one is a solid box")
+	assert_eq(hollow, 1, "only (0,0) is behind the latest leg, so exactly one outline")
+	assert_eq(filled, 2, "(1,0) and (2,0) are both on the latest leg — the shared cell goes solid")
 
 
 func _meshes_of(node: Node) -> Array[MeshInstance3D]:

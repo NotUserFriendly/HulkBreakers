@@ -977,6 +977,19 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     marker is drawn.
   - An existing test asserting 8 overlay children **encoded the double-draw** and is corrected to 7
     with the arithmetic spelled out.
+- **2026-08-09 (taskblock-61 Pass D follow-up 2 — style follows the LEG, not the waypoint)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. Supervisor: *"still have a few more filled boxes than
+  expected. I'm expecting all boxes except the most recent move's boxes to be hollow."* CC had read
+  the original spec as "the most recent **waypoint** is filled" and left every leg's trail cells
+  solid.
+  - **Correcting it collapsed the code rather than adding to it.** Once style follows the leg
+    instead of the position, a waypoint stops being a different thing to draw: one box per cell,
+    solid on the latest leg, hollow everywhere else. The separate waypoint-box pass is gone.
+  - **Styled before anything is drawn**, because legs are contiguous — one cell belongs to two legs
+    and the later leg has to win it. Drawing per leg is what put a filled square over a hollow one.
+  - A test of CC's own asserted the earlier rule and is corrected. **Another compared the mesh's
+    own 0.02 thickness and read zero every time**: `BoxMesh.size` stores float32, the literal is
+    float64. Filtering on `BoxMesh` versus the leg line's `ImmediateMesh` is the honest separator.
 ### BR32.07 — Pending — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **cluster:** `input-affordance`
@@ -2662,3 +2675,28 @@ already passes `weapon.id` into `ActionCatalog.build_firing_action` a few lines 
 - **Deliberately not fixed alongside `BR32.04`.** That entry is `SUPERVISOR`-owned and awaiting a
   look; changing a second visible effect in the same commit would make what the supervisor sees
   harder to attribute. One change at a time on a subsystem under verification.
+
+### BR61.06 — Suspected — owner: `CC`
+**A destroyed part reports `part_destroyed` and `part_mangled` in the same instant**
+- **cluster:** `wall-cutout`
+- **Source:** `CC`  ·  **CC session:** `74ebb574-245b-48e8-aed2-e1d09ea25527`
+- **2026-08-09 (taskblock-61 Pass D).** Seen in the supervisor's own live burst, immediately after
+  obstructed shots became legal — a chaingun burst chewing through a forklift:
+  ```
+  impact: STOP_DEAD on forklift ...
+  part_destroyed: forklift
+  part_mangled: forklift
+  burst_pull: 4/12
+  ```
+  **Both, for one part, at one instant.** Destroyed and mangled are meant to be different outcomes.
+- **Almost certainly `Part.failure_mode` defaulting to `MANGLE`** with no cover or terrain part
+  authoring one — the same default taskblock-61 Pass B already caught resurrecting destroyed walls
+  as sight blockers, and the same one `BR60.02`'s mangle refit exists to settle.
+- **Why it may be harmless today and is still worth an entry:** `BodyProjector.projects()` returns
+  `hp > 0 or is_mangled or is_disabled`, so a destroyed-and-mangled part still *projects* — but
+  `UnitGeometry.assembly_placements` emits boxes on a bare `hp > 0`, so it has no geometry to meet.
+  The forklift's own later rounds passed through to the wall behind it correctly. **The
+  contradiction is in the events, not yet in the behaviour** — which is exactly the kind of thing
+  that becomes a real defect the moment something starts reading `is_mangled`.
+- **`Suspected` on purpose:** the mechanism is inferred from the log and the known default, not
+  confirmed by reading the emitting code. Do not fix ahead of `BR60.02`'s refit, which owns the rule.
