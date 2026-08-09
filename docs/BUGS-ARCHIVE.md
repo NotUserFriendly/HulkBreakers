@@ -3971,3 +3971,221 @@ evidently not what was reported.
   paren-depth aware, because `MoveAction` already formats an `Array[Vector2i]` and splitting on the
   first `", "` would cut through a coordinate. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
 
+### BR30.04 — Resolved — owner: `SUPERVISOR`
+**Waypoint colors shuffle when arming an attack and targeting a cover item**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-21, found while confirming BR27.05: "selecting an attack, then trying to shoot
+  a cover item causes your waypoint colors to shuffle."
+- **Status:** open, not yet investigated. Likely candidate given the symptom: `BoardView.
+  show_ghost_paths()` cycles `LEG_COLORS` by queue index (`LEG_COLORS[i % LEG_COLORS.size()]`) — if
+  arming an attack against a cover item (rather than a unit) somehow re-queues/re-indexes the existing
+  move legs, or a targeting-mode preview call feeds it a different leg count/order than what's actually
+  queued, the per-leg color assignment would visibly shift without the underlying queued path changing.
+  Not yet confirmed — needs a real repro (which action, what leg count was already queued, which cover
+  item) before touching the code.
+- **2026-07-21 (read-only investigation, `docs/Bugs-add.md`, rolled in here) — confirms the ledger's
+  own hypothesis above:** `LEG_COLORS` has only 4 entries (`board_view.gd:36-41`), cycled via `i % 4`
+  (:376). Targeting a COVERED target routes through the step-out triple
+  (`tactics_controller.gd:603-621`, `872-926`), which appends 1-2 extra "free" `MoveAction` legs
+  indistinguishable from real ones in `show_ghost_paths`'s own input list — pushing the total leg
+  count past 4 and wrapping colors. Targeting an uncovered unit adds zero extra legs, so it never
+  wraps, which is why the bug only shows on cover-item targeting. **Candidate fix (not yet applied):**
+  either grow the color palette past 4, or exclude free step-out legs from the color-cycling index so
+  only "real" queued legs consume a color slot.
+
+- **2026-08-09 (taskblock-61 Pass D — fixed to the supervisor's own spec; `Pending`)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. *"I'm not sure this is step out related. regardless, mono
+  color it. All queued waypoints are one color and a hollow box drawn on the walkable terrain
+  underneath. The most recent waypoint is a filled in box. Lime green for each."*
+  - **The colour cycle is retired outright**, so the shuffle is impossible by construction rather
+    than fixed by widening the palette — which was the other candidate this entry recorded and
+    would only have moved the wrap further out. **Nothing is keyed on leg index any more**, so
+    inserting or removing a leg cannot restyle the legs already on screen.
+  - **The step-out diagnosis in this entry is therefore neither confirmed nor needed.** The
+    supervisor doubted it and CC did not re-test it; with the index gone the cause is moot either
+    way. Recorded as unconfirmed rather than quietly promoted to "the cause".
+  - **Hollow is four bars, not a border square under a fill square.** The pattern
+    `_build_empty_indicators` uses paints over what is beneath it, and the spec is explicit that
+    the walkable terrain shows through.
+  - `WAYPOINT_COLOR` is CSS `limegreen` (`#32CD32`). **The supervisor named the colour, not the
+    hex** — flagged and tunable, per CLAUDE.md.
+  - `board_view.gd` hit `gdlint`'s 1000-line cap for the second time this taskblock, so marker
+    construction moved to `src/view/overlay_markers.gd`.
+  - **To see it:** queue four or five legs, then arm an attack against a covered target. No queued
+    waypoint should change colour; earlier waypoints are outlines, the newest is solid.
+- **2026-08-09 (taskblock-61 Pass D follow-up — the hollow box was being covered up)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. Supervisor: *"whatever 'four bars' is doing, isn't
+  visually distinct from a full square."* **It was distinct; it was hidden.** Queued legs are
+  contiguous, so leg N+1's own first cell IS leg N's waypoint — and the ordinary trail marker drawn
+  there put a filled square directly on top of every hollow outline.
+  - **No per-leg check could have caught it**: the covering marker belongs to a *different* leg
+    than the waypoint it hides, so waypoint cells are collected across all legs before any trail
+    marker is drawn.
+  - An existing test asserting 8 overlay children **encoded the double-draw** and is corrected to 7
+    with the arithmetic spelled out.
+- **2026-08-09 (taskblock-61 Pass D follow-up 2 — style follows the LEG, not the waypoint)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. Supervisor: *"still have a few more filled boxes than
+  expected. I'm expecting all boxes except the most recent move's boxes to be hollow."* CC had read
+  the original spec as "the most recent **waypoint** is filled" and left every leg's trail cells
+  solid.
+  - **Correcting it collapsed the code rather than adding to it.** Once style follows the leg
+    instead of the position, a waypoint stops being a different thing to draw: one box per cell,
+    solid on the latest leg, hollow everywhere else. The separate waypoint-box pass is gone.
+  - **Styled before anything is drawn**, because legs are contiguous — one cell belongs to two legs
+    and the later leg has to win it. Drawing per leg is what put a filled square over a hollow one.
+  - A test of CC's own asserted the earlier rule and is corrected. **Another compared the mesh's
+    own 0.02 thickness and read zero every time**: `BoxMesh.size` stores float32, the literal is
+    float64. Filtering on `BoxMesh` versus the leg line's `ImmediateMesh` is the honest separator.
+- **2026-08-09 — `Resolved` on the supervisor's instruction** (*"32.07 and 30.04 you can mark
+  resolved on my behest"*), after two rounds of live correction: the hollow box was being covered by
+  the next leg's trail marker, and then style had to follow the LEG rather than the waypoint. Fixed
+  across `9b33357` and `32ade29`. **The per-leg colour cycle is gone entirely**, so the reported
+  shuffle cannot recur by construction rather than by a wider palette. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
+
+### BR32.07 — Resolved — owner: `SUPERVISOR`
+**Burst at/through a wall aims, then silently fails (no AP, no queued action)**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`
+- **2026-07-23 (supervisor re-check — the symptom has SHIFTED).** It is now reported as **"cannot
+  seem to aim at a wall with burst"** — i.e. the aim step itself no longer engages, where the original
+  report was "lets you aim the dartboard, then silently fails out." That is a different failure point,
+  not a rewording: something between tb32 and now moved the failure *earlier*, from confirm/queue to
+  aim. Prime suspect is tb34's targeting rework — `ShotScatter.for_shot` and the `TargetingMode`
+  dispatch both sit in the burst aim path, and tb32 Pass C's `HitKind.PART` targeting is what makes a
+  wall aimable at all. Re-derive the failure point before fixing; the original diagnosis (the PART
+  branch of `BurstAction.is_legal()`/`apply()`) may now be aimed at the wrong seam.
+- **Reported:** 2026-07-22 (tb32 review). A shot **directed at a wall or through a wall** (both cases)
+  lets you aim the dartboard, then silently fails out — no AP spent, no action queued. Appears
+  **burst-specific**.
+- **Where to look:** tb32 Pass C made non-unit Parts targetable (`HitKind.PART`,
+  `Grid.shootable_part_at`) and Pass D routed burst through `TargetingMode`. `BurstAction` legality
+  now accepts a PART target, but the confirm/queue path silently no-ops for burst against a wall — the
+  aim succeeds (dartboard opens) but nothing commits. Likely `BurstAction.is_legal()`/`apply()`'s PART
+  branch (vs `AttackAction`'s) or the burst confirm path dropping the action. Contrast with single
+  shoot to isolate. Related in spirit to BR30.11 (burst step-out silently dropping the shot) — check
+  whether it's the same silent-drop seam, and whether the intent/outcome logging idea in PLAN would
+  have surfaced it.
+- **2026-07-23 (tb35 Pass C — re-derived the failure point, found no code-level break)**
+  [CC 16507d21-1035-4b1c-a0fe-72a911df7403]. Traced the full aim-entry chain for a burst-armed click
+  on a wall cell end to end: `TacticsController.click_cell` → `PartPicker.hit` (`HitKind.PART`) →
+  `_enter_aim_mode` → `aim_state()` → `AimController.resolve()` → `ShotScatter.for_shot()`. Every step
+  is generic over action id — `ActionCatalog`'s own `&"burst"` entry gets the same `TargetingMode.
+  BOARD` as `&"shoot"`, `_click_part()` dispatches on `armed_action != null` alone, and
+  `ShotScatter.for_shot()` never even receives the `AimTarget`, only `target_cell`/`weapon` — it
+  cannot distinguish a wall target from a unit target and has no code path assuming a live `Unit`.
+  The one place action id is read in this whole chain (`AimController.recoil_bound_radius`) only
+  gates a cosmetic ring overlay, guarded against a null/empty case, and cannot block aim entry.
+  **New headless regression, confirmed passing:**
+  `test_tactics_controller.gd::test_arming_burst_and_clicking_a_wall_enters_aim_mode` — arms burst,
+  clicks a real wall-blocker cell, asserts `aiming_at != null` and `aim_state()` non-empty. Passes
+  cleanly. **Not fixed, because nothing reproducibly breaks at this level** — if the live symptom
+  persists, it likely lives outside the `TacticsController`/`AimController`/`ShotScatter` chain (a
+  render-layer/raycast issue in the real click path, or `PartPicker`'s own collision setup against
+  live `BoardView` scene nodes — the same class of headless-vs-live gap BR27.08 hit) rather than in
+  the targeting logic itself. Recommend a live re-check before further investigation here; stays
+  Active, not Pending, since no fix was made.
+
+- **2026-08-09 (supervisor, taskblock-61 Pass D) — still happening, and a sharper mechanism than
+  anything in this entry so far.** *"32.07 is definitely still happening. Looks like if anything
+  interrupts the raycast to the clicked object it just silently fails."*
+  - **This reframes the entry twice over.** It is not necessarily burst-specific — the original
+    report and the tb32 framing both said burst, and tb35 then proved the whole aim chain generic
+    over action id. If the real condition is *something intervenes between the camera and the thing
+    you clicked*, then burst was incidental and the entry has been hunting the wrong axis since
+    taskblock-32.
+  - **It also explains tb35's negative result rather than contradicting it.** That pass drove the
+    chain headlessly with a clicked cell handed in directly and found no break — which is exactly
+    what you would see if the defect is in turning a *screen click* into a target at all, upstream
+    of everything it tested. A headless test that supplies the cell has already skipped the step
+    that fails.
+  - **"Silently" is the second half and is its own defect.** Whatever rejects the click says nothing
+    — no log line, no refusal, no feedback. This entry's own earlier note asked whether *"the
+    intent/outcome logging idea in PLAN would have surfaced it"*; the answer is that nothing on this
+    path announces a decision at all, so no amount of live looking will produce evidence until it
+    does.
+  - **Next step is instrumentation before repair** — the same order that settled `BR32.05`. Make the
+    click-to-target path announce what the ray met and why a target was or was not accepted, then
+    one live click produces the answer instead of another theory. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
+- **2026-08-09 (taskblock-61 Pass D — instrumented, not fixed)** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`].
+  Every board click now emits a `board_click` line: what the ray met (`kind`, struck part or unit,
+  cell), what was armed, which branch ran, and — where a branch swallows the click — why. Per
+  click, not per frame, so there is no volume ceiling to design around.
+  - **A genuinely silent branch found while wiring it, and it matches the supervisor's reading.**
+    `_cell_at` returns the **nearest** thing on the ray, and the dispatch tests "did the ray meet
+    the already-selected unit" **before** anything else: if so the click becomes a facing drag and
+    returns, with an action armed and nothing said. A click aimed past the shooter's own shoulder
+    at a wall behind it lands on the shooter and evaporates. **That is a hypothesis, not the
+    diagnosis** — it is announced rather than fixed, because three separate CC theories were
+    disproved by live evidence in this taskblock alone.
+  - **To settle it:** reproduce the failure once, then read the `board_click` line for that click.
+    `met unit (3) ... armed burst -> facing_drag (ray met the selected unit first)` confirms the
+    branch above. `met part (wall) ... -> click_part` means the click was accepted and the failure
+    is downstream of the pick. `met nothing` means the ray missed the board entirely.
+  - Pinned by two tests: a swallowed click still produces a line, and an ordinary one does too —
+    *"it did the right thing"* and *"it did nothing"* are only distinguishable if both are written.
+- **2026-08-09 (taskblock-61 Pass D — ROOT CAUSED from one supervisor reproduction; half fixed)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. The supervisor fired the instrumented build once: *"Had a
+  unit try to shoot through a pillar to hit a wall, then had the unit shoot the pillar. First
+  failed, second didn't."* The log settles it in four lines:
+  ```
+  board_click: met part (wall)   at (26, 0), armed burst -> click_part
+  board_click: met part (wall)   at (26, 0), armed burst -> confirm_shot     <- nothing follows
+  board_click: met part (pillar) at (26, 2), armed burst -> click_part
+  board_click: met part (pillar) at (26, 2), armed burst -> confirm_shot
+  action_queued: unit 0 queued action: BurstAction(unit=0, weapon=chaingun, target=(26, 2))
+  ```
+  - **The pick was never the problem, and neither was burst.** Both clicks were accepted, both
+    entered aim, both reached `confirm_shot`. The wall shot simply queued nothing. **Three
+    taskblocks of hunting the click path were hunting the wrong half** — and CC's own
+    facing-drag hypothesis from earlier this pass is disproved outright: there is no `facing_drag`
+    line anywhere in the session.
+  - **The gate is `burst_action.gd:77`, `if not LoS.has_los(state.grid, actual.cell, target_cell)`.**
+    Shooter (26,4), wall (26,0), pillar (26,2) squarely between. `has_los` exempts the two endpoint
+    cells' own parts, so the wall does not block a shot at itself — the pillar does.
+    `AttackAction.is_legal` carries the same check, which is why this was never really burst-only.
+  - **The silence is a second, separate defect and is FIXED.** `confirm_shot`'s
+    `if action != null and selection.enqueue(action):` had **no `else`**, so a refused shot fell
+    through to `cancel_aim()`: aim closed, no AP spent, nothing queued, nothing said. A
+    `shot_refused` line is emitted now, pinned by a test that rebuilds the supervisor's own board.
+  - **The reason is deliberately not re-derived in the view.** `CombatAction.is_legal` answers a
+    bare boolean, so nothing can report *which* gate refused, and asking `LoS.has_los` again from
+    the view would be a second opinion that could disagree with the one that actually decided.
+    **That the engine cannot say why a legal-check failed is itself a finding** — queued to `PLAN`.
+  - **What is NOT fixed, and is a design call, not a code call:** whether an obstructed shot should
+    be refused at all. `docs/02` resolves shots spatially through a real ray chain that already
+    handles hitting whatever is in the way, which argues a player should be allowed to fire and hit
+    the pillar. Against that, the LoS gate stops AP being spent on an impossible shot. **Not
+    decided by CC.** Left `Active` for that reason.
+- **2026-08-09 (taskblock-61 Pass D — the rule reversed on the supervisor's call; `Pending`)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. *"Obstructed shots should be legal. Things get broken
+  here, so a gun like a chain gun might chew through a crate to hit the target behind it. And a
+  sniper with a shot that goes through soft things will need to be able to shoot through soft
+  cover, again like crates."*
+  - **The `LoS.has_los` gate is gone from `AttackAction` and `BurstAction`** — the only two that
+    carried it. **It contradicted the resolver it guarded:** `docs/02` marches a real ray that
+    meets whatever is in the way and spends damage penetrating it, and a cell-to-cell sight line
+    answering "no" ahead of that forbade the exact outcome the chain exists to produce — on the
+    coarsest evidence available, a line between two cell CENTRES, where the shot is fired from a
+    real muzzle at a real body.
+  - **Precedent, not invention:** taskblock-58 Pass C removed the same gate from `Overwatch` for
+    the same reason — *"two checks deciding one thing, with the coarser one holding the veto"*.
+  - **Nothing replaces it, deliberately.** A shot into cover is a legal shot that hits the cover;
+    whether the round gets through is `DamageResolver`'s question, answered against real material.
+    The AI still avoids wasting shots — that is scoring (`line_of_fire`), never legality.
+  - **Two tests reversed rather than deleted**, each naming its old expectation:
+    `test_attack_action.gd`'s `test_is_legal_false_without_line_of_sight`, and CC's own refusal test
+    from one pass earlier which asserted the shot stayed refused.
+  - **The refusal announcement from Pass D stands and is still tested** — other gates (no AP, out
+    of range, suppressed) still refuse, and a refusal must never be silent again.
+  - **To see it:** fire through a crate or pillar at something behind it. The shot should queue and
+    resolve against whatever it actually meets. **A shot that still silently does nothing is the
+    regression** — and it will now say `shot refused` in the log if it does.
+- **2026-08-09 — `Resolved` on the supervisor's instruction** (*"32.07 and 30.04 you can mark
+  resolved on my behest"*), after confirming in play that obstructed shots fire. Root-caused from a
+  single instrumented reproduction and fixed across `f9a8b5e` (the `board_click` instrument that
+  found it), `f155c6e` (the silent-refusal fix) and `659a4dd` (the `LoS.has_los` gate removed from
+  `AttackAction`/`BurstAction`). **The supervisor's own verification burst is on record**: a
+  chaingun chewed through a forklift in four rounds and put the remaining eight on the wall behind
+  it. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
+
