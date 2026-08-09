@@ -2,6 +2,28 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass C closed — `BR32.04`, `BR32.05` and `BR32.08` resolved on the owner's instruction
+
+**All three moved to `Resolved` and archived on the supervisor's own word** (*"all the 32. entries
+can be marked as resolved"*), after a live session confirming *"looks much better"* and *"dead units
+are no longer cutting out, that looks good."* Three closures, three entries verbatim into
+`docs/BUGS-ARCHIVE.md`, each naming the commits that fixed it.
+
+**`BR32.07` was deliberately NOT included**, despite matching "all the 32. entries" literally. It is
+the `input-affordance` cluster (*burst at a wall aims, then silently fails*), untouched by Pass C,
+and one of the six entries Pass D is about to work — closing it would assert a verification nobody
+performed. Flagged to the supervisor rather than decided either way.
+
+**What is closed with them, stated so nobody re-derives it as open:** `BR32.05`'s own residual — a
+second wall nearer the camera taking a bite while a first genuinely occludes, the per-fragment half
+the Pass C gate deliberately did not address — is closed unaddressed rather than fixed. If it
+resurfaces it is a new report, not this one reopening.
+
+**The wall-cutout cluster is now empty.** It had four "fixes" across `BR31.03`, `BR32.01` and
+`BR32.02` before this, all archived, with the subsystem still misbehaving after each — which was the
+entry's own recorded finding and the reason Pass C was told to check the archive before starting.
+
+
 ### Pass C2 — the cutout hole follows the body it is cutting for
 
 **`BR32.04` to `Pending`, and Pass C's three entries are now all worked.** The tb35 diagnosis of
