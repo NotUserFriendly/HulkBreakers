@@ -2,6 +2,42 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass E1 — a spawn zone holds four units, and the fifth was handed the first one's cell
+
+**`BR51.19` to `Pending`.** `MapGen.SPAWN_ZONE_SIZE` is 2, so `_mark_zone` marks a 2x2 zone —
+**exactly four cells**, and fewer once tb60's height filter drops one. `BoutSetup._spawn_squad` then
+indexed it `spawn_cells[i % spawn_cells.size()]`. That modulo is the whole defect: unit 5 wrapped
+onto unit 1's cell, and `CombatState`'s registration loop overwrote the earlier arrival's occupancy
+rather than anything refusing the placement. **The supervisor's own hint — "four is the tell, start
+at how many cells the zone offers" — was exactly right**, and the arithmetic is `SPAWN_ZONE_SIZE`
+squared rather than a loop that stops advancing.
+
+**Counted before it was touched**, per the entry's own instruction: a 6-a-side bout on seed 4242 put
+**12 units on 8 distinct cells**. After the fix, 12 on 12.
+
+**`BoutSetup._placement_cells` replaces the wrap** — the zone's own cells first, then a
+deterministic FIFO spill outward over `Grid.NEIGHBOR_OFFSETS`, with one `taken` set shared across
+both squads.
+
+**Its edge rule is two-way traversability, not reachability, and that is the load-bearing choice.**
+A `HOP_DOWN` edge is a legal step *out* of the zone that a non-climbing shell cannot take back, so a
+spill that only asked "can I get there" would have dropped a unit off a ledge and spawned it
+stranded — `BR40.04` again by a different route. Requiring `move_cost` to exist in both directions
+keeps every spawned unit on ground mutually connected to its own zone. The mover is the conservative
+one (no climbing, unmodified step height), so a cell it can reach is one every shell in the roster
+can reach.
+
+**A zone that genuinely runs out now refuses the bout by name** rather than stacking, matching
+`build_bout`'s existing "never crash, never silently invent" posture. **A grid with no spawn markers
+at all is deliberately untouched** — it has no zone to spill from, and its pre-existing
+`Vector2i(i, squad_id)` fallback already hands out distinct cells.
+
+**No golden moved, and that is a property of the fix rather than luck.** For any roster that fits
+the zone, `_placement_cells` returns the zone's cells in the same order `_cells_of_marker` produced
+them — identical to the old `spawn_cells[i]`. The full gate stayed green at **3395/3395** with the
+bout-determinism goldens unchanged.
+
+
 ### Pass D close-out — `BR35.02` did not reproduce, and carries its own closing condition
 
 **The supervisor tried and could not reproduce `BR35.02`**, which is what CC's own reachability

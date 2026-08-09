@@ -210,6 +210,106 @@ func test_the_same_profiles_counts_and_seed_produce_an_equivalent_bout() -> void
 		assert_eq(first_state.units[i].squad_id, second_state.units[i].squad_id)
 
 
+## `BR51.19` — "starting a bout with more than 4 units on a side causes them to overlay
+## each other at the start." **Four is the tell and it is arithmetic, not luck:**
+## `MapGen.SPAWN_ZONE_SIZE` is 2, so `_mark_zone` marks a 2x2 zone — exactly four cells —
+## and `_spawn_squad` indexed it as `spawn_cells[i % spawn_cells.size()]`. The fifth unit
+## wrapped onto the first unit's cell. `Grid.set_occupant_id` holds one occupant per cell,
+## so `CombatState`'s own registration loop then silently overwrote the earlier arrival's
+## occupancy rather than refusing the placement — which is why the units drew stacked and
+## then moved apart to sensible cells.
+##
+## **Six a side, deliberately.** Five would catch a single wrap; six catches a wrap that
+## advances (`i % size` vs `(i / size) + ...`) and still collides.
+func test_a_squad_larger_than_the_spawn_zone_does_not_stack_its_units() -> void:
+	var profiles: Array = _reference_profiles()
+	var oversized: int = MapGen.SPAWN_ZONE_SIZE * MapGen.SPAWN_ZONE_SIZE + 2
+
+	var result: Dictionary = BoutSetup.build_bout(
+		_roster(profiles[0], &"aggressive", oversized),
+		_roster(profiles[1], &"defensive", oversized),
+		4242
+	)
+
+	assert_eq(result.error, "")
+	var state: CombatState = result.state
+	assert_eq(state.units.size(), oversized * 2, "sanity: every rostered unit assembled")
+
+	var seen: Dictionary = {}
+	var collisions: Array[String] = []
+	for unit: Unit in state.units:
+		if seen.has(unit.cell):
+			collisions.append(
+				(
+					"%s: squad %d unit %s on top of %s"
+					% [unit.cell, unit.squad_id, unit.id, seen[unit.cell]]
+				)
+			)
+		seen[unit.cell] = unit.id
+	gut.p("%d units, %d distinct cells" % [state.units.size(), seen.size()])
+	assert_eq(collisions, [] as Array[String], "no two units may start on the same cell")
+
+	# The occupancy grid must agree with the units — a stacked pair registers only the
+	# last writer, so this is what the "logic level, not a drawing artefact" report saw.
+	for unit: Unit in state.units:
+		assert_eq(
+			state.grid.get_occupant_id(unit.cell),
+			unit.id,
+			"unit %d's own cell %s must be registered to it" % [unit.id, unit.cell]
+		)
+
+
+## `BR51.19` — every spawned unit must stand somewhere it could legally have walked to,
+## and must be able to walk back to the zone it spilled out of. A spill that hops a unit
+## down a ledge it cannot climb back up is `BR40.04`'s stranded spawn wearing a new hat,
+## so the spill's own edge rule is two-way traversability rather than reachability.
+func test_units_spilled_out_of_a_full_spawn_zone_stand_on_reachable_ground() -> void:
+	var profiles: Array = _reference_profiles()
+	var oversized: int = MapGen.SPAWN_ZONE_SIZE * MapGen.SPAWN_ZONE_SIZE + 2
+
+	var result: Dictionary = BoutSetup.build_bout(
+		_roster(profiles[0], &"aggressive", oversized),
+		_roster(profiles[1], &"defensive", oversized),
+		4242
+	)
+	var state: CombatState = result.state
+	var zone_for: Dictionary = {
+		0: BoutSetup._cells_of_marker(state.grid, Enums.SpawnMarker.SPAWN_A),
+		1: BoutSetup._cells_of_marker(state.grid, Enums.SpawnMarker.SPAWN_B),
+	}
+
+	# Occupancy is registered by now, so the pathfinder would refuse every occupied cell
+	# including its own endpoints. Read it against a clean copy of the same board.
+	var clear: Grid = MapGen.generate(
+		_map_rng_first_draw(4242), BoutSetup.GRID_WIDTH, BoutSetup.GRID_HEIGHT
+	)
+	var pathfinder := Pathfinder.new(clear)
+
+	for unit: Unit in state.units:
+		var anchor: Vector2i = (zone_for[unit.squad_id] as Array[Vector2i])[0]
+		assert_true(
+			pathfinder.is_walkable(unit.cell),
+			"unit %d spawned on %s, which is not walkable ground" % [unit.id, unit.cell]
+		)
+		if unit.cell == anchor:
+			continue
+		assert_false(
+			pathfinder.astar(anchor, unit.cell).is_empty(),
+			(
+				"unit %d at %s has no route back to its own spawn zone at %s"
+				% [unit.id, unit.cell, anchor]
+			)
+		)
+
+
+## `BoutSetup` derives its map seed as the first draw off the bout seed, so a test that
+## wants the same board has to make the same draw rather than passing `map_seed` through.
+func _map_rng_first_draw(map_seed: int) -> int:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = map_seed
+	return rng.randi()
+
+
 ## taskblock-21 Pass D2 / taskblock-23 Pass E1: "team-coded extraction
 ## cells, placed at bout setup" — both squads get their OWN entry (now
 ## the OPPOSING squad's own spawn, tb23 E1 — see the dedicated test

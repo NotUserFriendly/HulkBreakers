@@ -50,9 +50,33 @@ static func build_bout(
 	var spawn_a_cells: Array[Vector2i] = _cells_of_marker(grid, Enums.SpawnMarker.SPAWN_A)
 	var spawn_b_cells: Array[Vector2i] = _cells_of_marker(grid, Enums.SpawnMarker.SPAWN_B)
 
+	# `BR51.19`: one `taken` set across BOTH squads, so squad B cannot spill onto a cell
+	# squad A already holds. The two zones are the farthest-apart rooms and will not
+	# normally meet, but "normally" is what let the wrap survive five blocks.
+	var taken: Dictionary = {}
+	var cells_a: Array[Vector2i] = _placement_cells(grid, spawn_a_cells, roster_a.size(), taken)
+	var cells_b: Array[Vector2i] = _placement_cells(grid, spawn_b_cells, roster_b.size(), taken)
+	# A grid carrying no spawn markers at all has no zone to spill from, and
+	# `_spawn_squad`'s own `Vector2i(i, squad_id)` fallback still hands out distinct
+	# cells — so an empty zone is the pre-existing marker-less case, not a map too small
+	# to seat the roster. Only a zone that EXISTS and runs out is a refusal.
+	var short_a: bool = not spawn_a_cells.is_empty() and cells_a.size() < roster_a.size()
+	var short_b: bool = not spawn_b_cells.is_empty() and cells_b.size() < roster_b.size()
+	if short_a or short_b:
+		return {
+			"error":
+			(
+				(
+					"map seed %d cannot seat this roster: squad A needs %d cells and its spawn "
+					+ "zone reaches %d, squad B needs %d and reaches %d"
+				)
+				% [map_seed, roster_a.size(), cells_a.size(), roster_b.size(), cells_b.size()]
+			)
+		}
+
 	var units: Array[Unit] = []
-	units.append_array(_spawn_squad(roster_a, 0, spawn_a_cells))
-	units.append_array(_spawn_squad(roster_b, 1, spawn_b_cells))
+	units.append_array(_spawn_squad(roster_a, 0, cells_a))
+	units.append_array(_spawn_squad(roster_b, 1, cells_b))
 	if units.is_empty():
 		return {"error": "neither roster could actually assemble (bad template_id?)"}
 
@@ -94,8 +118,69 @@ static func _entry_missing_profile(entry: BoutRosterEntry) -> bool:
 	return entry.profile == null
 
 
+## `BR51.19`: the distinct cells a roster of `count` units will stand on — the spawn
+## zone's own cells first, then spilling outward onto ground connected to it. Cells
+## chosen here are added to `taken`, which is shared across both squads.
+##
+## **The zone is 2x2 — exactly four cells (`MapGen.SPAWN_ZONE_SIZE` squared), and fewer
+## once `_mark_zone`'s height filter drops one.** A fifth unit has nowhere authored to
+## stand, and the placement this replaced answered that with `spawn_cells[i %
+## spawn_cells.size()]`: the fifth unit wrapped onto the first's cell. Nothing refused
+## it, because `Grid.set_occupant_id` holds one occupant per cell and `CombatState`'s
+## registration loop simply overwrote the earlier arrival — so the units drew stacked and
+## then moved apart to sensible cells, which is exactly how it was reported.
+##
+## **The spill's edge rule is two-way traversability, not reachability**, and that is the
+## load-bearing choice rather than a detail. A `HOP_DOWN` edge is a legal step *out* of
+## the zone that a non-climbing shell cannot take back, so a one-way spill would drop a
+## unit off a ledge and spawn it stranded — `BR40.04` again by a different route.
+## Requiring `move_cost` to exist in BOTH directions keeps every spawned unit on ground
+## mutually connected to its own zone.
+##
+## The mover is the conservative one: no climbing, unmodified `step_height`. A cell this
+## pathfinder can reach is one every shell in the roster can reach, whatever it is made
+## of. Deterministic by construction — a FIFO flood seeded with the zone's own cells in
+## the order `_cells_of_marker` found them, expanded through `Grid.NEIGHBOR_OFFSETS` in
+## its fixed order. No RNG; the same board always seats the same roster the same way.
+##
+## Returns fewer than `count` cells when the connected ground genuinely runs out.
+## `build_bout` refuses the bout by name rather than stacking, per this file's own
+## "never crash, never silently invent" posture.
+static func _placement_cells(
+	grid: Grid, zone_cells: Array[Vector2i], count: int, taken: Dictionary
+) -> Array[Vector2i]:
+	var pathfinder := Pathfinder.new(grid)
+	var placed: Array[Vector2i] = []
+	var queue: Array[Vector2i] = zone_cells.duplicate()
+	var visited: Dictionary = {}
+	for cell: Vector2i in zone_cells:
+		visited[cell] = true
+
+	var head: int = 0
+	while head < queue.size() and placed.size() < count:
+		var cell: Vector2i = queue[head]
+		head += 1
+		# Unwalkable ground is neither somewhere a unit may stand nor somewhere the
+		# spill may route through — and skipping expansion is what makes the reverse
+		# `move_cost` check below a pure height question rather than a repeat of this one.
+		if not pathfinder.is_walkable(cell):
+			continue
+		if not taken.has(cell):
+			taken[cell] = true
+			placed.append(cell)
+		for offset: Vector2i in Grid.NEIGHBOR_OFFSETS:
+			var next: Vector2i = cell + offset
+			if visited.has(next) or not grid.in_bounds(next):
+				continue
+			visited[next] = true
+			if pathfinder.move_cost(cell, next) < 0.0 or pathfinder.move_cost(next, cell) < 0.0:
+				continue
+			queue.append(next)
+	return placed
+
+
 static func _spawn_squad(
-	roster: Array[BoutRosterEntry], squad_id: int, spawn_cells: Array[Vector2i]
+	roster: Array[BoutRosterEntry], squad_id: int, placement_cells: Array[Vector2i]
 ) -> Array[Unit]:
 	var units: Array[Unit] = []
 	for i in range(roster.size()):
@@ -103,10 +188,13 @@ static func _spawn_squad(
 		var matrix := Matrix.new()
 		matrix.id = StringName("%s_%d" % [entry.profile.preset_name, i])
 		matrix.ai_profile = entry.ai_profile
+		# `BR51.19`: one distinct cell per unit, chosen by `_placement_cells` and already
+		# checked to be walkable. The old `spawn_cells[i % spawn_cells.size()]` wrap is
+		# what stacked every unit past the fourth. The `Vector2i(i, squad_id)` fallback
+		# survives only for a grid carrying no spawn markers at all, where there is no
+		# zone to spill from — still distinct per unit, which is what it was always for.
 		var cell: Vector2i = (
-			spawn_cells[i % spawn_cells.size()]
-			if not spawn_cells.is_empty()
-			else Vector2i(i, squad_id)
+			placement_cells[i] if i < placement_cells.size() else Vector2i(i, squad_id)
 		)
 		var unit: Unit = DeepStrike.assemble_from_preset(entry.profile, matrix, cell, squad_id)
 		if unit != null:

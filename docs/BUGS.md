@@ -1461,7 +1461,7 @@ components. **A `ShotPlane: no region for ...` line in the log means this has re
   anything since — but nothing has reproduced it either, and no second sighting has been reported.
   **Left `Suspected`**; one sighting plus the reporter's own hedge is not a described defect.
 
-### BR51.19 — Active — owner: `SUPERVISOR`
+### BR51.19 — Pending — owner: `SUPERVISOR`
 **More than four units on a side spawn stacked on top of each other**
 - **cluster:** `map-generation`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -1479,6 +1479,39 @@ components. **A `ShotPlane: no region for ...` line in the log means this has re
   being overwritten rather than the placement being refused.
 - **Start at how many cells the spawn zone offers**, not at the placement loop: four being the threshold
   is the shape of a zone that runs out of distinct cells and then stops advancing.
+
+**taskblock-61 Pass E1 — `Pending`. The hint was right and the arithmetic is exact.**
+CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
+
+- **`MapGen.SPAWN_ZONE_SIZE` is 2, so `_mark_zone` marks a 2x2 zone — exactly four cells**, and
+  fewer once tb60's height filter drops one. That is the whole of *"four is the tell"*: not a
+  coincidence and not a loop that stops advancing, but a zone that never had a fifth cell in it.
+- **The placement loop then wrapped.** `BoutSetup._spawn_squad` read
+  `spawn_cells[i % spawn_cells.size()]`, so unit 5 was handed unit 1's cell. `CombatState`'s own
+  registration loop (`combat_state.gd:230`) writes `set_occupant_id(unit.cell, unit.id)` per unit,
+  which is exactly the overwrite the entry predicted — the last writer won and the earlier arrival
+  simply stopped being registered anywhere.
+- **Reproduced with a count before the fix**: a 6-a-side bout on seed 4242 put **12 units on 8
+  distinct cells**, with units 4/5 on top of 0/1 and 10/11 on top of 6/7. After the fix, 12 on 12.
+- **The fix is `BoutSetup._placement_cells`**: the zone's own cells first, then a deterministic FIFO
+  spill outward. **Its edge rule is two-way traversability, not reachability** — a `HOP_DOWN` edge
+  is a legal step out of the zone a non-climbing shell cannot take back, so a one-way spill would
+  have spawned a unit stranded off a ledge and re-filed `BR40.04` under a new number.
+- **A zone that genuinely runs out now refuses the bout by name** rather than stacking, matching
+  `build_bout`'s own "never crash, never silently invent" posture. A grid with no spawn markers at
+  all is untouched — it has no zone to spill from and keeps the pre-existing `Vector2i(i, squad_id)`
+  fallback.
+- **No golden moved.** For any roster that fits the zone the chosen cells are identical to the old
+  `spawn_cells[i]`, so the full gate stayed green at 3395/3395 with the bout-determinism goldens
+  unchanged.
+- **To see it:** start a bout with **six or more units a side** and look at turn 0. Every unit
+  should stand on its own cell, with the ones past the fourth arranged outward from the spawn zone
+  rather than piled on it. The old symptom — units beginning stacked and then moving apart to
+  plausible positions — should be gone entirely, not merely rarer.
+- **Tests:** `test_bout_setup.gd::test_a_squad_larger_than_the_spawn_zone_does_not_stack_its_units`
+  (distinct cells *and* the occupancy grid agreeing with the units) and
+  `::test_units_spilled_out_of_a_full_spawn_zone_stand_on_reachable_ground` (every spilled unit
+  stands on walkable ground with a route back to its own zone). Both fail without the fix.
 
 ### BR51.21 — Active — owner: `SUPERVISOR`
 **A debug injection never animates — the board snaps, nothing plays**
