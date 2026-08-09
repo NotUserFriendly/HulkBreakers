@@ -253,7 +253,7 @@ func test_move_on_next_click_applies_immediately_on_the_next_board_click() -> vo
 	_select_move_object(panel)
 	var applied_signal := [null, {}]
 	panel.applied.connect(
-		func(verb_id: StringName, args: Dictionary) -> void:
+		func(verb_id: StringName, args: Dictionary, _events: Array[LogEvent]) -> void:
 			applied_signal[0] = verb_id
 			applied_signal[1] = args
 	)
@@ -553,7 +553,9 @@ func test_apply_is_disabled_for_the_ui_category() -> void:
 func test_apply_on_the_category_applies_no_verb() -> void:
 	var panel: DebugControlPanel = _open_panel()
 	var applied: Array[int] = [0]
-	panel.applied.connect(func(_id: StringName, _args: Dictionary) -> void: applied[0] += 1)
+	panel.applied.connect(
+		func(_id: StringName, _args: Dictionary, _events: Array[LogEvent]) -> void: applied[0] += 1
+	)
 
 	panel._select_verb(_ui_entry_index(panel))
 	panel._on_apply_pressed()
@@ -590,3 +592,130 @@ func test_a_non_object_verb_does_not_blame_the_active_target() -> void:
 	)
 
 	assert_eq(suffix, "", "it never touched the active item")
+
+
+# --- taskblock-61 Pass E3 (BR51.21): the channel that lets an injection animate ---------
+
+
+## A board with a real volatile barrel on it, which is the entry's own reproduction: *"forcing a
+## detonation... there is no visible explosion animation."* A bare `Part.new()` unit is enough for
+## every other test in this file and is deliberately not enough here — the whole question is
+## whether a verb's *effects* reach the signal, so the verb has to have some.
+func _open_panel_with_a_barrel(cell: Vector2i) -> DebugControlPanel:
+	var root := Part.new()
+	root.hp = 5
+	root.max_hp = 5
+	var unit := Unit.new(Matrix.new(), Shell.new(root), Vector2i(0, 0), 0)
+	var state := CombatState.new(Grid.new(5, 5), [unit])
+	var injector := BoutInjector.new(state)
+	var barrel: Part = DataLibrary.get_part(&"goo_barrel")
+	assert_not_null(barrel, "sanity: the shipped volatile barrel must load")
+	assert_true(
+		injector.place_cover(cell, &"goo_barrel", {&"goo_barrel": barrel.duplicate(true)}),
+		"sanity: a barrel is on the board"
+	)
+
+	var panel := DebugControlPanel.new()
+	add_child_autofree(panel)
+	panel.setup(injector, DeepStrike.reference_humanoid_pool(), FakeInputOwner.new())
+	return panel
+
+
+## `BR51.21` — **no injection ever animated, and the missing piece was a channel, not a call.**
+##
+## A forced detonation, move or kill snapped the board and played nothing. The capability was never
+## absent: `ResolutionModule.play(events)` animates a specific event list and both real resolution
+## paths already use it. What was absent is that `applied` fires *after* the verb has run, so
+## nothing downstream could recover the events it produced — there was nowhere to get them from.
+##
+## This pins the channel at its source. Without `_capture` the signal carries two arguments and
+## this does not even compile.
+func test_a_verb_that_causes_effects_hands_them_to_the_applied_signal() -> void:
+	var cell := Vector2i(3, 3)
+	var panel: DebugControlPanel = _open_panel_with_a_barrel(cell)
+	var carried: Array[LogEvent] = []
+	panel.applied.connect(
+		func(_id: StringName, _args: Dictionary, events: Array[LogEvent]) -> void:
+			carried.assign(events)
+	)
+
+	panel._select_verb(_verb_index(&"set_part_hp"))
+	panel._active = SelectionTarget.for_cell(cell).to_hit()
+	_fill_set_part_hp(panel, &"", 0)
+	panel._on_apply_pressed()
+
+	gut.p("status: %s" % panel._status_label.text)
+	gut.p("%d events carried: %s" % [carried.size(), _kinds_of(carried)])
+	assert_true(panel._status_label.text.contains("applied"), "sanity: the verb actually ran")
+	assert_false(
+		carried.is_empty(),
+		"a forced detonation has effects; the injection has nothing to animate without them"
+	)
+	for event: LogEvent in carried:
+		assert_false(
+			InjectionEvents.AUDIT_KINDS.has(event.kind),
+			(
+				(
+					"%s is bookkeeping ABOUT the injection, not an effect of it — handing it to the "
+					+ "resolution player would flash the banner for a verb that did nothing visible"
+				)
+				% event.kind
+			)
+		)
+
+
+## The other half, and the reason `InjectionEvents.effects` exists at all: **every verb emits
+## `command`, `command_outcome` and `inject` whether or not it changed anything**, so a raw capture
+## is never empty. Filtering the bookkeeping out is what makes an empty list mean what it says —
+## and an empty list is what lets *"which verbs animate"* be a property of the verb's own output
+## rather than a table somebody has to keep in step with `DebugVerbs`.
+func test_a_verb_that_changes_nothing_carries_an_empty_list_rather_than_its_own_bookkeeping(
+) -> void:
+	var panel: DebugControlPanel = _open_panel()
+	var seen: Array[int] = []
+	panel.applied.connect(
+		func(_id: StringName, _args: Dictionary, events: Array[LogEvent]) -> void:
+			seen.append(events.size())
+	)
+
+	panel._select_verb(_verb_index(&"force_current_unit"))
+	panel._on_apply_pressed()
+
+	assert_eq(seen.size(), 1, "sanity: the verb applied and the signal fired")
+	assert_eq(seen[0], 0, "its three bookkeeping lines are not effects and must not be carried")
+
+
+## **The sink is removed whether or not the verb succeeds.** A `MemorySink` left attached would
+## collect every event for the rest of the battle, which is the exact leak `CombatLog.remove_sink`
+## documents itself against — and a refusal is the path most likely to skip a cleanup, so it is the
+## one worth pinning.
+func test_the_capture_sink_is_detached_even_when_the_verb_refuses() -> void:
+	var panel: DebugControlPanel = _open_panel()
+	var log: CombatLog = panel.combat_state.combat_log
+	var before: int = log._sinks.size()
+
+	panel._select_verb(_verb_index(&"set_part_hp"))
+	panel._active = SelectionTarget.for_cell(Vector2i(4, 4)).to_hit()
+	panel._on_apply_pressed()
+
+	assert_true(panel._status_label.text.contains("refused"), "sanity: this path refuses")
+	assert_eq(log._sinks.size(), before, "the capture sink must not outlive the call that made it")
+
+
+## Fills whichever widgets the `set_part_hp` param row built, by walking the real container rather
+## than assuming an index — the param pane is rebuilt per verb and its layout is not this test's
+## business.
+func _fill_set_part_hp(panel: DebugControlPanel, part_id: StringName, hp: int) -> void:
+	for row: Node in panel._param_container.get_children():
+		for child: Node in row.get_children():
+			if child is LineEdit:
+				(child as LineEdit).text = String(part_id)
+			elif child is SpinBox:
+				(child as SpinBox).value = hp
+
+
+func _kinds_of(events: Array[LogEvent]) -> String:
+	var kinds := PackedStringArray()
+	for event: LogEvent in events:
+		kinds.append(String(event.kind))
+	return ", ".join(kinds)

@@ -34,7 +34,12 @@ extends ViewModule
 ## The player view refreshed its readout header here and the spectator its status line — the one
 ## genuine difference between the two copies, and now a signal each of them subscribes to rather
 ## than a callback the host had to thread through.
-signal verb_applied(verb_id: StringName)
+##
+## **`BR51.21`: `events` rides along**, because a listener that wants to animate the injection
+## cannot recover them any other way — the verb has already run by the time this fires. Carried
+## through rather than consumed here: this module owns the view *resync*, and playing an event list
+## is `ResolutionModule`'s job.
+signal verb_applied(verb_id: StringName, events: Array[LogEvent])
 
 ## taskblock-57 Pass C: **a debug UI element was switched on or off**, re-published from
 ## `DebugControlPanel` so the module that owns the surface can consume it without either of them
@@ -183,7 +188,15 @@ func toggle() -> void:
 ## `remove_object` on a unit is the one verb that must REMOVE a view rather than add or refresh one,
 ## done before `sync_unit_views()` runs so the same call never resurrects what it was just told to
 ## vanish.
-func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
+##
+## **`BR51.21`: the syncs below run BEFORE the events are re-published, and that order is load-
+## bearing rather than incidental.** `ResolutionPlayer._prime` is documented as running in the same
+## frame `refresh_unit_views()` did — it is what stops a unit flashing at its destination and
+## jumping back — so a listener that plays the injection must be handed it *after* the resync, not
+## instead of it.
+func _on_debug_panel_applied(
+	verb_id: StringName, args: Dictionary, events: Array[LogEvent]
+) -> void:
 	var battle: BattleScene = context.battle if context != null else null
 	if battle == null:
 		return
@@ -198,7 +211,32 @@ func _on_debug_panel_applied(verb_id: StringName, args: Dictionary) -> void:
 	if DebugVerbs.affects_board(verb_id):
 		battle.sync_board_view()
 	battle.refresh_unit_views()
-	verb_applied.emit(verb_id)
+	verb_applied.emit(verb_id, events)
+	_play_injection(events)
+
+
+## `BR51.21`: animates what the verb actually caused, through the same `ResolutionModule.play` both
+## real resolution paths use (`PlaybackModule` with `runner.last_events`, `UnitInputModule` with its
+## own). **Not a third resolution path** — one call, reached from a third place.
+##
+## **Here rather than in `PlaybackModule`, and that is the correction worth recording.** The
+## obvious home is that module's existing `_on_verb_applied`, and it is wrong: `playback` is
+## mounted by the spectator and editor modes and **is not in `PLAYER_MODULES`**, while
+## `debug_panel` is in all three. Playing from there would have animated an injection while
+## spectating and silently not while playing — the same one-path defect this entry is about.
+##
+## **`PlaybackModule.play()` would also have been the wrong call**: it resumes the *bout runner* and
+## auto-plays turns, which is not what pressing Apply on a debug verb should do.
+##
+## An empty list returns early rather than calling `play([])`, because `ResolutionPlayer.play`
+## raises its banner and waits out `RESOLVE_LEAD_IN` before it looks at the list — so an empty
+## playback is a visible pause on every Apply press, not a no-op.
+func _play_injection(events: Array[LogEvent]) -> void:
+	if events.is_empty():
+		return
+	var resolution: ViewModule = context.module(&"resolution") if context != null else null
+	if resolution != null:
+		await (resolution as ResolutionModule).play(events)
 
 
 ## Re-published rather than acted on. **This module no longer owns any of the surfaces the debug

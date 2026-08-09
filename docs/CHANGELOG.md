@@ -2,6 +2,47 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass E3 — an injection animates, and two details of the recorded fix shape were wrong
+
+**`BR51.21` to `Pending`.** No debug injection had ever animated: a forced detonation, move or kill
+snapped the board and played nothing. The capability was never missing —
+`ResolutionModule.play(events)` animates a specific event list and both real resolution paths
+already use it. **What was missing was a channel**, exactly as the entry said, and it is
+`DebugControlPanel._capture`: a `MemorySink` bracketing the verb, handed on as a third argument to
+`applied(verb_id, args, events)`. That is the only place that can capture them, because `applied`
+fires after the mutation is already done.
+
+**Two things the entry's own corrected fix shape got wrong, both found by running it:**
+
+**1. *"A verb that emitted nothing yields an empty list, so the set self-selects"* is false.** Every
+verb routes through `_guard`, which emits `command` before anything can refuse and
+`command_outcome` after; a successful one adds `inject`. **A raw capture is never empty** — three
+events for a verb that changed nothing. And `play([])` is not the no-op it looks like:
+`ResolutionPlayer.play` raises its RESOLUTION banner and waits out `RESOLVE_LEAD_IN` *before* it
+looks at the list, so the "harmless" call would have put a visible pause on every Apply press.
+`InjectionEvents.effects` strips the audit trio, and only then does the self-selection claim hold.
+
+**2. `PlaybackModule` is the wrong owner.** Its `_on_verb_applied` is where the dead handler lived,
+so it reads as the place to fix — but **`playback` is not in `PLAYER_MODULES`**. It is mounted by
+the spectator and editor modes; `debug_panel` is mounted by all three. Fixing it there would have
+animated injections while spectating and silently not while playing, which is the same one-path
+shape the entry exists about. `DebugPanelModule._play_injection` owns it, and a test asserts the
+player mode mounts no playback module so this cannot be quietly undone.
+
+**What the entry got right and is preserved:** `ResolutionModule.play(events)` rather than
+`PlaybackModule.play()` (which resumes the bout runner and auto-plays turns), and the
+sync-before-play ordering `ResolutionPlayer._prime` needs.
+
+**`bout_injector.gd` hit the 1000-line lint cap — the second file this block to do so.** The new
+vocabulary took it from 998 to 1026. **Paid by extracting rather than by shortening comments**,
+which taskblock-61 has already done once to `board_view.gd` and recorded as the worst available
+trade; `src/debug/injection_events.gd` is one separable question with one caller-facing function.
+
+**The overlay tests read `ResolutionPlayer._display_cell` synchronously after the emit.** `_prime`
+runs before the first awaited timer, so the event list's arrival is provable without waiting out an
+animation or racing a tween.
+
+
 ### Pass E2 — the navigability invariant learns to ask the other half of its own question
 
 **`BR60.01` stays `Active`, and that is the finding rather than a shortfall.** The entry's title has

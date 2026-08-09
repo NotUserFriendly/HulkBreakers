@@ -655,7 +655,7 @@ func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void
 	built.state.add_unit(spawned)
 	assert_null(overlay.battle.find_unit_view(spawned.id), "sanity: no view yet")
 
-	overlay.debug_panel_module().panel.applied.emit(&"spawn_unit", {})
+	overlay.debug_panel_module().panel.applied.emit(&"spawn_unit", {}, [] as Array[LogEvent])
 
 	var view: HitVolumeView = overlay.battle.find_unit_view(spawned.id)
 	assert_not_null(view, "the applied handler must sync a view for a unit added mid-bout")

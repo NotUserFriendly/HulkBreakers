@@ -77,7 +77,16 @@ func link() -> void:
 		(debug as DebugPanelModule).verb_applied.connect(_on_verb_applied)
 
 
-func _on_verb_applied(_verb_id: StringName) -> void:
+## Still only the status line, and `BR51.21` deliberately did **not** put the injection's playback
+## here.
+##
+## The obvious reading of that entry is that this handler should animate what the verb produced,
+## and it is wrong for a reason worth recording: **`playback` is not in `PLAYER_MODULES`.** It is
+## mounted by the spectator and editor modes; `debug_panel` is mounted by all three. Playing the
+## injection from here would have animated it while spectating and silently not while playing,
+## which is the same "works on one path" shape the entry was filed about. `DebugPanelModule` owns
+## it instead — it is mounted wherever the panel is.
+func _on_verb_applied(_verb_id: StringName, _events: Array[LogEvent]) -> void:
 	refresh_status()
 
 

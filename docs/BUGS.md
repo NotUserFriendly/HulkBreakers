@@ -1513,7 +1513,7 @@ CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
   `::test_units_spilled_out_of_a_full_spawn_zone_stand_on_reachable_ground` (every spilled unit
   stands on walkable ground with a route back to its own zone). Both fail without the fix.
 
-### BR51.21 — Active — owner: `SUPERVISOR`
+### BR51.21 — Pending — owner: `SUPERVISOR`
 **A debug injection never animates — the board snaps, nothing plays**
 - **cluster:** `two-clocks`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
@@ -1577,6 +1577,57 @@ back.
 
 **Not fixed here.** Recorded because the entry described code that no longer exists and would have
 sent the next reader to two deleted files.
+
+**taskblock-61 Pass E3 — `Pending`. The channel exists, and two of the corrected fix shape's own
+details were wrong.** CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
+
+- **The channel is `DebugControlPanel._capture`.** It brackets the verb with a `MemorySink` on the
+  live `CombatLog` and emits the result as a third argument on `applied(verb_id, args, events)`.
+  This is the only place that *can* capture them: `applied` fires after the mutation, so nothing
+  downstream can snapshot the log around it. A sink added and removed around one call is the
+  *"temporary sink capturing one turn's events for playback"* `CombatLog.remove_sink` already
+  documents itself for, and the removal is unconditional — pinned by a test on the refusal path,
+  which is where a cleanup is most likely to be skipped.
+- **The entry's *"a verb that emitted nothing yields an empty list, so the set self-selects"* is
+  false as written, and that is the correction that mattered.** Every verb routes through `_guard`,
+  which emits `command` before anything can refuse and `command_outcome` after; a successful one
+  adds `inject`. **A raw capture is therefore never empty** — measured at three events for a verb
+  that changed nothing. Handing that to `ResolutionPlayer.play` raises its RESOLUTION banner and
+  waits out `RESOLVE_LEAD_IN` before it even looks at the list, so the "no-op" would have been a
+  visible pause on every Apply press. `InjectionEvents.effects` strips the audit trio and the
+  self-selection claim becomes true.
+- **`PlaybackModule` is the wrong owner, and the entry pointed at it.** Its `_on_verb_applied` is
+  where the dead handler lived, so it reads as the place to fix — but **`playback` is not in
+  `PLAYER_MODULES`**. It is mounted by the spectator and editor modes only, while `debug_panel` is
+  mounted by all three. A fix there would have animated injections while spectating and silently
+  not while playing: the same one-path defect this entry is about. `DebugPanelModule._play_injection`
+  owns it instead. A test asserts the player mode mounts no playback module, so this cannot be
+  "simplified" back.
+- **`ResolutionModule.play(events)` is the call, as the entry said** — not `PlaybackModule.play()`,
+  which resumes the bout runner and auto-plays turns.
+- **The sync-before-play ordering the entry flagged is preserved**: `_play_injection` runs after
+  `sync_unit_views` / `sync_board_view` / `refresh_unit_views`, which is the frame
+  `ResolutionPlayer._prime` is documented to need.
+- **`bout_injector.gd` was at 998 of the 1000-line cap** and the new vocabulary put it at 1026.
+  Rather than pay by shortening comments — which this block already did once to `board_view.gd`
+  and recorded as the worst available trade — the separable question moved to
+  `src/debug/injection_events.gd`. Noted because it is the second file this block to hit that cap.
+- **To see it:** open the debug panel, set a goo barrel's HP to 0 with Set Part HP, and press
+  Apply. **The explosion sphere `BR35.08` built should now play** where the board previously just
+  snapped. A forced move should slide rather than teleport. **A verb with no visible effect — the
+  readout toggles, `force_current_unit` — must still feel instant**, with no banner flash and no
+  pause; that is the half `InjectionEvents.effects` protects and it is worth checking too.
+- **This also unblocks `BR35.08`'s confirmation**, which could not be judged on the debug path at
+  all until an injection animated.
+- **Tests:** `test_bout_injector.gd::test_effect_events_strips_the_injectors_own_bookkeeping_and_
+  keeps_what_the_verb_caused` and `::test_effect_events_keeps_a_detonation_caused_by_a_forced_hp_
+  change`; `test_debug_control_panel.gd::test_a_verb_that_causes_effects_hands_them_to_the_applied_
+  signal`, `::test_a_verb_that_changes_nothing_carries_an_empty_list_rather_than_its_own_
+  bookkeeping`, `::test_the_capture_sink_is_detached_even_when_the_verb_refuses`;
+  `test_squad_control_overlay.gd::test_an_injection_hands_its_events_to_the_resolution_player` and
+  `::test_an_injection_that_caused_nothing_does_not_start_a_resolution`. The overlay pair reads
+  `ResolutionPlayer._display_cell` straight after the emit — `_prime` runs before the first awaited
+  timer, so the list's arrival is provable without waiting out an animation.
 
 ### BR51.24 — Active — owner: `SUPERVISOR`
 **A part destroyed by an explosion disappears from inspect but stays on the model**

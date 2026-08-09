@@ -646,3 +646,61 @@ func test_the_part_hit_a_cover_click_produces_is_a_usable_target() -> void:
 
 	assert_true(ok, "a cover click is a usable target")
 	assert_eq(cover.hp, 0, "and it reached the cover, not the floor under it")
+
+
+# --- taskblock-61 Pass E3 (BR51.21): bookkeeping about a verb vs effects of a verb -------
+
+
+## **`effect_events` exists because `events.is_empty()` is never true.** Every verb routes through
+## `_guard`, which emits `command` before anything can refuse and `command_outcome` after, and a
+## successful one adds `inject` — so a raw capture around any verb carries at least three lines
+## whether or not the board changed.
+##
+## `BR51.21` needs the distinction to answer *"is there anything to animate"* without a table of
+## animatable verbs. A verb that changed nothing must hand back an empty list.
+func test_effect_events_strips_the_injectors_own_bookkeeping_and_keeps_what_the_verb_caused(
+) -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
+	var injector := BoutInjector.new(state)
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	assert_true(injector.force_current_unit(a), "sanity: a verb that changes no geometry")
+	state.combat_log.remove_sink(sink)
+
+	var raw: Array[LogEvent] = sink.events
+	gut.p("raw kinds: %s" % ", ".join(raw.map(func(e: LogEvent) -> String: return String(e.kind))))
+	assert_false(raw.is_empty(), "the raw capture is never empty — that is the whole problem")
+	assert_eq(
+		InjectionEvents.effects(raw),
+		[] as Array[LogEvent],
+		"a verb that caused nothing must filter to nothing, or every Apply press animates"
+	)
+
+
+## The keeping half: a real effect survives the filter, sitting alongside the bookkeeping that
+## does not. Uses a volatile barrel because that is `BR51.21`'s own reproduction — *"forcing a
+## detonation... there is no visible explosion animation."*
+func test_effect_events_keeps_a_detonation_caused_by_a_forced_hp_change() -> void:
+	var a := _make_unit(Vector2i(0, 0), 0)
+	var state := CombatState.new(GridFixture.flat(5, 5), [a])
+	var injector := BoutInjector.new(state)
+	var cell := Vector2i(3, 3)
+	var barrel: Part = DataLibrary.get_part(&"goo_barrel")
+	assert_not_null(barrel, "sanity: the shipped volatile barrel must load")
+	assert_true(injector.place_cover(cell, &"goo_barrel", {&"goo_barrel": barrel.duplicate(true)}))
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	assert_true(injector.set_part_hp({"kind": Enums.HitKind.CELL, "cell": cell}, &"", 0))
+	state.combat_log.remove_sink(sink)
+
+	var effects: Array[LogEvent] = InjectionEvents.effects(sink.events)
+	var kinds := PackedStringArray()
+	for event: LogEvent in effects:
+		kinds.append(String(event.kind))
+	gut.p("effect kinds: %s" % ", ".join(kinds))
+	assert_true(kinds.has("detonation"), "the detonation is the effect; it must survive the filter")
+	for event: LogEvent in effects:
+		assert_false(InjectionEvents.AUDIT_KINDS.has(event.kind), "%s is bookkeeping" % event.kind)

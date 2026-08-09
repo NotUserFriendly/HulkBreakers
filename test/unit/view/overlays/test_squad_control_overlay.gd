@@ -528,7 +528,7 @@ func test_applying_a_debug_verb_syncs_a_view_for_a_unit_added_mid_bout() -> void
 	built.state.add_unit(spawned)
 	assert_null(overlay.battle.find_unit_view(spawned.id), "sanity: no view yet")
 
-	overlay.debug_panel_module().panel.applied.emit(&"spawn_unit", {})
+	overlay.debug_panel_module().panel.applied.emit(&"spawn_unit", {}, [] as Array[LogEvent])
 
 	var view: HitVolumeView = overlay.battle.find_unit_view(spawned.id)
 	assert_not_null(view, "the applied handler must sync a view for a unit added mid-bout")
@@ -576,4 +576,65 @@ func test_inject_panel_remove_object_on_a_unit_destroys_its_view_and_never_resur
 
 	assert_null(
 		overlay.battle.find_unit_view(player_unit.id), "still gone after an unrelated Apply"
+	)
+
+
+## `BR51.21` — **the far end of the injection channel: the events reach the resolution player.**
+##
+## `DebugControlPanel` captures what a verb caused, `DebugPanelModule` re-publishes it, and
+## `PlaybackModule` hands it to `ResolutionModule.play`. This asserts the last hop, which is the
+## one that was missing: `_on_verb_applied` called `refresh_status()` and nothing else, so no
+## injection ever animated on any path.
+##
+## **Read synchronously off `_prime`, deliberately.** `ResolutionPlayer.play` is a chain of awaited
+## timers, but `_prime(events)` runs before the first of them and seeds `_display_cell` for every
+## unit the event list moves. So a test can prove the list arrived without waiting out an animation
+## or racing a tween — the same "read the real node back" posture as the camera tests, applied to a
+## player's own state rather than a transform.
+func test_an_injection_hands_its_events_to_the_resolution_player() -> void:
+	var built: Dictionary = _bout()
+	var overlay: ControlOverlay = _squad_control(built)
+	var resolution: ResolutionModule = overlay.module(&"resolution") as ResolutionModule
+	assert_not_null(resolution, "sanity: the player mode mounts a resolution module")
+	assert_null(
+		overlay.module(&"playback"),
+		(
+			"sanity, and the whole reason the playback lives on DebugPanelModule: the PLAYER mode "
+			+ "mounts no playback module, so a fix routed through that one animates nothing here"
+		)
+	)
+	var unit: Unit = built.player_unit
+	resolution.player._display_cell.clear()
+
+	overlay.debug_panel_module().panel.applied.emit(
+		&"move_object", {}, [_move_event(unit)] as Array[LogEvent]
+	)
+
+	gut.p("primed display cells: %s" % str(resolution.player._display_cell))
+	assert_true(
+		resolution.player._display_cell.has(unit.id),
+		(
+			"the injection's own events never reached ResolutionModule.play — this is BR51.21, "
+			+ "where the handler refreshed a status line and animated nothing"
+		)
+	)
+
+
+## The matching negative, and it is what stops the fix being worse than the bug: a verb that
+## changed nothing must NOT start a resolution. `ResolutionPlayer.play` sets its banner and sits
+## through `RESOLVE_LEAD_IN` before it looks at the list, so playing an empty one would put a
+## visible pause on every Apply press — including the ones that only toggled a readout.
+func test_an_injection_that_caused_nothing_does_not_start_a_resolution() -> void:
+	var overlay: ControlOverlay = _squad_control(_bout())
+	var resolution: ResolutionModule = overlay.module(&"resolution") as ResolutionModule
+	resolution.player._display_cell.clear()
+
+	overlay.debug_panel_module().panel.applied.emit(
+		&"force_current_unit", {}, [] as Array[LogEvent]
+	)
+
+	assert_eq(
+		resolution.player._display_cell.size(),
+		0,
+		"an empty event list must not reach the player at all"
 	)

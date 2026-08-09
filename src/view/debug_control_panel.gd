@@ -29,7 +29,19 @@ signal closed
 ## Fires after a successful Apply — `verb_id` + the resolved args, so a
 ## caller (an overlay) can refresh its own views without this panel
 ## needing to know anything about view-refresh itself.
-signal applied(verb_id: StringName, args: Dictionary)
+##
+## **`BR51.21`: `events` is the third argument, and it is the whole fix.** No injection ever
+## animated — a forced detonation, move or kill snapped the board and played nothing — because
+## this signal fires *after* the verb has already run, so no listener could recover the events it
+## produced. The capability was never missing: `ResolutionModule.play(events)` animates a specific
+## event list and is what both real resolution paths already use. **What was missing was a
+## channel**, and this is it.
+##
+## **Which verbs animate needs no policy.** `events` carries what the verb *caused*, with the
+## injector's own `command`/`command_outcome`/`inject` bookkeeping stripped — so a verb that
+## changed nothing hands over an empty list and its listener does nothing. The set self-selects,
+## and there is deliberately no table of animatable verbs to keep in step with `DebugVerbs`.
+signal applied(verb_id: StringName, args: Dictionary, events: Array[LogEvent])
 
 ## taskblock-51: **a debug UI element was switched on or off** — `DebugUiElements` ids, one
 ## signal for the whole table rather than one signal per element.
@@ -509,6 +521,36 @@ func _begin_pick_cell(spin_x: SpinBox, spin_y: SpinBox) -> void:
 	)
 
 
+## `BR51.21`: runs `action` with a `MemorySink` on the live `CombatLog`, and hands back
+## `{"ok": bool, "events": Array[LogEvent]}` — the verb's own verdict plus everything it emitted
+## while running.
+##
+## **The events have to be captured here because this is the only place that brackets the verb.**
+## `applied` fires after the mutation is done, so no listener downstream can snapshot the log
+## around it; whatever executes the verb is the only thing that can hand the events over, and that
+## is this function's whole reason to exist.
+##
+## A `MemorySink` added and removed around one call is exactly the *"temporary sink capturing one
+## turn's events for playback"* that `CombatLog.remove_sink` already documents itself for — not a
+## new mechanism, and it cannot leak: the removal is unconditional.
+##
+## A panel with no state yet (`setup` never called) runs the action and reports no events rather
+## than refusing it — the verb's own mutation is not this function's to veto.
+func _capture(action: Callable) -> Dictionary:
+	var log: CombatLog = combat_state.combat_log if combat_state != null else null
+	if log == null:
+		return {"ok": action.call() as bool, "events": [] as Array[LogEvent]}
+	var sink := MemorySink.new()
+	log.add_sink(sink)
+	var ok: bool = action.call()
+	log.remove_sink(sink)
+	# **`InjectionEvents.effects`, not `sink.events`.** Every verb emits `command`,
+	# `command_outcome` and `inject` whether or not it changed anything, so the raw list is never
+	# empty and a listener could not tell "nothing to animate" from "something happened". Stripping
+	# the injector's own bookkeeping is what makes an empty list mean what it says.
+	return {"ok": ok, "events": InjectionEvents.effects(sink.events)}
+
+
 ## The "move on next click" accelerated path for `move_object`: snapshots
 ## `_active` right now (the destination click below also updates `_active`
 ## itself, via the always-on tracker — snapshotting first means THAT click
@@ -525,10 +567,14 @@ func _begin_move_on_next_click() -> void:
 			var cell: Variant = hit.get("cell")
 			if cell == null:
 				return
-			var ok: bool = bout_injector.move_object(object_snapshot, cell)
-			_status_label.text = "Move Object: %s" % ("applied" if ok else "refused")
-			if ok:
-				applied.emit(&"move_object", {"object": object_snapshot, "to_cell": cell})
+			var run: Dictionary = _capture(
+				func() -> bool: return bout_injector.move_object(object_snapshot, cell)
+			)
+			_status_label.text = "Move Object: %s" % ("applied" if run.ok else "refused")
+			if run.ok:
+				applied.emit(
+					&"move_object", {"object": object_snapshot, "to_cell": cell}, run.events
+				)
 	)
 
 
@@ -615,10 +661,12 @@ func _on_apply_pressed() -> void:
 			_status_label.text = "%s: no %s found" % [verb.label, p.name]
 			return
 		args[p.name] = value
-	var ok: bool = verb.apply.call(bout_injector, pool, args)
-	if ok:
+	var run: Dictionary = _capture(
+		func() -> bool: return verb.apply.call(bout_injector, pool, args)
+	)
+	if run.ok:
 		_status_label.text = "%s: applied" % verb.label
-		applied.emit(verb.id, args)
+		applied.emit(verb.id, args, run.events)
 		return
 	# taskblock-51 Pass K: **a refusal names what was refused.** Now that cover and bare cells
 	# can be the active target, "refused" on its own leaves the operator guessing whether the
