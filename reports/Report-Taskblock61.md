@@ -1,4 +1,11 @@
-# Taskblock 61 Report — the hunt (INCOMPLETE — passes C, D, E, F not started)
+# Taskblock 61 Report — the hunt (INCOMPLETE — passes D, E, F not started)
+
+> **Updated 2026-08-09: Pass C has since landed** — all three wall-cutout entries (`BR32.04`,
+> `BR32.05`, `BR32.08`) worked and moved to `Pending`, plus `BR61.04` and `BR61.05` filed. Detail is
+> in `docs/CHANGELOG.md` and the entries themselves; this report's body below describes Passes A and
+> B only and is left as written. **The Pass C headline: a correctness fix shipped as a framerate
+> regression (160 -> 13 fps) because the probe that cleared it measured a one-box fixture where a
+> real shell is 48 boxes — the block's own stated lesson, repeated.**
 
 **Passes A and B landed; `BR51.01` was hunted to root cause and fixed outside its pass. Passes C,
 D, E and F are untouched and are named as such below rather than quietly carried.** Full gate green
@@ -99,10 +106,12 @@ the entry as closing because neither side can reproduce it rather than because a
 
 ## Open questions
 
-**1. Passes C, D, E and F are not started, and C and D need a live session.** C is the wall cutout
-(`BR32.04`/`BR32.05`/`BR32.08`) — the taskblock's own note is that shader defects are invisible to
-CC and want the supervisor running diagnostic builds. D is six supervisor-sourced input-affordance
-observations. **E is solo-workable** and `BR51.21` already has its corrected fix shape recorded.
+**1. Passes D, E and F are not started; D needs a live session.** **C has since landed** — and the
+taskblock's warning that shader defects are invisible to CC held exactly: the fix needed no shader
+change at all, and the two things CC could not see (a framerate regression, and the cutout still
+firing when zoomed out) both came back from the supervisor rather than from any test. D is six
+supervisor-sourced input-affordance observations. **E is solo-workable** and `BR51.21` already has
+its corrected fix shape recorded.
 
 **2. `BR61.01` — CC's test runs write the supervisor's live combat log**, promoted to
 `SUPERVISOR` ownership at the supervisor's request (*"I want to have a hand in its creation"*).
