@@ -86,7 +86,35 @@ results are then consumed in turn order — never to the acting itself.
 
 # NEXT
 
-### 1. Rename the terrain parts to sort together, and mark them as placeholders
+### 1. Do the tests approximate things the game already defines?
+**Needs:** nothing. **Unblocks:** trusting a headless measurement; the class of failure taskblock-61
+repeated four times.
+
+**191 test files call `Part.new()` directly; seven build against a real shell template.** Hand-built
+stand-ins are the norm and real definitions are the exception — so the question is **not** "find the
+cheats", it is **"when is a hand-built fixture correct, and when is it hiding something?"**
+
+**taskblock-61 paid for this directly.** Pass C measured a cost probe against a **one-box torso** where
+a real shell is **48 boxes**, concluded the cutout was affordable, and the supervisor's next in-game
+session came back at **13 fps**. Passes A through D repeated that shape four times: measure a component
+headlessly, infer the system, report a conclusion the next in-game action disproved.
+
+**Three outcomes per fixture**, the same shape as taskblock-54's audit of the 133 hand-built state
+files:
+
+- **Hand-built is right.** A test of a pure function over two positions needs no shell, and forcing one
+  on it is slower and less focused. Leave it and say so.
+- **Hand-built was avoiding something** — usually cost or setup. Move it onto a real definition.
+- **Hand-built has drifted from what the game produces**, so the test passes against a unit that could
+  not occur. **This is the outcome worth finding**, and it is the one that produced the 13 fps.
+
+**The detector is cheap: put a real chaingunner through every test that simplifies a unit** and see what
+breaks. A fixture that only passes with a one-box stand-in is telling you something.
+
+**An audit, not a sweep.** It produces evidence and a list; acting on it is separate, under
+`TEST-AUDIT.md`'s cut rule.
+
+### 2. Rename the terrain parts to sort together, and mark them as placeholders
 
 **Needs:** nothing. **Unblocks:** an author finding a floor in the part list; the tag work below
 having something coherent to tag.
@@ -118,7 +146,7 @@ review passes.
 **Not a rename of the `walkable` tag or of `GROUND`.** Those are vocabulary the rules read; this is
 content identity.
 
-### 2. Rework the gizmo as a real CAD tool
+### 3. Rework the gizmo as a real CAD tool
 
 **Needs:** nothing. **Unblocks:** authoring geometry by direct manipulation rather than by typing
 numbers into a panel.
@@ -152,7 +180,7 @@ condition and is *more* at risk under this design rather than less: a select too
 gizmo is very close to a selection of its own. Whatever the editor already treats as "the thing
 being pointed at" is what the gizmo must read.
 
-### 3. Elevated tiles lost their line borders
+### 4. Elevated tiles lost their line borders
 **Needs:** nothing. **Unblocks:** reading a stepped board by eye.
 
 Grid lines went flat when taskblock-55 deleted the ground quad, and lines-at-tile-height was **passed on
@@ -163,7 +191,7 @@ without them, so **the judgement call is due for revisiting rather than being a 
 If the answer is to draw them, the co-planarity is the problem to solve — a small offset, a different
 primitive, or the tile's own edge geometry doing the work.
 
-### 4. Attributes
+### 5. Attributes
 **Needs:** nothing. **Unblocks:** perks, and most content downstream of perks.
 
 **The six attributes live on the MATRIX, not the shell.** A strong matrix outside a shell gains nothing;
@@ -185,7 +213,9 @@ different pilots. The matrix-is-the-real-unit premise made mechanical.
 behaviour change; a stat resolves through `StatResolver` with the attribute as a provenance source; a
 shell performs measurably differently under two different-attribute matrices.
 
-### 5. Author `step_height` onto parts
+# QUEUED
+
+### Author `step_height` onto parts
 **Needs:** `step_height` existing, which landed at taskblock-60 Pass A. **Unblocks:** step height
 reading as *chassis* rather than as a constant.
 
@@ -206,35 +236,32 @@ against the retired ramps' 15.8% — so the retirement cost essentially no eleva
   a cell being labelled. It needs authored parts that set the stat to zero before it can be built,
   which is why it sits behind this.
 
-# QUEUED
+### Aiming and the third-person camera, rebuilt
+**Needs:** nothing. **Unblocks:** closing `BR34.04`; the dartboard scaling correctly; a shot refusal
+that says why. **Supersedes the narrower "cut the sniper camera" framing.**
 
-### The camera system, refactored — and the sniper camera cut rather than fixed
-**Needs:** nothing. **Unblocks:** closing `BR34.04`, and any further work on attack framing.
+**The supervisor, 2026-08-09:** *"I've realized that I've designed aiming in a strange way, and it's
+made a bit of a code mess that needs to be cleaned up or excised."*
 
-**The supervisor's call, 2026-08-09:** *"camera is still weird, but I'm looking at doing a refactor
-of the camera system (cutting the sniper cam entirely)."* Recorded here so the intent is not carried
-only in a bug entry that a later hunt might try to satisfy on its own terms.
+**Pull the OTS camera out and replace it rather than fixing it.**
 
-**`BR34.04` is `Active` and must not be worked before this.** taskblock-61 Pass E4 made the sniper
-camera sit on the shooter-to-target line — measurably, where it previously sat **2.139 units past
-the target**, framing it from the far side — and the supervisor still reads the framing as wrong.
-**Every knob involved is on the way out**: `SNIPER_UP_OFFSET`, `SNIPER_FRAME_DISTANCE`,
-`SNIPER_ZOOM_SLACK` and the distance branch in `CameraRig.ease_to_framing`. Tuning them is work this
-refactor discards, which is the trap `BR35.02` sat in for three blocks.
+- **A true third-person camera** — behind, up, and to the right of the firing unit, **toggleable to the
+  left with `B`**.
+- **Simple FOV zoom replaces the sniper view entirely.** `SNIPER_UP_OFFSET`,
+  `SNIPER_FRAME_DISTANCE`, `SNIPER_ZOOM_SLACK` and the distance branch in `CameraRig.ease_to_framing`
+  all go. **Tuning any of them is work this discards** — which is the trap `BR35.02` sat in for three
+  blocks, and why `BR34.04` is `Active` and must not be worked before this.
+- **The dartboard goes where the raycast lands, with no guessing about intent.** If something
+  interrupts the shot, the dartboard **jumps forward to the interrupter**. No reasoning about what
+  *might* be aimed at.
+- **Scatter weapons cast a group**, and **the shortest hit places the dartboard.**
+- **Do every calculation from static, non-camera objects.** This is the constraint that matters most:
+  `BR51.01` was a cell address in a plane-space slot, and three earlier hypotheses all measured real
+  camera-related things and none of them was the cause. **A camera-derived quantity in an aiming
+  calculation is the defect shape this rebuild exists to remove.**
 
-**Two things the replacement must inherit, so they are not re-derived:**
-
-- **The rig faces its own `pan_offset` pivot by construction**, so `pan_offset = target.center`
-  centres the target at *any* yaw and pitch. Centring was never the hard part; the viewing angle
-  always was. tb34 Pass D's decision to keep the current angle was correct against a spec that only
-  asked for centred, and that is the whole history of `BR34.04`.
-- **`docs/10` rule 2 exists because this rig's yaw bug survived a full suite of row/column-aligned
-  cases.** Any replacement needs a **diagonal** readback case from day one — built node,
-  `global_transform`/`unproject_position` read back, never a second copy of the formula.
-
-**When it lands, `BR34.04` closes `Obsolete`, not `Resolved`**, unless the new camera is separately
-confirmed: the code the entry describes will be gone, which is not the same as anyone having
-verified a fix.
+**It probably subsumes two open entries** — the dartboard not scaling with distance, and the silent
+refusal — since both are on the aiming path. Confirm rather than assume.
 
 ### `BR60.01`'s repair — unreachable raised ground is detected and measured, and nothing repairs it
 **Needs:** a decision on which of three repairs is wanted (below). **Unblocks:** closing `BR60.01`,
@@ -1715,6 +1742,48 @@ entry rested on describes a roster that no longer exists.
 
 **The general rule this came from is in `BUGS.md`'s header:** a number that moved is evidence; a number
 that is wrong needs a bar to be wrong against.
+
+### Hunt down the prototype remnants
+**Needs:** nothing. **Unblocks:** trusting that a `Vector2` in a 3D game means what it says.
+
+**`Vector2` keeps turning up in strange places**, and the pattern is that they are artifacts of the
+**pre-3D flight test** the project was built on top of. `BR51.01` is the worked example: a **cell
+address in a slot meaning (lateral offset, world height)**, which nothing clamped and nothing caught.
+**The type was right and the coordinate space was wrong.**
+
+**403 uses across 74 files**, concentrated in `damage_resolver` (28), `shot_plane` (21),
+`battle_layout` (19), `tactics_controller` (17) and `body_projector` (16). The first two are exactly
+where a mix-up is expensive.
+
+**Narrow the question before starting.** The useful audit is not *where is `Vector2`* — it is **which
+coordinate space is each one in, and does anything cross spaces without converting?** At least four are
+in play: cell coordinates, plane space, screen space and UI pixels.
+
+- **The cheap 80% first:** give the spaces distinct names or type aliases so a mix-up is visible **at
+  the call site** rather than found by measurement three blocks later. That may be the entire fix.
+- **Then the sweep**, for the ones that survive naming.
+
+**This is one instance of a larger job.** The prototype's assumptions are still load-bearing in places
+nobody has looked — flat coordinate spaces, a single grid, `Grid.opacity` (retired taskblock-58), the
+2D cover check that is still flat. **Recording it as a hunt rather than a single audit, because the
+`Vector2` case is the one that has been noticed and probably not the only one.**
+
+### Combat log paths are a workflow choice, not a constant
+**Needs:** nothing. **Unblocks:** the supervisor and CC working at the same time.
+
+**Filed as `BR61.01`:** headless and non-headless runs write to the same files, so a test run and a
+played session stamp on each other and **neither party can work while the other does.**
+
+**Two shapes, and the second is better:**
+
+- **Tag test output as test output.** Minimal, fixes the collision, leaves the path hardcoded.
+- **Make the log destination a parameter**, documented, with the game using today's default and tests
+  writing wherever they are told. **Then a log landing somewhere odd is a workflow decision rather than
+  a code change** — which is what keeps this from recurring the next time something else wants its own
+  stream.
+
+**Prefer the second.** The capability survives into later phases where a replay, a server, or a second
+observer wants its own destination, and none of those should need a code edit.
 
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots

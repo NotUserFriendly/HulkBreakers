@@ -110,6 +110,47 @@ choice between them has to be about cost and risk rather than outcome, or one of
 Contested manipulation (the target resists) against uncontested but MP-expensive agility is the obvious
 first shape to try.
 
+## Voidhulk events, and the orbits that drive them
+
+**Not permanent fixtures — conditions a hulk has on the day you board it.** Most are space-borne, and
+two modifiers run through all of them: **effects quadruple where the area is decompressed or open to
+vacuum, and halve where air filtration still works.** That makes atmosphere and hull integrity matter
+to something other than breathing.
+
+### Named events
+
+- **Nebula dust.** Something almost ethereal has filtered through the hulk. **Metal grows fragile and
+  electronics grow more effective** — lowered DT on all metal armour, electronic effects unlisted.
+  Quadrupled where decompressed. **Specialised equipment can capture it**, and it is a potent crafting
+  catalyst, so a bad place to fight is a good place to harvest.
+- **Inksight.** *A void within a void within a voidhulk.* Ultrafine, incredibly black particles.
+  **Optical sensors are weakened** and a film of carbon settles over anything metal. **Likely highly
+  flammable**, which is the interesting half — a hazard that rewards the player who notices it.
+- **Gas cloud.** Rooms hold **[gas type]** instead of air, at roughly a **25% gas to normal air**
+  ratio. Venting to vacuum drains the air and leaves **25% gas to 75% vacuum**. **The numbers want
+  research** — what density real gas clouds and particle clusters actually have, and whether that reads
+  in a game at all.
+
+### The star system decides which ones you get
+
+**A simulated orbit view.** Planets at expected orbits; **voidhulks on erratic ones** — about the star,
+or about a planet, or a moon. Position generates the event rather than a table rolling it:
+
+- **Close to the star**: the whole ship's temperature is raised.
+- **Far out**: the opposite.
+- **Eccentric, or orbiting a planet close in**: **days cook and nights freeze.**
+
+**Some events sit on the map instead and drift at random**, unattached to any orbit.
+
+**Ship sensors decide what you can see coming**, which turns the sensor upgrade into information rather
+than a stat. **Inksight is invisible because it is as dark as space; nebula dust may be invisible
+because it is reflective.** A better sensor suite does not see *further* so much as it sees *more
+kinds*.
+
+**Why this is worth recording now:** it gives the gravity/atmosphere work a reason to exist beyond
+realism, and it is the first system that makes *where a hulk is* mean something. It needs the
+atmosphere and decompression model, which needs the propagation model, which is already recorded.
+
 ## Deferred systems
 - **Ship upgrade tree** and **scanner tiers**.
 - **Map selling** to other scavs.
