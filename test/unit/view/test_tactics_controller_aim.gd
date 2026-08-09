@@ -846,3 +846,43 @@ func test_an_ordinary_click_on_an_enemy_is_announced_as_entering_aim() -> void:
 	assert_eq(clicks.size(), 1)
 	assert_eq(clicks[0].data["outcome"], "click_unit")
 	assert_eq(clicks[0].data["unit"], b.id)
+
+
+## **`BR32.07`, root-caused from the supervisor's own single reproduction:** burst at a wall with a
+## pillar between shooter and wall. `BurstAction.is_legal` fails its `LoS.has_los` check,
+## `enqueue` returns false, and `confirm_shot`'s queue branch had **no `else`** — so aim closed with
+## no AP spent, no action queued and nothing said. The log line is the fix for the silence; whether
+## an obstructed shot should be legal at all is a separate, open design question.
+func test_a_refused_shot_says_so_instead_of_closing_aim_silently() -> void:
+	var shooter := _make_armed_unit(Vector2i(2, 4), 0)
+	var enemy := _make_armed_unit(Vector2i(2, 0), 1)
+	var built: Dictionary = _setup([shooter, enemy])
+	var controller: TacticsController = built.controller
+	var state: CombatState = built.state
+	# The pillar between them — the supervisor's own board, minus the wall being the target.
+	state.grid.blockers[Vector2i(2, 2)] = DataLibrary.get_part(&"pillar")
+	var sink := MemorySink.new()
+	state.combat_log.add_sink(sink)
+
+	controller.click_cell(Vector2i(2, 4))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(2, 0))
+	assert_not_null(controller.aiming_at, "sanity: aim opened, which is the reported symptom")
+	assert_false(
+		LoS.has_los(state.grid, Vector2i(2, 4), Vector2i(2, 0)),
+		"sanity: the pillar really does break the line — this is the refusing gate"
+	)
+
+	controller.confirm_shot()
+
+	assert_eq(
+		controller.selection.current_queue().actions.size(),
+		0,
+		"the shot is still refused — this test pins the silence, not the legality rule"
+	)
+	var refusals: Array[LogEvent] = sink.events_of_kind(&"shot_refused")
+	assert_eq(refusals.size(), 1, "and the refusal must be announced rather than swallowed")
+	assert_eq(refusals[0].data["target"], Vector2i(2, 0))
+	assert_true(
+		bool(refusals[0].data["built"]), "the action was built; it was legality that said no"
+	)

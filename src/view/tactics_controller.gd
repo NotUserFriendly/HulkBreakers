@@ -1396,8 +1396,58 @@ func confirm_shot() -> void:
 				# an ACTUAL fired shot, never on a bare cancel.
 				if _returning_from_step_out:
 					_append_step_out_return_leg()
+			else:
+				# `BR32.07`: **this branch had no `else`, and that was the whole defect.** A
+				# refused shot fell through to `cancel_aim()` — aim closed, no AP spent, no action
+				# queued, nothing said. The supervisor's reproduction: burst at a wall with a
+				# pillar between, `BurstAction.is_legal` failing its `LoS.has_los` check.
+				# Announced here rather than guessed at downstream, because the refusal is a real
+				# decision and `docs/00` asks that a decision be evidence rather than a feeling.
+				_log_shot_refused(action)
 	_returning_from_step_out = false
 	cancel_aim()
+
+
+## **A shot the queue would not take.** `BR32.07`, taskblock-61 Pass D.
+##
+## **The reason is deliberately not re-derived here.** `CombatAction.is_legal` answers a bare
+## boolean, so nothing can say *which* of its dozen gates refused — and asking `LoS.has_los`
+## again from the view would be a second opinion about legality that could disagree with the one
+## that actually decided. What is logged is what is known for certain: a shot was built and
+## refused, against which target, with what armed. **That the engine cannot say why is itself the
+## finding**, recorded on the entry rather than papered over with a plausible guess.
+func _log_shot_refused(action: CombatAction) -> void:
+	if selection == null or selection.state == null or aiming_at == null:
+		return
+	(
+		selection
+		. state
+		. combat_log
+		. emit(
+			(
+				LogEvent
+				. new(
+					selection.state.round_number,
+					Enums.Phase.TACTICS,
+					selection.selected_unit.id if selection.selected_unit != null else -1,
+					&"shot_refused",
+					{
+						"target": aiming_at.cell,
+						"armed": armed_action.id if armed_action != null else &"",
+						"built": action != null,
+					},
+					(
+						"shot refused: %s at %s was %s"
+						% [
+							armed_action.id if armed_action != null else &"-",
+							str(aiming_at.cell),
+							"not legal here" if action != null else "not built at all",
+						]
+					)
+				)
+			)
+		)
+	)
 
 
 ## taskblock-27 Pass B: the step-out triple's own third leg — pathed from

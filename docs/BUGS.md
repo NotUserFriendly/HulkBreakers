@@ -1028,6 +1028,39 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     is downstream of the pick. `met nothing` means the ray missed the board entirely.
   - Pinned by two tests: a swallowed click still produces a line, and an ordinary one does too —
     *"it did the right thing"* and *"it did nothing"* are only distinguishable if both are written.
+- **2026-08-09 (taskblock-61 Pass D — ROOT CAUSED from one supervisor reproduction; half fixed)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. The supervisor fired the instrumented build once: *"Had a
+  unit try to shoot through a pillar to hit a wall, then had the unit shoot the pillar. First
+  failed, second didn't."* The log settles it in four lines:
+  ```
+  board_click: met part (wall)   at (26, 0), armed burst -> click_part
+  board_click: met part (wall)   at (26, 0), armed burst -> confirm_shot     <- nothing follows
+  board_click: met part (pillar) at (26, 2), armed burst -> click_part
+  board_click: met part (pillar) at (26, 2), armed burst -> confirm_shot
+  action_queued: unit 0 queued action: BurstAction(unit=0, weapon=chaingun, target=(26, 2))
+  ```
+  - **The pick was never the problem, and neither was burst.** Both clicks were accepted, both
+    entered aim, both reached `confirm_shot`. The wall shot simply queued nothing. **Three
+    taskblocks of hunting the click path were hunting the wrong half** — and CC's own
+    facing-drag hypothesis from earlier this pass is disproved outright: there is no `facing_drag`
+    line anywhere in the session.
+  - **The gate is `burst_action.gd:77`, `if not LoS.has_los(state.grid, actual.cell, target_cell)`.**
+    Shooter (26,4), wall (26,0), pillar (26,2) squarely between. `has_los` exempts the two endpoint
+    cells' own parts, so the wall does not block a shot at itself — the pillar does.
+    `AttackAction.is_legal` carries the same check, which is why this was never really burst-only.
+  - **The silence is a second, separate defect and is FIXED.** `confirm_shot`'s
+    `if action != null and selection.enqueue(action):` had **no `else`**, so a refused shot fell
+    through to `cancel_aim()`: aim closed, no AP spent, nothing queued, nothing said. A
+    `shot_refused` line is emitted now, pinned by a test that rebuilds the supervisor's own board.
+  - **The reason is deliberately not re-derived in the view.** `CombatAction.is_legal` answers a
+    bare boolean, so nothing can report *which* gate refused, and asking `LoS.has_los` again from
+    the view would be a second opinion that could disagree with the one that actually decided.
+    **That the engine cannot say why a legal-check failed is itself a finding** — queued to `PLAN`.
+  - **What is NOT fixed, and is a design call, not a code call:** whether an obstructed shot should
+    be refused at all. `docs/02` resolves shots spatially through a real ray chain that already
+    handles hitting whatever is in the way, which argues a player should be allowed to fire and hit
+    the pillar. Against that, the LoS gate stops AP being spent on an impossible shot. **Not
+    decided by CC.** Left `Active` for that reason.
 ### BR34.03 — Active — owner: `SUPERVISOR`
 **`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
 - **cluster:** `input-affordance`

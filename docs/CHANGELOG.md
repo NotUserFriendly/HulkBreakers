@@ -2,6 +2,34 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D3 — `BR32.07` root-caused from one click, and the silence fixed
+
+**The instrument earned its keep immediately.** One supervisor reproduction — burst through a
+pillar at a wall, then burst at the pillar — and the log named the answer: both clicks accepted,
+both entered aim, both reached `confirm_shot`, and only the pillar shot queued anything.
+
+**The pick was never the problem, and neither was burst.** Three taskblocks hunted the click path;
+the failure is `burst_action.gd:77`'s `LoS.has_los` gate, with the pillar squarely between shooter
+and wall. `AttackAction` carries the same check, so it was never really burst-only. **CC's own
+facing-drag hypothesis from earlier the same pass is disproved outright** — no `facing_drag` line
+appears anywhere in the session.
+
+**The silence was a second, separable defect and is fixed.** `confirm_shot`'s
+`if action != null and selection.enqueue(action):` had **no `else`** — a refused shot fell through
+to `cancel_aim()` with no AP spent, nothing queued and nothing said. It emits `shot_refused` now,
+pinned by a test that rebuilds the supervisor's own board and asserts the pillar genuinely breaks
+the line.
+
+**The reason is deliberately not re-derived in the view.** `is_legal` answers a bare boolean, so
+nothing can say which of a dozen gates refused, and asking `LoS.has_los` again from the view would
+be a second opinion that could disagree with the one that actually decided. **That the engine
+cannot say why is itself the finding**, and is queued in `PLAN.md`.
+
+**Left `Active` on purpose.** Whether an obstructed shot should be refused at all is a design call:
+`docs/02` resolves shots through a ray chain that already handles hitting whatever is in the way,
+which argues for letting the player fire and hit the pillar. Not CC's to decide.
+
+
 ### Pass D2 — the board click says what it did, including when it does nothing
 
 **`BR32.07` instrumented rather than fixed**, on a fresh supervisor lead: *"definitely still

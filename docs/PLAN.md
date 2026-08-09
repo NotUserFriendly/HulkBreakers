@@ -208,6 +208,23 @@ against the retired ramps' 15.8% — so the retirement cost essentially no eleva
 
 # QUEUED
 
+### A legality check answers a bare boolean, so nothing can report why a shot was refused
+**Needs:** nothing. **Unblocks:** any refusal a player can act on.
+
+`CombatAction.is_legal(state) -> bool` is the whole channel. `BurstAction.is_legal` alone has a
+dozen gates — dead unit, wrong turn, missing or wounded weapon, no burst in `provides_actions`, not
+enough AP, suppressed, out of bounds, nothing at the target cell, out of max range, inside min
+range, **no line of sight**, cannot operate — and every one of them reports the same `false`.
+
+**`BR32.07` is what that costs.** A burst at a wall with a pillar between failed its LoS gate; the
+view could say only that something refused, and three taskblocks hunted the click path because
+nothing could name the gate. CC deliberately did not re-derive the reason in the view: a second
+opinion about legality can disagree with the one that actually decided, which is worse than silence.
+
+**Shape, not chosen:** a reason alongside the boolean — an open `StringName` per gate, so a designer
+adding a gate adds its reason with it and no enum needs editing. Player-facing text is a separate
+question from the diagnostic channel; the diagnostic is what is missing.
+
 ### The plan pacer's budget is wall-clock, so a seeded bout is not reproducible
 **Needs:** nothing. **Unblocks:** a viewed bout matching a headless one on any machine; any later
 change that raises planning cost, without this conversation repeating.
