@@ -297,18 +297,47 @@ static func _blocker_in_the_way(
 ## a supercover line gets the cells the ray's ground track crosses. A part whose boxes overhang its
 ## own cell (`SKIP_RADIUS`'s own reason for existing) could in principle be missed. Walls are
 ## exactly one cell across and cannot; authored cover could.
+## **Several rays from one origin, one walk.** `to_points` are all tested against each candidate
+## cell before moving to the next — not one full walk per point. The cutout gate casts three rays
+## at one body (centre, feet, head) and the per-cell work they share is most of the cost: the
+## `grid.blockers` lookup, the null/exclude/destroyed checks, the cell's own height, and
+## `assembly_placements`' allocation.
 static func blocker_obstructed_among(
-	grid: Grid, cells: Array[Vector2i], from: Vector3, to: Vector3, exclude_parts: Array[Part] = []
+	grid: Grid,
+	cells: Array[Vector2i],
+	from: Vector3,
+	to_points: Array[Vector3],
+	exclude_parts: Array[Part] = []
 ) -> bool:
-	var span: Vector3 = to - from
-	var distance: float = span.length()
-	if distance <= 0.0001:
+	var dirs: Array[Vector3] = []
+	var limits: Array[float] = []
+	for to: Vector3 in to_points:
+		var span: Vector3 = to - from
+		var distance: float = span.length()
+		if distance <= 0.0001:
+			continue
+		dirs.append(span / distance)
+		limits.append(distance - _ENDPOINT_MARGIN)
+	if dirs.is_empty():
 		return false
-	var dir: Vector3 = span / distance
-	var limit: float = distance - _ENDPOINT_MARGIN
+
 	for cell: Vector2i in cells:
-		if _blocker_in_the_way(grid, cell, from, dir, limit, exclude_parts):
-			return true
+		var part: Part = grid.blockers.get(cell)
+		if part == null or exclude_parts.has(part) or not BodyProjector.projects(part):
+			continue
+		var height: float = UnitGeometry.true_height_for_cell(cell, grid)
+		# Built at most once per cell, and only for a cell some ray actually reaches — the
+		# allocation is what made this worth sharing rather than the arithmetic.
+		var box_placements: Array[BoxPlacement] = []
+		for i in range(dirs.size()):
+			if not PartPicker.near_ray_flat(cell, from, dirs[i]):
+				continue
+			if not PartPicker.near_ray(cell, from, dirs[i], height):
+				continue
+			if box_placements.is_empty():
+				box_placements = UnitGeometry.assembly_placements(part, cell, 0.0, null, height)
+			if _any_box_hit(box_placements, from, dirs[i], limits[i]):
+				return true
 	return false
 
 

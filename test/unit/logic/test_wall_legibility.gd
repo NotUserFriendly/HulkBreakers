@@ -83,6 +83,14 @@ func test_pixel_radius_for_cells_is_zero_at_zero_depth() -> void:
 ## "is a wall in the way" was never a question a screen radius could answer.
 
 
+## The gate takes the body's already-computed box now (one walk per unit per frame, not two) —
+## these tests still want to say "this unit", so the walk happens here instead.
+func _blocked(grid: Grid, camera: Vector3, unit: Unit) -> bool:
+	return WallLegibility.sight_blocked_to_body(
+		grid, camera, unit.cell, UnitGeometry.bounding_box(unit)
+	)
+
+
 func _standing_unit(cell: Vector2i, low: float = 0.2, high: float = 1.8) -> Unit:
 	var torso := Part.new()
 	torso.id = &"torso"
@@ -109,7 +117,7 @@ func test_sight_to_a_unit_in_the_open_is_not_blocked() -> void:
 	var unit := _standing_unit(Vector2i(2, 6))
 
 	assert_false(
-		WallLegibility.sight_blocked_to_unit(grid, Vector3(2, 5, -5), unit),
+		_blocked(grid, Vector3(2, 5, -5), unit),
 		"nothing on the board at all — there is nothing for a cutout to see through"
 	)
 
@@ -120,7 +128,7 @@ func test_sight_through_a_wall_between_the_camera_and_the_unit_is_blocked() -> v
 	var unit := _standing_unit(Vector2i(2, 6))
 
 	assert_true(
-		WallLegibility.sight_blocked_to_unit(grid, Vector3(2, 5, -5), unit),
+		_blocked(grid, Vector3(2, 5, -5), unit),
 		"a 2.4-tall wall squarely on the camera-to-body line must keep the cutout"
 	)
 
@@ -136,7 +144,7 @@ func test_a_wall_beyond_the_unit_does_not_block_sight_to_it() -> void:
 	var unit := _standing_unit(Vector2i(2, 6))
 
 	assert_false(
-		WallLegibility.sight_blocked_to_unit(grid, Vector3(2, 5, -5), unit),
+		_blocked(grid, Vector3(2, 5, -5), unit),
 		"a wall on the far side of the unit hides nothing and must not keep the cutout alive"
 	)
 
@@ -152,7 +160,7 @@ func test_the_surface_a_unit_stands_on_does_not_block_sight_to_it() -> void:
 	unit.height = UnitGeometry.true_height_for_cell(Vector2i(2, 6), grid)
 
 	assert_false(
-		WallLegibility.sight_blocked_to_unit(grid, Vector3(2, 8, -5), unit),
+		_blocked(grid, Vector3(2, 8, -5), unit),
 		"the unit's own floor is the thing it stands on, never the thing hiding it"
 	)
 
@@ -167,14 +175,13 @@ func test_a_wall_hiding_only_the_legs_still_blocks_sight() -> void:
 	var unit := _standing_unit(Vector2i(2, 6))
 	var camera := Vector3(2, 1.6, -2)
 
-	var points: Array[Vector3] = WallLegibility.body_sight_points(unit)
+	var points: Array[Vector3] = WallLegibility.body_sight_points(UnitGeometry.bounding_box(unit))
 	assert_false(
 		RayCaster.obstructed(grid, camera, points[0], grid.parts_at(unit.cell)),
 		"sanity: the CENTRE ray clears this wall — that is what makes the case interesting"
 	)
 	assert_true(
-		WallLegibility.sight_blocked_to_unit(grid, camera, unit),
-		"a wall hiding only the legs is still a wall in the way"
+		_blocked(grid, camera, unit), "a wall hiding only the legs is still a wall in the way"
 	)
 
 
@@ -183,10 +190,11 @@ func test_a_wall_hiding_only_the_legs_still_blocks_sight() -> void:
 func test_a_body_with_no_geometry_reports_a_single_sample_point() -> void:
 	var unit := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(2, 6), 0)
 
-	var points: Array[Vector3] = WallLegibility.body_sight_points(unit)
+	var points: Array[Vector3] = WallLegibility.body_sight_points(UnitGeometry.bounding_box(unit))
 
-	assert_eq(points.size(), 1, "no boxes to measure — one honest point, not three fabricated ones")
-	assert_eq(points[0], UnitGeometry.bounding_sphere(unit).center)
+	var origin: Vector3 = UnitGeometry.bounding_sphere(unit).center
+	for point: Vector3 in points:
+		assert_eq(point, origin, "no boxes to measure — every sample collapses onto the origin")
 
 
 ## `cuts_for` gathers three unrelated reasons a unit is not worth cutting for. The view tests

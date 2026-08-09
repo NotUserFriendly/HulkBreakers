@@ -190,9 +190,33 @@ static func _walk(
 ## tightest possible enclosing sphere, but simple, correct for arbitrarily
 ## rotated boxes, and tight enough for a framing margin check.
 static func bounding_sphere(unit: Unit, orientation_override: Variant = null) -> Dictionary:
+	return sphere_of_box(bounding_box(unit, orientation_override))
+
+
+## **The world-space AABB enclosing `unit`'s whole assembled body**, and the walk `bounding_sphere`
+## is now derived from rather than a second opinion about.
+##
+## taskblock-61 Pass C1. Exposed because a caller that wants both the body's centre *and* its real
+## extent had no way to ask once: `BoardView.update_wall_cutout` took `bounding_sphere(unit).center`
+## and the wall-cutout sight gate took the AABB, so a real 48-box shell paid for two full
+## `placements()` walks and two `placements_aabb()` passes (eight corner transforms per box) **per
+## unit per frame** on a `_process` path. Measured at **181 usec of the gate's 212**, and it took
+## the whole feed from 3 020 to 5 281 usec a frame for a 16-unit roster.
+##
+## An empty body reports a zero-size box at the unit's own origin — the same honest answer
+## `_sphere_from_placements` gives, rather than an AABB assembled from infinities.
+static func bounding_box(unit: Unit, orientation_override: Variant = null) -> AABB:
 	var box_placements: Array[BoxPlacement] = placements(unit, orientation_override)
 	var origin: Vector3 = Vector3(unit.cell.x * CELL_SIZE, unit.height, unit.cell.y * CELL_SIZE)
-	return _sphere_from_placements(box_placements, origin)
+	if box_placements.is_empty():
+		return AABB(origin, Vector3.ZERO)
+	return placements_aabb(box_placements)
+
+
+## The `{center, radius}` a box encloses. Split out so a caller holding an AABB already does not
+## rebuild it to ask for the sphere.
+static func sphere_of_box(box: AABB) -> Dictionary:
+	return {"center": box.get_center(), "radius": box.size.length() * 0.5}
 
 
 ## tb32 Pass C: the `bounding_sphere` counterpart for a bare blocker/

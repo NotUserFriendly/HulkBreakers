@@ -1115,6 +1115,30 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     still appear, unchanged from before. **If a unit behind a wall now gets NO cutout, the gate is
     inverted or too strict, and that is the regression to report.**
 
+- **2026-08-09 (taskblock-61 Pass C1 follow-up — the gate shipped as a framerate regression, and
+  the supervisor caught it in one session)** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. **Reported: FPS
+  swinging 160 -> 13, "hard to tell if it's just while panning/rotating the camera, or always."**
+  The combat log answers the second half: rolling-2s FPS sat at 122-146 during stretches with no
+  `wall_cutout` lines at all and fell to 30-58 during stretches logging one line every 2.5 frames.
+  Cutout log lines are emitted on change, so that is camera movement.
+  - **The cause was CC's own probe measuring the wrong thing.** `test_cutout_gate_cost_probe.gd`
+    reported 41 usec per unit against a fixture body of **one `Box`**. A real assembled shell
+    (`combat_tester_chaingun`) is **48 boxes**, and `placements_aabb` costs eight corner transforms
+    per box — so the fixture measured nothing that mattered. This is the same failure the
+    taskblock-61 report already names as the block's lesson: a component measured headlessly is not
+    the system.
+  - **Measured end-to-end afterwards** (`test_cutout_feed_cost_probe.gd`, real board, real shells,
+    real `Camera3D`, 16-unit roster), as usec per frame of `BoardView.update_wall_cutout`:
+    **3 020 before the gate existed -> 5 281 as shipped -> 4 796 -> 3 613**. Two fixes: the feed was
+    walking each body's geometry **twice** per frame (`bounding_sphere` for the fed position and
+    again for the gate's sample points — now one `UnitGeometry.bounding_box` shared by both), and
+    the gate's three rays each re-walked the supercover line (now one walk, all three points tested
+    per candidate cell, sharing the per-cell lookup and the `assembly_placements` allocation).
+  - **Residual: the gate costs ~617 usec a frame for 16 units**, against a measured floor of
+    **3 114** for the body geometry alone. Pinned as a ratio rather than a wall-clock bound.
+  - **The floor is a separate, pre-existing defect and is filed as `BR61.04`** — not caused here,
+    and the larger of the two numbers.
+
 ### BR32.07 — Active — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **cluster:** `input-affordance`
@@ -2752,3 +2776,26 @@ small, and **not** `BR51.01`, which it was briefly suspected of being.
 **The weapon IS available to the preview**, so the comment's premise is stale: `TacticsController`
 already passes `weapon.id` into `ActionCatalog.build_firing_action` a few lines away.
 
+### BR61.04 — Active — owner: `CC`
+**The wall-cutout feed rebuilds every body's full geometry every frame**
+- **cluster:** `framerate`
+- **Source:** `CC`  ·  **CC session:** `74ebb574-245b-48e8-aed2-e1d09ea25527`
+- **2026-08-09 (taskblock-61 Pass C1).** Found while measuring a regression CC had just introduced
+  next to it, and it is the larger number. `BoardView.update_wall_cutout` runs from `_process` and
+  needs each unit's body centre, which it gets from `UnitGeometry.bounding_box` — a full
+  `placements()` tree walk plus `placements_aabb`'s **eight corner transforms per box**. A real
+  assembled shell is **48 boxes**. Measured at **3 114 usec per frame for a 16-unit roster** on a
+  32x24 board: **45% of a 144 fps frame, 19% of a 60 fps one**, spent entirely on recomputing
+  geometry that did not change.
+- **Nothing about it is per-frame except the camera.** A body's box layout changes only when the
+  unit moves, turns, re-poses or loses a part; the camera orbiting is what forces the reprojection,
+  and reprojection needs one `Vector3` per unit, not the whole box tree.
+- **`BattleScene._occluding_friendlies` pays it a second time** in the same frame, on the same
+  units, for the friendly-fade effect — `bounding_sphere` per unit per frame there too.
+- **Fix direction, not implemented:** cache the box per unit against whatever actually invalidates
+  it. **The lifecycle is the whole difficulty**, exactly as `BR32.04`'s own recorded fix shape
+  found — a stale cached position is a new class of bug, and `docs/00`'s "read the real node back"
+  argues for reading the rendered transform rather than caching a derived value. Worth doing
+  together with `BR32.04`, which needs the rendered position for the same call.
+- **Deliberately not fixed in Pass C1**, which was hunting `BR32.05`/`BR32.08`. Recorded with the
+  measurement so it is not re-derived.

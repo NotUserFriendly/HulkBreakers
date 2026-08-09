@@ -2,6 +2,55 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass C1 follow-up — the gate shipped as a framerate regression, and the probe is why
+
+**The supervisor caught it in one session: FPS swinging 160 -> 13.** The cutout gate was correct
+and expensive, and the cost measurement that cleared it was measuring a fixture body of **one
+`Box`**. A real assembled shell is **48 boxes**, and `placements_aabb` costs eight corner
+transforms per box — so the 41-usec-per-unit figure that justified shipping described nothing that
+runs in the game. **This is the block's own stated lesson repeating**: a component measured
+headlessly is not the system.
+
+**What the log said, before any theory.** Rolling-2s FPS sat at 122-146 through stretches with no
+`wall_cutout` lines at all, and fell to 30-58 through stretches emitting one line every 2.5
+frames. Those lines are emitted on change, so the dips are camera movement — which answers the
+supervisor's *"hard to tell if it's just while panning/rotating"* without guessing.
+
+**Measured end-to-end afterwards**, real board, real shells, real `Camera3D`, 16-unit roster, as
+usec per frame of `BoardView.update_wall_cutout`:
+
+| | usec/frame | share of a 144 fps frame |
+|---|---|---|
+| before the gate existed | 3 020 | 43.5% |
+| as shipped | 5 281 | 76.1% |
+| one body walk instead of two | 4 796 | 69.1% |
+| one supercover walk instead of three | 3 613 | 52.0% |
+
+**Two real defects behind the regression, both duplicated work rather than slow work:**
+- **The feed walked each body's geometry twice a frame** — `bounding_sphere(unit).center` for the
+  fed position and the gate's own `placements()`/`placements_aabb` for its sample points.
+  `UnitGeometry.bounding_box` is now the one walk and `bounding_sphere` derives from it, so the
+  two cannot disagree either.
+- **The gate's three rays each re-walked the line.** `RayCaster.blocker_obstructed_among` takes
+  the points as a set and tests all of them per candidate cell, sharing the `grid.blockers`
+  lookup, the cell height and — the part that mattered — `assembly_placements`' allocation.
+
+**Also reordered:** the cheap flag checks (`is_cutout_subject`) and the off-screen reject now run
+*before* any geometry is built, so a dead or off-screen unit costs a flag read instead of a
+48-box walk.
+
+**`test_cutout_feed_cost_probe.gd` is new and measures the whole per-frame call with nothing
+stubbed**, alongside the unit-level probe that got this wrong. It asserts a **ratio** — the gate
+must stay a minority of the feed against a measured geometry floor — because a millisecond
+threshold on shared hardware fails for reasons that have nothing to do with the code.
+
+**`BR61.04` filed, and it is the larger number.** The feed's *pre-existing* floor is **3 114 usec
+a frame** for body geometry alone — 45% of a 144 fps frame — recomputing box trees that did not
+change, purely because the camera moved. Not caused here; found by measuring next to it, and
+recorded with the measurement rather than left to be re-derived. Its fix wants `BR32.04`'s
+rendered-position work, which needs the same thing.
+
+
 ### Pass C1 — the wall cutout stops cutting for things nothing is hiding
 
 **`BR32.05` and `BR32.08`, both `SUPERVISOR`-owned, both moved to `Pending`. Full gate green at

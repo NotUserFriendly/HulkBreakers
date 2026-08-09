@@ -56,19 +56,29 @@ static func occludes_on_screen(
 ##   forever, so every corpse used to cut its own full-radius hole permanently and a long firefight
 ##   progressively opened the level up. **A DOWNED unit still cuts** — `is_downed()` is "no matrix
 ##   docked", orthogonal to both flags, and a downed unit may be one turn from standing back up.
-## - **Nothing is in front of it.** `BR32.05` — see `sight_blocked_to_unit` below.
+## - **Nothing is in front of it.** `BR32.05` — see `sight_blocked_to_body` below.
 ##
 ## The one filter that stays in the view is `BoardView.is_excluded_from_occlusion`, because a
 ## debug verb having destroyed a unit's own render node is view state and nothing here can know it.
 ##
 ## A null `grid` cannot be asked about geometry, so it answers the first two questions and stops
 ## rather than inventing an answer to the third.
+##
+## **Stated whole here; the view calls the two halves in cost order.** `BoardView` checks
+## `is_cutout_subject` before it builds any geometry, because a `bounding_box` walk on a real
+## 48-box shell is the single most expensive thing in the feed and a dead unit must never pay for
+## one. Both paths run the same two predicates, so they cannot drift.
 static func cuts_for(grid: Grid, camera_position: Vector3, unit: Unit) -> bool:
-	if unit.extracted or not CombatState.can_take_a_turn(unit):
+	if not is_cutout_subject(unit):
 		return false
 	if grid == null:
 		return true
-	return sight_blocked_to_unit(grid, camera_position, unit)
+	return sight_blocked_to_body(grid, camera_position, unit.cell, UnitGeometry.bounding_box(unit))
+
+
+## The two flag questions — the cheap half of `cuts_for`, answerable with no geometry at all.
+static func is_cutout_subject(unit: Unit) -> bool:
+	return not unit.extracted and CombatState.can_take_a_turn(unit)
 
 
 ## **Is anything actually in the way?** taskblock-61 Pass C1, `BR32.05`.
@@ -113,16 +123,29 @@ static func cuts_for(grid: Grid, camera_position: Vector3, unit: Unit) -> bool:
 ## `_process` path and the first version of it did not: walking `grid.blockers` cost 629 usec per
 ## unit, over 10 ms a frame for a full roster. `Grid.line` is the same supercover walk `LoS` used
 ## before geometry replaced the opacity array, used here as a candidate filter in front of the
-## real box test rather than as an answer in its own right. Numbers in
-## `test_cutout_gate_cost_probe.gd`.
-static func sight_blocked_to_unit(grid: Grid, camera_position: Vector3, unit: Unit) -> bool:
-	var exclude: Array[Part] = grid.parts_at(unit.cell)
+## real box test rather than as an answer in its own right.
+##
+## **Takes the body's box rather than the unit**, so the caller's own `bounding_box` walk is the
+## only one — see `UnitGeometry.bounding_box` for what the second walk was costing. The three rays
+## share that one supercover walk too (`RayCaster.blocker_obstructed_among`), because the per-cell
+## lookup and the `assembly_placements` allocation are most of the cost, not the arithmetic.
+##
+## **The cost history, because the first two numbers here were both wrong.** Measured end-to-end
+## in `test_cutout_feed_cost_probe.gd` over a 16-unit roster on a real board, as usec per frame of
+## `BoardView.update_wall_cutout`: **3 020 before this gate existed** -> **5 281** shipped ->
+## **4 796** with the duplicate body walk removed -> **3 613** with the supercover walk shared.
+## The isolated gate probe said 41 usec per unit and was measuring a one-box torso fixture; a real
+## shell is 48 boxes. **A component measured headlessly is not the system**, which is why the
+## end-to-end probe exists alongside the unit one.
+static func sight_blocked_to_body(
+	grid: Grid, camera_position: Vector3, cell: Vector2i, box: AABB
+) -> bool:
+	var exclude: Array[Part] = grid.parts_at(cell)
 	var camera_cell := Vector2i(roundi(camera_position.x), roundi(camera_position.z))
-	var cells: Array[Vector2i] = Grid.line(camera_cell, unit.cell)
-	for point: Vector3 in body_sight_points(unit):
-		if RayCaster.blocker_obstructed_among(grid, cells, camera_position, point, exclude):
-			return true
-	return false
+	var cells: Array[Vector2i] = Grid.line(camera_cell, cell)
+	return RayCaster.blocker_obstructed_among(
+		grid, cells, camera_position, body_sight_points(box), exclude
+	)
 
 
 ## The points on `unit`'s own body the cutout's sight test casts to: its real world-space AABB
@@ -135,14 +158,10 @@ static func sight_blocked_to_unit(grid: Grid, camera_position: Vector3, unit: Un
 ## floor that blinded whoever stood on it would be a spectacular way to fail this pass."*
 ##
 ## A shell with no geometry at all (`unit.shell.root == null`, or a root authoring no `volume` —
-## the board state `BR51.01`'s loud miss caught two fixtures building) has no box to measure, so
-## this reports the single point `bounding_sphere` already falls back to rather than an AABB built
-## from infinities.
-static func body_sight_points(unit: Unit) -> Array[Vector3]:
-	var box_placements: Array[BoxPlacement] = UnitGeometry.placements(unit)
-	if box_placements.is_empty():
-		return [UnitGeometry.bounding_sphere(unit).center]
-	var box: AABB = UnitGeometry.placements_aabb(box_placements)
+## the board state `BR51.01`'s loud miss caught two fixtures building) reports a zero-size box at
+## its own origin, so all three points collapse onto that one honest position rather than being
+## special-cased into a shorter list.
+static func body_sight_points(box: AABB) -> Array[Vector3]:
 	var center: Vector3 = box.get_center()
 	return [
 		center,

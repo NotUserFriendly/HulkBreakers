@@ -728,19 +728,19 @@ func update_wall_cutout(camera: Camera3D) -> void:
 				break
 			if unit == null or not is_instance_valid(unit):
 				continue
-			# `WallLegibility.cuts_for` owns the whole per-unit rule — left the board, takes no
-			# turn (`BR32.08`), nothing actually in front of it (`BR32.05`) — stated there and
-			# tested headlessly. The debug exclusion stays here because it is view state.
-			if is_excluded_from_occlusion(unit.id):
+			# `WallLegibility.cuts_for` states the per-unit rule whole; this runs its two halves
+			# in cost order and hands the ONE `bounding_box` walk to both the sight gate and the
+			# fed position. Two walks per unit per frame took the feed 3 020 -> 5 281 usec.
+			if is_excluded_from_occlusion(unit.id) or not WallLegibility.is_cutout_subject(unit):
 				continue
-			if not WallLegibility.cuts_for(grid, camera_position, unit):
-				continue
-			var position: Vector3 = UnitGeometry.bounding_sphere(unit).center
-			# Behind the camera: unproject_position() gives nonsense
-			# screen coordinates for a point the camera isn't actually
-			# looking at — nothing can be occluded for a unit that isn't
-			# even on screen.
+			var box: AABB = UnitGeometry.bounding_box(unit)
+			var position: Vector3 = box.get_center()
+			# Behind the camera: unproject_position() gives nonsense screen coordinates for a
+			# point the camera isn't looking at — nothing is occluded for a unit that is off screen,
+			# and this rejects before the sight gate rather than after it.
 			if camera.is_position_behind(position):
+				continue
+			if not WallLegibility.sight_blocked_to_body(grid, camera_position, unit.cell, box):
 				continue
 			var depth: float = camera_position.distance_to(position)
 			# BR32.02: `unproject_position()` and the shader's own

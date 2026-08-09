@@ -32,13 +32,15 @@ func _usec(runs: int, body: Callable) -> float:
 	return float(Time.get_ticks_usec() - start) / float(runs)
 
 
+## **A real assembled shell, not a one-box torso.** The first version of this probe measured a
+## fixture with a single `Box`, reported 41 usec per unit, and the supervisor's next live session
+## came back at 13 fps. A body's box count is the whole cost driver for `placements_aabb` (eight
+## corner transforms per box), so a one-box fixture measures nothing that matters.
 func _unit_at(cell: Vector2i) -> Unit:
-	var torso := Part.new()
-	torso.id = &"torso"
-	torso.hp = 10
-	torso.max_hp = 10
-	torso.volume = [Box.new(Vector3(0.0, 1.0, 0.0), Vector3(0.6, 1.6, 0.6))]
-	return Unit.new(Matrix.new(), Shell.new(torso), cell, 0)
+	var preset: BotPreset = DataLibrary.get_preset(&"combat_tester_chaingun")
+	var unit: Unit = DeepStrike.assemble_from_preset(preset, Matrix.new(), cell, 0)
+	assert_not_null(unit, "the probe needs a REAL assembled shell to measure anything useful")
+	return unit
 
 
 func test_the_sight_gate_costs_a_frame_less_than_the_full_obstruction_march() -> void:
@@ -53,8 +55,13 @@ func test_the_sight_gate_costs_a_frame_less_than_the_full_obstruction_march() ->
 		)
 	)
 
+	gut.p("  body boxes: %d" % UnitGeometry.placements(unit).size())
+
+	var geometry_usec: float = _usec(
+		SAMPLES, func() -> void: WallLegibility.body_sight_points(UnitGeometry.bounding_box(unit))
+	)
 	var gate_usec: float = _usec(
-		SAMPLES, func() -> void: WallLegibility.sight_blocked_to_unit(grid, camera_position, unit)
+		SAMPLES, func() -> void: WallLegibility.cuts_for(grid, camera_position, unit)
 	)
 	var march_usec: float = _usec(
 		SAMPLES,
@@ -66,7 +73,27 @@ func test_the_sight_gate_costs_a_frame_less_than_the_full_obstruction_march() ->
 				grid.parts_at(unit.cell)
 			)
 	)
+	# **Does zooming out cost more?** The supervisor reports the cutout misbehaving specifically
+	# when far away, and the candidate filter is a supercover line whose length IS the camera
+	# distance in cells — so the filter weakens exactly as the camera pulls back.
+	var far_camera := Vector3(16, 60, -70)
+	var far_usec: float = _usec(
+		SAMPLES, func() -> void: WallLegibility.cuts_for(grid, far_camera, unit)
+	)
+	gut.p(
+		(
+			"  supercover cells: near %d, far %d"
+			% [
+				Grid.line(Vector2i(16, -10), unit.cell).size(),
+				Grid.line(Vector2i(16, -70), unit.cell).size()
+			]
+		)
+	)
+	gut.p("  sight_blocked_to_unit FAR   %9.1f usec   (zoomed-out camera)" % far_usec)
 
+	gut.p(
+		"  body_sight_points           %9.1f usec   (placements + AABB, per unit)" % geometry_usec
+	)
 	gut.p("  sight_blocked_to_unit       %9.1f usec   (3 rays, supercover cells)" % gate_usec)
 	gut.p("  RayCaster.obstructed        %9.1f usec   (1 ray, every blocker + floors)" % march_usec)
 	gut.p(
