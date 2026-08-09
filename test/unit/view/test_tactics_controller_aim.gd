@@ -848,41 +848,58 @@ func test_an_ordinary_click_on_an_enemy_is_announced_as_entering_aim() -> void:
 	assert_eq(clicks[0].data["unit"], b.id)
 
 
-## **`BR32.07`, root-caused from the supervisor's own single reproduction:** burst at a wall with a
-## pillar between shooter and wall. `BurstAction.is_legal` fails its `LoS.has_los` check,
-## `enqueue` returns false, and `confirm_shot`'s queue branch had **no `else`** — so aim closed with
-## no AP spent, no action queued and nothing said. The log line is the fix for the silence; whether
-## an obstructed shot should be legal at all is a separate, open design question.
-func test_a_refused_shot_says_so_instead_of_closing_aim_silently() -> void:
+## **`BR32.07`, settled: an obstructed shot is legal now.** The supervisor's call after the
+## instrumented reproduction pinned the `LoS.has_los` gate — *"Obstructed shots should be legal...
+## a chain gun might chew through a crate to hit the target behind it."*
+##
+## **This test was written the other way up one pass earlier**, asserting the shot stayed refused
+## and only the silence was fixed. It is inverted rather than deleted, with the old expectation
+## named, because the reversal is the point: the gate contradicted the ray chain `docs/02` resolves
+## shots through.
+func test_a_shot_through_cover_is_legal_and_queues() -> void:
 	var shooter := _make_armed_unit(Vector2i(2, 4), 0)
 	var enemy := _make_armed_unit(Vector2i(2, 0), 1)
 	var built: Dictionary = _setup([shooter, enemy])
 	var controller: TacticsController = built.controller
 	var state: CombatState = built.state
-	# The pillar between them — the supervisor's own board, minus the wall being the target.
 	state.grid.blockers[Vector2i(2, 2)] = DataLibrary.get_part(&"pillar")
-	var sink := MemorySink.new()
-	state.combat_log.add_sink(sink)
+	assert_false(
+		LoS.has_los(state.grid, Vector2i(2, 4), Vector2i(2, 0)),
+		"sanity: the pillar really does break the cell-to-cell line — the retired gate's own input"
+	)
 
 	controller.click_cell(Vector2i(2, 4))
 	controller.arm_action(&"shoot")
 	controller.click_cell(Vector2i(2, 0))
-	assert_not_null(controller.aiming_at, "sanity: aim opened, which is the reported symptom")
-	assert_false(
-		LoS.has_los(state.grid, Vector2i(2, 4), Vector2i(2, 0)),
-		"sanity: the pillar really does break the line — this is the refusing gate"
-	)
-
 	controller.confirm_shot()
 
 	assert_eq(
 		controller.selection.current_queue().actions.size(),
-		0,
-		"the shot is still refused — this test pins the silence, not the legality rule"
+		1,
+		"the shot queues — it used to be silently refused, which was BR32.07"
 	)
-	var refusals: Array[LogEvent] = sink.events_of_kind(&"shot_refused")
-	assert_eq(refusals.size(), 1, "and the refusal must be announced rather than swallowed")
-	assert_eq(refusals[0].data["target"], Vector2i(2, 0))
-	assert_true(
-		bool(refusals[0].data["built"]), "the action was built; it was legality that said no"
+
+
+## The refusal announcement from the same entry survives the reversal and still has to work: other
+## gates (no AP, out of range, suppressed) still refuse, and a refusal must never be silent again.
+func test_a_shot_refused_by_a_surviving_gate_still_says_so() -> void:
+	var shooter := _make_armed_unit(Vector2i(2, 4), 0)
+	var enemy := _make_armed_unit(Vector2i(2, 0), 1)
+	var built: Dictionary = _setup([shooter, enemy])
+	var controller: TacticsController = built.controller
+	var sink := MemorySink.new()
+	controller.selection.state.combat_log.add_sink(sink)
+
+	controller.click_cell(Vector2i(2, 4))
+	controller.arm_action(&"shoot")
+	controller.click_cell(Vector2i(2, 0))
+	shooter.ap = 0  # a gate that is not line of sight
+
+	controller.confirm_shot()
+
+	assert_eq(controller.selection.current_queue().actions.size(), 0, "no AP, so no shot")
+	assert_eq(
+		sink.events_of_kind(&"shot_refused").size(),
+		1,
+		"and it is announced rather than swallowed, which is the half of BR32.07 that stands"
 	)

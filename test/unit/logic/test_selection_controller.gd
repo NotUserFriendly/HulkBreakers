@@ -240,17 +240,8 @@ func test_queue_entries_reports_what_and_the_running_ap_mp_total_per_action() ->
 	# only because it actually says more.
 	assert_eq(entries[0]["describe"], "MoveAction(unit=%d)" % a.id)
 	assert_true((entries[0]["detail"] as String).contains("path="))
-	# `BR34.03` (taskblock-61 Pass D): every queue row is `Name(unit=N)` now, not just the ones
-	# whose full text grew without bound — the supervisor asked for `AttackAction(unit=2)`
-	# explicitly, which trims a bounded `weapon=`/`target=` pair. FaceAction's `direction=` is
-	# bounded too and trims with them, so it now HAS a hover detail where it used to have none.
-	# The rule the old assertion guarded is unchanged and still guarded: detail appears exactly
-	# when short and full differ.
-	assert_eq(entries[1]["describe"], "FaceAction(unit=%d)" % a.id)
-	assert_true(
-		(entries[1]["detail"] as String).contains("direction="),
-		"what the row dropped has to be reachable, not lost"
-	)
+	assert_true((entries[1]["describe"] as String).contains("FaceAction"))
+	assert_false(entries[1].has("detail"), "FaceAction's short and full descriptions are identical")
 	var after_move: Unit = expected_after_move.find_unit(a.id)
 	assert_eq(entries[0]["ap"], after_move.ap)
 	assert_almost_eq(entries[0]["mp"] as float, after_move.mp, 0.0001)
@@ -415,55 +406,3 @@ func test_changing_the_queue_changes_the_preview() -> void:
 	selection.queue_move(Vector2i(5, 3))
 
 	assert_eq(selection.previewed_unit().cell, Vector2i(5, 3), "the newer queue is reflected")
-
-
-## **`BR34.03`, taskblock-61 Pass D.** The entry asked for `AttackAction(unit=2)` and added *"check
-## the remaining action types rather than fixing one and leaving the next to be reported
-## separately"*. There are twenty, all formatted `Name(first=..., rest...)`, so the rule is derived
-## once in `CombatAction.short_describe` instead of overridden per class — which is what these pin.
-func test_a_queue_label_keeps_the_class_and_the_first_field_only() -> void:
-	assert_eq(
-		CombatAction.first_field_only("AttackAction(unit=2, weapon=chaingun, target=(3, 4))"),
-		"AttackAction(unit=2)",
-		"the entry's own stated target text"
-	)
-	assert_eq(
-		CombatAction.first_field_only("EndTurnAction(unit=2)"),
-		"EndTurnAction(unit=2)",
-		"an action with nothing to trim is left exactly alone"
-	)
-	assert_eq(
-		CombatAction.first_field_only("CarryBodyAction(carrier=1, body=torso)"),
-		"CarryBodyAction(carrier=1)",
-		"the rule is 'first field', not 'the field named unit'"
-	)
-
-
-## **The case that rules out splitting on the first comma**, which is what a simpler version would
-## have done and what would have read correctly right up until an action put a coordinate first.
-## `MoveAction` already formats an `Array[Vector2i]`, so this is one refactor away rather than
-## hypothetical.
-func test_a_first_field_holding_its_own_comma_is_not_cut_through_the_middle() -> void:
-	assert_eq(
-		CombatAction.first_field_only("SomeAction(cell=(3, 4), weapon=chaingun)"),
-		"SomeAction(cell=(3, 4))",
-		"a comma inside the value must not end the field"
-	)
-	assert_eq(
-		CombatAction.first_field_only("MoveAction(path=[(1, 1), (2, 2)], unit=3)"),
-		"MoveAction(path=[(1, 1), (2, 2)])",
-		"nor one inside a bracketed list"
-	)
-
-
-## The override this replaced produced exactly this text, which is why it could be deleted rather
-## than kept alongside.
-func test_move_keeps_the_short_label_its_own_retired_override_produced() -> void:
-	var unit := Unit.new(Matrix.new(), Shell.new(Part.new()), Vector2i(0, 0), 0)
-	unit.id = 2
-	var move := MoveAction.new(unit, [Vector2i(0, 0), Vector2i(1, 0)] as Array[Vector2i])
-
-	assert_eq(move.short_describe(), "MoveAction(unit=2)")
-	assert_true(
-		"path=" in move.describe(), "and the full text still carries the path for the hover"
-	)

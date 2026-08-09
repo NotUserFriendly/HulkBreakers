@@ -220,15 +220,29 @@ func test_a_shot_beyond_effective_range_scales_up_the_dartboard() -> void:
 	assert_gt(far_radius, close_radius, "degraded accuracy widens the ring")
 
 
-func test_is_legal_false_without_line_of_sight() -> void:
+## **Reversed at taskblock-61 Pass D (`BR32.07`).** This asserted `assert_false` — a shot with
+## something in the way was illegal — and the supervisor's call retired that rule outright:
+## *"Obstructed shots should be legal. Things get broken here, so a gun like a chain gun might chew
+## through a crate to hit the target behind it."*
+##
+## Kept and inverted rather than deleted, with the old expectation named, because the gate it
+## guarded contradicted the resolver: `docs/02` marches a real ray that meets whatever is in the
+## way and spends damage penetrating it, and a cell-to-cell sight line vetoing that forbade the
+## exact outcome the chain exists to produce. Whether the round gets through is
+## `DamageResolver`'s question now, against real material rather than a boolean.
+func test_is_legal_true_even_with_something_in_the_way() -> void:
 	var weapon := _make_weapon(&"pistol", 20.0)
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var target := _make_target(Vector2i(3, 0))
 	var grid := GridFixture.flat(10, 10)
 	GridFixture.place_wall(grid, Vector2i(1, 0))
 	var state := CombatState.new(grid, [shooter, target])
+	assert_false(
+		LoS.has_los(grid, Vector2i(0, 0), Vector2i(3, 0)),
+		"sanity: the wall really does break the cell-to-cell line — the retired gate's own input"
+	)
 
-	assert_false(AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).is_legal(state))
+	assert_true(AttackAction.new(shooter, &"pistol", Vector2i(3, 0)).is_legal(state))
 
 
 func test_is_legal_false_without_a_capable_manipulator() -> void:

@@ -2,6 +2,32 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D6 — obstructed shots become legal, and two CC changes are undone
+
+**`BR32.07` to `Pending`: the `LoS.has_los` gate is gone** from `AttackAction` and `BurstAction`,
+the only two that carried it. **It contradicted the resolver it guarded** — `docs/02` marches a real
+ray that meets whatever is in the way and spends damage penetrating it, so a cell-to-cell sight line
+answering "no" ahead of that forbade the exact outcome the chain exists to produce, on the coarsest
+evidence available. Precedent rather than invention: taskblock-58 Pass C removed the same gate from
+`Overwatch` for the same reason. Nothing replaces it — whether a round gets through is
+`DamageResolver`'s question against real material, and the AI still avoids wasting shots as
+*scoring*, never legality. Two tests reversed rather than deleted, each naming its old expectation.
+
+**`BR34.03` closed `Obsolete`, and CC's fix for it reverted.** The supervisor asked CC to check what
+actually calls the queue-row path before fixing it: `SelectionController.queue_entries()` is called
+by **nothing in `src/`**, only by tests — the row was pruned with the old UI. Worse, the only
+surviving reader of `short_describe()` is `queue_log.gd`, **so Pass D4's generalisation did not tidy
+a UI row, it stripped detail out of combat-log lines**, where more detail is the point. Reverted
+whole. The design is kept on the archived entry for whoever rebuilds the queue UI.
+
+**`BR30.04`'s hollow box was correct and covered up.** *"Whatever 'four bars' is doing, isn't
+visually distinct from a full square."* Queued legs are contiguous, so leg N+1's first cell IS leg
+N's waypoint, and the ordinary trail marker there drew a filled square directly on top of every
+outline. **No per-leg check could have caught it** — the covering marker belongs to a different leg
+than the waypoint it hides — so waypoint cells are now collected across all legs first. An existing
+test asserting 8 overlay children encoded the double-draw and is corrected to 7.
+
+
 ### Pass D5 — waypoints go mono-colour, and the shuffle becomes impossible
 
 **`BR30.04` to `Pending`, to the supervisor's own spec.** The per-leg `LEG_COLORS[i % 4]` cycle is

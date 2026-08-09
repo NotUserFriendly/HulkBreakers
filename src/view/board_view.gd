@@ -843,20 +843,29 @@ func show_reachable(cells: Array[Vector2i]) -> void:
 func show_ghost_paths(paths: Array, leg_costs: Array[float] = []) -> void:
 	_clear(_ghost_overlay)
 	var running_total: float = 0.0
+	# `BR30.04` follow-up: legs are contiguous, so leg N+1's first cell IS leg N's waypoint, and a
+	# trail marker there put a filled square under every hollow one — "not visually distinct from a
+	# full square". Collected across ALL legs: the covering marker belongs to a different leg than
+	# the waypoint it hides, so no per-leg check could catch it.
+	var waypoints: Dictionary = {}
+	for path: Array in paths:
+		if not path.is_empty():
+			waypoints[path[path.size() - 1]] = true
 	for i in range(paths.size()):
 		var path: Array = paths[i]
-		# `BR30.04`: one colour for every leg, and the waypoint itself drawn as a box rather than
-		# as another trail cell — hollow, except the most recent, which is filled. Nothing is keyed
-		# on leg index any more, so a leg appearing or disappearing cannot restyle the others.
+		# One colour throughout; the waypoint is a box, hollow except the most recent.
 		var is_latest: bool = i == paths.size() - 1
-		for j in range(path.size()):
-			if j == path.size() - 1:
-				continue
-			_ghost_overlay.add_child(_marker(path[j], WAYPOINT_COLOR, GHOST_HEIGHT))
+		for cell: Vector2i in path:
+			if not waypoints.has(cell):
+				_ghost_overlay.add_child(_marker(cell, WAYPOINT_COLOR, GHOST_HEIGHT))
 		if path.is_empty():
 			continue
 		_ghost_overlay.add_child(_leg_line(path, WAYPOINT_COLOR))
-		_ghost_overlay.add_child(_waypoint_box(path[path.size() - 1], is_latest))
+		var mark: Vector2i = path[path.size() - 1]
+		var mark_y: float = GHOST_HEIGHT + _height_for(mark)
+		_ghost_overlay.add_child(
+			OverlayMarkers.waypoint_box(mark, WAYPOINT_COLOR, mark_y, OVERLAY_SIZE, is_latest)
+		)
 		var leg_cost: float = leg_costs[i] if i < leg_costs.size() else 0.0
 		running_total += leg_cost
 		_ghost_overlay.add_child(
@@ -965,16 +974,6 @@ func _waypoint_label(cell: Vector2i, number: int, leg_cost: float, running_total
 ## cells, wall indicator, field item marker, reachable/ghost overlays) keeps
 ## its own footprint unchanged; the empty-cell border/fill markers are the
 ## only callers that pass an explicit one.
-## **A queued waypoint.** `BR30.04`: filled for the most recent, a hollow outline for every earlier
-## one, `WAYPOINT_COLOR` for both. The outline geometry lives in `OverlayMarkers`.
-func _waypoint_box(cell: Vector2i, filled: bool) -> Node3D:
-	if filled:
-		return _marker(cell, WAYPOINT_COLOR, GHOST_HEIGHT)
-	return OverlayMarkers.hollow_box(
-		cell, WAYPOINT_COLOR, GHOST_HEIGHT + _height_for(cell), OVERLAY_SIZE
-	)
-
-
 ## One flat overlay marker on `cell`'s own ground. Construction lives in `OverlayMarkers`; this
 ## resolves the height, the only part needing the board.
 func _marker(

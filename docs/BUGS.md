@@ -967,7 +967,17 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     construction moved to `src/view/overlay_markers.gd`.
   - **To see it:** queue four or five legs, then arm an attack against a covered target. No queued
     waypoint should change colour; earlier waypoints are outlines, the newest is solid.
-### BR32.07 — Active — owner: `SUPERVISOR`
+- **2026-08-09 (taskblock-61 Pass D follow-up — the hollow box was being covered up)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. Supervisor: *"whatever 'four bars' is doing, isn't
+  visually distinct from a full square."* **It was distinct; it was hidden.** Queued legs are
+  contiguous, so leg N+1's own first cell IS leg N's waypoint — and the ordinary trail marker drawn
+  there put a filled square directly on top of every hollow outline.
+  - **No per-leg check could have caught it**: the covering marker belongs to a *different* leg
+    than the waypoint it hides, so waypoint cells are collected across all legs before any trail
+    marker is drawn.
+  - An existing test asserting 8 overlay children **encoded the double-draw** and is corrected to 7
+    with the arithmetic spelled out.
+### BR32.07 — Pending — owner: `SUPERVISOR`
 **Burst at/through a wall aims, then silently fails (no AP, no queued action)**
 - **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`
@@ -1081,38 +1091,30 @@ is correct, and the cause is sharper than a missing cue: there is no cue at all.
     handles hitting whatever is in the way, which argues a player should be allowed to fire and hit
     the pillar. Against that, the LoS gate stops AP being spent on an impossible shot. **Not
     decided by CC.** Left `Active` for that reason.
-### BR34.03 — Pending — owner: `SUPERVISOR`
-**`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
-- **cluster:** `input-affordance`
-- **Source:** `SUPERVISOR`
-- **Reported:** 2026-07-23 (tb34 review). The queue row for an attack still renders the verbose default
-  form; it should read as compactly as the move rows now do — `AttackAction(unit=2)`.
-- **Known pattern, already solved once:** BR27.08's follow-up work shortened the `MoveAction` queue
-  label (commit "keep the queued suffix on partial resolve, short Move label"). Apply the same
-  treatment to `AttackAction` — and while in there, check the remaining action types (burst, overwatch,
-  repair, the melee actions) rather than fixing one and leaving the next to be reported separately.
-
-- **2026-08-09 (taskblock-61 Pass D — fixed; `Pending`)** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`].
-  **Derived once rather than overridden per action.** This entry asked for `AttackAction(unit=2)`
-  and added *"check the remaining action types rather than fixing one and leaving the next to be
-  reported separately"* — there are **twenty**, and every one formats as `Name(first=..., rest...)`.
-  Seven near-identical `short_describe()` overrides would have been seven things to remember, so
-  `CombatAction.short_describe` keeps the first field and closes the paren. An action nobody has
-  written yet is covered with no edit.
-  - **`MoveAction`'s own override (BR27.08) is deleted, not kept alongside** — truncating
-    `MoveAction(unit=%d, path=%s)` at its first field produces exactly the text that override
-    existed to produce.
-  - **Depth-aware, and that is not decoration.** Splitting on the first `", "` reads correctly
-    today and would silently cut through the middle of the first action that formats a `Vector2i`
-    first — `MoveAction` already prints an `Array[Vector2i]`, so that is one refactor away rather
-    than hypothetical. Pinned by its own test.
-  - **A consequence worth seeing, not just reading:** rows that were *already* short now trim too.
-    `FaceAction(unit=2, direction=1.00)` becomes `FaceAction(unit=2)`, with the direction moving to
-    the hover detail. The existing rule — detail appears exactly when short and full differ — is
-    unchanged and still guarded; more rows simply differ now. **If a bounded field like that should
-    have stayed on the row, this is the part to say so about.**
-  - **To see it:** queue an attack, a burst, an overwatch and a face; every row should read
-    `Name(unit=N)`, with the dropped terms on hover.
+- **2026-08-09 (taskblock-61 Pass D — the rule reversed on the supervisor's call; `Pending`)**
+  [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]. *"Obstructed shots should be legal. Things get broken
+  here, so a gun like a chain gun might chew through a crate to hit the target behind it. And a
+  sniper with a shot that goes through soft things will need to be able to shoot through soft
+  cover, again like crates."*
+  - **The `LoS.has_los` gate is gone from `AttackAction` and `BurstAction`** — the only two that
+    carried it. **It contradicted the resolver it guarded:** `docs/02` marches a real ray that
+    meets whatever is in the way and spends damage penetrating it, and a cell-to-cell sight line
+    answering "no" ahead of that forbade the exact outcome the chain exists to produce — on the
+    coarsest evidence available, a line between two cell CENTRES, where the shot is fired from a
+    real muzzle at a real body.
+  - **Precedent, not invention:** taskblock-58 Pass C removed the same gate from `Overwatch` for
+    the same reason — *"two checks deciding one thing, with the coarser one holding the veto"*.
+  - **Nothing replaces it, deliberately.** A shot into cover is a legal shot that hits the cover;
+    whether the round gets through is `DamageResolver`'s question, answered against real material.
+    The AI still avoids wasting shots — that is scoring (`line_of_fire`), never legality.
+  - **Two tests reversed rather than deleted**, each naming its old expectation:
+    `test_attack_action.gd`'s `test_is_legal_false_without_line_of_sight`, and CC's own refusal test
+    from one pass earlier which asserted the shot stayed refused.
+  - **The refusal announcement from Pass D stands and is still tested** — other gates (no AP, out
+    of range, suppressed) still refuse, and a refusal must never be silent again.
+  - **To see it:** fire through a crate or pillar at something behind it. The shot should queue and
+    resolve against whatever it actually meets. **A shot that still silently does nothing is the
+    regression** — and it will now say `shot refused` in the log if it does.
 ### BR34.04 — Active — owner: `SUPERVISOR`
 **Sniper camera frames the target from an odd angle**
 - **cluster:** `camera`

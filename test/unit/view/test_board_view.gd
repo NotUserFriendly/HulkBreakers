@@ -534,11 +534,16 @@ func test_show_ghost_paths_spawns_a_marker_line_and_label_per_leg() -> void:
 	var view := BoardView.new()
 	add_child_autofree(view)
 
+	# `BR30.04` (taskblock-61 Pass D): **the old count of 8 encoded a double-draw.** Legs are
+	# contiguous, so cell (1,0) is leg 1's waypoint AND leg 2's first cell, and it used to receive
+	# two markers — which is what hid the hollow waypoint box under a filled square. Seven is the
+	# corrected arithmetic: 3 distinct cells drawn once each (one trail marker at (0,0), two
+	# waypoint boxes at (1,0) and (2,0)), plus 1 line and 1 label per leg.
 	view.show_ghost_paths([[Vector2i(0, 0), Vector2i(1, 0)], [Vector2i(1, 0), Vector2i(2, 0)]])
 	assert_eq(
 		view._ghost_overlay.get_child_count(),
-		8,
-		"(2 cell markers + 1 line + 1 label) per leg, 2 legs",
+		7,
+		"3 cells drawn once each, plus a line and a label per leg",
 	)
 
 

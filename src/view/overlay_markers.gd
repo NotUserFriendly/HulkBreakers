@@ -71,3 +71,15 @@ static func flat_box(cell: Vector2i, color: Color, world_y: float, size: float) 
 		cell.x * UnitGeometry.CELL_SIZE, world_y, cell.y * UnitGeometry.CELL_SIZE
 	)
 	return instance
+
+
+## **A queued waypoint marker.** `BR30.04`: solid for the most recent waypoint, a hollow outline for
+## every earlier one, one colour for both — the supervisor's own spec, *"All queued waypoints are
+## one color and a hollow box drawn on the walkable terrain underneath. The most recent waypoint is
+## a filled in box."*
+static func waypoint_box(
+	cell: Vector2i, color: Color, world_y: float, size: float, filled: bool
+) -> Node3D:
+	if filled:
+		return flat_box(cell, color, world_y, size)
+	return hollow_box(cell, color, world_y, size)

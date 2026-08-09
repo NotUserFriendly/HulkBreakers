@@ -88,8 +88,23 @@ func is_legal(state: CombatState) -> bool:
 		return false
 	if RangeModel.blocks_min_range(weapon, range_cells):
 		return false
-	if not LoS.has_los(state.grid, actual.cell, target_cell):
-		return false
+	# `BR32.07`, taskblock-61 Pass D: **the `LoS.has_los` gate that used to sit here is gone**, on
+	# the supervisor's call — *"Obstructed shots should be legal. Things get broken here, so a gun
+	# like a chain gun might chew through a crate to hit the target behind it. And a sniper with a
+	# shot that goes through soft things will need to be able to shoot through soft cover."*
+	#
+	# **The gate contradicted the resolver it guards.** `docs/02` resolves a shot spatially — the
+	# ray chain marches, meets whatever is actually in the way, and spends damage penetrating it.
+	# A cell-to-cell sight line answering "no" ahead of that forbade the exact outcome the chain
+	# exists to produce, and forbade it on the coarsest possible evidence: `has_los` asks whether a
+	# line between two CELL CENTRES is clear, where the shot is fired from a real muzzle at a real
+	# body. Same shape as the gate taskblock-58 Pass C removed from `Overwatch` for the same
+	# reason — two checks deciding one thing, with the coarser holding the veto.
+	#
+	# **What replaces it is nothing, deliberately.** A shot into cover is a legal shot that hits
+	# the cover; whether the round gets through is `DamageResolver`'s question, answered against
+	# real material and real damage rather than against a boolean. The AI still avoids wasting
+	# shots — that is a scoring concern (`line_of_fire`), never a legality one.
 
 	var manipulators: Array[Part] = []
 	for part: Part in actual.shell.operable_parts():

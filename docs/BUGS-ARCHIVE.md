@@ -3923,3 +3923,51 @@ evidently not what was reported.
   - The label complaint in this entry (`unit_3`, raw part ids) is **closed unaddressed** with it.
   - Recorded in `docs/SUPERSEDED.md`. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
 
+### BR34.03 — Obsolete — owner: `SUPERVISOR`
+**`AttackAction` in the move queue isn't label-pruned like `MoveAction`**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`
+- **Reported:** 2026-07-23 (tb34 review). The queue row for an attack still renders the verbose default
+  form; it should read as compactly as the move rows now do — `AttackAction(unit=2)`.
+- **Known pattern, already solved once:** BR27.08's follow-up work shortened the `MoveAction` queue
+  label (commit "keep the queued suffix on partial resolve, short Move label"). Apply the same
+  treatment to `AttackAction` — and while in there, check the remaining action types (burst, overwatch,
+  repair, the melee actions) rather than fixing one and leaving the next to be reported separately.
+
+- **2026-08-09 (taskblock-61 Pass D — fixed; `Pending`)** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`].
+  **Derived once rather than overridden per action.** This entry asked for `AttackAction(unit=2)`
+  and added *"check the remaining action types rather than fixing one and leaving the next to be
+  reported separately"* — there are **twenty**, and every one formats as `Name(first=..., rest...)`.
+  Seven near-identical `short_describe()` overrides would have been seven things to remember, so
+  `CombatAction.short_describe` keeps the first field and closes the paren. An action nobody has
+  written yet is covered with no edit.
+  - **`MoveAction`'s own override (BR27.08) is deleted, not kept alongside** — truncating
+    `MoveAction(unit=%d, path=%s)` at its first field produces exactly the text that override
+    existed to produce.
+  - **Depth-aware, and that is not decoration.** Splitting on the first `", "` reads correctly
+    today and would silently cut through the middle of the first action that formats a `Vector2i`
+    first — `MoveAction` already prints an `Array[Vector2i]`, so that is one refactor away rather
+    than hypothetical. Pinned by its own test.
+  - **A consequence worth seeing, not just reading:** rows that were *already* short now trim too.
+    `FaceAction(unit=2, direction=1.00)` becomes `FaceAction(unit=2)`, with the direction moving to
+    the hover detail. The existing rule — detail appears exactly when short and full differ — is
+    unchanged and still guarded; more rows simply differ now. **If a bounded field like that should
+    have stayed on the row, this is the part to say so about.**
+  - **To see it:** queue an attack, a burst, an overwatch and a face; every row should read
+    `Name(unit=N)`, with the dropped terms on hover.
+- **2026-08-09 — `Obsolete` on the supervisor's instruction, taskblock-61 Pass D.** *"This is part
+  of the old queue system, which was pruned off the old UI. double check what's actually calling
+  that, and then obsolete it if nothing."* **Checked: `SelectionController.queue_entries()` is
+  called by nothing in `src/` — only by tests.** The queue row this entry describes no longer
+  exists, so there is nothing to verify a fix against; `Obsolete`, never `Resolved`.
+- **CC's own fix for it was reverted in the same pass, and that is the more useful record.**
+  Pass D4 generalised `short_describe()` to trim every action to `Name(unit=N)`. With no queue row
+  consuming it, the only surviving reader is `queue_log.gd` — **so the change did not tidy a UI
+  row, it stripped detail out of combat-log lines**, where more detail is the whole point. Reverted
+  to the pre-D4 state (base returns `describe()`, `MoveAction` keeps its own BR27.08 override for
+  its genuinely unbounded path).
+- **Kept on record for whoever rebuilds the queue UI:** twenty actions all format
+  `Name(first=..., rest...)`, so one derived rule beats seven overrides — and it must be
+  paren-depth aware, because `MoveAction` already formats an `Array[Vector2i]` and splitting on the
+  first `", "` would cut through a coordinate. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
+
