@@ -202,65 +202,6 @@ bug and it is chased on its own terms.
 
 ---
 
-### BR61.08 — Active — owner: `SUPERVISOR`
-**AI turns are not animated**
-- **cluster:** `two-clocks`
-- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
-- An AI unit's turn resolves without playback — the board updates and nothing plays. **The player sees
-  results, never the action that produced them**, which is the whole point of `ResolutionPlayer`.
-- **Related to `BR51.21`** (a debug injection never animated because nothing called
-  `ResolutionPlayer.play()`), resolved in taskblock-61 Pass E3. **Check whether the AI batch path has
-  the same omission** before treating this as a new mechanism.
-### BR61.09 — Active — owner: `SUPERVISOR`
-**A shot can be silently refused: no AP spent, no aim window, back to overview**
-- **cluster:** `input-affordance`
-- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
-- Picking a target sometimes drops straight back to the overview camera with nothing spent and nothing
-  said. **The supervisor: *"not a bug, just never defined"*** — the refusal is legitimate, the silence
-  is not.
-- **This is `PLAN.md`'s *A legality check answers a bare boolean* with a face on it.** A refusal that
-  cannot say why is indistinguishable from a bug, and this is the second time that has cost a session.
-- **Likely subsumed by the aiming rebuild**; confirm rather than assume.
-### BR61.10 — Active — owner: `SUPERVISOR`
-**The dartboard does not scale with distance**
-- **cluster:** `input-affordance`
-- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
-- Its radii are fixed rather than being **the radii at a marked distance, extrapolated for every
-  other**. A target at 3 cells and one at 18 present the same board, so the aim reads as equally
-  precise at any range.
-- **Likely subsumed by the aiming rebuild.**
-### BR61.11 — Active — owner: `SUPERVISOR`
-**Terrain parts are hoverable through the combat log, producing tooltips over the panel**
-- **cluster:** `input-affordance`
-- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
-- Hovering the combat log raises tooltips for terrain behind it. **The panel is not consuming the
-  hover**, so the board picks it up underneath.
-- **Third instance of a full-rect container's input handling being wrong** — after `BR31.01` and the
-  `TopLeftControls` fix, both listed under the `mouse_filter` sweep. **Check that sweep's scope covers
-  the log before fixing this one locally.**
-### BR61.12 — Active — owner: `SUPERVISOR`
-**The end-turn confirmation dialog does not match the rest of the UI**
-- **cluster:** `input-affordance`
-- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
-- Different visual language from every other panel. **Low priority and jarring** — the supervisor's own
-  weighting.
-- Worth folding into whatever next touches confirmation dialogs rather than a pass of its own.
-### BR61.13 — Active — owner: `SUPERVISOR`
-**Frame drops during initial map generation, not persisting into a bout**
-- **cluster:** `framerate`
-- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
-- The non-bout spawn drops frames; entering a bout clears it. **A one-time cost that shows**, rather
-  than a sustained rate.
-- **Judged against the ledger's hitch bar** — worst frame over roughly 100 ms — not against an average.
-  Measure before treating it as severe.
-### BR61.14 — Active — owner: `SUPERVISOR`
-**A large hitch on the camera move from overview to over-the-shoulder**
-- **cluster:** `framerate`
-- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
-- Found while troubleshooting something else. **Distinct from `BR51.15`**, which is the hitch as the
-  OTS camera *swings behind* the unit; this is the transition into OTS at all.
-- **Both are likely retired by the aiming and camera rebuild**, so measure and record rather than
-  tuning the current rig.
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
 - **cluster:** `framerate`
@@ -2658,3 +2599,69 @@ is_disabled` for the same part. The disappearance here is that disagreement made
 - **Tests:** `test_squad_control_overlay.gd::test_a_destroyed_blocker_keeps_its_mesh_until_its_
   explosion_has_played` (confirmed red on the old ordering) and
   `::test_a_board_verb_with_nothing_to_animate_still_rebuilds_immediately`.
+
+### BR61.08 — Active — owner: `SUPERVISOR`
+**AI turns are not animated**
+- **cluster:** `two-clocks`
+- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
+- An AI unit's turn resolves without playback — the board updates and nothing plays. **The player sees
+  results, never the action that produced them**, which is the whole point of `ResolutionPlayer`.
+- **Related to `BR51.21`** (a debug injection never animated because nothing called
+  `ResolutionPlayer.play()`), resolved in taskblock-61 Pass E3. **Check whether the AI batch path has
+  the same omission** before treating this as a new mechanism.
+
+### BR61.09 — Active — owner: `SUPERVISOR`
+**A shot can be silently refused: no AP spent, no aim window, back to overview**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
+- Picking a target sometimes drops straight back to the overview camera with nothing spent and nothing
+  said. **The supervisor: *"not a bug, just never defined"*** — the refusal is legitimate, the silence
+  is not.
+- **This is `PLAN.md`'s *A legality check answers a bare boolean* with a face on it.** A refusal that
+  cannot say why is indistinguishable from a bug, and this is the second time that has cost a session.
+- **Likely subsumed by the aiming rebuild**; confirm rather than assume.
+
+### BR61.10 — Active — owner: `SUPERVISOR`
+**The dartboard does not scale with distance**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
+- Its radii are fixed rather than being **the radii at a marked distance, extrapolated for every
+  other**. A target at 3 cells and one at 18 present the same board, so the aim reads as equally
+  precise at any range.
+- **Likely subsumed by the aiming rebuild.**
+
+### BR61.11 — Active — owner: `SUPERVISOR`
+**Terrain parts are hoverable through the combat log, producing tooltips over the panel**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
+- Hovering the combat log raises tooltips for terrain behind it. **The panel is not consuming the
+  hover**, so the board picks it up underneath.
+- **Third instance of a full-rect container's input handling being wrong** — after `BR31.01` and the
+  `TopLeftControls` fix, both listed under the `mouse_filter` sweep. **Check that sweep's scope covers
+  the log before fixing this one locally.**
+
+### BR61.12 — Active — owner: `SUPERVISOR`
+**The end-turn confirmation dialog does not match the rest of the UI**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
+- Different visual language from every other panel. **Low priority and jarring** — the supervisor's own
+  weighting.
+- Worth folding into whatever next touches confirmation dialogs rather than a pass of its own.
+
+### BR61.13 — Active — owner: `SUPERVISOR`
+**Frame drops during initial map generation, not persisting into a bout**
+- **cluster:** `framerate`
+- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
+- The non-bout spawn drops frames; entering a bout clears it. **A one-time cost that shows**, rather
+  than a sustained rate.
+- **Judged against the ledger's hitch bar** — worst frame over roughly 100 ms — not against an average.
+  Measure before treating it as severe.
+
+### BR61.14 — Active — owner: `SUPERVISOR`
+**A large hitch on the camera move from overview to over-the-shoulder**
+- **cluster:** `framerate`
+- **Source:** `SUPERVISOR`, 2026-08-09, post-taskblock-61 review.
+- Found while troubleshooting something else. **Distinct from `BR51.15`**, which is the hitch as the
+  OTS camera *swings behind* the unit; this is the transition into OTS at all.
+- **Both are likely retired by the aiming and camera rebuild**, so measure and record rather than
+  tuning the current rig.
