@@ -1056,6 +1056,18 @@ deliberately not `Pending`.** CC session `4ec878cf-1434-4676-8bd3-05c92eed071a`.
     is no symptom either way), take a shallow camera angle on a multi-level board, and click across
     a gap — an unfloored cell or the space above a wall — where the ray can miss every box while
     the plane solve still names a cell beyond.
+- **2026-08-09 (supervisor) — DID NOT REPRODUCE.** *"I couldn't reproduce it."* Tried against the
+  guarded build after CC's own reachability analysis above concluded it could not show the path was
+  reachable at all.
+- **STANDING INSTRUCTION FROM THE OWNER: if it fails to reproduce a second time, close it
+  `Obsolete`.** Not `Resolved` — nobody has ever seen this symptom, so there is no fix anyone can
+  confirm; the honest closing status is "the question no longer exists". **Whoever picks this up
+  next does not need to ask again**: one more genuine attempt that produces nothing, and it closes.
+  The `inspect_fallback` log line is the evidence to check — a session with no such line is the
+  second non-reproduction.
+- **What survives either way:** `BoardPicker.cell_visible_from` and its three tests stay. The guard
+  is cheap and correct whether or not the path is live, and it is the thing that would catch this
+  if the two pickers ever do disagree.
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
 - **cluster:** `camera`

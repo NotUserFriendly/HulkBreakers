@@ -2,6 +2,30 @@
 
 ## Taskblock 61 — the hunt
 
+### Pass D close-out — `BR35.02` did not reproduce, and carries its own closing condition
+
+**The supervisor tried and could not reproduce `BR35.02`**, which is what CC's own reachability
+analysis predicted: the primary pick tests units, blockers, field items and floors, so the fallback
+runs only when the ray struck nothing at all — and the only things it can then open are a blocker or
+a floor tile, both already tested.
+
+**The owner left a standing instruction rather than a decision to re-ask for:** one more failed
+reproduction closes it **`Obsolete`**, not `Resolved` — nobody has ever seen the symptom, so there is
+no fix to confirm. The `inspect_fallback` log line is the evidence, and a session with no such line
+*is* the second failure. Written into the entry so whoever picks it up does not have to ask again.
+
+**The guard and its three tests stay either way.** `BoardPicker.cell_visible_from` is cheap and
+correct whether or not the path is live, and it is what would catch this if the two pickers ever do
+disagree.
+
+**Living docs squared up at the same time:** the per-leg colour cycle's retirement recorded in
+`SUPERSEDED.md` alongside the aim-layer and line-of-sight reversals; `board_view.gd`'s repeated
+collisions with the 1000-line lint cap queued in `PLAN.md` with the honest shape (the cutout feed is
+the separable concern, and it should not be extracted inside another bug fix); and the taskblock
+report's opening **rewritten rather than appended to**, per its own template's warning about
+summaries that no longer sum.
+
+
 ### Pass D9 — `BR35.02` instrumented, because CC cannot show its path is reachable
 
 The supervisor asked how best to recreate `BR35.02`. **CC cannot, and said so rather than staging a

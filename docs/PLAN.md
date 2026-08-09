@@ -208,6 +208,25 @@ against the retired ramps' 15.8% — so the retirement cost essentially no eleva
 
 # QUEUED
 
+### `board_view.gd` sits on `gdlint`'s file-size cap, and every change now pays a tax to fit
+**Needs:** nothing. **Unblocks:** changing the board view without first finding something to delete.
+
+**Three times in taskblock-61 alone** a change to `BoardView` came in over the 1000-line cap and had
+to buy its way back under: the cutout logger moved out (`src/debug/cutout_log.gd`), marker
+construction moved out (`src/view/overlay_markers.gd`), and a third round went to shortening comments
+— which is losing recorded reasoning to satisfy a line count, the worst of the available trades.
+
+**The file is not obviously bloated; it is doing several jobs.** Static board geometry (tiles,
+blockers, grid lines, empty-cell indicators), the TACTICS overlay (reachable cells, ghost paths,
+waypoints, overwatch arcs), and the wall-cutout uniform feed are three separate concerns that happen
+to share a node.
+
+**Shape, not chosen:** the cutout feed is the most self-contained of the three — it owns its own
+material, its own per-frame projection and its own unit list, and its only tie to the rest is the
+`Grid`. Splitting it would leave `BoardView` as "draw the board and its overlays", which is one job.
+**Do not do this as part of a bug fix** — that is how the last three extractions happened, and each
+was scoped by what would fit rather than by what belonged together.
+
 ### A legality check answers a bare boolean, so nothing can report why a shot was refused
 **Needs:** nothing. **Unblocks:** any refusal a player can act on.
 
