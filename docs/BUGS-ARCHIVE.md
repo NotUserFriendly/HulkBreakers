@@ -4527,3 +4527,16 @@ is zero.** CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
 
 **Resolved 2026-08-09 by the supervisor** — *"Clean fix, resolved."* Confirmed in a live session against taskblock-61 Pass E6's `WorldPalette.directional_light` layer mask. [CC `906e0f07-5b0a-47bd-8444-fb42ed468da2`]
 
+### BR62.01 — Resolved — owner: `CC`
+**`ClimbAction` charged an unceiled climb price the pathfinder had quoted ceiled**
+- **Source:** `CC`, 2026-08-09, taskblock-62 Pass C1.
+- `Pathfinder.move_cost` returned `ceil(CLIMB_COST * level_delta)` while `ClimbAction._cost`
+  returned the same product **unceiled**. A 0.7-level bare climb was quoted **3 MP** by the
+  planner and charged **2.8 MP** by the action — the two-formula drift `Surface`'s own header
+  warned about, in the one place nobody had looked.
+- **Never observed in play**, because neither action was reachable from the player or the AI;
+  only `BoutInjector` could trigger one. Recorded rather than dropped: the divergence was real
+  and the reason it stayed invisible is itself the finding.
+- **Closed by removal, taskblock-62 Pass C1** — `ClimbAction`/`HopDownAction` are retired and
+  `Pathfinder.move_cost` is the only place a vertical step is priced. `Resolved` rather than
+  `Obsolete` because the disagreement was verified before the code carrying it was removed.

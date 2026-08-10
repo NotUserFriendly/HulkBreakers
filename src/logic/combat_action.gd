@@ -14,6 +14,26 @@ func apply(_state: CombatState) -> void:
 	pass
 
 
+## tb62 Pass C1: **the one way an action is resolved when an interrupt may fire.**
+##
+## `CombatState._resolve_until_body` used to branch on the action's class to decide which
+## resolution call to make — `MoveAction.apply_stepwise`, then `elif action is ClimbAction`,
+## with `apply()` for everything else. Pass D would have added a third arm and the mag lift a
+## fourth, which is four branches deciding one thing: exactly the shape CLAUDE.md's *"if two
+## code paths decide the same thing, that's the bug to fix"* names.
+##
+## The default is `apply()` and *"nothing stopped me"*, so every action that cannot be
+## interrupted — a shot, a face, an end-turn — needs no override and behaves exactly as it
+## did. An action with real mid-resolution exposure overrides this and honours the hook.
+##
+## Returns `{"stopped": bool}`. `MoveAction` has returned that shape since docs/09
+## taskblock06 Pass D; this promotes it from a convention two classes shared to the contract
+## the resolver actually calls.
+func apply_interruptible(state: CombatState, _mid_move_hook: Callable = Callable()) -> Dictionary:
+	apply(state)
+	return {"stopped": false}
+
+
 func describe() -> String:
 	return "CombatAction"
 

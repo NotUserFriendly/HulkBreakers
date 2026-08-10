@@ -90,6 +90,20 @@ func refusal_reason(state: CombatState) -> StringName:
 ## AP buys MP, MP does not buy AP — so an action costing AP simply costs AP, and a unit with
 ## movement left and no actions left cannot ride. That is the trade the cost currency exists
 ## to create.
+## tb62 Pass C1: **a rider arrives somewhere, and arriving is an exposure** (`docs/09`:
+## every real exposure the same). There is no mid-transit to catch — a ride is a teleport —
+## so the hook fires once, after the unit has committed and is standing on the far pad,
+## which is where an overwatcher's own line-of-fire has to resolve against anyway. Same
+## shape and same reasoning as an interrupted move; the ride itself always completes,
+## because being shot on arrival ends your turn rather than rewinding the ride.
+func apply_interruptible(state: CombatState, mid_move_hook: Callable = Callable()) -> Dictionary:
+	apply(state)
+	if not mid_move_hook.is_valid():
+		return {"stopped": false}
+	var hook_result: Variant = mid_move_hook.call(state, state.find_unit(unit.id))
+	return {"stopped": hook_result is bool and hook_result}
+
+
 func apply(state: CombatState) -> void:
 	var actual: Unit = state.find_unit(unit.id)
 	var origin_cell: Vector2i = actual.cell
@@ -127,7 +141,7 @@ func _log(state: CombatState, actual: Unit, origin_cell: Vector2i, destination: 
 					Enums.Phase.RESOLUTION,
 					actual.id,
 					&"mag_lifted",
-					# `path`, the same shape a `move`/`climbed` event carries, so
+					# `path`, the same shape a `move` event carries, so
 					# `ResolutionPlayer`'s generic slide playback moves the unit with no
 					# dedicated animation code. A teleport played as a fast slide is a
 					# presentation choice the log does not have to make.

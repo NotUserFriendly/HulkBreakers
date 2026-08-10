@@ -230,18 +230,20 @@ static func _next_event_continues_this_pull(events: Array[LogEvent], index: int)
 
 func _play_event(event: LogEvent) -> void:
 	match event.kind:
-		# taskblock-37 Pass E: `ClimbAction`/`HopDownAction` log the same
-		# `"path"` shape `MoveAction`'s own `move` event does (`[origin,
-		# target]`) specifically so this needs no dedicated vertical-slide
-		# code at all — `_play_slide`/`_world_anchor` are already height-
-		# aware, so a climb/drop plays as a real slide through the two
-		# cells' own true elevations instead of the silent snap it got
-		# before (no case at all matched either event kind).
+		# taskblock-37 Pass E: a vertical leg logs the same `"path"` shape `MoveAction`'s own
+		# `move` event does, specifically so this needs no dedicated vertical-slide code at
+		# all — `_play_slide`/`_world_anchor` are already height-aware, so a climb or a drop
+		# plays as a real slide through the two cells' own true elevations.
+		#
+		# tb62 Pass C1: `climbed` and `hopped_down` are gone from this list because the
+		# actions that emitted them are retired — a climb is a `move` with a `rise` now. The
+		# generic handling those kinds proved was worth having is exactly why the retirement
+		# costs the playback nothing.
 		# tb62 Pass B: `mag_lifted` joins them for the same reason and at no extra cost —
 		# `MagLiftAction` emits the identical `"path"` shape. A ride is a teleport in the
 		# rules and a fast slide on screen, which is a presentation choice this list gets to
 		# make precisely because the log did not make it.
-		&"move", &"climbed", &"hopped_down", &"mag_lifted":
+		&"move", &"mag_lifted":
 			await _play_slide(event)
 		&"faced":
 			await _play_facing(event)
@@ -279,12 +281,14 @@ func _prime(events: Array[LogEvent]) -> void:
 	var first_move: Dictionary = {}  # unit_id -> LogEvent
 	var relevant: Dictionary = {}  # unit_id -> true
 	for event: LogEvent in events:
-		# taskblock-37 Pass E: `climbed`/`hopped_down` carry the same
-		# `"path"` shape a `move` event does — primed identically, or a
-		# climbing unit's `_display_cell` never seeds to its own real
-		# origin and the vertical slide `_play_event` now plays for it has
-		# nothing to animate FROM.
-		if event.kind == &"move" or event.kind == &"climbed" or event.kind == &"hopped_down":
+		# taskblock-37 Pass E: every event that relocates a unit carries the same `"path"`
+		# shape a `move` event does, and must be primed identically — or the unit's
+		# `_display_cell` never seeds to its own real origin and the slide `_play_event`
+		# plays for it has nothing to animate FROM.
+		#
+		# tb62 Pass C1: `climbed`/`hopped_down` left this list with the actions that emitted
+		# them; `mag_lifted` took their place, and a climb is an ordinary `move` now.
+		if event.kind == &"move" or event.kind == &"mag_lifted":
 			relevant[event.unit_id] = true
 			if not first_move.has(event.unit_id):
 				first_move[event.unit_id] = event

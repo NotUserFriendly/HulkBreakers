@@ -492,22 +492,18 @@ func _resolve_until_body(queue: ActionQueue, mid_move_hook: Callable) -> Diction
 			# without telling you which action killed it — the one thing you
 			# actually need to reproduce it.
 			return _stopped(queue.unit, &"next_action_illegal", action)
-		if action is MoveAction:
-			var result: Dictionary = (action as MoveAction).apply_stepwise(self, mid_move_hook)
-			if result.stopped:
-				return _stopped(queue.unit, &"mid_move_interrupt", action)
-		# taskblock-53 Pass E: **a climb is interruptible on the same rule, not a parallel
-		# one.** `ClimbAction.apply_interruptible` returns the same `{"stopped": bool}` shape,
-		# so an overwatcher catching a unit on a ladder stops the queue exactly the way
-		# catching one in the open does — same reason, same refund, same log line. A unit
-		# mid-climb is the most exposed it will ever be, and it used to be the one thing
-		# that could not be interrupted at all.
-		elif action is ClimbAction:
-			var climb: Dictionary = (action as ClimbAction).apply_interruptible(self, mid_move_hook)
-			if climb.stopped:
-				return _stopped(queue.unit, &"mid_move_interrupt", action)
-		else:
-			action.apply(self)
+		# taskblock-53 Pass E: **every real exposure the same** (`docs/09`) — an overwatcher
+		# catching a unit mid-transit stops the queue the same way wherever it happens.
+		#
+		# tb62 Pass C1: **and it is one call now, not a cascade.** This used to branch on the
+		# action's class — `MoveAction`, then `elif action is ClimbAction`, then `apply()` for
+		# the rest — and the block that retired `ClimbAction` would have replaced that with
+		# two more arms. `CombatAction.apply_interruptible` defaults to `apply()` plus "nothing
+		# stopped me", so an action that cannot be interrupted needs no entry here and an
+		# action that can needs no branch.
+		var result: Dictionary = action.apply_interruptible(self, mid_move_hook)
+		if result.get("stopped", false):
+			return _stopped(queue.unit, &"mid_move_interrupt", action)
 	return {"kind": Enums.ResolveOutcome.COMPLETED}
 
 

@@ -846,20 +846,20 @@ func force_action(action: CombatAction) -> bool:
 	return true
 
 
-## taskblock-37 Pass E: `force_action(ClimbAction.new(...))` under a name
-## the debug panel can surface with plain scalar params (unit + cell) —
-## nothing else can trigger a real climb yet (no AI path queues one,
-## docs/PLAN.md's own follow-up item), and the supervisor needs a way to
-## actually SEE one play before signing off on Pass E's own animation
-## work. Real legality still applies (capability, rise cap, affordability)
-## — this forces WHEN, never WHETHER, same as `force_action` itself.
+## taskblock-37 Pass E: a vertical step the debug panel surfaces with plain scalar params;
+## real legality applies. tb62 Pass C1: a one-step `MoveAction` — see `test_vertical_movement.gd`.
 func force_climb(unit: Unit, target_cell: Vector2i) -> bool:
-	return force_action(ClimbAction.new(unit, target_cell))
+	return _vertical_step(&"force_climb", unit, target_cell, 1.0)
 
 
-## The mirror of `force_climb`, for `HopDownAction`.
 func force_hop_down(unit: Unit, target_cell: Vector2i) -> bool:
-	return force_action(HopDownAction.new(unit, target_cell))
+	return _vertical_step(&"force_hop_down", unit, target_cell, -1.0)
+
+
+func _vertical_step(verb: StringName, unit: Unit, cell: Vector2i, up: float) -> bool:
+	if (UnitGeometry.true_height_for_cell(cell, state.grid) - unit.height) * up <= 0.0:
+		return _refuse(verb, &"target_is_on_the_wrong_side", {"cell": cell})
+	return force_action(MoveAction.new(unit, [unit.cell, cell] as Array[Vector2i]))
 
 
 ## taskblock-53 Pass B: **the placeholder map loader.** Swaps the live board for

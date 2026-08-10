@@ -42,12 +42,13 @@ extends RefCounted
 ## **`RAMP_TAG` is a rendering tag and nothing more, as of tb60 Pass A.** It still makes a
 ## surface's own edges ride the sloped `RampGeometry` profile instead of a flat top, and
 ## `CellInspection` still names the shape to a player. What it no longer does is grant
-## traversal: the shared "stepping onto this cell is ordinary movement, never a
-## Climb/HopDown" check that `Pathfinder`, `ClimbAction` and `HopDownAction` all read is
+## traversal: the shared "stepping onto this cell is ordinary movement, never a climb or a
+## drop" check that `Pathfinder` and the two discrete vertical actions all read is
 ## **deleted**, replaced by `Unit.step_height()` compared against the actual rise. A ramp is
 ## content now: sloped geometry a unit walks over because it is shallow, not because it is
 ## labelled. Do not reintroduce a traversal reading of this tag; that is the categorical
-## check the pass existed to remove.
+## check the pass existed to remove. (tb62 Pass C1 retired both of those actions outright —
+## a climb is an ordinary `MoveAction` step now — so `Pathfinder` is the only reader left.)
 const WALKABLE_TAG: StringName = &"walkable"
 const RAMP_TAG: StringName = &"ramp"
 
@@ -127,7 +128,10 @@ static func first_walkable(surfaces: Array[Surface]) -> Surface:
 
 
 ## True if any surface placed at `cell` carries the ladder tag. One shared formula, so
-## `ClimbAction` and `Pathfinder` cannot quietly drift apart about what a ladder is.
+## `Pathfinder` and anything else asking cannot quietly drift apart about what a ladder is.
+## **tb62 Pass C1 removed the drift this line was guarding against by removing the second
+## reader**: `ClimbAction` had its own copy of the cost formula, unceiled where
+## `move_cost` ceils, and it is retired.
 ##
 ## **The last of its kind.** Its ramp-tag twin was deleted at tb60 Pass A, and the difference
 ## between the two is worth keeping in view. A ladder is a real mechanical category: it is

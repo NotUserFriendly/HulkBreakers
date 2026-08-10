@@ -65,6 +65,13 @@ func apply(state: CombatState) -> void:
 	apply_stepwise(state)
 
 
+## tb62 Pass C1: the resolver's one entry point (`CombatAction.apply_interruptible`), which
+## for a move has always been `apply_stepwise` — this names it rather than having
+## `CombatState` recognise the class.
+func apply_interruptible(state: CombatState, mid_move_hook: Callable = Callable()) -> Dictionary:
+	return apply_stepwise(state, mid_move_hook)
+
+
 ## docs/09 taskblock06 Pass D: like apply(), but checks `mid_move_hook`
 ## (Callable(state, unit) -> Variant, e.g. Pass F's Overwatch trigger check)
 ## after EVERY cell actually stepped onto, then re-validates whether the
@@ -211,18 +218,33 @@ static func _can_still_complete(
 ## cap. The mission AI has no facing awareness at all (it never queues a
 ## FaceAction); making combat AI account for its own defensive facing is
 ## a real follow-up, not something to invent unasked here.
+## tb62 Pass C1: **`rise` rides on the move event, because `climbed` and `hopped_down` are
+## gone.** Those two event kinds were `ClimbAction`/`HopDownAction`'s, and retiring the
+## actions would have taken the board's only record that a leg went *up* with them — a real
+## legibility loss, since docs/00's rule is that anything a supervisor can only report as a
+## feeling has to reach the combat log as a number.
+##
+## It is a number on the existing event rather than a second event kind, because a climb is
+## a move with a rise; that is the whole finding the retirement rests on. `ResolutionPlayer`
+## already played all three identically off `path`, so playback is unchanged.
 func _finish(state: CombatState, actual: Unit, traversed: Array[Vector2i]) -> void:
 	var text: String = "MoveAction: unit %d moved to %s" % [actual.id, actual.cell]
 	state.log_action(text)
 	if not state.is_preview:
+		var start_height: float = UnitGeometry.true_height_for_cell(traversed[0], state.grid)
+		var rise: float = actual.height - start_height
 		state.combat_log.emit(
 			LogEvent.new(
 				state.round_number,
 				Enums.Phase.RESOLUTION,
 				actual.id,
 				&"move",
-				{"path": traversed, "destination": actual.cell},
-				"moved to %s" % actual.cell
+				{"path": traversed, "destination": actual.cell, "rise": rise},
+				(
+					"moved to %s (rise %.2f)" % [actual.cell, rise]
+					if absf(rise) > Unit.STEP_EPSILON
+					else "moved to %s" % actual.cell
+				)
 			)
 		)
 

@@ -38,27 +38,24 @@ func _setup_player(grid: Grid) -> Dictionary:
 
 ## taskblock-37 Pass E: mirrors `ClimbAction`/`HopDownAction`'s own logged
 ## `"path"` shape — the whole point being that `ResolutionPlayer` needs no
-## dedicated vertical-slide code, just to route these two kinds through
-## the same `_play_slide` a `move` event already uses.
-func _climbed_event(unit: Unit, path: Array[Vector2i]) -> LogEvent:
+## dedicated vertical-slide code.
+##
+## tb62 Pass C1: **these build `move` events now**, because `ClimbAction`/`HopDownAction` and
+## their `climbed`/`hopped_down` kinds are retired — a climb is a `move` carrying a `rise`.
+##
+## **Two tests in this file were passing vacuously the moment the kinds went**, and that is
+## worth recording rather than quietly fixing: they assert `view.position == Vector3.ZERO`
+## after playback, and an event kind `_play_event` no longer matches falls through its
+## `match` doing nothing at all — leaving the position at exactly the zero they check for. A
+## test whose subject disappears can go green *because* it disappeared.
+func _vertical_move_event(unit: Unit, path: Array[Vector2i], rise: float) -> LogEvent:
 	return LogEvent.new(
 		0,
 		Enums.Phase.RESOLUTION,
 		unit.id,
-		&"climbed",
-		{"cell": path[path.size() - 1], "rise": 1.0, "cost": 4.0, "path": path},
-		"climbed to %s" % path[path.size() - 1]
-	)
-
-
-func _hopped_down_event(unit: Unit, path: Array[Vector2i]) -> LogEvent:
-	return LogEvent.new(
-		0,
-		Enums.Phase.RESOLUTION,
-		unit.id,
-		&"hopped_down",
-		{"cell": path[path.size() - 1], "cost": 1.0, "path": path},
-		"hopped down to %s" % path[path.size() - 1]
+		&"move",
+		{"destination": path[path.size() - 1], "rise": rise, "path": path},
+		"moved to %s (rise %.2f)" % [path[path.size() - 1], rise]
 	)
 
 
@@ -87,13 +84,11 @@ func test_world_anchor_reads_the_cells_own_real_height() -> void:
 	assert_almost_eq(anchor.z, 4.0 * UnitGeometry.CELL_SIZE, 0.0001)
 
 
-## taskblock-37 Pass E: `ClimbAction`/`HopDownAction` log the same `path`
-## shape a `move` event does specifically so `_play_event` can route both
-## through the exact same `_play_slide` — proven directly: a zero-duration
-## climb visits every path cell and ends flush, same invariant
-## test_resolution_player.gd's own plain-move test uses, now exercised
-## through a real `&"climbed"` event kind instead of a hand-called
-## `_play_slide`.
+## taskblock-37 Pass E: a vertical leg logs the same `path` shape a flat one does,
+## specifically so `_play_event` routes both through the exact same `_play_slide` — proven
+## directly: a zero-duration climb visits every path cell and ends flush, the same invariant
+## test_resolution_player.gd's own plain-move test uses, through a real event rather than a
+## hand-called `_play_slide`.
 func test_a_zero_duration_climb_event_plays_as_a_real_slide() -> void:
 	var grid := GridFixture.flat(10, 10)
 	GridFixture.place_floor(grid, Vector2i(1, 1), 1)
@@ -106,14 +101,18 @@ func test_a_zero_duration_climb_event_plays_as_a_real_slide() -> void:
 	attacker.height = UnitGeometry.true_height_for_cell(attacker.cell, grid)
 	attacker.level = attacker.height / UnitGeometry.LEVEL_HEIGHT
 
-	player._play_event(_climbed_event(attacker, [Vector2i(0, 0), Vector2i(1, 1)]))
+	player._play_event(
+		_vertical_move_event(attacker, [Vector2i(0, 0), Vector2i(1, 1)], 1.0)
+	)
 
 	assert_eq(
-		view.position, Vector3.ZERO, "a real climbed event must reach _play_slide, not fall through"
+		view.position,
+		Vector3.ZERO,
+		"a real climbing move event must reach _play_slide, not fall through"
 	)
 
 
-## Same proof for `hopped_down`, the mirror action.
+## Same proof for a drop, the mirror case.
 func test_a_zero_duration_hop_down_event_plays_as_a_real_slide() -> void:
 	var grid := GridFixture.flat(10, 10)
 	GridFixture.place_floor(grid, Vector2i(0, 0), 1)
@@ -126,21 +125,22 @@ func test_a_zero_duration_hop_down_event_plays_as_a_real_slide() -> void:
 	attacker.height = UnitGeometry.true_height_for_cell(attacker.cell, grid)
 	attacker.level = attacker.height / UnitGeometry.LEVEL_HEIGHT
 
-	player._play_event(_hopped_down_event(attacker, [Vector2i(0, 0), Vector2i(1, 1)]))
+	player._play_event(
+		_vertical_move_event(attacker, [Vector2i(0, 0), Vector2i(1, 1)], -1.0)
+	)
 
 	assert_eq(
 		view.position,
 		Vector3.ZERO,
-		"a real hopped_down event must reach _play_slide, not fall through"
+		"a real dropping move event must reach _play_slide, not fall through"
 	)
 
 
 ## taskblock-37 Pass E: mirrors test_resolution_player.gd's own
 ## `test_prime_shows_the_old_state_immediately`, through a real climb
-## instead of a real move — `_prime` must treat `climbed`/`hopped_down`
-## as priming-relevant too, or a climbing unit's own display record never
-## seeds to its real pre-climb position and the vertical slide has
-## nothing to animate FROM. Asserts only the Y component: a
+## instead of a flat one — `_prime` must treat a vertical leg as priming-relevant, or a
+## climbing unit's own display record never seeds to its real pre-climb position and the
+## vertical slide has nothing to animate FROM. Asserts only the Y component: a
 ## `Basis(Vector3.UP, angle)` rotation (whatever facing change also
 ## primed) never changes a vector's own Y, so this isolates the height
 ## claim specifically from any incidental X/Z turn.
@@ -155,7 +155,7 @@ func test_priming_a_climb_shows_the_old_height_not_the_already_baked_final_one()
 	attacker.level = attacker.height / UnitGeometry.LEVEL_HEIGHT
 	var view: HitVolumeView = player._view_for(attacker.id)
 
-	player._prime([_climbed_event(attacker, [Vector2i(0, 0), attacker.cell])])
+	player._prime([_vertical_move_event(attacker, [Vector2i(0, 0), attacker.cell], 2.0)])
 
 	assert_almost_eq(
 		view.position.y,

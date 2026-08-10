@@ -133,7 +133,7 @@ func test_a_unit_with_no_climbing_capability_climbs_a_ladder() -> void:
 	state.assign_all_to_human()
 	state.force_current_unit(unit.id)
 	assert_true(
-		ClimbAction.new(unit, Vector2i(1, 0)).is_legal(state),
+		MoveAction.new(unit, [Vector2i(0, 0), Vector2i(1, 0)] as Array[Vector2i]).is_legal(state),
 		"a ladder makes the climb legal for a shell that could not otherwise"
 	)
 
@@ -145,7 +145,7 @@ func test_the_same_unit_cannot_climb_a_bare_face() -> void:
 	state.assign_all_to_human()
 	state.force_current_unit(unit.id)
 	assert_false(
-		ClimbAction.new(unit, Vector2i(1, 0)).is_legal(state),
+		MoveAction.new(unit, [Vector2i(0, 0), Vector2i(1, 0)] as Array[Vector2i]).is_legal(state),
 		"without a ladder the same climb is illegal — the ladder is what changed"
 	)
 
@@ -172,8 +172,8 @@ func test_a_ladders_reach_is_what_bounds_the_climb_not_the_bare_face_cap() -> vo
 	state.assign_all_to_human()
 	state.force_current_unit(unit.id)
 	assert_true(
-		ClimbAction.new(unit, Vector2i(1, 0)).is_legal(state),
-		"and the action agrees with the reach, not with MAX_CLIMB_LEVELS"
+		MoveAction.new(unit, [Vector2i(0, 0), Vector2i(1, 0)] as Array[Vector2i]).is_legal(state),
+		"and the step agrees with the reach, not with MAX_CLIMB_LEVELS"
 	)
 
 
