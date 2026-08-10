@@ -19,6 +19,18 @@ extends GutTest
 ## planner and nobody is tempted to write its name, the guard is pure ceremony —
 ## but that day is not the day the planner is deleted, which is the only day the
 ## reference could plausibly creep back.
+##
+## **taskblock-63 Pass A: the file-cap half of this guard has moved out and its
+## number has changed.** `test_the_linter_file_cap_came_back_down` asserted
+## `max-file-lines: 1000` here, on the reasoning that the cap coming back down was
+## the objective proof the planner was gone. **That proof was delivered and cannot
+## be delivered twice** — the planner is gone, the sweep below is what keeps it
+## gone, and a frozen number in a file about a deleted planner became the reason an
+## unrelated cap decision could not be made. The cap is now a project choice at
+## 2500 (`BR62.02`: the 1000 was gdlint's default, inherited rather than decided,
+## and it penalised exactly the files that explain themselves). The *mechanism* the
+## old assertion was valued for — the cap cannot drift without someone saying why
+## in a test — survives in `test/unit/test_lint_config.gd`.
 
 ## The retired planner's class name and its file. Both, because a reference can be
 ## either — `UnitAI.plan_turn` in code, `unit_ai.gd` in a comment or a path.
@@ -100,18 +112,3 @@ func test_the_sweep_would_actually_catch_a_reintroduction() -> void:
 	var offences: Array[String] = _offending_lines(SELF_PATH)
 
 	assert_gt(offences.size(), 0, "this file names the planner, and the matcher sees it")
-
-
-## The file cap coming back down is the OBJECTIVE proof the planner is gone. It was
-## raised eight times, every time for that one file, every time on the promise this
-## block is now keeping — so if it cannot return to 1000, something survived.
-func test_the_linter_file_cap_came_back_down() -> void:
-	var file: FileAccess = FileAccess.open("res://gdlintrc", FileAccess.READ)
-	assert_not_null(file, "gdlintrc must be readable")
-	if file == null:
-		return
-
-	assert_true(
-		file.get_as_text().contains("max-file-lines: 1000"),
-		"max-file-lines must be back at its default 1000 — eight bumps, one file, now deleted"
-	)

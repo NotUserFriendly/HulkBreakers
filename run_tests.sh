@@ -86,17 +86,20 @@ esac
 #    `test_*` functions are deliberately many small, focused cases, not
 #    something to split apart just to satisfy a linter default).
 #
-#    taskblock-45 Pass E: **max-file-lines is back at its default 1000, and the
-#    ~40 lines of bump rationale that used to sit here are deleted with it.**
-#    It had been raised eight times — 1000 to 1050 to 1150 to 1200 to 1300 to
-#    1400 — every single time for one file, src/logic/ai/unit_ai.gd, and every
-#    time on the promise that "part two replaces this file". Part two landed and
-#    the file is gone. The limit coming back down is the objective proof of that,
-#    which is why it was taskblock-45 Pass E's acceptance rather than a tidy-up:
-#    a planner that had truly been replaced could not need the headroom, and one
-#    that had merely been added alongside would still need every line of it.
-#    `test/unit/test_retired_planner_sweep.gd` asserts the 1000 directly, so this
-#    cannot quietly drift back up without someone saying why in a test.
+#    taskblock-63 Pass A: **max-file-lines is 2500, and that number is the
+#    project's rather than gdlint's.** The 1000 it replaced was the tool's own
+#    default — inherited, never argued for — and a line count cannot tell code
+#    from comments, so it penalised exactly the files that carry their rules in
+#    doc comments, which is this project's standing convention. BR62.02 records
+#    it biting three source files in one taskblock with the cost coming out of
+#    documentation twice. Everything else gdlint does is unchanged.
+#    `test/unit/test_lint_config.gd` asserts the 2500 directly, so this cannot
+#    drift without someone saying why in a test — the mechanism taskblock-45
+#    Pass E introduced, kept, with a number that was decided rather than
+#    inherited. (That pass's own reason for the 1000 — the cap coming back down
+#    being the objective proof `src/logic/ai/unit_ai.gd` was truly replaced after
+#    eight bumps taken on its behalf — was delivered and cannot be delivered
+#    twice; `test_retired_planner_sweep.gd` is what keeps the planner gone now.)
 if [[ -n "$TARGET" ]]; then
   gdlint "$TARGET"
 else
