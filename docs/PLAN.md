@@ -388,6 +388,27 @@ small and can be rebuilt in an afternoon; it is not the work.
   and `PartPicker` all read the boxes it produces — so once a blocker can carry one, geometry,
   picking and sight follow with no further change. It is the storage that is missing, not the maths.
 
+**A blocker's placement context is a dictionary key, and that is the whole defect.** `grid.blockers` is
+`Dictionary[Vector2i, Part]`, while a surface is a `Surface(part, height, facing)` record and a body
+part receives a full `Transform3D` from the socket-tree walk. **A `Part` is a template; the transform
+lives in the placement context** — and blockers are the one kind whose context carries a cell and
+nothing else.
+
+**Surfaces got their record in taskblock-38. Blockers never got the equivalent.**
+
+**So this is not "give blockers a transform" — it is give them the record surfaces already have**, and
+`MapPlacement` **is** that record: it carries `height`, `size`, `offset` and `facing` today. The work is
+`Grid.blockers` holding a record rather than a bare `Part`, the serializer carrying fields it already
+has, and `board_view.gd:349` reading them.
+
+**`BR62.05` is the live half**: those fields are **dropped on both load and save**, so an authored
+blocker height silently does not survive a round trip. It round-trips only because both ends discard
+the same things.
+
+**A third fixed generation height (+4, alongside 0 and +1) is what surfaces it.** A floor at +4 sits
+above every wall on the board, so an exterior wall must **follow its neighbouring tiles up** — which
+becomes *authorable* once a blocker carries a height, rather than needing a rule of its own.
+
 ### A cell holds one blocker, so nothing stacks vertically
 **Needs:** `Grid.blockers` becoming a list per cell, or a placement carrying enough position to be
 addressed below another. **Unblocks:** stacking a pillar on a pillar; a wall taller than its part.
@@ -1742,6 +1763,9 @@ angle — not an address space.
 - **Real-time exploration is coming.** Movement outside combat should be natural and ungridded, so
   three players are not waiting on someone to walk three tiles. **A discretization that only holds
   during combat is not the representation** — it is one mode's rule.
+  - **Real-time is player-only.** No AI participates: anything that has to move during it is
+    **scripted, not intelligent**. So the mode adds no planning problem, and the scorer's world stays
+    turn-based and lattice-enumerated.
 - **It already leaks at grid borders.** If a neighbouring grid is offset 0.2, *"move one cell"* needs
   float maths at the seam. So the abstraction fails precisely where it was supposed to earn its
   keep — and you end up carrying float positions *and* a cell address to keep in sync, which is worse
@@ -1765,11 +1789,14 @@ demand, and it keeps both costs to buy neither benefit.
 - **A lattice, on request.** Cells become **a query over the frame** rather than where things are
   stored. Authoring still wants them — sections, claims and spawn regions are naturally cell-shaped —
   and so does the player's mental model during combat.
-- **A candidate set for the AI. This is the one real cost.** The planner scores roughly 900 candidates a
-  turn, and a lattice hands it a finite enumerable set for free. **Continuous positions make "where
-  should I stand" have infinitely many answers**, so it needs a sampling rule where today it needs none.
-  **That is a design problem, not a translation problem**, and it is the strongest argument for keeping
-  a lattice *available* even when it is not the storage.
+- **A candidate set for the AI**, and this turns out to be cheap. The planner scores roughly 900
+  candidates a turn and a lattice hands it a finite enumerable set — **continuous storage does not force
+  continuous candidates.** A unit stands at a `Vector3`; the planner enumerates lattice-aligned
+  destinations from wherever that is. **The AI never reasons about continuous position**, because it only
+  scores in combat and real-time has no scorer in it at all.
+  - One consequence rather than a problem: after real-time movement or a knockback a unit's **current**
+    position may not sit on the lattice, so *"stay where I am"* is one candidate that is not a lattice
+    point. An extra entry in the set, not a sampling rule.
 
 #### Two things to settle before committing
 
@@ -2017,6 +2044,107 @@ parallel-systems rule with a display attached.
 **Worth knowing regardless of shape: this is CC's diagnostic too.** It is plausibly the thing that would
 have shown `BR52.10` — an AI firing a full burst through the ally in front of it — as a cell scoring
 high where a squadmate stands, rather than as a battle report nobody could explain.
+
+### Legs must match, and mismatch degrades movement
+**Needs:** `step_height` on parts (landed, taskblock-62). **Unblocks:** leg damage meaning something
+before the leg is gone; a shell built wrong reading as built wrong.
+
+**Parts that connect a shell to the ground should match**, and the cheapest way to author that is a
+**leg length**. Mismatch is then a spectrum rather than a rule: **a slight difference makes a unit limp
+and spend MP inefficiently; a major one forces it to a crawl.**
+
+**taskblock-62 already built the first half of this intuition.** `Unit.step_height()` returns **0.0**
+for a shell with only one authored leg — *"an offer with nothing to push off"* — so the code already
+says a matched pair is what lets you step up. **One leg cannot push off; two mismatched legs can push
+off badly.**
+
+#### Reach and cadence are separate, so `MAX` stays right
+
+**A long leg buys reach; matched legs buy rhythm.** One long leg and one short leg lets a unit take a
+**taller single step** — the long leg genuinely reaches — and hampers it taking **several in a row**.
+
+So `Unit.step_height()` resolving as **`MAX` across authored offers is correct and does not change.**
+The mismatch penalty lands entirely on **cost per step**, a different quantity: **a limping unit is not
+stepping lower, it is paying more for each one.**
+
+Two independent axes, and keeping them apart is what makes the model cheap:
+
+| | quantity | resolved by |
+|---|---|---|
+| **Reach** | how tall a single step can be | the **largest** offer among ground contacts |
+| **Cadence** | what a step costs | penalised by the **spread** among them |
+
+**Knock-on worth noting: it interacts with *Momentum* for free.** Momentum accumulates with movement, so
+a unit paying more MP per cell covers less ground per turn and arrives with less of it. **A limp costs
+you the charge as well as the distance**, with no rule saying so.
+
+#### The spread is across ground contacts, not a pairwise difference
+
+**Not "the difference between leg A and leg B".** A quadruped with three legs at 1.0 and one at 0.6 is
+a different animal from one with two at 1.0 and two at 0.6, and a tripod or a single-tracked chassis
+has to answer too. **The quantity is the spread among however many ground-contacting parts exist.**
+
+#### Battle damage gets it for free, which is the sign the rule is right
+
+**A leg shot off is the most extreme mismatch there is.** So one rule covers a shell built wrong, a
+shell damaged mid-fight, and a shell hastily repaired with whatever was to hand — **and losing a leg
+starts mattering before it is gone**, which it currently does not.
+
+#### Two forks to settle before it is built
+
+- **Does leg length replace `step_height` as the authored stat, or sit beside it?** Now that reach and
+  cadence are separate the question narrows: **`step_height` is the reach offer, and length feeds the
+  spread that sets cadence.** They may genuinely be two quantities — a hip joint decides lift as much as
+  length does — in which case both are authored and neither derives. **Cheaper if they are one; do not
+  force it if they are not.**
+- **Limp and crawl are graded states, and the thresholds are balance numbers.** State them; do not
+  invent them. The shape is the surrogate ladder's — a spectrum with named rungs, not a boolean.
+
+**Crawl is a pose**, so `Poses` already carries the mechanism; a limp is an MP multiplier, and `mp` is
+already a float. **Neither needs new machinery** — what is new is the spread and what it maps to.
+
+#### A mismatched body needs somewhere to bend, and there is nowhere
+
+**A unit standing on legs of different lengths has to compensate** — a slanted hip, or a bent knee — and
+**neither joint exists.** `torso.tres` carries `HIP_L` and `HIP_R` **sockets**, and `leg.tres` attaches
+straight to them; a leg's only sockets are `ARMOR` and `CLADDING_LEG`. **There is no articulation
+anywhere between torso and foot**, because the torso rolls the hips into itself.
+
+**So this item has a part-tree dependency it did not know about:** either a **hip segment** between
+torso and leg that can slant, or **leg segments with a knee**. Both are content plus a socket-vocabulary
+addition rather than code.
+
+**This is dangerously close to inverse kinematics**, and worth naming so it is entered deliberately.
+The cheap version is a **canned pose per severity rung** — limp and crawl are named states, not a
+continuous solve — which is what `Poses` is already for. **Solve for the joint angles only if the canned
+poses read badly.**
+
+**Matched legs raising the hip needs none of this**, which is why the standing-height work is separable
+and comes first.
+
+### Should a map roll its own chances at load?
+**Needs:** nothing. **Unblocks:** deciding what a `MapFile` is before the editor grows more gestures.
+
+**Today a section declares chances and a map does not.** `SectionFile` carries `maximum_clutter`,
+`banned_clutter`, `minimum_garrison`, `maximum_garrison` and per-cell clutter chances; `MapFile` carries
+placements, spawns and nothing else. The recorded reasoning was *a placed board has a barrel or it does
+not; it has no 40% chance of one.*
+
+**The supervisor expected otherwise** — that a full map could also declare a chance, filled on load.
+**Worth deciding rather than inheriting**, because it changes what the format is.
+
+- **The reproducibility objection is already solved.** A seeded roll makes `load(map, seed)`
+  deterministic, which is the same mechanism `preview_section` uses today.
+- **It moves the map/section line somewhere cleaner.** The distinction stops being *declarations versus
+  none* and becomes **composability versus none**: a section has edges, claims and join rules; a map does
+  not. **A map becomes a template until it is loaded**, which is a more useful thing than a finished
+  board.
+- **It buys variety without authoring N maps.** An authored board replayed twice is currently identical,
+  and a hand-made encounter is exactly the thing that benefits from a little variation.
+
+**The cost to weigh:** *load `proving_ground` and reproduce the bug* stops being unconditional and
+becomes *load it at this seed*. That is a real loss for a debugging surface — and it is the same trade
+the completion sampler already makes deliberately.
 
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
@@ -2560,8 +2688,30 @@ AABB? Melee correctly rejects a PART target today; this is the follow-up to make
 
 
 ### Animation, and the promise that what you see is what you get
-**Needs:** commissioned models and animation work — **neither of which is on this list yet**, which is
-why this sits where it does. **Unblocks:** units reading as inhabited rather than as posed boxes.
+**Needs:** nothing structural. **Commissioned models are not a prerequisite** — the rig is the socket
+tree with per-socket `Transform3D` overrides, and **animating boxes is still animating.** Interpolation,
+the clock and pose sequencing are all buildable and testable before any art exists. **Unblocks:** units
+reading as inhabited rather than as posed boxes; a ragdoll; anything else that needs motion over time.
+
+**What is missing is time, not structure.** Poses are discrete states applied instantly; animation is
+interpolating between them — a `Transform3D` lerp per socket against a clock, and `ResolutionPlayer`
+already runs a playback clock for tracers, hit flashes and inter-shot gaps.
+
+**A ragdoll is the cheap first target, and it splits into two builds.** A **canned collapse** — a pose
+sequence dropped over some hundreds of milliseconds — is deterministic, needs no physics, and uses only
+what exists. A **physics ragdoll** needs `Skeleton3D` and `PhysicalBone3D`, which means the view builds
+a *skeleton* from the socket tree rather than today's flat `MeshInstance3D` per box.
+
+**The skeleton question is the one worth deciding deliberately**, because commissioned art arrives as
+rigged assets and `Part.mesh_scene` already anticipates them — so the view becomes skeleton-shaped
+eventually either way. **The rule that keeps it safe: the socket tree stays the authority and the
+skeleton derives from it, one direction only.** A bone that can be posed independently of its socket is
+where two representations of one body start disagreeing.
+
+**A ragdoll is also the first thing here that legitimately need not be deterministic.** It happens after
+the unit is gone and nothing reads where the limbs land — the *pretty on top of powerful* split arriving
+for real. **Worth stating**, because determinism is a hard rule everywhere else and someone will apply
+it here reflexively.
 
 **Units get idle movement that depends on their shape and their parts.** A spindly frame sways
 differently from a squat one; an arm that is gone does not idle.

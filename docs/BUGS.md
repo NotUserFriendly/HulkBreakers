@@ -226,6 +226,26 @@ bug and it is chased on its own terms.
   materials exist. Vertical routes are exactly what a player needs to spot, and there are now three of
   them — steps, ladders, lifts — which probably want to read as a family rather than each picking a
   colour.
+### BR62.05 — Active — owner: `CC`
+**A blocker's height, size, offset and facing are dropped on load and on save**
+- **cluster:** `map-generation`
+- **Source:** review session `HBPaR3`, 2026-08-10, found while sizing a third generation height.
+- **`MapPlacement` carries `height`, `size`, `offset` and `facing`.** `MapSerializer` load does
+  `grid.blockers[placement.cell] = part` (`:169`) — **the part and nothing else.** Save reconstructs a
+  `MapPlacement` from the cell and the part id alone (`:57`).
+- **It round-trips because both ends drop the same fields**, not because they survive. An author can
+  place a wall at height 4.0 in the editor, save, load, and get a wall at 0 — **silently.**
+- **The root is that a blocker's placement context is a dictionary key.** `grid.blockers` is
+  `Dictionary[Vector2i, Part]`, while a surface is a `Surface(part, height, facing)` record and a body
+  part gets a full `Transform3D` from the socket-tree walk. **Blockers are the one placement kind whose
+  runtime representation is poorer than the format describing it.**
+- **So the fix is not "give blockers a transform"** — it is **give blockers the placement record
+  surfaces already have**, and `MapPlacement` is already that record. Load and save carry the fields
+  they already hold; `Grid.blockers` holds a record rather than a bare `Part`; `board_view.gd:349`
+  reads it.
+- **Invisible today** because nothing authors a non-zero blocker height. **A third generation height
+  (+4) is exactly what surfaces it**, which is why it was found rather than played into.
+
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
 - **cluster:** `framerate`
