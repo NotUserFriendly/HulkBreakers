@@ -23,40 +23,25 @@ const BOUT_HEIGHT := BattleScene.GRID_HEIGHT
 ## Matches `test_map_gen.gd`'s own sweep width so the two boards are compared over the same seeds.
 const SEED_COUNT := 50
 
-## The pinned reality at 40x30, **as `region cells @ top-left cell` per seed.**
+## **`BR60.01` is repaired, and this is the invariant that replaces the defect it pinned.**
 ##
-## **This is a defect being held still, not an invariant being asserted.** Every line here is
-## `BR60.01` reproducing; the list exists so the sweep is a red test the day the generator changes
-## and a stable one until somebody fixes it. A line vanishing means the fix landed and the list
-## should shrink; a line appearing means something else moved.
+## Until taskblock-63 this held a list of twelve reproducing regions across eight of fifty
+## seeds, five of them 190+ cells — *"a defect being held still, not an invariant being
+## asserted"*, with the list existing so the sweep would go red the day the generator moved.
+## **The list is empty now**, which is a stronger thing to assert than any list was: every
+## generated map at the size the game plays has no walkable ground a spawn cannot reach.
 ##
-## Filled from the sweep's own output rather than hand-derived — see the test's `gut.p` dump.
+## Kept as a named constant rather than collapsed into a bare `assert_eq(found, [])` for two
+## reasons. The failure message below reads off it, and — the real one — **an entry appearing
+## here should look like a decision somebody made**, not like a literal being edited. The day
+## a generator change reintroduces unreachable ground, the honest options are to fix it or to
+## write the region down and say why, and that second option should cost a sentence.
 ##
-## **Eight seeds of fifty, twelve regions, five of them 190+ cells.** At 32x24 the same sweep
-## finds nothing, which is the entire content of *"the board size is the whole reason nobody has
-## seen it."*
-##
-## **These numbers are not tb60's and should not be compared to them line for line.** tb60 counted
-## *raised* regions with no reachable cell and reported twelve over **sixty** seeds, largest 235.
-## This counts every **walkable** cell no spawn can reach, which is a superset: it includes flat
-## pockets and it excludes nothing for being at ground level. The single-cell entries here are
-## therefore **not** tb60's "cover on a lone raised cell" — a live blocker makes a cell unwalkable
-## and `unreachable_cells` never sees it. A 1-cell entry here is a genuinely walkable tile that no
-## unit can ever stand on.
-const KNOWN_UNREACHABLE: Array[String] = [
-	"seed 2: 232 cells @ (2, 1)",
-	"seed 2: 1 cells @ (18, 10)",
-	"seed 11: 210 cells @ (1, 3)",
-	"seed 11: 1 cells @ (12, 1)",
-	"seed 17: 3 cells @ (36, 1)",
-	"seed 29: 192 cells @ (6, 1)",
-	"seed 32: 1 cells @ (13, 8)",
-	"seed 41: 209 cells @ (2, 2)",
-	"seed 41: 1 cells @ (17, 2)",
-	"seed 43: 197 cells @ (3, 3)",
-	"seed 43: 6 cells @ (33, 2)",
-	"seed 48: 1 cells @ (13, 17)",
-]
+## **Three repairs got it here**, all in `MapGen` and all judged against this sweep:
+## a route stood into every region with a lip to build against, a ladder that serves descent
+## as well as ascent (a +4 shelf is otherwise impassable in *both* directions), and sealing
+## the walkable pockets the wall ring leaves inside solid rock.
+const KNOWN_UNREACHABLE: Array[String] = []
 
 
 func _sweep() -> Array[String]:
@@ -81,10 +66,10 @@ func test_no_walkable_ground_is_unreachable_from_every_spawn_at_the_bout_board_s
 		found,
 		KNOWN_UNREACHABLE,
 		(
-			"unreachable ground at the played board size changed — a NEW entry is a regression, a "
+			"unreachable ground at the played board size changed — every entry here is a "
 			+ (
-				"MISSING one means BR60.01 is fixed and this list should shrink:\n%s"
-				% "\n".join(found)
+				"region of walkable ground no spawn can reach, which BR60.01's repair is "
+				+ "supposed to leave none of:\n%s" % "\n".join(found)
 			)
 		)
 	)

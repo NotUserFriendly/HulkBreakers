@@ -266,9 +266,31 @@ func move_cost(from: Vector2i, to: Vector2i) -> float:
 		# climb, which already exceeds a ramp's `base`, times `LADDER_COST_SCALE`.
 		var climb: float = CLIMB_COST * level_delta
 		return ceil(climb * LADDER_COST_SCALE) if on_ladder else ceil(climb)
-	if -level_delta > MAX_HOP_DOWN_LEVELS:
+	if -level_delta <= MAX_HOP_DOWN_LEVELS:
+		return HOP_DOWN_COST
+	# taskblock-63 Pass D1: **a ladder is a route in both directions, and until a +4
+	# generation height existed nothing had ever asked it to be.**
+	#
+	# The up branch above has consulted `ladder_serves_climb` since taskblock-53; the down
+	# branch capped at `MAX_HOP_DOWN_LEVELS` and consulted nothing. That was invisible while
+	# the tallest authored rise was one level — a one-level drop is under the cap, so the
+	# ladder never mattered — and a **+4 shelf is impassable in both directions** without
+	# this: too tall to climb bare, too tall to drop, so the ground below it is unreachable
+	# rather than merely hard to leave. Measured at 40x30: five seeds carrying regions of
+	# 65 to 286 cells, every one of them low ground ringed by a rise of exactly 4.0.
+	#
+	# **The ladder is read at the destination**, mirroring the up branch's "at the climber's
+	# feet": climbing down, the thing you are climbing down onto is what has to reach you.
+	# One shared formula, consulted from both ends, so a ladder cannot be a route one way and
+	# scenery the other.
+	if not Surface.ladder_serves_climb(_grid, to, from):
 		return -1.0
-	return HOP_DOWN_COST
+	# **The same price in both directions, and that is a placeholder rather than a design.**
+	# Nothing in this codebase says what climbing *down* a ladder should cost relative to
+	# climbing up it, and inventing an asymmetry would be inventing a balance number. Reusing
+	# the up expression keeps one formula and no new constant; if descent should be cheaper,
+	# that is a knob here and nothing else changes.
+	return ceil(CLIMB_COST * -level_delta * LADDER_COST_SCALE)
 
 
 func is_walkable(cell: Vector2i) -> bool:

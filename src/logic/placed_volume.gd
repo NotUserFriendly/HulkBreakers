@@ -34,6 +34,29 @@ extends RefCounted
 ## `BodyProjector` composes a socket chain rather than scaling through it.
 
 
+## **The part a placement actually puts on the board, at the size it was authored at.**
+##
+## taskblock-63 Pass D3: was `MapSerializer._sized`, and moved here because the *generator*
+## needs it too — a wall following its neighbours up a shelf is a sized placement, exactly
+## like an authored one, and a second copy of this in `MapGen` would be two answers to
+## "what does a resized part look like".
+##
+## **Untouched for an unsized placement**, which is every row in every map written before
+## taskblock-58 — `Vector3.ZERO` means "the part's own", so this returns the library's own
+## instance and nothing is duplicated. A sized one gets its own copy, because two placements
+## of one part at two sizes must not share a `volume`.
+static func placed_part(part: Part, size: Vector3, offset: Vector3 = Vector3.ZERO) -> Part:
+	if size.is_zero_approx() and offset.is_zero_approx():
+		return part
+	var resized: Part = part.duplicate(true)
+	resized.volume = boxes_for(part, size, offset)
+	# taskblock-59 Pass C: **hp follows the size and ignores the offset.** Where a thing has
+	# been nudged to says nothing about how much of it there is.
+	resized.max_hp = hp_for(part, size)
+	resized.hp = resized.max_hp
+	return resized
+
+
 ## The boxes `part` occupies when placed at `size`, shifted by `offset`, in part-local space.
 ##
 ## Returns the part's own boxes untouched when both are zero, which is both the common case and the

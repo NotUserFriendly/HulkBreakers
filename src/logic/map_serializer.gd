@@ -168,7 +168,7 @@ static func _add_placement(grid: Grid, map: MapFile, index: int) -> String:
 	# Everything downstream — what `BoardView` draws, what `RayCaster` marches, what
 	# `SightSpans` derives, what `DamageResolver` destroys — then works on the real size with
 	# **no change at all**, because there is nothing special about it to know.
-	part = _sized(part, placement.size, placement.offset)
+	part = PlacedVolume.placed_part(part, placement.size, placement.offset)
 	match placement.kind:
 		MapPlacement.KIND_SURFACE:
 			grid.add_surface(placement.cell, Surface.new(part, placement.height, placement.facing))
@@ -198,24 +198,6 @@ static func _add_placement(grid: Grid, map: MapFile, index: int) -> String:
 		_:
 			return "placement %d has unknown kind '%s'" % [index, placement.kind]
 	return ""
-
-
-## The part a placement actually puts on the board, at the size it was authored at.
-##
-## **Untouched for an unsized placement**, which is every row in every map written before
-## taskblock-58 — `Vector3.ZERO` means "the part's own", so this returns the library's own instance
-## and nothing is duplicated. A sized one gets its own copy, because two placements of one part at
-## two sizes must not share a `volume`.
-static func _sized(part: Part, size: Vector3, offset: Vector3 = Vector3.ZERO) -> Part:
-	if size.is_zero_approx() and offset.is_zero_approx():
-		return part
-	var resized: Part = part.duplicate(true)
-	resized.volume = PlacedVolume.boxes_for(part, size, offset)
-	# taskblock-59 Pass C: **hp follows the size and ignores the offset.** Where a thing has been
-	# nudged to says nothing about how much of it there is.
-	resized.max_hp = PlacedVolume.hp_for(part, size)
-	resized.hp = resized.max_hp
-	return resized
 
 
 ## **Authoring warnings, never load failures.** taskblock-53: an authored map may be broken

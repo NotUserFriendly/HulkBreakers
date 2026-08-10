@@ -721,8 +721,19 @@ func test_spawn_zones_are_walkable() -> void:
 ## lives entirely in placed `Surface`s, per `MapGenScratch`'s own doc
 ## comment) — a reference to any of those retired names anywhere in this
 ## file is a leftover of the old model, not exempted here at all.
+##
+## **taskblock-63 Pass D1 adds a third legitimate writer**, and the rule this guards is
+## unchanged by it: spawn markers are written *only where spawn zones are decided*.
+## `_reuniform_spawn_zones` is the same decision made again after
+## `_ensure_spawns_connected`, whose emergency carve flattens every cell it touches and can
+## therefore leave a zone marked at `_mark_zone` time straddling a ledge — `BR40.04`'s own
+## defect arriving from a direction `_mark_zone` has already run past. **Widening this list
+## is a decision, which is exactly what it should cost**: the list existing is what makes a
+## fourth writer something somebody has to argue for.
 func test_map_gen_touches_grids_spawn_marker_api_only_in_spawn_marking() -> void:
-	var allowed_functions: Array[String] = ["_place_spawn_zones", "_mark_zone"]
+	var allowed_functions: Array[String] = [
+		"_place_spawn_zones", "_mark_zone", "_reuniform_spawn_zones"
+	]
 	var file := FileAccess.open("res://src/logic/map_gen.gd", FileAccess.READ)
 	assert_not_null(file, "sanity: map_gen.gd must exist to check at all")
 	var current_function := ""

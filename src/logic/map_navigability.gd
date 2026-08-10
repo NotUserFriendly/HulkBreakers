@@ -157,13 +157,9 @@ static func spawn_cells(grid: Grid) -> Array[Vector2i]:
 static func unreachable_cells(
 	grid: Grid, step_height: float = Unit.BASE_STEP_HEIGHT
 ) -> Array[Vector2i]:
-	var spawns: Array[Vector2i] = spawn_cells(grid)
-	if spawns.is_empty():
+	var reached: Dictionary = reachable_from_spawns(grid, step_height)
+	if reached.is_empty():
 		return []
-	var reached: Dictionary = {}
-	for spawn: Vector2i in spawns:
-		for cell: Variant in flood(grid, spawn, step_height):
-			reached[cell] = true
 
 	var pathfinder := Pathfinder.new(grid, false, step_height)
 	var orphaned: Array[Vector2i] = []
@@ -177,6 +173,23 @@ static func unreachable_cells(
 			orphaned.append(cell)
 	orphaned.sort()
 	return orphaned
+
+
+## **Every cell any spawn can walk to**, the union of one flood per spawn — the positive half
+## of `unreachable_cells`, exposed because a *repair* needs it and re-flooding to rebuild it
+## would be a second answer to the same question. taskblock-63 Pass D1.
+##
+## Empty for a map with no spawns at all, which is the same "an authored fragment is
+## incomplete, not broken" posture `unreachable_cells` takes — a caller reading this as "no
+## cell is reachable" and repairing on it would rebuild an authored fragment into a board.
+static func reachable_from_spawns(
+	grid: Grid, step_height: float = Unit.BASE_STEP_HEIGHT
+) -> Dictionary:
+	var reached: Dictionary = {}
+	for spawn: Vector2i in spawn_cells(grid):
+		for cell: Variant in flood(grid, spawn, step_height):
+			reached[cell] = true
+	return reached
 
 
 ## `unreachable_cells` grouped into 4-connected components, largest first — what a sweep

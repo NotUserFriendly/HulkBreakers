@@ -56,6 +56,22 @@ const SPAWN_ZONE_SIZE: int = 2
 const RAISED_ROOM_PROBABILITY: float = 0.35
 const RAISED_ROOM_LEVEL: int = 1
 
+## taskblock-63 Pass D2: **the third fixed height.** Generation offered 0 and +1, and one
+## level is a rise a stair crosses in three cells and a unit crosses in one turn — so
+## ladders, lifts, partial climbs and one-way awareness have all shipped without ever being
+## put against a rise that genuinely needs several turns. **+4 is that rise.**
+##
+## Deliberately a *fixed* third height rather than a range: the two that existed are fixed,
+## and a continuous distribution would make every board's verticality slightly different and
+## none of it deliberate.
+const TALL_ROOM_LEVEL: int = 4
+## What share of the rooms this generator raises go to `TALL_ROOM_LEVEL` rather than
+## `RAISED_ROOM_LEVEL`. **Flagged, not designed** — the same posture `LIFT_SHARE` takes.
+## A quarter is the honest "it should appear and it should not be the norm" placeholder: a
+## tall shelf is a feature of a board, and a board made mostly of them is a different game
+## than one with one. **It wants a played answer, not a tuned one.**
+const TALL_ROOM_SHARE: float = 0.25
+
 ## taskblock-53 Pass D: how many repair sweeps `guarantee_navigability` will make. One
 ## repair can expose another, so a single pass is not enough; a bound stops a pathological
 ## board hanging generation. **Flagged, not designed** — 6 clears every seed measured, and
@@ -120,6 +136,13 @@ static func generate(
 
 	var spawn_cells: Array = _place_spawn_zones(grid, scratch, rooms)
 	_ensure_spawns_connected(grid, scratch, spawn_cells[0], spawn_cells[1], rng, step_height)
+	# taskblock-63 Pass D1: **the emergency carve runs after the zones are marked, and it
+	# flattens.** `_set_open` writes level 0 into every cell it carves, so a fallback corridor
+	# crossing a zone that was just marked at level 1 leaves the zone straddling a full ledge
+	# — `BR40.04`'s own defect, arriving from a direction `_mark_zone` cannot see because it
+	# has already run. Latent until now: the fallback almost never fires, and it fired on one
+	# seed of forty once the third generation height changed which boards need it.
+	_reuniform_spawn_zones(grid, scratch, spawn_cells)
 
 	_finalize_walls_and_empty(grid, scratch)
 
@@ -166,10 +189,13 @@ static func guarantee_navigability(
 	grid: Grid, step_height: float = Unit.BASE_STEP_HEIGHT, rng: RandomNumberGenerator = null
 ) -> void:
 	for _attempt: int in range(NAVIGABILITY_REPAIR_PASSES):
-		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid, step_height)
-		if stranded.is_empty():
-			return
 		var opened := 0
+		# **taskblock-63 Pass D1 (`BR60.01`): unreachable ground first, then one-way ground.**
+		# Ordered that way because opening a way *into* a region usually settles whether
+		# anything inside it is one-way as well, while repairing a one-way cell inside a
+		# region nobody can enter is work on ground no unit will ever see.
+		opened += _reach_unreachable_ground(grid, step_height)
+		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid, step_height)
 		for cell: Vector2i in stranded:
 			if _open_a_route_out(grid, cell, rng):
 				opened += 1
@@ -177,6 +203,103 @@ static func guarantee_navigability(
 		# spin.
 		if opened == 0:
 			return
+
+
+## **`BR60.01`'s repair: stand a route into every region no spawn can reach.** taskblock-63
+## Pass D1. Returns how many routes were opened, so the caller's own "nothing changed, stop"
+## bound covers this the same way it covers one-way ground.
+##
+## `MapNavigability.unreachable_cells` — built at taskblock-61 Pass E2 and, until now,
+## something only a sweep test read — is the detection half. This is the repair half the
+## entry records as missing, and it is deliberately **the same stamping call** one-way ground
+## already uses: a route up is a route up, and a second repair shaped differently is how two
+## paths that decide the same thing start disagreeing.
+##
+## **Built from the reachable side, into the region.** `_open_a_route_out` stamps at the cell
+## it is given, sized to the neighbour named — so the ladder or pad stands on ground a unit
+## can already get to, which is the only place it would do any good.
+##
+## The cheapest adjacency is chosen: the smallest rise between any reachable cell and any
+## cell of the region. Cheapest because a shorter ladder is fewer segments and a shorter lift
+## a smaller ride, and because on a terraced board the lowest lip is the one most likely to
+## be reachable itself.
+static func _reach_unreachable_ground(grid: Grid, step_height: float) -> int:
+	var opened := 0
+	# **The far end has to be ground a spawn can actually walk to.** Without this the repair
+	# happily connected one unreachable region to another — measured on seed 32, where a
+	# 72-cell region's cheapest lip led straight into a 118-cell region that was itself cut
+	# off, so a ladder was stood, `opened` counted it, and nothing became reachable.
+	var reached: Dictionary = MapNavigability.reachable_from_spawns(grid, step_height)
+	for region: Array in MapNavigability.unreachable_regions(grid, step_height):
+		var cells: Array[Vector2i] = region
+		var best_rise: float = INF
+		var best_from: Variant = null
+		var best_into: Variant = null
+		for cell: Vector2i in cells:
+			var there: float = UnitGeometry.true_height_for_cell(cell, grid)
+			for neighbour: Vector2i in grid.neighbors(cell):
+				if grid.blockers.has(neighbour) or not reached.has(neighbour):
+					continue
+				if Surface.first_walkable(grid.surfaces_at(neighbour)) == null:
+					continue
+				var rise: float = there - UnitGeometry.true_height_for_cell(neighbour, grid)
+				if absf(rise) <= 0.001 or absf(rise) >= best_rise:
+					continue
+				best_rise = absf(rise)
+				# **The route stands on the LOWER of the two cells, whichever side that is.**
+				# A ladder is a thing you climb *from*, so which end it goes on is decided by
+				# the ground and not by which side happens to be reachable. Both orientations
+				# occur and only one of them is the obvious case: a raised shelf nobody can
+				# get up to wants a ladder on the reachable ground below it, and **low ground
+				# ringed by a +4 shelf wants one inside the region**, reaching up to the
+				# shelf — which is what makes the shelf-to-region descent legal at all
+				# (`Pathfinder.move_cost`'s own hop-down branch).
+				if rise > 0.0:
+					best_from = neighbour
+					best_into = cell
+				else:
+					best_from = cell
+					best_into = neighbour
+		if best_from == null:
+			# **Nothing to build a route against, so this is ground inside the rock.**
+			#
+			# A region reaching here touches no reachable walkable cell at any height at all
+			# — every side of it is wall. The wall ring is what makes them: it turns each
+			# `UNCARVED` cell with any carved neighbour into an OPEN cell carrying a `wall`,
+			# so a carved pocket surrounded entirely by that ring comes out walkable,
+			# enclosed and reachable by nobody. **`MapNavigability`'s sweep has been
+			# reporting exactly these for two taskblocks** — four of the twelve entries in
+			# taskblock-61's pinned list were one-cell regions, and its own note calls them
+			# "real walkable ground nobody can stand on".
+			#
+			# There is no route to stand and nothing to flatten toward, so the third answer
+			# is the honest one: the cell is inside the wall, so it becomes wall. **Gated on
+			# there being no reachable neighbour at any height** rather than on a size — a
+			# region with a lip is repaired above and never arrives here, and a size cap
+			# would be a number nobody chose deciding how much board to delete.
+			for cell: Vector2i in cells:
+				grid.place_blocker(
+					cell,
+					DataLibrary.get_part(&"wall"),
+					UnitGeometry.true_height_for_cell(cell, grid)
+				)
+			opened += 1
+			continue
+		# **A ladder, never a mag lift, and the reason is worth stating.** The invariant this
+		# repair exists to satisfy is measured by a non-climbing `Pathfinder`, and **a mag
+		# lift is not a `Pathfinder` edge at all** — it is an AP-costing action
+		# (`ride_mag_lift`), so `MapNavigability` cannot see one. Stamping a lift here would
+		# be repairing a board against a check that will report it broken anyway, and the
+		# sweep would read as a generator that cannot fix its own maps.
+		#
+		# **`_open_a_route_out`'s own one-way repair still rolls `LIFT_SHARE`**, and it has
+		# the same blind spot — it gets away with it only because the cell stays listed and
+		# a later pass falls through to a ladder. That is a real gap and it is filed rather
+		# than quietly fixed here, because making a teleport into a pathfinder edge is a
+		# design question about what "navigable" means, not a repair.
+		if _open_a_route_out(grid, best_from as Vector2i, null, best_into):
+			opened += 1
+	return opened
 
 
 ## Opens one upward edge out of `cell`, or false if it could not. Sized to the LOWEST
@@ -193,21 +316,31 @@ static func guarantee_navigability(
 ## mattering again for exactly one reason — a lift is a *pair*, so the upper pad has to go
 ## somewhere, and that somewhere is the cell whose rise the route was sized to.
 static func _open_a_route_out(
-	grid: Grid, cell: Vector2i, rng: RandomNumberGenerator = null
+	grid: Grid, cell: Vector2i, rng: RandomNumberGenerator = null, toward: Variant = null
 ) -> bool:
 	var here: float = UnitGeometry.true_height_for_cell(cell, grid)
 	var best_rise: float = INF
 	var best_neighbour: Variant = null
-	for neighbour: Vector2i in grid.neighbors(cell):
-		if grid.blockers.has(neighbour):
-			continue
-		if Surface.first_walkable(grid.surfaces_at(neighbour)) == null:
-			continue
-		var rise: float = UnitGeometry.true_height_for_cell(neighbour, grid) - here
-		if rise <= 0.001 or rise >= best_rise:
-			continue
-		best_rise = rise
-		best_neighbour = neighbour
+	# taskblock-63 Pass D1: `toward` names the neighbour to build to, for a caller that
+	# already knows which one it wants — `_reach_unreachable_ground` picked its adjacency by
+	# surveying a whole region, and letting this re-choose on "lowest above" would send the
+	# ladder somewhere else. Null keeps the original behaviour, which is every other caller.
+	if toward != null:
+		best_neighbour = toward
+		best_rise = UnitGeometry.true_height_for_cell(toward as Vector2i, grid) - here
+		if best_rise <= 0.001:
+			return false
+	else:
+		for neighbour: Vector2i in grid.neighbors(cell):
+			if grid.blockers.has(neighbour):
+				continue
+			if Surface.first_walkable(grid.surfaces_at(neighbour)) == null:
+				continue
+			var rise: float = UnitGeometry.true_height_for_cell(neighbour, grid) - here
+			if rise <= 0.001 or rise >= best_rise:
+				continue
+			best_rise = rise
+			best_neighbour = neighbour
 	if is_inf(best_rise):
 		return false
 	if rng != null and rng.randf() < LIFT_SHARE:
@@ -403,10 +536,20 @@ static func _author_levels(
 	for room: Rect2i in rooms:
 		if rng.randf() >= RAISED_ROOM_PROBABILITY:
 			continue
+		# taskblock-63 Pass D2: **the draw happens for every raised room, whether or not it
+		# comes up tall.** Rolling only when some other condition held would make the RNG
+		# stream depend on the board, and two seeds that carve identically would then
+		# diverge for a reason nobody could read back.
+		var level: int = TALL_ROOM_LEVEL if rng.randf() < TALL_ROOM_SHARE else RAISED_ROOM_LEVEL
 		for y in range(room.position.y, room.position.y + room.size.y):
 			for x in range(room.position.x, room.position.x + room.size.x):
-				scratch.set_level(Vector2i(x, y), RAISED_ROOM_LEVEL)
-		_connect_with_a_stair(scratch, room, step_height, stair_cells)
+				scratch.set_level(Vector2i(x, y), level)
+		# **A tall room usually gets no stair, and that is the point.** A +4 rise at the
+		# unmodified step height needs ten steps across nine cells of clear lower ground,
+		# which a BSP board rarely has anywhere around a room — so the route up is a ladder
+		# or a lift, stood by `guarantee_navigability`, which is exactly the machinery this
+		# height exists to exercise.
+		_connect_with_a_stair(scratch, room, step_height, stair_cells, level)
 
 
 ## General safety net, not another hand-chased special case: a raised
@@ -456,29 +599,202 @@ static func _repair_stranded_elevation(
 	var reachable_set: Dictionary = {}
 	for cell: Vector2i in reachable:
 		reachable_set[cell] = true
+	# taskblock-63 Pass D1 (`BR60.01`): **grouped into regions before anything is
+	# flattened, because the decision is a fact about a region and not about a cell.**
+	# See `_region_can_be_routed_to`.
+	# **`kept` is every cell that comes out of this pass still at the level its room
+	# authored** — the reachable ground, plus every region a route can be stood to. It is
+	# threaded into the blocker half below because the two halves have to agree: a crate
+	# inside a region this pass decides to keep must keep its level as well, or it sinks
+	# alone and becomes the one-cell pit `BR40.03` was.
+	var kept: Dictionary = reachable_set.duplicate()
+	var regions: Array = _unreachable_regions_in_scratch(grid, scratch, reachable_set)
+	# **Grown to a fixed point, because keeping is transitive.** A region touching kept ground
+	# at a different height can have a route stood to it — and once it is kept, the region
+	# behind *it* can be routed to in turn, which is exactly what
+	# `guarantee_navigability`'s own repeated passes do on the finished board. Deciding in one
+	# sweep instead flattened the far region while keeping the near one, and a flattened
+	# pocket ringed by kept ground is a **pit**: measured at six of them across the
+	# raised-room sweep before this loop existed.
+	var grew := true
+	while grew:
+		grew = false
+		for region: Array in regions:
+			var cells: Array[Vector2i] = region
+			if kept.has(cells[0]):
+				continue
+			if not _region_can_be_routed_to(scratch, kept, cells):
+				continue
+			for cell: Vector2i in cells:
+				kept[cell] = true
+			grew = true
+
+	for region: Array in regions:
+		var cells: Array[Vector2i] = region
+		if kept.has(cells[0]):
+			continue
+		for cell: Vector2i in cells:
+			# tb60 Pass A: **one branch, where there were two.** A stranded stair tread
+			# used to need its own `RAMP`-kind clause to be flattened back to plain
+			# ground; a tread is an `OPEN` cell at a fractional level now, so flattening
+			# it is the same `set_level(cell, 0)` that flattens any other stranded cell.
+			# The old clause's own justification — "a ramp with nothing reachable on
+			# either end is not a ramp, it is a dead-end cell" — survives as a statement
+			# about heights.
+			scratch.set_level(cell, 0)
+	_flatten_stranded_blocker_cells(grid, scratch, kept)
+	_fill_pits(scratch)
+
+
+## **The generator leaves no cell ringed by higher ground.** taskblock-63 Pass D1.
+##
+## `BR40.03` established the posture — *"every cell carrying a scattered cover blocker must
+## sit level with the floor around it"* — and until this pass it was upheld by accident: the
+## flatten took whole unreachable regions down to zero together, so a low pocket inside one
+## came out level with everything around it. **Keeping a region at its authored level breaks
+## that**, because a pocket a unit can drop into is *reachable* and therefore was never part
+## of any region the keep decision looks at. Measured when it went wrong: six pits across the
+## forty-seed raised-room sweep, two of them under cover.
+##
+## So the rule stops being a side effect and becomes one: a floored cell with **three or more
+## orthogonally adjacent floored cells strictly higher** rises to the lowest of them. Three
+## rather than two is `test_map_gen_raised_rooms.gd::_is_pit`'s own definition, read from the
+## invariant rather than invented beside it — a cell with two higher neighbours is an inside
+## corner of a step, which is ordinary terrain.
+##
+## **Raised to the *lowest* higher neighbour, not the highest.** The smallest change that
+## clears the pit is the one that disturbs the least authored ground, and raising to the
+## highest would punch the mirror defect — a lone tall cell — one cell over.
+##
+## Iterated, because filling one pit can reveal its neighbour as one. Bounded rather than
+## looped to exhaustion for the same reason `NAVIGABILITY_REPAIR_PASSES` is: a pathological
+## board must not hang generation. Each round strictly raises at least one cell toward a
+## bounded ceiling, so the bound is a backstop rather than a limit that is reached.
+static func _fill_pits(scratch: MapGenScratch) -> void:
+	for _attempt: int in range(NAVIGABILITY_REPAIR_PASSES):
+		var raises: Dictionary = {}
+		for y in range(scratch.rows):
+			for x in range(scratch.width):
+				var cell := Vector2i(x, y)
+				if scratch.get_terrain(cell) != MapGenScratch.CellKind.OPEN:
+					continue
+				var here: float = scratch.get_level(cell)
+				var lowest_above: float = INF
+				var higher := 0
+				for step: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+					var neighbour: Vector2i = cell + step
+					if not scratch.in_bounds(neighbour):
+						continue
+					if scratch.get_terrain(neighbour) != MapGenScratch.CellKind.OPEN:
+						continue
+					var there: float = scratch.get_level(neighbour)
+					if there <= here + 0.01:
+						continue
+					higher += 1
+					lowest_above = minf(lowest_above, there)
+				if higher >= 3:
+					raises[cell] = lowest_above
+		if raises.is_empty():
+			return
+		# Collected first, then written — the same frozen-snapshot discipline the wall ring
+		# uses, so filling one cell cannot change what its neighbour reads within a round and
+		# make the result depend on scan order.
+		for cell: Vector2i in raises:
+			scratch.set_level(cell, raises[cell])
+
+
+## The unreachable `OPEN` ground, 4-connected. taskblock-63 Pass D1.
+##
+## taskblock-46 Pass A (BR40.03/BR40.04): **a cell carrying a blocker is unreachable BY
+## CONSTRUCTION** — `Pathfinder._base_cost` returns -1.0 for any cell with a live blocker —
+## so its absence from the flood says nothing about whether it is stranded. Flattening on
+## that answer punched a one-cell pit through every raised floor a crate happened to land
+## on, and for a spawn cell the pit outlived the blocker `_mark_zone` later erased. Those
+## cells are excluded here and answered by `_flatten_stranded_blocker_cells` instead — which
+## also means a blocker does not split a region in two, since it is simply not in it.
+##
+## Row-major iteration rather than dictionary order, so a region list is a property of the
+## board and not of insertion — the same reasoning `MapNavigability.unreachable_regions`
+## states for its own grouping.
+static func _unreachable_regions_in_scratch(
+	grid: Grid, scratch: MapGenScratch, reachable_set: Dictionary
+) -> Array:
+	var pending: Dictionary = {}
 	for y in range(scratch.rows):
 		for x in range(scratch.width):
 			var cell := Vector2i(x, y)
-			if reachable_set.has(cell):
+			if reachable_set.has(cell) or grid.blockers.has(cell):
 				continue
-			# taskblock-46 Pass A (BR40.03/BR40.04): **a cell carrying a blocker is
-			# unreachable BY CONSTRUCTION** — `Pathfinder._base_cost` returns -1.0 for
-			# any cell with a live blocker — so its absence from the flood says nothing
-			# about whether it is stranded. Flattening on that answer punched a
-			# one-cell pit through every raised floor a crate happened to land on, and
-			# for a spawn cell the pit outlived the blocker `_mark_zone` later erased.
-			# Deferred to the connectivity question below instead.
-			if grid.blockers.has(cell):
-				continue
-			# tb60 Pass A: **one branch, where there were two.** A stranded stair tread used
-			# to need its own `RAMP`-kind clause to be flattened back to plain ground; a
-			# tread is an `OPEN` cell at a fractional level now, so flattening it is the
-			# same `set_level(cell, 0)` that flattens any other stranded cell. The old
-			# clause's own justification — "a ramp with nothing reachable on either end is
-			# not a ramp, it is a dead-end cell" — survives as a statement about heights.
 			if scratch.get_terrain(cell) == MapGenScratch.CellKind.OPEN:
-				scratch.set_level(cell, 0)
-	_flatten_stranded_blocker_cells(grid, scratch, reachable_set)
+				pending[cell] = true
+
+	var regions: Array = []
+	for y in range(scratch.rows):
+		for x in range(scratch.width):
+			var start := Vector2i(x, y)
+			if not pending.has(start):
+				continue
+			var region: Array[Vector2i] = []
+			var frontier: Array[Vector2i] = [start]
+			pending.erase(start)
+			while not frontier.is_empty():
+				var cell: Vector2i = frontier.pop_back()
+				region.append(cell)
+				for offset: Vector2i in [
+					Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
+				]:
+					var neighbour: Vector2i = cell + offset
+					if not pending.has(neighbour):
+						continue
+					pending.erase(neighbour)
+					frontier.append(neighbour)
+			regions.append(region)
+	return regions
+
+
+## **`BR60.01`'s decision, and the reason a region survives the flatten.** taskblock-63
+## Pass D1.
+##
+## The entry named three shapes and asked for one to be picked: flatten the region, stand a
+## route to it, or accept it as scenery. **Standing a route is the one built**, and this is
+## the predicate that decides where it can be:
+##
+## - **Flattening was the existing behaviour and it is the most destructive answer
+##   available.** Seed 2 carries a 232-cell unreachable shelf; flattening it erases a fifth
+##   of that board's elevation, and taskblock-63 is adding a *third* fixed height on the
+##   grounds that the vertical work has never been stressed. A repair that deletes terrain
+##   is a repair that deletes the thing being built.
+## - **Scenery fails the invariant outright.** `MapNavigability`'s own governing rule is
+##   that stranding is legitimate gameplay and unnavigable *generated* ground is not, so
+##   "accept it" is not a repair, it is renaming the defect.
+## - **A route is the answer `guarantee_navigability` already gives** to the mirror defect.
+##   One-way ground gets a ladder or a lift stood at the cheapest edge out; unreachable
+##   raised ground is the same defect with the flood run the other way, and it should not
+##   get a second, differently-shaped repair. **The known objection — that `BR60.01`'s own
+##   one-line summary reads "reachable only by ladder", so more ladders may be the
+##   complaint rather than the fix — is answered by `LIFT_SHARE`**, which has made half of
+##   these routes mag lifts since tb62. It is a real cost either way and it is named rather
+##   than argued away.
+##
+## So a region is kept when a route to it could stand: some cell in it must have a neighbour
+## that is **reachable and strictly lower**, which is what `_open_a_route_out` needs to build
+## from. A region with no such neighbour — a pocket at or below the ground around it, or one
+## sealed by walls — has nothing to build against, and that is the case flattening is for.
+##
+## **Heights come from scratch**, because this runs before `_emit` and the real surfaces do
+## not exist yet. That is the same source `_repair_stranded_elevation` has always read.
+static func _region_can_be_routed_to(
+	scratch: MapGenScratch, kept: Dictionary, region: Array[Vector2i]
+) -> bool:
+	for cell: Vector2i in region:
+		var here: float = scratch.get_level(cell)
+		for offset: Vector2i in Grid.NEIGHBOR_OFFSETS:
+			var neighbour: Vector2i = cell + offset
+			if not scratch.in_bounds(neighbour) or not kept.has(neighbour):
+				continue
+			if absf(scratch.get_level(neighbour) - here) > 0.001:
+				return true
+	return false
 
 
 ## taskblock-46 Pass A: the second half of the strand repair, for the cells the
@@ -497,11 +813,17 @@ static func _repair_stranded_elevation(
 ## that neighbour's level would punch the same hole this pass exists to stop, just
 ## from the other direction. The flatten exists to repair strandedness and nothing
 ## else, so a cell that is not stranded should not be touched at all.
+## taskblock-63 Pass D1: **the set handed in is `kept`, not the raw reachable set.** Once a
+## region can survive the flatten by having a route stood to it, "is anything next to this
+## still standing at its authored level" is the question a blocker cell has to ask — asking
+## the *reachable* set instead sinks a crate inside a kept region alone and punches exactly
+## the one-cell pit `BR40.03` was. Measured when it went wrong: 33 pits across the raised-room
+## sweep, 29 of them under cover.
 static func _flatten_stranded_blocker_cells(
-	grid: Grid, scratch: MapGenScratch, reachable_set: Dictionary
+	grid: Grid, scratch: MapGenScratch, kept: Dictionary
 ) -> void:
 	for cell: Vector2i in grid.blockers.keys():
-		if _has_reachable_neighbour(scratch, reachable_set, cell):
+		if _has_reachable_neighbour(scratch, kept, cell):
 			continue
 		if scratch.get_terrain(cell) == MapGenScratch.CellKind.OPEN:
 			scratch.set_level(cell, 0)
@@ -548,9 +870,13 @@ static func _has_reachable_neighbour(
 ## reasoning tb37 established). A ring position that cannot support the full depth — a map
 ## edge, a wall, a corridor shallower than the run — simply is not used.
 static func _connect_with_a_stair(
-	scratch: MapGenScratch, room: Rect2i, step_height: float, stair_cells: Dictionary = {}
-) -> void:
-	var rise: float = float(RAISED_ROOM_LEVEL) * UnitGeometry.LEVEL_HEIGHT
+	scratch: MapGenScratch,
+	room: Rect2i,
+	step_height: float,
+	stair_cells: Dictionary = {},
+	level: int = RAISED_ROOM_LEVEL
+) -> bool:
+	var rise: float = float(level) * UnitGeometry.LEVEL_HEIGHT
 	var steps: int = maxi(1, int(ceil(rise / maxf(step_height, 0.001))))
 	var treads: int = steps - 1
 	for y in range(room.position.y - 1, room.position.y + room.size.y + 1):
@@ -567,16 +893,21 @@ static func _connect_with_a_stair(
 			var outward: Variant = _outward_ring_direction(room, inner)
 			if outward == null:
 				continue  # a diagonal corner cell — no cardinal approach to run a stair along
-			if _stair_run_fits(scratch, inner, outward as Vector2i, treads):
-				_stamp_stair(scratch, inner, outward as Vector2i, treads, stair_cells)
-				return
+			if _stair_run_fits(scratch, inner, outward as Vector2i, treads, level):
+				_stamp_stair(scratch, inner, outward as Vector2i, treads, stair_cells, level)
+				return true
+	return false
 
 
 ## Whether `treads` cells running outward from `inner` can all carry a step. Checked in full
 ## before anything is written, so a partial stair — a run that climbs halfway and stops at a
 ## wall, which is worse than no stair at all because it reads as a route — cannot be stamped.
 static func _stair_run_fits(
-	scratch: MapGenScratch, inner: Vector2i, outward: Vector2i, treads: int
+	scratch: MapGenScratch,
+	inner: Vector2i,
+	outward: Vector2i,
+	treads: int,
+	level: int = RAISED_ROOM_LEVEL
 ) -> bool:
 	for i: int in range(treads):
 		var cell: Vector2i = inner + outward * i
@@ -584,7 +915,7 @@ static func _stair_run_fits(
 			return false
 		if scratch.get_terrain(cell) != MapGenScratch.CellKind.OPEN:
 			return false
-		if scratch.get_level(cell) >= RAISED_ROOM_LEVEL:
+		if scratch.get_level(cell) >= level:
 			return false
 	return true
 
@@ -601,12 +932,13 @@ static func _stamp_stair(
 	inner: Vector2i,
 	outward: Vector2i,
 	treads: int,
-	stair_cells: Dictionary = {}
+	stair_cells: Dictionary = {},
+	level: int = RAISED_ROOM_LEVEL
 ) -> void:
 	var steps: int = treads + 1
 	for i: int in range(treads):
 		var cell: Vector2i = inner + outward * i
-		scratch.set_level(cell, float(RAISED_ROOM_LEVEL) * float(steps - 1 - i) / float(steps))
+		scratch.set_level(cell, float(level) * float(steps - 1 - i) / float(steps))
 		stair_cells[cell] = true
 	# **The cell the flight lands on is protected too, not just the treads.** It is ordinary
 	# ground at level 0, so nothing about its height marks it — but a blocker there seals the
@@ -864,6 +1196,34 @@ static func _mark_zone(grid: Grid, scratch: MapGenScratch, room: Rect2i, marker:
 	return representative if representative.x >= 0 else room.position
 
 
+## **A spawn zone is flat, re-checked after anything that could have changed the ground.**
+## taskblock-63 Pass D1.
+##
+## **The zone shrinks rather than the terrain flattening**, which is `_mark_zone`'s own rule
+## and the reason this unmarks cells instead of raising them: reshaping ground under a spawn
+## point would be a second, invisible authority on what the board looks like, competing with
+## `_author_levels` and `_repair_stranded_elevation`. Declining to mark a cell is local and
+## says exactly what it means.
+##
+## The representative cell each zone reported is the one kept by definition — it is what
+## `_ensure_spawns_connected` flooded from and what a bout spawns against, so a zone that
+## disagreed with it would be a zone whose own anchor was outside it.
+static func _reuniform_spawn_zones(grid: Grid, scratch: MapGenScratch, spawn_cells: Array) -> void:
+	for representative: Vector2i in spawn_cells:
+		var marker: int = grid.get_spawn_marker(representative)
+		if marker == Enums.SpawnMarker.NONE:
+			continue
+		var kept: float = scratch.get_level(representative)
+		for y in range(scratch.rows):
+			for x in range(scratch.width):
+				var cell := Vector2i(x, y)
+				if grid.get_spawn_marker(cell) != marker:
+					continue
+				if is_equal_approx(scratch.get_level(cell), kept):
+					continue
+				grid.set_spawn_marker(cell, Enums.SpawnMarker.NONE)
+
+
 ## tb31 Pass C: the settled wall/empty model, replacing BR30.10's
 ## indestructible-wall-terrain approach. `UNCARVED` is only ever a
 ## SCRATCH marker while `_split_and_carve` is still carving ("not yet
@@ -921,12 +1281,67 @@ static func _finalize_walls_and_empty(grid: Grid, scratch: MapGenScratch) -> voi
 	for cell: Vector2i in wall_cells:
 		exposed_by_cell[cell] = _is_exposed_wall(scratch, cell)
 
+	var wall_set: Dictionary = {}
+	for cell: Vector2i in wall_cells:
+		wall_set[cell] = true
+
 	for cell: Vector2i in wall_cells:
 		if exposed_by_cell[cell]:
 			scratch.set_terrain(cell, MapGenScratch.CellKind.OPEN)
-			grid.place_blocker(cell, DataLibrary.get_part(&"wall"))
+			_stand_wall(grid, scratch, wall_set, cell)
 		else:
 			scratch.set_terrain(cell, MapGenScratch.CellKind.EMPTY)
+
+
+## **A wall follows the floors beside it.** taskblock-63 Pass D3.
+##
+## A wall used to be placed with no placement facts at all, so it stood from world zero to
+## its own 2.4 whatever the ground around it did. That was invisible while the tallest
+## authored floor was +1 — a wall still cleared it — and **a +4 shelf sits above every wall
+## on the board**, so the exterior of a tall room read as a floor hanging over open space.
+##
+## **This is authoring, not a rule.** It became expressible the moment a blocker could carry
+## a placement (`Blocker`): the wall is placed at the lowest floor beside it and *sized* to
+## clear the highest, which is the same pair of fields an author sets by dragging a face with
+## the Scale tool. Before that there was nowhere to put either number and it would have had
+## to be a special case in the renderer.
+##
+## **Both ends matter and picking one is wrong either way.** Standing it at the highest floor
+## leaves a hole under it on the low side; standing it at the lowest and leaving it its own
+## height leaves the high floor above it. So it spans.
+##
+## A wall whose neighbours are all at one height — every wall on every board before the third
+## generation height existed — takes `Vector3.ZERO` for its size, which means *the part's
+## own*, so nothing about it is duplicated or rescaled and the flat case is untouched.
+##
+## Heights come from scratch because `_emit` has not run yet; `MapGenScratch` levels are
+## level-equivalents, hence the `LEVEL_HEIGHT` conversion. Neighbours are the 8-way set
+## `_is_exposed_wall` already uses, since a floor sitting diagonally beside a wall is just as
+## much beside it.
+static func _stand_wall(
+	grid: Grid, scratch: MapGenScratch, wall_set: Dictionary, cell: Vector2i
+) -> void:
+	var part: Part = DataLibrary.get_part(&"wall")
+	var lowest: float = INF
+	var highest: float = -INF
+	for offset: Vector2i in Grid.NEIGHBOR_OFFSETS:
+		var neighbour: Vector2i = cell + offset
+		if not scratch.in_bounds(neighbour) or wall_set.has(neighbour):
+			continue
+		if scratch.get_terrain(neighbour) != MapGenScratch.CellKind.OPEN:
+			continue
+		var height: float = scratch.get_level(neighbour) * UnitGeometry.LEVEL_HEIGHT
+		lowest = minf(lowest, height)
+		highest = maxf(highest, height)
+	if is_inf(lowest):
+		grid.place_blocker(cell, part)
+		return
+	if highest - lowest <= 0.001:
+		grid.place_blocker(cell, part, lowest)
+		return
+	var natural: Vector3 = PlacedVolume.natural_size(part)
+	var size := Vector3(natural.x, highest - lowest + natural.y, natural.z)
+	grid.place_blocker(cell, PlacedVolume.placed_part(part, size), lowest, size)
 
 
 static func _is_exposed_wall(scratch: MapGenScratch, cell: Vector2i) -> bool:
