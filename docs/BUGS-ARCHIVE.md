@@ -10,6 +10,194 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+
+### BR60.01 — Resolved — owner: `CC`
+**Generated maps can contain a large raised region that is unreachable from either spawn, and the navigability invariant cannot see it**
+- **cluster:** `map-generation`
+- **Source:** `CC`  ·  **CC session:** `93549217-f453-4fd6-b8f3-cecf9532290e`
+- **Found:** 2026-08-06, taskblock-60 Pass A, while measuring what the ramp retirement did to
+  generated boards. **Pre-existing — it reproduces identically before and after that change**, and
+  is filed rather than fixed because Pass A is not a bug-fix pass.
+
+**The gap is in what `MapNavigability` asks.** `one_way_cells` floods *out* from a spawn and then
+floods *back*, and reports cells that are in the first set but not the second — "you can get in and
+not out." **A region you can never get into at all is not in the outward flood, so it is invisible
+to the check by construction.** `stranding_cells` therefore returns empty on boards that contain
+hundreds of cells of unreachable raised ground.
+
+**Measured at 40x30 across 60 seeds**, counting 4-connected raised regions with zero cells reachable
+from `SPAWN_A` under a non-climbing `Pathfinder`:
+
+| | before the ramp retirement | after |
+|---|---|---|
+| unreachable regions | 12 | 12 |
+| largest, in cells | 235 (seed 43) | 235 (seed 43) |
+| others over 50 cells | 172, 110, 98, 79, 65, 50 | 173, 111, 89, 80, 66, 50 |
+
+The single-cell entries in both columns are cover sitting on a lone raised cell and are **not** this
+defect — a blocker cell is unreachable by construction and no unit could stand there anyway (see
+`test_map_gen.gd::_raised_regions`, which excludes them for exactly that reason).
+
+**The suspected mechanism, not yet confirmed.** `_repair_stranded_elevation` floods from
+`rooms[0]`'s own centre and flattens what it cannot reach. If that anchor sits *inside* a raised
+region, everything connected to the anchor survives the flatten while potentially having no route
+from the spawn zones, which are chosen later by `_place_spawn_zones`. **Confirm before fixing** —
+the anchor-inside-a-raised-room theory predicts the defect correlates with `rooms[0]` being raised,
+and that is a cheap thing to measure.
+
+**Why it had not been seen in play.** The sweep that would catch it runs at 32x24 while the bout
+board is 40x30 — a sweep measuring a smaller board than the game plays on, which is worth fixing
+whatever the cause turns out to be.
+
+**It surfaced at 32x24 for exactly one build, and then hid again — which is the strongest
+evidence yet that the board size is the whole reason nobody has seen it.** Raising
+`BASE_STEP_HEIGHT` to 0.4 shortened stairs, leaving more rooms raised and therefore more of them
+exposed, and seed 29 produced a 34-cell unreachable region at 32x24. Making spawn zones
+height-uniform then moved a zone onto a shelf it had been straddling, and the region became
+reachable again. **Neither change touched this defect.** Both changed how likely a board is to
+hand you an accidental way in — which is exactly what has been masking it all along.
+
+**At 40x30 it is completely stable across every variation tried**: six regions of 50, 65, 79, 98,
+110 and 235 cells, before the ramp retirement, after it, at step height 0.3, at 0.4, and with the
+spawn-zone fix in place. Plus a handful of single-cell blocker regions that are cover doing its job
+and are not this.
+
+**The concrete next step, and it is cheap: run the sweep at the bout board size.**
+`test_map_gen.gd` uses 32x24 and the game plays 40x30. A sweep measuring a smaller board than the
+game plays on is the reason a defect this size has gone unseen, and moving it would reproduce this
+every run instead of by accident. `KNOWN_UNREACHABLE` is the mechanism already in place to hold the
+results while the cause is found — it is currently empty, deliberately, and asserted as **equality**
+so that a reappearance is a red test rather than a silent pass.
+
+**taskblock-61 Pass E2 — the invariant can see it now, the sweep runs at the played size, and the
+anchor theory has numbers. Still `Active`: nothing is repaired.** CC session
+`906e0f07-5b0a-47bd-8444-fb42ed468da2`.
+
+- **`MapNavigability.unreachable_cells` closes the blind spot in the entry's own title.** The
+  complement of the outward flood: union every spawn's flood, report every walkable cell left over.
+  `unreachable_regions` groups it into 4-connected components, largest first, tie-broken on the
+  top-left cell so a pinned sweep cannot flap on `sort_custom` being unstable.
+- **`test_map_gen_reachability.gd` sweeps 40x30**, the size `BattleScene` plays, and it reproduces
+  every run: **twelve regions over eight of fifty seeds, five of them 190+ cells** (232, 210, 209,
+  197, 192). Pinned as equality in `KNOWN_UNREACHABLE`. Cost is 13.9 s and it is in the fast tier.
+- **These numbers are not tb60's and must not be diffed against them.** tb60 counted *raised*
+  regions with no reachable cell (twelve over **sixty** seeds, largest 235). This counts every
+  *walkable* cell no spawn can reach — a superset that includes flat pockets. **The single-cell
+  entries are consequently not tb60's "cover on a lone raised cell"**: a live blocker makes a cell
+  unwalkable and this check never sees it, so a 1-cell entry here is real walkable ground nobody
+  can stand on.
+- **The `rooms[0]`-anchor theory: strongly supported, not sufficient.** Measured over the same 50
+  seeds — anchor raised and board defective **7**, anchor raised and clean **12**, anchor flat and
+  defective **1**, anchor flat and clean **30**. Seven of the eight defective boards have a raised
+  anchor against a base rate of 19 in 50, so it predicts *risk* well; but twelve raised-anchor
+  boards are clean and one defective board has a flat anchor, so **it is neither the whole
+  mechanism nor the only route in**. Re-anchoring `_repair_stranded_elevation` at the spawn zones
+  would be aimed at a strong correlate rather than a confirmed cause.
+- **The repair is deliberately not attempted, and it is a design call rather than a code one.**
+  `guarantee_navigability` already owns "the generator owes navigability" and already repairs
+  one-way ground by stamping a ladder (`_open_a_route_out`). The symmetric repair is the same call
+  made from a *reachable* cell adjacent to the region — which would open a 232-cell shelf **by
+  ladder**, and taskblock-61's own one-line summary of this entry reads *"a large raised region
+  reachable only by ladder"*, so more ladders may be the thing being complained about rather than
+  the fix. The alternatives are flattening the region (the existing `_repair_stranded_elevation`
+  behaviour, which would erase a fifth of the board's elevation on seed 2) or stairing it
+  (`_connect_with_a_stair`, which the generator already uses for raised rooms and which needs a
+  run of lower cells in a straight line it may not have). **Which of those three is wanted is the
+  supervisor's, and it is why this stays open.**
+
+**taskblock-63 Pass D1 — `Resolved` (commit `cb472e8`).** CC session `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`.
+**Unreachable regions at 40x30 over 50 seeds: 12 -> 0.**
+
+- **Of the three shapes, standing a route is the one built, and the decision is argued rather than
+  taken.** Flattening is the most destructive answer available — seed 2's 232-cell shelf is a fifth
+  of that board's elevation, and the same taskblock adds a *third* fixed height on the grounds the
+  vertical work is under-stressed. Scenery renames the defect rather than repairing it. **A route is
+  what `guarantee_navigability` already gives the mirror defect**, so unreachable ground should not
+  get a second, differently-shaped repair. The entry's own objection — that "reachable only by
+  ladder" may be the complaint rather than the fix — is real, is answered on the one-way path by
+  `LIFT_SHARE`, and is named rather than argued away.
+- **`_repair_stranded_elevation` groups before it flattens**, keeps every region a route can be stood
+  to, and grows that decision to a fixed point because keeping is transitive.
+- **`_reach_unreachable_ground` stands the route on the LOWER of the two cells**, whichever side that
+  is: a raised shelf wants a ladder on the reachable ground below it, and low ground ringed by a +4
+  shelf wants one *inside* the region. The far end must be ground a spawn can actually reach —
+  without that it cheerfully connected one unreachable region to another (measured on seed 32).
+- **The anchor theory was never acted on and did not need to be.** tb61 measured it as a strong
+  correlate rather than a cause; the repair is aimed at the defect itself, and the contingency table
+  now reads **0 defective boards against 19 raised anchors**.
+- **Two things had to be fixed underneath it**, and both are the third height doing its job: a
+  **ladder now serves descent as well as ascent** (a +4 shelf was otherwise impassable in *both*
+  directions), and **walkable ground the wall ring leaves inside solid rock is sealed** — four of
+  tb61's twelve pinned entries were exactly that, and no route repairs a pocket with no height
+  difference anywhere on its boundary.
+- `test_map_gen_reachability.gd`'s `KNOWN_UNREACHABLE` is **empty**, and its header now states the
+  invariant rather than pinning a defect.
+
+### BR62.02 — Resolved — owner: `CC`
+**Source files sit at or one line under gdlint's 1000-line cap, so any addition breaks the build**
+- **cluster:** `tooling`
+- **Source:** `CC`, 2026-08-09, taskblock-62 Passes B and C1.
+- `board_view.gd` and `bout_injector.gd` were both at **exactly 1000 lines**. Adding one line to
+  either fails `gdlint` and therefore the whole gate, including the targeted rung — so an
+  unrelated one-line change is blocked until someone extracts a file.
+- Hit **three times in one taskblock**: Pass B extracted `BoardOverlays` from `board_view.gd`;
+  Pass C1 compressed a debug verb to net zero lines in `bout_injector.gd` rather than extract,
+  because the extraction was not the pass's subject; and `utility_context.gd` went over on the
+  **last commit of the block**, on a doc comment, caught only by the full gate.
+- **Twice the cost was paid on documentation rather than on code**, which is the worse half: the
+  cheapest thing to cut when a file is one line over is the explanation of why the code is the way
+  it is.
+- **And `board_view.gd` and `bout_injector.gd` are the same two files taskblock-61 hit** — `BR57.02`'s own archived closure records
+  *"third file this block to hit that cap, after `board_view.gd` and `bout_injector.gd`"*. Two
+  blocks running, the same files, the same tax.
+- **The cap is right and the response is the problem.** A file parked one line under a hard limit
+  turns "add a feature" into "refactor first, at a moment nobody chose". Worth a deliberate pass
+  over whichever files are within ~50 lines of the cap, rather than paying it per accident.
+- **`Resolved` (taskblock-63 Pass A, commit `6032367`) — and the entry's own conclusion was wrong.**
+  [CC `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`] *"The cap is right"* does not survive being looked at: **1000 is gdlint's default**, and
+  this project overrides `max-returns` and `max-public-methods` with stated reasons while the one
+  rule nobody had argued for was the one doing damage. A line count cannot tell code from comments,
+  and *carry the fact inline* is a standing convention here, so the cap penalised exactly the files
+  that explain themselves — which is why the cost came out of documentation twice.
+- **`max-file-lines: 2500`**, and everything else gdlint does is untouched: parse errors in ~6 s with
+  no Godot launch, builtin shadowing, naming, class-definition order.
+- **It cost more than one line.** `test_retired_planner_sweep.gd` asserted the literal 1000, because
+  tb45 Pass E made the cap coming back down the objective proof that `unit_ai.gd` was truly replaced.
+  That proof was delivered and cannot be delivered twice; the assertion moves to
+  `test/unit/test_lint_config.gd` at 2500, keeping the drift-guard with a number that was chosen.
+
+### BR62.05 — Resolved — owner: `CC`
+**A blocker's height, size, offset and facing are dropped on load and on save**
+- **cluster:** `map-generation`
+- **Source:** review session `HBPaR3`, 2026-08-10, found while sizing a third generation height.
+- **`MapPlacement` carries `height`, `size`, `offset` and `facing`.** `MapSerializer` load does
+  `grid.blockers[placement.cell] = part` (`:169`) — **the part and nothing else.** Save reconstructs a
+  `MapPlacement` from the cell and the part id alone (`:57`).
+- **It round-trips because both ends drop the same fields**, not because they survive. An author can
+  place a wall at height 4.0 in the editor, save, load, and get a wall at 0 — **silently.**
+- **The root is that a blocker's placement context is a dictionary key.** `grid.blockers` is
+  `Dictionary[Vector2i, Part]`, while a surface is a `Surface(part, height, facing)` record and a body
+  part gets a full `Transform3D` from the socket-tree walk. **Blockers are the one placement kind whose
+  runtime representation is poorer than the format describing it.**
+- **So the fix is not "give blockers a transform"** — it is **give blockers the placement record
+  surfaces already have**, and `MapPlacement` is already that record. Load and save carry the fields
+  they already hold; `Grid.blockers` holds a record rather than a bare `Part`; `board_view.gd:349`
+  reads it.
+- **Invisible today** because nothing authors a non-zero blocker height. **A third generation height
+  (+4) is exactly what surfaces it**, which is why it was found rather than played into.
+- **`Resolved` (taskblock-63 Pass D3, commit `ee359dd`).** [CC `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`] `src/logic/blocker.gd` is the
+  record — the runtime half of `MapPlacement`, the same four field names, mirroring `Surface`. Load
+  and save carry all four; `Grid.blockers` holds it; `board_view.gd` reads it. 192 read/write sites
+  migrated across 72 files, keys unchanged.
+- **`UnitGeometry.blocker_height_for_cell` came with it**, because seven places derived a blocker's
+  world height from the tile alone and one of them was about to disagree.
+- **`facing` is carried and still drawn at `0.0`** — the drawing half belongs to `PLAN`'s *blockers
+  need a real transform* item, and the limit is stated in `Blocker`'s own header. Closing this entry
+  does not close that one.
+- Asserted field by field against **what was authored**, not against what came back
+  (`test_blocker_placement.gd`) — the old round trip passed by dropping both ways, so a
+  before-against-after test would have agreed with itself and nothing else.
+
 ### BR52.03 — Obsolete — owner: `CC`
 **Terrain risers are drawn but have no geometry, so a round can pass under a raised floor**
 - **Source:** `CC`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`

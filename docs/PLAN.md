@@ -91,49 +91,85 @@ results are then consumed in turn order — never to the acting itself.
 
 # NEXT
 
-### 1. A body's standing height should derive from its legs
-**Needs:** nothing. **Unblocks:** any leg part whose length differs from `leg.tres`'s.
+### 1. Blockers need a real transform, and the veneer's facing waits on it
+**Needs:** nothing — the storage half landed at taskblock-63 Pass D3. **Unblocks:**
+ledge veneers facing the edge they hang off; ladders on any side of a cell; any terrain part whose
+meaning depends on which way it points.
 
-**Found while authoring the first alternative leg (tb62 Pass A) and it is why that part was
-deleted rather than shipped.** `BodyAssembler` pins the torso at the cell's floor and hangs the
-legs down from the torso's own `HIP` socket, so a **longer leg puts its foot below the floor
-plane** instead of raising the hip. The socket transform lives on the torso and is shared, so no
-leg part can express "this body stands taller" today.
+**Supervisor's call, 2026-08-06: blockers need a real transform** — not quarter-turn rotation baked
+into the boxes.
 
-- **The stat half is done and is not blocked by this.** `Unit.step_height()` reads a maximum over
-  authored legs and a body with longer legs steps higher; what it cannot do is *look* like it.
-- **It is a real visual/logic disagreement**, the class taskblock-59 spent a block removing — the
-  data would say one thing and the screen another.
-- The shape is a standing height derived from the assembly rather than assumed at zero. Not
-  designed here.
+**Reported as a veneer defect**: *"veneers don't respect the facing of the clicked side of a thing.
+They also always place on one edge of a top face, and should align their facing to the edge. They're
+already getting the 'grow to' height from a piece, so they should face it as well. Ladders may need
+this behavior as well."* All true, and the cause is one layer below the veneer.
 
-### 2. The AI's distance model floods the wrong way on one-way ground
-**Needs:** nothing. **Unblocks:** `closes_distance` meaning what it says on a terraced board.
+**A blocker's facing does not survive being placed.** `MapPlacement.facing` is documented *"Surfaces
+only: radians... What makes a ramp directional"*, `MapSerializer.to_grid` stores a blocker as
+`grid.blockers[cell] = part` with no orientation anywhere, and `BoardView._spawn_blocker` draws it
+at facing `0.0`. So a `ledge_veneer` — which authors its box against **+Z** and is a `KIND_BLOCKER`
+— can only ever appear on one edge of a cell, whichever edge the author meant.
 
-**`UtilityContext._path_cost_from_target` is a forward flood rooted at the target**, so it answers
-*"how far could the target walk to this cell"* — not *"how far must I walk to the target"*. On
-symmetric ground the two agree and it has never mattered. **On one-way ground they disagree
-exactly**, and one-way ground is what a terraced map is made of: dropping off a shelf is cheap, so
-the flood reads a cell under a shelf as nearly as good as one on it.
+**The deriving half was built and then reverted, deliberately.** A side click can face the veneer
+back at the ledge it hangs from, and a top click can read the struck point to pick the nearest cell
+edge — both landed and tested. **They were backed out because the drawing half does not exist**, and
+a placement carrying a facing that nothing renders is precisely the visual/logic disagreement this
+project spent taskblock-59 removing. *Both halves need to be possible first.* The derivation is
+small and can be rebuilt in an afternoon; it is not the work.
 
-- **Measured at tb62 Pass E**, where a lift's boarding pad scored a `lift_advance` of 0.08 against
-  a true value of 1.0 — the ride was the only route to the target and the outward flood said it
-  saved almost nothing.
-- **`lift_advance` works around it** by reading the mover's own reachability
-  (`MapNavigability.cells_that_can_reach`). `_closes_distance` still uses the outward flood, and
-  that is the item.
-- **The fix is a reverse flood with costs**, which does not exist yet — `cells_that_can_reach` is
-  unweighted. Weighing it is the work.
+- **Why not bake rotation into the boxes**, which is how `size` and `offset` already reach the
+  board: a `Box` is axis-aligned, so that buys quarter turns only. Enough for four cell edges and
+  wrong as a foundation — the supervisor's answer is a real transform, which also serves a ladder on
+  an arbitrary face and anything later that is not axis-aligned.
+- ~~**`Grid.blockers` is `Vector2i -> Part`**, so there is nowhere to put an orientation today.~~
+  **Built (taskblock-63 Pass D3).** It holds a `Blocker`. *A cell holds one blocker* still wants the
+  same entry to become a list, and the two are still cheaper together — but that item now needs a
+  container change rather than a record that does not exist.
+- **`UnitGeometry.assembly_placements` already takes an orientation** and `RayCaster`, `SightSpans`
+  and `PartPicker` all read the boxes it produces — so once a blocker can carry one, geometry,
+  picking and sight follow with no further change. It is the storage that is missing, not the maths.
 
-### 3. `BR60.01`'s repair — unreachable raised ground is detected and nothing fixes it
-**Needs:** nothing. **Unblocks:** closing `BR60.01`.
+**A blocker's placement context is a dictionary key, and that is the whole defect.** `grid.blockers` is
+`Dictionary[Vector2i, Part]`, while a surface is a `Surface(part, height, facing)` record and a body
+part receives a full `Transform3D` from the socket-tree walk. **A `Part` is a template; the transform
+lives in the placement context** — and blockers are the one kind whose context carries a cell and
+nothing else.
 
-Unchanged by taskblock-62, and now the last of the multi-level work. The generator detects raised
-ground no unit can reach and reports it; nothing repairs it. **A decision between three shapes** —
-flatten it, stand a route to it, or accept it as scenery — and that is a supervisor call rather
-than an implementation.
+**Surfaces got their record in taskblock-38. Blockers never got the equivalent.**
 
-### 4. The destroyed-ladder fall
+**So this is not "give blockers a transform" — it is give them the record surfaces already have**, and
+`MapPlacement` **is** that record: it carries `height`, `size`, `offset` and `facing` today. The work is
+`Grid.blockers` holding a record rather than a bare `Part`, the serializer carrying fields it already
+has, and `board_view.gd:349` reading them.
+
+**`BR62.05` was the live half and it is closed** (taskblock-63 Pass D3): `Grid.blockers` holds a
+`Blocker` record carrying `height`, `size`, `offset` and `facing`, `MapSerializer` carries all four
+both directions, and `board_view.gd` reads them. **What is left is exactly the drawing half** —
+`BoardView._spawn_blocker` still renders at facing `0.0`, so a placement's facing survives being
+saved and does not survive being looked at. That is the visual/logic disagreement taskblock-59 spent
+a block removing, and it is stated in `Blocker`'s own header rather than left to be found.
+
+**And the deriving half can be rebuilt now.** A side click facing the veneer back at its ledge and a
+top click reading the struck point both landed once and were backed out *because the drawing half did
+not exist*. Half of that objection is gone.
+
+**A third fixed generation height (+4, alongside 0 and +1) is what surfaces it.** A floor at +4 sits
+above every wall on the board, so an exterior wall must **follow its neighbouring tiles up** — which
+becomes *authorable* once a blocker carries a height, rather than needing a rule of its own.
+
+### 2. A confined unit should be legible, not silent
+**Needs:** nothing. **Unblocks:** a stranded unit being distinguishable from a hang.
+
+**The last unbuilt bullet of the old *Multi-level cleanup* item**, which taskblock-62 otherwise
+closed. Escalate a unit that cannot make progress to an **agitated roam** or **pace** — visibly
+restless rather than idle — and after a few turns of no progress, **shut down**.
+
+**This does not fix terrain and must not be logged as though it did.** It stops a stranded unit
+from being indistinguishable from a frozen one, which is a legibility problem, not a navigation
+one. `can_return` (tb62 Pass D) means the planner now *avoids* stranding itself; this is for when
+it happens anyway — knocked into a pit, or spawned somewhere the generator's repair gave up on.
+
+### 3. The destroyed-ladder fall
 **Needs:** forced movement. **Unblocks:** terrain destruction meaning something vertically.
 
 **Two of its four dependencies landed at taskblock-62 Pass C2.** *"A unit occupying a position
@@ -143,7 +179,7 @@ affecting whatever stands on or attaches to it** and **falls / throws / knockbac
 movement**, which is the same machinery *Forced movement* and `eject` wait on. Three items, one
 dependency.
 
-### 5. Do the tests approximate things the game already defines?
+### 4. Do the tests approximate things the game already defines?
 **Needs:** nothing. **Unblocks:** trusting a headless measurement; the class of failure taskblock-61
 repeated four times.
 
@@ -177,17 +213,60 @@ breaks. A fixture that only passes with a one-box stand-in is telling you someth
 <!-- ------------------------------------------------------------------------ -->
 ## Going up
 
-### A confined unit should be legible, not silent
-**Needs:** nothing. **Unblocks:** a stranded unit being distinguishable from a hang.
+### The mag lift's two surfaces should stack in one cell
+**Needs:** a way for the planner to value a height change that does not change cell. **Unblocks:**
+a lift reading as one object.
 
-**The last unbuilt bullet of the old *Multi-level cleanup* item**, which taskblock-62 otherwise
-closed. Escalate a unit that cannot make progress to an **agitated roam** or **pace** — visibly
-restless rather than idle — and after a few turns of no progress, **shut down**.
+**Asked for at taskblock-63 Pass E and deliberately not built** — *"the top and bottom surfaces
+should stack, top plate hovering over the bottom one. Not two placements at unrelated heights; the
+pad is visibly one object, and the gap is what reads as the lift doing something."*
 
-**This does not fix terrain and must not be logged as though it did.** It stops a stranded unit
-from being indistinguishable from a frozen one, which is a legibility problem, not a navigation
-one. `can_return` (tb62 Pass D) means the planner now *avoids* stranding itself; this is for when
-it happens anyway — knocked into a pit, or spawned somewhere the generator's repair gave up on.
+**The pairing half of that request landed** (`GridPlacement.place_mag_lift_pair`: one constructor,
+each pad recorded facing the other, no proximity inference). **The geometry half did not, and the
+reason is the planner rather than the drawing.**
+
+- A lift's two pads sit in **two adjacent cells** today, and every measurement the AI can make about
+  a ride is a fact about *the partner cell*: `lift_advance` reads `_path_cost_to_target` at the
+  partner and compares it with here. **Stack both pads in one cell and that difference is
+  identically zero**, because the cell has not changed — the ride's whole value becomes "you are now
+  at a height from which the adjacent shelf is a free step", which the pathfinder cannot express at
+  all, being cell-to-cell.
+- So this is not a rendering change. It needs the planner to be able to value a vertical move within
+  a cell, which is the same missing idea a **partial climb** has (a unit resting at `(cell, height)`
+  is already representable and still not something a candidate scorer can prefer).
+- **Do not build the drawing half alone.** A stacked pad that the AI never rides is a visual/logic
+  disagreement, which is the class taskblock-59 spent a block removing.
+
+### `MapGen`'s lift repairs are invisible to the invariant they exist to satisfy
+**Needs:** a decision about what "navigable" means. **Unblocks:** `LIFT_SHARE` meaning what it says.
+
+**Found at taskblock-63 Pass D1.** `guarantee_navigability` judges a board with a non-climbing
+`Pathfinder`, and **a mag lift is not a `Pathfinder` edge at all** — it is an AP-costing action
+(`ride_mag_lift`), so `MapNavigability` cannot see one. A repair that stamps a lift therefore
+satisfies nothing the check can measure.
+
+- **It has been getting away with it**: the cell stays listed as stranded, a later pass falls
+  through to a ladder, and the board comes out navigable. So the symptom is wasted lifts and wasted
+  passes rather than broken boards.
+- **`_reach_unreachable_ground` sidesteps it by stamping ladders only**, and says so. The one-way
+  path still rolls `LIFT_SHARE`.
+- **The real question is a design one and should not be answered by a code fix**: is a board
+  "navigable" if crossing it requires spending AP on a lift? If yes, the pathfinder needs to model a
+  non-adjacent edge, which is a real change to what an edge is. If no, `LIFT_SHARE` is a texture
+  knob that must never be the *only* route to somewhere — which is a generator rule, not a
+  pathfinder one.
+
+### `TALL_ROOM_SHARE` wants evidence, not a number
+**Needs:** bouts played on maps carrying a +4 shelf. **Unblocks:** nothing; a tuning question that
+should not be answered by guessing.
+
+`MapGen.TALL_ROOM_SHARE` is **0.25**, a flagged placeholder — a quarter of the rooms this generator
+raises go to +4 rather than +1. **A quarter is the honest "it should appear and it should not be the
+norm" default**, chosen so the fixture is not theoretical; measured at **9 of 30 seeds** carrying one.
+
+A tall shelf changes what a turn is: reaching one costs several turns of climbing or an AP ride, and
+holding one is a real position. Whether that is a board's centrepiece or its texture is a played
+answer, and it sits beside `LIFT_SHARE`'s own open question rather than being decided separately.
 
 ### Weight a hop-down against ramps, not just against stranding
 **Needs:** taskblock-62 Pass D's `can_return`, which landed. **Unblocks:** units routing through
@@ -350,64 +429,6 @@ AI fix.
 
 <!-- ------------------------------------------------------------------------ -->
 ## Blockers, stacking and veneers
-
-### Blockers need a real transform, and the veneer's facing waits on it
-**Needs:** a blocker's placement carrying an orientation through `Grid` to `BoardView`. **Unblocks:**
-ledge veneers facing the edge they hang off; ladders on any side of a cell; any terrain part whose
-meaning depends on which way it points.
-
-**Supervisor's call, 2026-08-06: blockers need a real transform** — not quarter-turn rotation baked
-into the boxes.
-
-**Reported as a veneer defect**: *"veneers don't respect the facing of the clicked side of a thing.
-They also always place on one edge of a top face, and should align their facing to the edge. They're
-already getting the 'grow to' height from a piece, so they should face it as well. Ladders may need
-this behavior as well."* All true, and the cause is one layer below the veneer.
-
-**A blocker's facing does not survive being placed.** `MapPlacement.facing` is documented *"Surfaces
-only: radians... What makes a ramp directional"*, `MapSerializer.to_grid` stores a blocker as
-`grid.blockers[cell] = part` with no orientation anywhere, and `BoardView._spawn_blocker` draws it
-at facing `0.0`. So a `ledge_veneer` — which authors its box against **+Z** and is a `KIND_BLOCKER`
-— can only ever appear on one edge of a cell, whichever edge the author meant.
-
-**The deriving half was built and then reverted, deliberately.** A side click can face the veneer
-back at the ledge it hangs from, and a top click can read the struck point to pick the nearest cell
-edge — both landed and tested. **They were backed out because the drawing half does not exist**, and
-a placement carrying a facing that nothing renders is precisely the visual/logic disagreement this
-project spent taskblock-59 removing. *Both halves need to be possible first.* The derivation is
-small and can be rebuilt in an afternoon; it is not the work.
-
-- **Why not bake rotation into the boxes**, which is how `size` and `offset` already reach the
-  board: a `Box` is axis-aligned, so that buys quarter turns only. Enough for four cell edges and
-  wrong as a foundation — the supervisor's answer is a real transform, which also serves a ladder on
-  an arbitrary face and anything later that is not axis-aligned.
-- **`Grid.blockers` is `Vector2i -> Part`**, so there is nowhere to put an orientation today. That
-  is the same storage limit as *A cell holds one blocker*, and the two want doing together: both
-  need the blocker entry to become something richer than a bare `Part`.
-- **`UnitGeometry.assembly_placements` already takes an orientation** and `RayCaster`, `SightSpans`
-  and `PartPicker` all read the boxes it produces — so once a blocker can carry one, geometry,
-  picking and sight follow with no further change. It is the storage that is missing, not the maths.
-
-**A blocker's placement context is a dictionary key, and that is the whole defect.** `grid.blockers` is
-`Dictionary[Vector2i, Part]`, while a surface is a `Surface(part, height, facing)` record and a body
-part receives a full `Transform3D` from the socket-tree walk. **A `Part` is a template; the transform
-lives in the placement context** — and blockers are the one kind whose context carries a cell and
-nothing else.
-
-**Surfaces got their record in taskblock-38. Blockers never got the equivalent.**
-
-**So this is not "give blockers a transform" — it is give them the record surfaces already have**, and
-`MapPlacement` **is** that record: it carries `height`, `size`, `offset` and `facing` today. The work is
-`Grid.blockers` holding a record rather than a bare `Part`, the serializer carrying fields it already
-has, and `board_view.gd:349` reading them.
-
-**`BR62.05` is the live half**: those fields are **dropped on both load and save**, so an authored
-blocker height silently does not survive a round trip. It round-trips only because both ends discard
-the same things.
-
-**A third fixed generation height (+4, alongside 0 and +1) is what surfaces it.** A floor at +4 sits
-above every wall on the board, so an exterior wall must **follow its neighbouring tiles up** — which
-becomes *authorable* once a blocker carries a height, rather than needing a rule of its own.
 
 ### A cell holds one blocker, so nothing stacks vertically
 **Needs:** `Grid.blockers` becoming a list per cell, or a placement carrying enough position to be

@@ -202,7 +202,7 @@ bug and it is chased on its own terms.
 
 ---
 
-### BR62.03 — Active — owner: `SUPERVISOR`
+### BR62.03 — Pending — owner: `SUPERVISOR`
 **Ladders and mag lifts generate in the same cell**
 - **cluster:** `map-generation`
 - **Source:** `SUPERVISOR`, 2026-08-10, observed in-game after taskblock-62.
@@ -213,7 +213,18 @@ bug and it is chased on its own terms.
 - **taskblock-62 already hit the neighbouring case**: pads cross-linked into chains and one cell held
   two pads from two repair passes, fixed by refusing to build a lift within one cell of an existing pad.
   **Check whether that refusal covers ladders**; it very likely only knows about other pads.
-### BR62.04 — Active — owner: `SUPERVISOR`
+- **`Pending` (taskblock-63 Pass E) — the guess above was right.** `MapGen._pad_in_reach_of` asked
+  `Surface.has_mag_lift_at` and nothing else, so a repair pass could stamp a ladder into a cell that
+  already carried a lift or the reverse. Two stampers with two private ideas of *"is this cell already
+  a way up"*. [CC `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`]
+- **The fix is one predicate asked by both**, `Surface.has_vertical_route_at`, **and it lives on
+  `GridPlacement.place_mag_lift_pair` rather than in `MapGen`** — a check in the generator would leave
+  an author or a fixture free to stack a pad on a ladder, which is the same shape the defect had.
+- **To see it work:** generate boards and look for a cell drawing both. A sweep asserts it directly
+  over 40 seeds at the played board size (`test_vertical_routes.gd`), which found 135 laddered cells
+  and 76 pad cells and no cell holding both.
+
+### BR62.04 — Pending — owner: `SUPERVISOR`
 **Ladders are the same green as ship floor tiles**
 - **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`, 2026-08-10, observed in-game after taskblock-62.
@@ -226,25 +237,19 @@ bug and it is chased on its own terms.
   materials exist. Vertical routes are exactly what a player needs to spot, and there are now three of
   them — steps, ladders, lifts — which probably want to read as a family rather than each picking a
   colour.
-### BR62.05 — Active — owner: `CC`
-**A blocker's height, size, offset and facing are dropped on load and on save**
-- **cluster:** `map-generation`
-- **Source:** review session `HBPaR3`, 2026-08-10, found while sizing a third generation height.
-- **`MapPlacement` carries `height`, `size`, `offset` and `facing`.** `MapSerializer` load does
-  `grid.blockers[placement.cell] = part` (`:169`) — **the part and nothing else.** Save reconstructs a
-  `MapPlacement` from the cell and the part id alone (`:57`).
-- **It round-trips because both ends drop the same fields**, not because they survive. An author can
-  place a wall at height 4.0 in the editor, save, load, and get a wall at 0 — **silently.**
-- **The root is that a blocker's placement context is a dictionary key.** `grid.blockers` is
-  `Dictionary[Vector2i, Part]`, while a surface is a `Surface(part, height, facing)` record and a body
-  part gets a full `Transform3D` from the socket-tree walk. **Blockers are the one placement kind whose
-  runtime representation is poorer than the format describing it.**
-- **So the fix is not "give blockers a transform"** — it is **give blockers the placement record
-  surfaces already have**, and `MapPlacement` is already that record. Load and save carry the fields
-  they already hold; `Grid.blockers` holds a record rather than a bare `Part`; `board_view.gd:349`
-  reads it.
-- **Invisible today** because nothing authors a non-zero blocker height. **A third generation height
-  (+4) is exactly what surfaces it**, which is why it was found rather than played into.
+- **`Pending` (taskblock-63 Pass E).** [CC `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`] `WorldPalette.LADDER_TINT`, reached through a new
+  `surface_color` — split from `tile_color` because *what colour is this material* and *what is this
+  surface for* are different questions, and the ladder was only ever getting the floor's answer to the
+  first one.
+- **The family is blue**: the lift's navy (`BoardOverlays.COLOR`, your own pick) is the dark end and
+  the ladder's teal the bright end. **Steps are deliberately NOT in it** — a step *is* `ship_floor` at
+  a fractional height, and tinting it would need the generator to mark which tiles are treads. A tile
+  that reads as not-floor because of how it was built is a worse lie than one that reads as floor
+  because it is. **Say if you want them in the family anyway**; that is a design call, not an
+  oversight.
+- **The first tint was retuned before it shipped** and the measurement is why: `#2FBFD6` separated
+  from `TEAM_A`'s blue by 0.31 against a 0.3 bar, which is a number passing rather than a colour being
+  distinguishable. A route drawn in a team's own colour would read as somebody's unit.
 
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
@@ -1183,6 +1188,7 @@ deliberately not `Pending`.** CC session `4ec878cf-1434-4676-8bd3-05c92eed071a`.
 - **What survives either way:** `BoardPicker.cell_visible_from` and its three tests stay. The guard
   is cheap and correct whether or not the path is live, and it is the thing that would catch this
   if the two pickers ever do disagree.
+
 ### BR40.01 — Active — owner: `CC`
 **Attack-camera framing can end up looking THROUGH the shooter's own standing platform when the
 - **cluster:** `camera`
@@ -2194,7 +2200,6 @@ of the per-box test for exactly this reason, which is evidence that this path ha
 before. `PerfStats` and the perf monitor are the instruments; the readout now survives an overlay
 swap, so it can be turned on in one view and read in another.
 
-
 ### BR58.01 — Active — owner: `CC`
 **`PlanPacer` aborts planning on wall-clock, so the same seed plans differently on different machines**
 - **cluster:** `determinism`
@@ -2216,101 +2221,6 @@ swap, so it can be turned on in one view and read in another.
   regression: determinism means both paths do the same thing, not that neither aborts.**
 - **The cap is a measurement.** The suite reports ~900 candidates/turn mean over 1,063 turns, and **a
   mean is not a cap** — it lives in the tail. Balance-adjacent, so it must not be invented.
-
-
-### BR60.01 — Active — owner: `CC`
-**Generated maps can contain a large raised region that is unreachable from either spawn, and the navigability invariant cannot see it**
-- **cluster:** `map-generation`
-- **Source:** `CC`  ·  **CC session:** `93549217-f453-4fd6-b8f3-cecf9532290e`
-- **Found:** 2026-08-06, taskblock-60 Pass A, while measuring what the ramp retirement did to
-  generated boards. **Pre-existing — it reproduces identically before and after that change**, and
-  is filed rather than fixed because Pass A is not a bug-fix pass.
-
-**The gap is in what `MapNavigability` asks.** `one_way_cells` floods *out* from a spawn and then
-floods *back*, and reports cells that are in the first set but not the second — "you can get in and
-not out." **A region you can never get into at all is not in the outward flood, so it is invisible
-to the check by construction.** `stranding_cells` therefore returns empty on boards that contain
-hundreds of cells of unreachable raised ground.
-
-**Measured at 40x30 across 60 seeds**, counting 4-connected raised regions with zero cells reachable
-from `SPAWN_A` under a non-climbing `Pathfinder`:
-
-| | before the ramp retirement | after |
-|---|---|---|
-| unreachable regions | 12 | 12 |
-| largest, in cells | 235 (seed 43) | 235 (seed 43) |
-| others over 50 cells | 172, 110, 98, 79, 65, 50 | 173, 111, 89, 80, 66, 50 |
-
-The single-cell entries in both columns are cover sitting on a lone raised cell and are **not** this
-defect — a blocker cell is unreachable by construction and no unit could stand there anyway (see
-`test_map_gen.gd::_raised_regions`, which excludes them for exactly that reason).
-
-**The suspected mechanism, not yet confirmed.** `_repair_stranded_elevation` floods from
-`rooms[0]`'s own centre and flattens what it cannot reach. If that anchor sits *inside* a raised
-region, everything connected to the anchor survives the flatten while potentially having no route
-from the spawn zones, which are chosen later by `_place_spawn_zones`. **Confirm before fixing** —
-the anchor-inside-a-raised-room theory predicts the defect correlates with `rooms[0]` being raised,
-and that is a cheap thing to measure.
-
-**Why it had not been seen in play.** The sweep that would catch it runs at 32x24 while the bout
-board is 40x30 — a sweep measuring a smaller board than the game plays on, which is worth fixing
-whatever the cause turns out to be.
-
-**It surfaced at 32x24 for exactly one build, and then hid again — which is the strongest
-evidence yet that the board size is the whole reason nobody has seen it.** Raising
-`BASE_STEP_HEIGHT` to 0.4 shortened stairs, leaving more rooms raised and therefore more of them
-exposed, and seed 29 produced a 34-cell unreachable region at 32x24. Making spawn zones
-height-uniform then moved a zone onto a shelf it had been straddling, and the region became
-reachable again. **Neither change touched this defect.** Both changed how likely a board is to
-hand you an accidental way in — which is exactly what has been masking it all along.
-
-**At 40x30 it is completely stable across every variation tried**: six regions of 50, 65, 79, 98,
-110 and 235 cells, before the ramp retirement, after it, at step height 0.3, at 0.4, and with the
-spawn-zone fix in place. Plus a handful of single-cell blocker regions that are cover doing its job
-and are not this.
-
-**The concrete next step, and it is cheap: run the sweep at the bout board size.**
-`test_map_gen.gd` uses 32x24 and the game plays 40x30. A sweep measuring a smaller board than the
-game plays on is the reason a defect this size has gone unseen, and moving it would reproduce this
-every run instead of by accident. `KNOWN_UNREACHABLE` is the mechanism already in place to hold the
-results while the cause is found — it is currently empty, deliberately, and asserted as **equality**
-so that a reappearance is a red test rather than a silent pass.
-
-**taskblock-61 Pass E2 — the invariant can see it now, the sweep runs at the played size, and the
-anchor theory has numbers. Still `Active`: nothing is repaired.** CC session
-`906e0f07-5b0a-47bd-8444-fb42ed468da2`.
-
-- **`MapNavigability.unreachable_cells` closes the blind spot in the entry's own title.** The
-  complement of the outward flood: union every spawn's flood, report every walkable cell left over.
-  `unreachable_regions` groups it into 4-connected components, largest first, tie-broken on the
-  top-left cell so a pinned sweep cannot flap on `sort_custom` being unstable.
-- **`test_map_gen_reachability.gd` sweeps 40x30**, the size `BattleScene` plays, and it reproduces
-  every run: **twelve regions over eight of fifty seeds, five of them 190+ cells** (232, 210, 209,
-  197, 192). Pinned as equality in `KNOWN_UNREACHABLE`. Cost is 13.9 s and it is in the fast tier.
-- **These numbers are not tb60's and must not be diffed against them.** tb60 counted *raised*
-  regions with no reachable cell (twelve over **sixty** seeds, largest 235). This counts every
-  *walkable* cell no spawn can reach — a superset that includes flat pockets. **The single-cell
-  entries are consequently not tb60's "cover on a lone raised cell"**: a live blocker makes a cell
-  unwalkable and this check never sees it, so a 1-cell entry here is real walkable ground nobody
-  can stand on.
-- **The `rooms[0]`-anchor theory: strongly supported, not sufficient.** Measured over the same 50
-  seeds — anchor raised and board defective **7**, anchor raised and clean **12**, anchor flat and
-  defective **1**, anchor flat and clean **30**. Seven of the eight defective boards have a raised
-  anchor against a base rate of 19 in 50, so it predicts *risk* well; but twelve raised-anchor
-  boards are clean and one defective board has a flat anchor, so **it is neither the whole
-  mechanism nor the only route in**. Re-anchoring `_repair_stranded_elevation` at the spawn zones
-  would be aimed at a strong correlate rather than a confirmed cause.
-- **The repair is deliberately not attempted, and it is a design call rather than a code one.**
-  `guarantee_navigability` already owns "the generator owes navigability" and already repairs
-  one-way ground by stamping a ladder (`_open_a_route_out`). The symmetric repair is the same call
-  made from a *reachable* cell adjacent to the region — which would open a 232-cell shelf **by
-  ladder**, and taskblock-61's own one-line summary of this entry reads *"a large raised region
-  reachable only by ladder"*, so more ladders may be the thing being complained about rather than
-  the fix. The alternatives are flattening the region (the existing `_repair_stranded_elevation`
-  behaviour, which would erase a fifth of the board's elevation on seed 2) or stairing it
-  (`_connect_with_a_stair`, which the generator already uses for raised rooms and which needs a
-  run of lower cells in a straight line it may not have). **Which of those three is wanted is the
-  supervisor's, and it is why this stays open.**
 
 ### BR60.02 — Active — owner: `CC`
 **A mangled or disabled part is hittable and undrawn — the view and the shot plane disagree about which parts exist**
@@ -2710,23 +2620,3 @@ is_disabled` for the same part. The disappearance here is that disagreement made
 - **Both are likely retired by the aiming and camera rebuild**, so measure and record rather than
   tuning the current rig.
 
-### BR62.02 — Active — owner: `CC`
-**Source files sit at or one line under gdlint's 1000-line cap, so any addition breaks the build**
-- **cluster:** `tooling`
-- **Source:** `CC`, 2026-08-09, taskblock-62 Passes B and C1.
-- `board_view.gd` and `bout_injector.gd` were both at **exactly 1000 lines**. Adding one line to
-  either fails `gdlint` and therefore the whole gate, including the targeted rung — so an
-  unrelated one-line change is blocked until someone extracts a file.
-- Hit **three times in one taskblock**: Pass B extracted `BoardOverlays` from `board_view.gd`;
-  Pass C1 compressed a debug verb to net zero lines in `bout_injector.gd` rather than extract,
-  because the extraction was not the pass's subject; and `utility_context.gd` went over on the
-  **last commit of the block**, on a doc comment, caught only by the full gate.
-- **Twice the cost was paid on documentation rather than on code**, which is the worse half: the
-  cheapest thing to cut when a file is one line over is the explanation of why the code is the way
-  it is.
-- **And `board_view.gd` and `bout_injector.gd` are the same two files taskblock-61 hit** — `BR57.02`'s own archived closure records
-  *"third file this block to hit that cap, after `board_view.gd` and `bout_injector.gd`"*. Two
-  blocks running, the same files, the same tax.
-- **The cap is right and the response is the problem.** A file parked one line under a hard limit
-  turns "add a feature" into "refactor first, at a moment nobody chose". Worth a deliberate pass
-  over whichever files are within ~50 lines of the cap, rather than paying it per accident.
