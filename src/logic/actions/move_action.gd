@@ -53,12 +53,66 @@ func is_legal(state: CombatState) -> bool:
 			continue
 		while sim_mp < step_cost:
 			if sim_ap <= 0:
-				return false
+				# tb62 Pass C2: **a climb the turn cannot finish is legal if it can be
+				# STARTED.** It leaves the mover partway up and resumes next turn, which is
+				# the only thing that makes a tall ladder purchasable at all — a four-level
+				# ladder costs 16 MP, more than any turn's whole budget, so under the old
+				# all-or-nothing rule it was not expensive, it was impossible.
+				#
+				# Only a climb divides. A horizontal step has no partial position to stop at,
+				# and a drop is one motion rather than a sustained effort, so both keep the
+				# old rule: unaffordable means the move does not happen.
+				return (
+					_divides(state.grid, actual, path[i]) and (sim_mp > 0.0 or sim_ap > 0)
+				)
 			sim_ap -= 1
 			sim_mp += per_ap
 		sim_mp -= step_cost
 
 	return true
+
+
+## Whether an unaffordable step can be *partly* taken — a climb, and only a climb.
+##
+## tb62 Pass C2: the rise is measured from the **mover's own height**, not its cell's floor,
+## so a unit already partway up a ladder is asked about the rise it has left rather than the
+## one it started with. That is the whole of what a position along a climb buys.
+static func _divides(grid: Grid, actual: Unit, to: Vector2i) -> bool:
+	var rise: float = UnitGeometry.true_height_for_cell(to, grid) - actual.height
+	return rise > actual.step_height() + Unit.STEP_EPSILON
+
+
+## tb62 Pass C2: **spends everything the turn has left and raises the body by what it bought.**
+##
+## The mover stays on its own cell and its `height` alone changes, which is the whole new
+## idea: a position along a climb is *(cell, height)*, not a cell of its own. Nothing else in
+## the engine needed a new concept for that — `UnitGeometry.placements` has always drawn and
+## shot-planed from `Unit.height`, so a unit halfway up a ladder is visible and shootable at
+## the height it actually reached. What did need teaching is `Pathfinder`, which read the
+## floor's height where it wanted the body's (`Pathfinder._height_leaving`).
+##
+## **The fraction is of COST, not of geometry**, so it stays right if a taller climb is ever
+## priced non-linearly: whatever share of the price got paid is the share of the rise earned.
+##
+## **It converts every remaining AP.** That is consistent with how this loop already pays for
+## any step — AP has always auto-converted here without asking — but it is a real consequence
+## worth naming: committing to a climb you cannot finish costs the turn's shooting too.
+static func _climb_partway(
+	state: CombatState, actual: Unit, to: Vector2i, step_cost: float, per_ap: float
+) -> void:
+	var budget: float = actual.mp + float(actual.ap) * per_ap
+	var rise: float = UnitGeometry.true_height_for_cell(to, state.grid) - actual.height
+	var paid: float = clampf(budget / step_cost, 0.0, 1.0)
+	actual.height += rise * paid
+	actual.level = actual.height / UnitGeometry.LEVEL_HEIGHT
+	actual.mp = 0.0
+	actual.ap = 0
+	state.log_action(
+		(
+			"MoveAction: unit %d climbed partway toward %s (%.0f%% of the rise, now at %.2f)"
+			% [actual.id, to, paid * 100.0, actual.height]
+		)
+	)
 
 
 func apply(state: CombatState) -> void:
@@ -130,6 +184,15 @@ func apply_stepwise(state: CombatState, mid_move_hook: Callable = Callable()) ->
 		var per_ap: float = actual.mp_per_ap()
 		var step_cost: float = pf.move_cost(path[i - 1], path[i])
 		if not free:
+			# tb62 Pass C2: **the affordability check happens BEFORE the step, not after.**
+			# This loop used to burn AP unconditionally and could drive `ap` negative; it was
+			# only ever safe because `is_legal` had pre-cleared the whole path, which is no
+			# longer true for a climb that is meant to finish next turn.
+			if actual.mp + float(actual.ap) * per_ap < step_cost:
+				if _divides(state.grid, actual, path[i]):
+					_climb_partway(state, actual, path[i], step_cost, per_ap)
+				_finish(state, actual, path.slice(run_start, i))
+				return {"stopped": true}
 			while actual.mp < step_cost:
 				actual.ap -= 1
 				actual.mp += per_ap

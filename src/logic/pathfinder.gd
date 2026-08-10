@@ -28,9 +28,14 @@ const MAX_CLIMB_LEVELS: float = 1.0
 ## orders the three the way the fiction does.
 ##
 ## The first attempt used 1.5, making a ladder the most expensive way up. It also made
-## tall ladders unusable: `ClimbAction` charges the whole rise as one action, so a
-## four-level ladder cost 16 and simply failed its affordability check. Recorded because
-## the number looked defensible right up until a test climbed something tall.
+## tall ladders unusable: the whole rise is one edge, so a four-level ladder cost 16 and
+## simply failed its affordability check. Recorded because the number looked defensible
+## right up until a test climbed something tall.
+##
+## tb62 Pass C1: the reader that used to duplicate this scaling — `ClimbAction._cost` — is
+## retired, and **this expression is now the only place a vertical step is priced.** Shaping
+## cost by how tall a climb is stays entirely available here: `move_cost` sees an edge's full
+## rise, so a superlinear or banded price is a change to this function and nothing else.
 const LADDER_COST_SCALE: float = 0.5
 ## Hop-down is safe up to two levels; a deeper drop isn't a legal edge this
 ## pass (fall damage/knockdown are later work, explicitly out of scope).
@@ -65,6 +70,23 @@ var _can_climb: bool
 ## unmodified body's own number is the honest default.
 var _step_height: float
 
+## tb62 Pass C2: **where the mover actually is, when that is not where its cell is.**
+##
+## A unit partway up a climb stands on its own cell at a height the cell does not have —
+## that is the whole of what "a climb has a position along it" means. Every edge out of that
+## cell has to be priced from the **body's** height, not the floor's, or a unit halfway up a
+## ladder is quoted the full rise it has already half paid for.
+##
+## `NAN` means "no override" and is the default, so a pathfinder built for a grid rather than
+## for a unit behaves exactly as it always did. It is also what an ordinary standing unit
+## produces in effect: `Unit.height` equals `true_height_for_cell` for anyone not mid-climb,
+## so the override is a no-op for every unit in every existing test.
+##
+## **Only the origin cell is overridden.** A search fans out across cells whose heights are
+## the floor's by definition; the mover's own body height is a fact about exactly one cell.
+var _origin_cell: Vector2i = Vector2i.ZERO
+var _origin_height: float = NAN
+
 
 static func reset_diagnostics() -> void:
 	floods = 0
@@ -80,10 +102,26 @@ func _init(grid: Grid, can_climb: bool = false, step_height: float = Unit.BASE_S
 ## mobility property off a unit and default the other. Every `Pathfinder.new(grid,
 ## unit.shell.can_climb())` in this codebase became this call at tb60 Pass A — the drift it
 ## prevents is the whole reason it exists rather than a second argument at fifteen sites.
+## tb62 Pass C2: it also carries **where the unit's body actually is**, which for a unit
+## partway up a climb is not where its cell's floor is. See `_origin_height`.
 static func for_unit(grid: Grid, unit: Unit) -> Pathfinder:
 	if unit == null:
 		return Pathfinder.new(grid)
-	return Pathfinder.new(grid, unit.shell.can_climb(), unit.step_height())
+	var pathfinder := Pathfinder.new(grid, unit.shell.can_climb(), unit.step_height())
+	pathfinder._origin_cell = unit.cell
+	pathfinder._origin_height = unit.height
+	return pathfinder
+
+
+## The height an edge leaving `cell` starts from: the mover's own body height when `cell` is
+## where the mover is standing, and the cell's walkable floor otherwise.
+##
+## Identical answers for anyone not mid-climb, since `Unit.height` is synced from
+## `true_height_for_cell` everywhere a unit finishes a move.
+func _height_leaving(cell: Vector2i) -> float:
+	if cell == _origin_cell and not is_nan(_origin_height):
+		return _origin_height
+	return UnitGeometry.true_height_for_cell(cell, _grid)
 
 
 ## The plain per-cell terrain/occupancy cost of standing on `cell` — the
@@ -178,7 +216,7 @@ func move_cost(from: Vector2i, to: Vector2i) -> float:
 	var base: float = _base_cost(to)
 	if base < 0.0:
 		return -1.0
-	var from_height: float = UnitGeometry.true_height_for_cell(from, _grid)
+	var from_height: float = _height_leaving(from)
 	var to_height: float = UnitGeometry.true_height_for_cell(to, _grid)
 	var rise: float = to_height - from_height
 	# **The one continuous comparison.** Up or down, within the step: it is a walk.

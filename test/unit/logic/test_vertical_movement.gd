@@ -366,3 +366,152 @@ func test_an_overwatcher_catches_a_climb_through_no_second_code_path() -> void:
 
 	gut.p("hook saw the climber at %s" % [seen])
 	assert_eq(seen, [Vector2i(2, 0)] as Array[Vector2i], "the watcher sees the cell climbed onto")
+
+
+# --- a climb has a position along it (tb62 Pass C2) -----------------------------------
+
+
+## A four-segment ladder: 8.0 of rise from (0,0) to the shelf at (1,0). At
+## `LADDER_COST_SCALE` that edge costs `ceil(4.0 * 8.0 * 0.5)` = 16 MP, which is more than
+## any turn's whole budget — the case `LADDER_COST_SCALE` was lowered to paper over.
+func _tall_ladder_board() -> Grid:
+	var grid := GridFixture.flat(3, 1)
+	GridFixture.place_floor(grid, Vector2i(1, 0), 8.0 / UnitGeometry.LEVEL_HEIGHT)
+	for height: float in [0.0, 2.0, 4.0, 6.0]:
+		GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), height)
+	return grid
+
+
+## **The acceptance: a climb longer than this turn's MP leaves the unit partway up.**
+##
+## Before this pass the same board produced no movement at all — `is_legal` refused the whole
+## path, so a tall ladder was not expensive, it was impossible. That is the real fix for tall
+## ladders the taskblock asks for, rather than a cheaper scale factor.
+func test_a_climb_longer_than_the_turn_leaves_the_unit_partway_up() -> void:
+	var grid: Grid = _tall_ladder_board()
+	var unit := _make_unit(Vector2i(0, 0), false)
+	var state := CombatState.new(grid, [unit])
+	state.assign_all_to_human()
+	state.force_current_unit(unit.id)
+
+	var cost: float = Pathfinder.for_unit(grid, unit).move_cost(Vector2i(0, 0), Vector2i(1, 0))
+	var budget: float = unit.mp + float(unit.ap) * unit.mp_per_ap()
+	gut.p("the ladder edge costs %.0f MP; the turn affords %.0f" % [cost, budget])
+	assert_gt(cost, budget, "sanity: this climb cannot be finished in one turn")
+
+	var move: MoveAction = _step(unit, Vector2i(1, 0))
+	assert_true(move.is_legal(state), "a climb that can be STARTED is legal")
+	var result: Dictionary = move.apply_interruptible(state)
+
+	gut.p("after one turn: cell %s, height %.2f, ap %d, mp %.1f" % [
+		unit.cell, unit.height, unit.ap, unit.mp
+	])
+	assert_true(result.stopped, "the move reports it could not complete")
+	assert_eq(unit.cell, Vector2i(0, 0), "the unit is still on the ladder's own cell")
+	assert_gt(unit.height, 0.0, "but no longer on the floor of it")
+	assert_lt(unit.height, 8.0, "and not yet at the top")
+	assert_almost_eq(unit.height, 8.0 * budget / cost, 0.0001, "it bought the share it paid for")
+
+
+## **The partial position is a real board position: pathable FROM.** The rise it has left is
+## what the next step is priced against, not the rise it started with — which is the one thing
+## `Pathfinder` genuinely had to learn (`_height_leaving`).
+func test_the_remaining_rise_is_what_the_next_turn_pays_for() -> void:
+	var grid: Grid = _tall_ladder_board()
+	var unit := _make_unit(Vector2i(0, 0), false)
+	var state := CombatState.new(grid, [unit])
+	state.assign_all_to_human()
+	state.force_current_unit(unit.id)
+	var full: float = Pathfinder.for_unit(grid, unit).move_cost(Vector2i(0, 0), Vector2i(1, 0))
+
+	_step(unit, Vector2i(1, 0)).apply_interruptible(state)
+	var remaining: float = Pathfinder.for_unit(grid, unit).move_cost(Vector2i(0, 0), Vector2i(1, 0))
+
+	gut.p("edge cost %.0f from the floor, %.0f from partway up" % [full, remaining])
+	assert_lt(remaining, full, "a unit partway up is quoted the rise it has LEFT")
+	assert_gt(remaining, 0.0, "and still has some to pay")
+
+
+## **And it finishes.** Given enough turns the unit reaches the top — a tall climb costing
+## several turns is correct; a tall climb being unpurchasable was not.
+func test_a_tall_climb_completes_across_turns() -> void:
+	var grid: Grid = _tall_ladder_board()
+	var unit := _make_unit(Vector2i(0, 0), false)
+	var state := CombatState.new(grid, [unit])
+	state.assign_all_to_human()
+	state.force_current_unit(unit.id)
+
+	var turns := 0
+	while unit.cell != Vector2i(1, 0) and turns < 8:
+		unit.ap = unit.max_ap
+		unit.mp = 0.0
+		var move: MoveAction = _step(unit, Vector2i(1, 0))
+		if not move.is_legal(state):
+			break
+		move.apply_interruptible(state)
+		turns += 1
+		gut.p("turn %d: height %.2f" % [turns, unit.height])
+
+	assert_eq(unit.cell, Vector2i(1, 0), "the unit reaches the top")
+	assert_almost_eq(unit.height, 8.0, 0.0001, "at the shelf's real height")
+	assert_gt(turns, 1, "and it genuinely took more than one turn")
+
+
+## **Visible and shootable partway up.** The body is drawn and projected from `Unit.height`,
+## so a unit halfway up a ladder is a target at the height it actually reached — not at the
+## floor it left. Read back off the real geometry rather than off the field.
+func test_a_unit_partway_up_is_a_real_target_at_its_real_height() -> void:
+	var grid: Grid = _tall_ladder_board()
+	var unit := _make_unit(Vector2i(0, 0), false)
+	var state := CombatState.new(grid, [unit])
+	state.assign_all_to_human()
+	state.force_current_unit(unit.id)
+	var on_the_floor: AABB = UnitGeometry.bounding_box(unit)
+
+	_step(unit, Vector2i(1, 0)).apply_interruptible(state)
+	var partway: AABB = UnitGeometry.bounding_box(unit)
+
+	gut.p("body centre Y %.2f -> %.2f" % [on_the_floor.get_center().y, partway.get_center().y])
+	assert_almost_eq(
+		partway.get_center().y - on_the_floor.get_center().y,
+		unit.height,
+		0.0001,
+		"the drawn and shot-planed body rose by exactly the height the climb bought"
+	)
+
+
+## **A seeded partial climb is reproducible** — the same board and the same budget stop at the
+## same height every time. Determinism is the standing rule and a fractional position is
+## exactly the sort of thing that quietly stops obeying it.
+func test_a_partial_climb_is_reproducible() -> void:
+	var heights: Array[float] = []
+	for run: int in range(3):
+		var grid: Grid = _tall_ladder_board()
+		var unit := _make_unit(Vector2i(0, 0), false)
+		var state := CombatState.new(grid, [unit])
+		state.assign_all_to_human()
+		state.force_current_unit(unit.id)
+		_step(unit, Vector2i(1, 0)).apply_interruptible(state)
+		heights.append(unit.height)
+
+	gut.p("three runs stopped at %s" % [heights])
+	assert_almost_eq(heights[0], heights[1], 0.0000001, "run 1 and 2 agree")
+	assert_almost_eq(heights[1], heights[2], 0.0000001, "and so do 2 and 3")
+
+
+## **A horizontal step does not divide**, and neither does a drop. Only a climb has a position
+## along it — a walk has nowhere to stop between two cells, and a drop is one motion rather
+## than a sustained effort.
+func test_only_a_climb_divides() -> void:
+	var grid := GridFixture.flat(3, 1)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 2)
+	var unit := _make_unit(Vector2i(0, 0), false)
+	var state := CombatState.new(grid, [unit])
+	state.assign_all_to_human()
+	state.force_current_unit(unit.id)
+	unit.ap = 0
+	unit.mp = 0.0
+
+	var drop: MoveAction = _step(unit, Vector2i(1, 0))
+	assert_false(drop.is_legal(state), "a drop with no budget simply does not happen")
+	assert_almost_eq(unit.height, 2.0, 0.0001, "and the unit has not sunk partway into it")
