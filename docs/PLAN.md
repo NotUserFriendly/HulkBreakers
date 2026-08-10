@@ -1729,54 +1729,75 @@ the second is a second source rather than a second system.**
 A floor that will collapse under a unit is a **pathfinding cost**, not a walkability flag — the planner
 currently reads walkable as binary, and "walkable but it will give way" is the interesting middle.
 
-### Grids are not unbreakable
-**Needs:** the placement inversion (landed, tb58 B). **This is happening** — possibly first as an experimental
-setting, so it can ship and be played with before everything downstream of it is ready.
+### Position is a `Vector3` in a grid's frame; cells become a query
+**Needs:** *Floors reference a location* (landed). **Unblocks:** multi-grid, real-time exploration,
+and every seam where the current model already leaks.
+
+**Settled 2026-08-10. The lattice stops being where things live.** A unit, a part and a placement all
+carry a **`Vector3` parented to a grid**, and a **grid is a coordinate frame** — an offset and an
+angle — not an address space.
+
+#### Why the cell model does not survive its own use cases
+
+- **Real-time exploration is coming.** Movement outside combat should be natural and ungridded, so
+  three players are not waiting on someone to walk three tiles. **A discretization that only holds
+  during combat is not the representation** — it is one mode's rule.
+- **It already leaks at grid borders.** If a neighbouring grid is offset 0.2, *"move one cell"* needs
+  float maths at the seam. So the abstraction fails precisely where it was supposed to earn its
+  keep — and you end up carrying float positions *and* a cell address to keep in sync, which is worse
+  than either alone.
+- **Adjacency was never the question.** `distance_chebyshev(a, b) == 1` is a proxy for **reach**, and
+  reach is a real quantity that varies by shell and by what is attached. **A unit with no arms is not
+  adjacent to anything in the sense that matters.**
+- **The codebase has been voting for three blocks.** taskblock-52 made shots march real geometry;
+  taskblock-58 made sight geometric and retired `Grid.opacity`; taskblock-60 replaced ramp-as-category
+  with a continuous `step_height`. `Unit.height`, `orientation` and `mp` are already floats. **The
+  remaining cell-shaped consumers are LoS stepping and `Cover.is_covered_from`, both already recorded
+  as wrongly flat.**
+
+**Rejected: `(grid, cell)`.** Keeping an address *and* a frame is a 2D system deriving 3D coordinates on
+demand, and it keeps both costs to buy neither benefit.
+
+#### What a grid is for, once it stops being storage
+
+- **A transform.** Offset and angle. **Transfer between grids is an inverse transform**, and snapping on
+  arrival is round-to-lattice. Decimal offsets and skewed angles are what a transform is *for*.
+- **A lattice, on request.** Cells become **a query over the frame** rather than where things are
+  stored. Authoring still wants them — sections, claims and spawn regions are naturally cell-shaped —
+  and so does the player's mental model during combat.
+- **A candidate set for the AI. This is the one real cost.** The planner scores roughly 900 candidates a
+  turn, and a lattice hands it a finite enumerable set for free. **Continuous positions make "where
+  should I stand" have infinitely many answers**, so it needs a sampling rule where today it needs none.
+  **That is a design problem, not a translation problem**, and it is the strongest argument for keeping
+  a lattice *available* even when it is not the storage.
+
+#### Two things to settle before committing
+
+- **Determinism under floats.** *Same seed, same battle* is a hard rule. IEEE754 is deterministic for
+  identical operations in identical order, so this holds within a platform; **cross-platform is the open
+  question and is worth answering before positions become float, not after.**
+- **`CELL_SIZE` is already lying.** `unit_geometry.gd:197` records that something *"quietly dropped the
+  `/ CELL_SIZE`, which is right only while a cell happens to be 1.0 across."* Invisible today, and
+  **real the moment two grids disagree on cell size** — which is exactly this work. Fix it while it is a
+  one-line correction.
+
+#### What this unlocks, restated
 
 **More than one grid.** A ship half is a grid, the other half is another, **and vacuum is a third.**
-They may be offset by partial tiles and need not share a rotation — **a 45-degree grid over the
-90-degree one** lets things a unit walks inside be placed prettily rather than snapped square.
+Offset by decimals, at any angle, with **a 45-degree grid over the 90-degree one** so things a unit
+walks inside can be placed prettily.
 
-- **Movement between grids rounds up.** If two grids are within reach, jumping costs the rounded-up MP.
-  A simple rule that avoids exact partial-tile arithmetic entirely.
-- **Vacuum-as-a-grid pays twice.** Zero-g movement stops being *movement without a grid* and becomes
-  ordinary movement on a different one — so mag boots, drifting and jump jets reuse the pathfinder
-  rather than needing a parallel one.
-- **This is the L1 portal layer** the 2026-07-27 pathfinding consultation proposed, made spatial: a grid
-  boundary is a portal, a grid is a cluster. If it lands, it inherits an architecture that was already
-  worked out and deferred on measurement.
+- **Jump jets between ships** become a frame transfer, not a special-cased animation.
+- **Being boarded at a compound angle** — an enemy ship docked skewed and above — stops being a floor
+  plan: **you shoot up, and you hide under roofs rather than behind walls.**
+- **Vacuum-as-a-grid pays twice**: zero-g movement becomes ordinary movement in a different frame, so
+  mag boots, drifting and jump jets reuse the pathfinder.
 
-#### What it is actually for
+**Cover is the real dependency and it is flat.** `Cover.is_covered_from` walks `Grid.line` between two
+`Vector2i` with no height in it — a threat directly above is, to the AI, in the same cell. **The ray
+chain already resolves 3D, so shooting up works today**; it is the AI's cover model that is a floor
+plan, and a compound-angle boarding is renderable before it is playable.
 
-- **Jump jets between ships.** A unit launches off one hull and lands on another — which is a grid jump,
-  not a special-cased animation.
-- **Being boarded at a compound angle.** An enemy ship docks skewed and above, and the fight stops being
-  a floor plan: **you shoot up, and you hide under roofs rather than behind walls.** That is a different
-  game inside the same rules, and it is the scenario that justifies the whole idea.
-
-#### Cover is flat, and that is the real dependency
-
-**`Cover.is_covered_from(candidate_cell, threat_cell, ...)` has no height in it at all.** It walks
-`Grid.line()` between two `Vector2i` and checks blockers along the way. A threat directly above is, to
-the AI, in the same cell — and therefore not something to take cover from.
-
-**The resolver is already ahead of the AI here.** The ray chain marches real 3D geometry, so *shooting*
-up works today; it is the AI's cover model that is a floor plan. **Cover has to become directional in
-three dimensions** — a roof is cover from above exactly as a wall is cover from the side — before a
-compound-angle boarding is playable rather than merely renderable.
-
-#### What keeps it cheap
-
-Mostly already true. Only **two** places in `src/` do inline cell arithmetic; **thirty-one** go through
-`Grid.neighbors()`, `in_bounds()` and `distance_chebyshev()`. **A second grid is a change inside those
-functions, not a sweep** — so the rule is to keep it that way:
-
-- **Ask a grid; never compute adjacency from coordinates inline.** That one habit is most of the
-  insurance.
-- **`Grid.distance_chebyshev(a, b)` is `static` and takes two bare `Vector2i`**, so it assumes a single
-  coordinate space in its signature. It is the one thing that needs a frame; worth knowing before it
-  acquires more callers.
-- **`CombatState.grid` is singular.** Fine today, and it is the field that becomes a collection.
 
 ### Vertical cover, and a sight line that shares the shot's origin
 **Needs:** *Sight-blocking is geometry* (landed, tb58 C). **Unblocks:** retiring the last
@@ -1954,6 +1975,48 @@ in play: cell coordinates, plane space, screen space and UI pixels.
 nobody has looked — flat coordinate spaces, a single grid, `Grid.opacity` (retired taskblock-58), the
 2D cover check that is still flat. **Recording it as a hunt rather than a single audit, because the
 `Vector2` case is the one that has been noticed and probably not the only one.**
+
+### A pathfinding and scoring overlay — OUTLINE, needs refinement before it is built
+**Needs:** nothing technically. **Unblocks:** the supervisor comparing their own judgement against the
+AI's; a diagnostic for `BR52.10` and its relatives.
+
+> **This item is an outline, not a spec. Do not implement it from this text.** The supervisor has
+> flagged that parts of the framing below run contrary to what they actually want, and will refine it
+> before it is picked up. **Everything past the first paragraph is a starting position to argue with.**
+
+**The ask, in the supervisor's words:** *a lightweight version of what the AI is doing, overlaid on a
+controlled unit's view with a checkbox — each tile shows a weight, so I can compare what I'd do with
+what an AI would do.*
+
+---
+
+Notes toward a refinement, offered as material rather than as decisions:
+
+**Two different numbers exist and they answer different questions.** *MP to reach this cell* is the
+accumulated cost from the reachable flood and answers **how far**. *What the AI would pay to stand
+here* is the utility score and answers **where would the AI go**. The second is closer to the stated
+goal; the first is cheaper and may be what is wanted anyway.
+
+**Most of the data already exists.** `ai_decision_log` records `{label, action_id, cell, score,
+offered, trace}` per candidate — a score per cell, a per-consideration trace, and the distinction
+between *not offered* and *offered and scored zero*, which its own header calls most of its value.
+
+**The one structural constraint worth carrying into any refinement:** whatever it draws should come
+from **running the real scorer** against the unit in preview, not from a second implementation. A
+second scorer means the overlay can disagree with the AI it is meant to reveal, and that is the
+parallel-systems rule with a display attached.
+
+**Open, and deliberately not settled here:**
+
+- Whether a tile shows one number or a number per utility action. `approach@cell` and `shoot@cell`
+  score differently, so a single figure is either an aggregate or a choice of which action to view.
+- Whether hovering should expose the trace, or whether that is more than the tool wants to be.
+- Whether the AI's own chosen cell should be marked.
+- Whether this is a player-view tool, a debug-menu tool, or both.
+
+**Worth knowing regardless of shape: this is CC's diagnostic too.** It is plausibly the thing that would
+have shown `BR52.10` — an AI firing a full burst through the ally in front of it — as a cell scoring
+high where a squadmate stands, rather than as a battle report nobody could explain.
 
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots

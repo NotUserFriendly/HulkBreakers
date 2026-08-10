@@ -202,6 +202,30 @@ bug and it is chased on its own terms.
 
 ---
 
+### BR62.03 — Active — owner: `SUPERVISOR`
+**Ladders and mag lifts generate in the same cell**
+- **cluster:** `map-generation`
+- **Source:** `SUPERVISOR`, 2026-08-10, observed in-game after taskblock-62.
+- Both routes up are being placed at the same location, so a cell carries a ladder **and** a lift pad.
+- **The generator treats them as alternatives** — `MapGen.LIFT_SHARE` decides how often a route up costs
+  AP instead of MP — so placing both means the share is choosing without excluding, or two repair passes
+  each placed one.
+- **taskblock-62 already hit the neighbouring case**: pads cross-linked into chains and one cell held
+  two pads from two repair passes, fixed by refusing to build a lift within one cell of an existing pad.
+  **Check whether that refusal covers ladders**; it very likely only knows about other pads.
+### BR62.04 — Active — owner: `SUPERVISOR`
+**Ladders are the same green as ship floor tiles**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`, 2026-08-10, observed in-game after taskblock-62.
+- A ladder and the floor it climbs are indistinguishable at a glance, so a route up reads as more
+  floor.
+- **The floor green is a deliberate placeholder** — dark forest, chosen while tiles have no models so a
+  board stops reading as one undifferentiated mass. **The ladder inherited it rather than being given
+  its own.**
+- **Same reasoning applies**: a temporary distinct colour is worth more than a consistent one until real
+  materials exist. Vertical routes are exactly what a player needs to spot, and there are now three of
+  them — steps, ladders, lifts — which probably want to read as a family rather than each picking a
+  colour.
 ### BR26.02 — Active — owner: `SUPERVISOR`
 **Low framerate while aiming**
 - **cluster:** `framerate`
