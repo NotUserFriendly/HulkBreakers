@@ -136,6 +136,14 @@ static func build(
 		if not unit.alive:
 			continue
 		var offset := _offset(unit.cell, origin_flat, dir, perp)
+		# taskblock-63 Pass B: **the shot plane does NOT read
+		# `assembly_placements`, so it does not get the standing height for free.**
+		# The taskblock assumed it did. `BodyProjector.project` composes the body in
+		# its own local space and this loop is the one place a unit's world elevation
+		# enters, so the body's own standing height has to enter at the same point or
+		# a long-legged unit renders raised and resolves shots at the floor. One
+		# answer, read from `UnitGeometry` rather than restated here.
+		var body_height: float = unit.height + UnitGeometry.standing_offset(unit.shell.root)
 		for region: Region in BodyProjector.project(unit, dir3):
 			_place(region, offset)
 			# taskblock-36 Pass D: `BodyProjector.project` composes a unit's
@@ -149,7 +157,7 @@ static func build(
 			# from `unit.level * LEVEL_HEIGHT` — a unit resting on a ramp
 			# cell is genuinely partway up, and "render is hitbox" means the
 			# shot plane must agree with `UnitGeometry`'s own placements.
-			region.rect.position.y += unit.height
+			region.rect.position.y += body_height
 			if shear:
 				_shear(region, origin.y, vertical_slope)
 			region.body = unit

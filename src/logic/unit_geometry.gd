@@ -23,6 +23,13 @@ const LEVEL_HEIGHT := 1.0
 ## value the view layer's own tracer/targeting-line fallback already used
 ## before this became a logic-layer concern too.
 const DEFAULT_MUZZLE_HEIGHT := 1.25
+## taskblock-63 Pass B: the socket type a leg attaches at, and therefore the
+## one `standing_offset` measures from. An open `StringName` the way every
+## socket type is — the same shape `shoulder_height` already reads `&"SHOULDER"`
+## by. A body that authors no socket of this type simply has no legs to stand
+## on, which is an answer rather than an error (a wall, a scrap pile, a
+## legless ally in a seat).
+const LEG_SOCKET_TYPE := &"HIP"
 
 
 ## taskblock-38 Pass C: a cell's own real, continuous world height now
@@ -116,13 +123,137 @@ static func assembly_placements(
 	include_joints: bool = false
 ) -> Array[BoxPlacement]:
 	var result: Array[BoxPlacement] = []
-	var unit_transform := Transform3D(
-		Basis(Vector3.UP, orientation), Vector3(cell.x * CELL_SIZE, height, cell.y * CELL_SIZE)
+	_walk(
+		root,
+		Transform3D.IDENTITY,
+		unit_transform(root, cell, orientation, height, pose),
+		result,
+		pose,
+		include_joints
+	)
+	return result
+
+
+## **The transform that puts an assembled body at a cell** — board position, the
+## cell's real height, the body's own standing height, the facing, and the pose's
+## root override, composed in that order. taskblock-63 Pass B.
+##
+## **Extracted because there were three copies and they are about to disagree.**
+## `assembly_placements`, `shoulder_height` and `bounding_box`'s empty-body origin
+## each built this expression by hand, which was harmless while it was two
+## multiplications and stops being harmless the moment a term is added to it — the
+## shoulder would sit at one height and the shoulder's rendered socket at another.
+static func unit_transform(
+	root: Part, cell: Vector2i, orientation: float, height: float, pose: Pose = null
+) -> Transform3D:
+	var composed := Transform3D(
+		Basis(Vector3.UP, orientation),
+		Vector3(cell.x * CELL_SIZE, height + standing_offset(root), cell.y * CELL_SIZE)
 	)
 	if pose != null and pose.overrides.has(Poses.ROOT_SOCKET_ID):
-		unit_transform = unit_transform * (pose.overrides[Poses.ROOT_SOCKET_ID] as Transform3D)
-	_walk(root, Transform3D.IDENTITY, unit_transform, result, pose, include_joints)
-	return result
+		composed = composed * (pose.overrides[Poses.ROOT_SOCKET_ID] as Transform3D)
+	return composed
+
+
+## **How far above the floor plane this body's own root sits, because of its legs.**
+## taskblock-63 Pass B, `PLAN` NEXT 1.
+##
+## Before this, `assembly_placements` pinned the root at the cell's floor and the
+## legs hung down from the torso's own `HIP` socket — so **a longer leg put its foot
+## below the floor** instead of raising the hip, and no leg part whose length
+## differed from `leg.tres`'s could be authored at all. The socket transform lives on
+## the torso and is shared between every leg that ever attaches there, so the leg
+## itself had nowhere to say "this body stands taller".
+##
+## The rule is the obvious one stated the other way round: **the feet rest on the
+## floor and the body sits wherever that puts it.** So this is the negation of the
+## lowest point any leg reaches in the body's own rest frame — `0.0` for the
+## reference humanoid, whose 0.9-long leg hangs from a hip socket at 0.9 and whose
+## cladding bottoms out at exactly the same plane. **That zero is why no existing
+## unit's assembly moves**, and it is asserted directly rather than assumed.
+##
+## Four cases worth naming, because each is a decision:
+##
+## - **No legs at all** (a wall, a scrap pile, a dropped assembly, a legless ally) —
+##   `0.0`. Nothing is claiming to stand, so the root stays on the floor exactly as
+##   it does today.
+## - **A leg shorter than its hip socket is high** — a *negative* offset, and the
+##   body sinks. Deliberately not clamped at zero: "the feet rest on the floor" has
+##   to hold in both directions or a short leg renders a unit hovering.
+## - **Legs of different lengths** — the *deepest* one sets the height, so **no foot
+##   ever passes through the floor and the shorter leg dangles.** That is the honest
+##   rendering of a body with nowhere to bend: `torso.tres` carries `HIP_L`/`HIP_R`
+##   but no hip *segment*, and a leg has no knee, so there is no joint that could
+##   take up the difference. Making mismatched legs mean something is `PLAN`'s own
+##   *legs must match* item and needs a part-tree addition, not a formula here.
+## - **A destroyed leg contributes nothing**, the same `hp > 0` test `_walk` applies
+##   to boxes. Lose one of a matched pair and the height is unchanged; lose both and
+##   the body settles onto the floor.
+##
+## **Pose is deliberately not consulted.** A standing height is a fact about the
+## assembly, not about what the body is currently doing, and reading the pose here
+## would move a downed unit vertically the moment its root override tipped it — a
+## change to every existing unit, for a case nobody asked about.
+static func standing_offset(root: Part) -> float:
+	if root == null:
+		return 0.0
+	var lowest: float = _lowest_leg_y(root, Transform3D.IDENTITY)
+	if is_inf(lowest):
+		return 0.0
+	# **The reference humanoid measures -2.98e-8, not 0.** `Transform3D` is
+	# single-precision, so composing a hip at 0.9 with a leg reaching -0.9 leaves
+	# about a 30-nanometre residue — and without this, every body in the game would
+	# have moved by that much on the day this landed. Snapped against the same 0.001
+	# `Unit.STEP_EPSILON` every other height comparison in this codebase uses, so
+	# "no existing unit's assembly changes" is exactly true rather than nearly true.
+	# The cost is that a leg authored a *sub-millimetre* longer than its neighbour
+	# stands the same as it — which is not a length anyone can author on purpose in a
+	# game whose cells are one metre across.
+	if absf(lowest) < Unit.STEP_EPSILON:
+		return 0.0
+	return -lowest
+
+
+## The lowest world-Y any leg subtree reaches in the body's own rest frame, or `INF`
+## when this body has no leg at all. `INF` rather than `0.0` because "no legs" and
+## "legs that happen to bottom out at the floor" are different facts and only one of
+## them should move a body.
+static func _lowest_leg_y(part: Part, part_transform: Transform3D) -> float:
+	var lowest: float = INF
+	for socket: Socket in part.sockets:
+		if socket.occupant == null:
+			continue
+		var child_transform: Transform3D = part_transform * socket.current_transform()
+		if socket.socket_type == LEG_SOCKET_TYPE:
+			lowest = minf(lowest, _lowest_box_y(socket.occupant, child_transform))
+		else:
+			lowest = minf(lowest, _lowest_leg_y(socket.occupant, child_transform))
+	return lowest
+
+
+## The lowest world-Y any living box in `part`'s subtree reaches. All eight corners,
+## not `center.y - size.y * 0.5`: a socket may carry a rotation, and the cheap
+## version is right only while every joint in the chain happens to be a pure
+## translation — which is true of today's authored parts and is not a rule.
+static func _lowest_box_y(part: Part, part_transform: Transform3D) -> float:
+	var lowest: float = INF
+	if part.hp > 0:
+		for box: Box in part.volume:
+			var half: Vector3 = box.size * 0.5
+			for sx in [-1.0, 1.0]:
+				for sy in [-1.0, 1.0]:
+					for sz in [-1.0, 1.0]:
+						var corner: Vector3 = (
+							box.center + Vector3(sx * half.x, sy * half.y, sz * half.z)
+						)
+						lowest = minf(lowest, (part_transform * corner).y)
+	for socket: Socket in part.sockets:
+		if socket.occupant == null:
+			continue
+		lowest = minf(
+			lowest, _lowest_box_y(socket.occupant, part_transform * socket.current_transform())
+		)
+	return lowest
 
 
 static func _walk(
@@ -219,9 +350,11 @@ static func bounding_sphere(unit: Unit, orientation_override: Variant = null) ->
 ## `_sphere_from_placements` gives, rather than an AABB assembled from infinities.
 static func bounding_box(unit: Unit, orientation_override: Variant = null) -> AABB:
 	var box_placements: Array[BoxPlacement] = placements(unit, orientation_override)
-	var origin: Vector3 = Vector3(unit.cell.x * CELL_SIZE, unit.height, unit.cell.y * CELL_SIZE)
 	if box_placements.is_empty():
-		return AABB(origin, Vector3.ZERO)
+		return AABB(
+			unit_transform(unit.shell.root, unit.cell, unit.orientation, unit.height).origin,
+			Vector3.ZERO
+		)
 	return placements_aabb(box_placements)
 
 
@@ -303,9 +436,12 @@ static func muzzle_point(unit: Unit, weapon: Part) -> Vector3:
 		if placement.part == weapon:
 			var tip: Vector3 = placement.box.center + Vector3(0.0, 0.0, placement.box.size.z * 0.5)
 			return placement.transform.translated_local(tip).origin
-	return Vector3(
-		unit.cell.x * CELL_SIZE, unit.height + DEFAULT_MUZZLE_HEIGHT, unit.cell.y * CELL_SIZE
+	# taskblock-63 Pass B: chest height above the BODY's own origin, not above the
+	# cell's floor — on a long-legged shell those are no longer the same plane.
+	var body: Vector3 = (
+		unit_transform(unit.shell.root, unit.cell, unit.orientation, unit.height).origin
 	)
+	return Vector3(body.x, body.y + DEFAULT_MUZZLE_HEIGHT, body.z)
 
 
 ## taskblock-22 Pass H1: `unit`'s own real SHOULDER socket world height —
@@ -321,11 +457,17 @@ static func muzzle_point(unit: Unit, weapon: Part) -> Vector3:
 static func shoulder_height(unit: Unit) -> float:
 	if unit.shell.root == null:
 		return -1.0
-	var unit_transform := Transform3D(
-		Basis(Vector3.UP, unit.orientation),
-		Vector3(unit.cell.x * CELL_SIZE, unit.height, unit.cell.y * CELL_SIZE)
+	# taskblock-63 Pass B: the SAME transform `assembly_placements` puts the body at,
+	# standing height included — a shoulder that read the floor while the rendered
+	# shoulder socket read the legs is the visual/logic disagreement taskblock-59
+	# spent a block removing. Pose is not composed here, which is unchanged: this
+	# answers "how high is the shoulder on this body", and `shouldered_muzzle_point`
+	# is the only caller.
+	return _find_shoulder(
+		unit.shell.root,
+		Transform3D.IDENTITY,
+		unit_transform(unit.shell.root, unit.cell, unit.orientation, unit.height)
 	)
-	return _find_shoulder(unit.shell.root, Transform3D.IDENTITY, unit_transform)
 
 
 static func _find_shoulder(
