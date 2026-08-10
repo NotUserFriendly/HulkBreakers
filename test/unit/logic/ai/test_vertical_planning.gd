@@ -283,3 +283,71 @@ func test_a_mindless_unit_is_never_offered_the_ride() -> void:
 	assert_not_null(lift)
 	if lift != null:
 		assert_false(&"MINDLESS" in lift.tiers, "and the tier list is where that is decided")
+
+
+# --- the claim the retirement rests on -------------------------------------------------
+
+
+## A long low strip at x=0 and a 2.0 shelf from x=1 on, with a ladder standing at (0,1). The
+## only way up is that ladder.
+func _ladder_board() -> Grid:
+	var grid := GridFixture.flat(14, 3)
+	for y: int in range(3):
+		for x: int in range(1, 14):
+			GridFixture.place_floor(grid, Vector2i(x, y), 2.0)
+	GridPlacement.place(grid, Vector2i(0, 1), DataLibrary.get_part(LADDER), 0.0)
+	return grid
+
+
+## **The measurement `ClimbAction`'s retirement was argued from, finally pinned.**
+##
+## The whole case for retiring the discrete climb was that the planner *already* goes up
+## ladders through `MoveAction` — and that was measured in a scratch probe which was then
+## deleted, so the block's central claim shipped with nothing defending it. **A claim that
+## justifies deleting two classes should be the best-tested thing in the block, not the least.**
+##
+## Asserted behaviourally: a real planned turn, on a board whose only route up is a ladder,
+## leaves the unit on the shelf. No `ClimbAction` exists to queue, and none is needed.
+func test_the_planner_routes_up_a_ladder_with_no_climb_action_in_existence() -> void:
+	var grid: Grid = _ladder_board()
+	var mover: Unit = _unit(Vector2i(0, 1), 0)
+	var enemy: Unit = _unit(Vector2i(13, 1), 1)
+	var staged: Dictionary = _staged(grid, [mover, enemy] as Array[Unit])
+	var state: CombatState = staged["state"]
+	state.force_current_unit(state.units[0].id)
+
+	assert_almost_eq(
+		state.units[0].height, 0.0, 0.0001, "sanity: the unit starts on the low ground"
+	)
+	var queue: ActionQueue = await UtilityPlanner.plan_turn(
+		state.units[0], staged["view"], staged["mission"]
+	)
+	state.resolve_until(queue)
+
+	gut.p(
+		(
+			"after one planned turn: cell %s at height %.2f"
+			% [state.units[0].cell, state.units[0].height]
+		)
+	)
+	assert_almost_eq(
+		state.units[0].height,
+		2.0,
+		0.0001,
+		"the planner climbed the ladder in an ordinary turn, through MoveAction alone"
+	)
+
+
+## And the ladder is genuinely the only way — so the test above cannot pass by walking round.
+func test_the_shelf_is_reachable_only_by_the_ladder() -> void:
+	var grid: Grid = _ladder_board()
+	var unit: Unit = _unit(Vector2i(0, 1), 0)
+	var pf := Pathfinder.for_unit(grid, unit)
+
+	assert_gt(pf.move_cost(Vector2i(0, 1), Vector2i(1, 1)), 0.0, "the laddered edge is crossable")
+	assert_almost_eq(
+		pf.move_cost(Vector2i(0, 0), Vector2i(1, 0)),
+		-1.0,
+		0.0001,
+		"and the identical rise one cell away, with no ladder, is not an edge at all"
+	)

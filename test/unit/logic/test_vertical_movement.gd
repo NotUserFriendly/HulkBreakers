@@ -515,3 +515,52 @@ func test_only_a_climb_divides() -> void:
 	var drop: MoveAction = _step(unit, Vector2i(1, 0))
 	assert_false(drop.is_legal(state), "a drop with no budget simply does not happen")
 	assert_almost_eq(unit.height, 2.0, 0.0001, "and the unit has not sunk partway into it")
+
+
+## **An overwatcher catches a unit dropping off a ledge**, which is the taskblock's own Pass D
+## test and the exposure `HopDownAction` was faulted for never checking.
+##
+## **Added after the fact, and the omission is worth recording.** The retirement rested on
+## measuring that `apply_stepwise` fires the hook on every cell *including the one it drops
+## onto* — but that measurement lived in a scratch probe that was deleted, so the argument was
+## made from a number nothing pinned. Its climbing twin
+## (`test_an_overwatcher_catches_a_climb_through_no_second_code_path`) was retained and this
+## one was not, which is exactly the asymmetry that let the gap through.
+func test_an_overwatcher_catches_a_drop_on_the_cell_it_lands_on() -> void:
+	var grid := GridFixture.flat(3, 1)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 2)
+	var mover := _make_unit(Vector2i(0, 0), false)
+	var state := CombatState.new(grid, [mover])
+	state.assign_all_to_human()
+	state.force_current_unit(mover.id)
+
+	var seen: Array[Vector2i] = []
+	var hook := func(_s: CombatState, u: Unit) -> bool:
+		seen.append(u.cell)
+		return false
+	var drop: MoveAction = _step(mover, Vector2i(1, 0))
+	assert_true(drop.is_legal(state), "sanity: the drop is a legal step")
+	drop.apply_interruptible(state, hook)
+
+	gut.p("the hook saw the dropping unit at %s" % [seen])
+	assert_eq(
+		seen,
+		[Vector2i(1, 0)] as Array[Vector2i],
+		"the watcher sees the unit on the cell it dropped ONTO — a drop is not a blind spot"
+	)
+
+
+## And a hook that fires stops the drop's queue, the same way it stops a climb's.
+func test_a_hook_that_fires_stops_the_queue_on_a_drop() -> void:
+	var grid := GridFixture.flat(3, 1)
+	GridFixture.place_floor(grid, Vector2i(0, 0), 2)
+	var mover := _make_unit(Vector2i(0, 0), false)
+	var state := CombatState.new(grid, [mover])
+	state.assign_all_to_human()
+	state.force_current_unit(mover.id)
+
+	var hook := func(_s: CombatState, _u: Unit) -> bool: return true
+	var result: Dictionary = _step(mover, Vector2i(1, 0)).apply_interruptible(state, hook)
+
+	assert_true(result.stopped, "being caught mid-drop ends the turn")
+	assert_eq(mover.cell, Vector2i(1, 0), "and the drop itself completes")
