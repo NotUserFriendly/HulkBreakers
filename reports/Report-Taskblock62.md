@@ -45,8 +45,11 @@ for either way; the alternative was a thin box with a thickness nobody had a bas
 
 **`BoardOverlays` was extracted from `board_view.gd`.** Not asked for, but the file sat at exactly
 gdlint's 1000-line cap and a one-line addition failed the whole gate. Extraction is the project's
-own precedent for that file. Filed as `BR62.02` because it happened twice in this block and twice in
-taskblock-61.
+own precedent for that file. Filed as `BR62.02` because it happened **three times** in this block —
+`board_view.gd`, `bout_injector.gd`, and `utility_context.gd` on the last commit — and twice in
+taskblock-61. **Twice the cost came out of documentation rather than code**, which is the worse half:
+the cheapest thing to cut when a file is one line over is the explanation of why the code is as it
+is.
 
 **`MapGen.LIFT_SHARE = 0.5` is a flagged placeholder, not design.** It decides how often a generated
 route up costs AP instead of MP.

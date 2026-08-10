@@ -2667,16 +2667,20 @@ is_disabled` for the same part. The disappearance here is that disagreement made
   tuning the current rig.
 
 ### BR62.02 — Active — owner: `CC`
-**Two source files sit exactly at gdlint's 1000-line cap, so any addition breaks the build**
+**Source files sit at or one line under gdlint's 1000-line cap, so any addition breaks the build**
 - **cluster:** `tooling`
 - **Source:** `CC`, 2026-08-09, taskblock-62 Passes B and C1.
 - `board_view.gd` and `bout_injector.gd` were both at **exactly 1000 lines**. Adding one line to
   either fails `gdlint` and therefore the whole gate, including the targeted rung — so an
   unrelated one-line change is blocked until someone extracts a file.
-- Hit **twice in one taskblock**: Pass B extracted `BoardOverlays` from `board_view.gd`; Pass C1
-  had to compress a debug verb to net zero lines in `bout_injector.gd` rather than extract,
-  because the extraction was not the pass's subject.
-- **And these are the same two files taskblock-61 hit** — `BR57.02`'s own archived closure records
+- Hit **three times in one taskblock**: Pass B extracted `BoardOverlays` from `board_view.gd`;
+  Pass C1 compressed a debug verb to net zero lines in `bout_injector.gd` rather than extract,
+  because the extraction was not the pass's subject; and `utility_context.gd` went over on the
+  **last commit of the block**, on a doc comment, caught only by the full gate.
+- **Twice the cost was paid on documentation rather than on code**, which is the worse half: the
+  cheapest thing to cut when a file is one line over is the explanation of why the code is the way
+  it is.
+- **And `board_view.gd` and `bout_injector.gd` are the same two files taskblock-61 hit** — `BR57.02`'s own archived closure records
   *"third file this block to hit that cap, after `board_view.gd` and `bout_injector.gd`"*. Two
   blocks running, the same files, the same tax.
 - **The cap is right and the response is the problem.** A file parked one line under a hard limit

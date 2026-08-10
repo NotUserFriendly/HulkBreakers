@@ -213,33 +213,20 @@ const INPUT_PREDICTED_THREAT := &"predicted_threat"
 ## sometimes exactly right; a weight lets a good enough reason outbid it. The strength of the
 ## penalty is authored per action in the `.tres` files, so it is data.
 ##
-## ## "Slightly" is load-bearing, and the number that seemed to prove it was noise
+## ## The authored floor is 0.85, and the number that seemed to justify it was noise
 ##
-## `PLAN.md` asks for a candidate cell weighted *"slightly"* worse. The first version here
-## ignored that — a curve flooring a stranding cell at **0.15** of its utility — and a single
-## `seeds_to_first_win` reading of **7** appeared to catch it, against a **1** before the
-## block. The curve was softened to 0.85 on that reading.
+## `PLAN.md` asks for a candidate cell weighted *"slightly"* worse. A first version floored a
+## stranding cell at **0.15**, a single `seeds_to_first_win` draw of **7** appeared to catch
+## it against a **1** before the block, and the curve was softened on that reading.
 ##
-## **Retaken, the reading does not hold.** `BoutCorpus.sample()` is **clock-seeded on
-## purpose**, so this is a sampling measurement and a single draw compares nothing. Four
-## draws per tree:
+## **Retaken four times per tree — pre-block `1,1,2,3,3`, at 0.15 `1,2,3`, at 0.85
+## `1,1,2,2,3,4` — the reading does not hold.** `BoutCorpus.sample()` is clock-seeded on
+## purpose, so a single draw compares nothing; the 7 is one outlier in fifteen.
 ##
-##     pre-block          1, 1, 2, 3, 3
-##     0.15 floor         1, 2, 3   (and the original 7)
-##     0.85 floor         1, 1, 2, 2, 3, 4
-##
-## Three overlapping distributions. **The 7 was one outlier in fifteen draws**, not a
-## regression, and the decision it drove was made on a number that turned out to be wrong.
-##
-## **0.85 is kept anyway, on the design rather than on the measurement.** `PLAN` says
-## *slightly*, and the reasoning behind it stands on its own: one-way ground is **ordinary**
-## on a terraced board, not exceptional — a board is covered in cells you can drop into and
-## not climb out of — so an 85% cut would price every movement decision rather than a rare
-## trap. Flipping back on evidence this thin would be the same mistake in the other
-## direction.
-##
-## **What this actually costs is a way to tell.** Nothing here can currently distinguish a
-## real movement regression from sampling noise, which is worth more than either value.
+## **0.85 stays, on the design rather than the measurement.** One-way ground is *ordinary* on
+## a terraced board, so an 85% cut would price every movement decision rather than a rare
+## trap. Flipping back on evidence this thin is the same error mirrored. See the taskblock-62
+## report — nothing here can currently tell a movement regression from sampling noise.
 ##
 ## **One reverse flood per turn, not one per candidate.**
 ## `MapNavigability.cells_that_can_reach` walks every edge backwards from the unit's own
