@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_liftc"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_liftr"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_liftd"]
+
+[sub_resource type="Resource" id="Resource_lift_gain_c"]
+script = ExtResource("2_liftr")
+slope = 0.9
+offset = 0.1
+
+[sub_resource type="Resource" id="Resource_lift_gain"]
+script = ExtResource("1_liftc")
+input_id = &"lift_advance"
+curve = SubResource("Resource_lift_gain_c")
+
+[sub_resource type="Resource" id="Resource_lift_int_c"]
+script = ExtResource("2_liftr")
+slope = 0.6
+offset = 0.4
+
+[sub_resource type="Resource" id="Resource_lift_int"]
+script = ExtResource("1_liftc")
+input_id = &"own_integrity"
+curve = SubResource("Resource_lift_int_c")
+
+[sub_resource type="Resource" id="Resource_lift_ret_c"]
+script = ExtResource("2_liftr")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_lift_ret"]
+script = ExtResource("1_liftc")
+input_id = &"can_return"
+curve = SubResource("Resource_lift_ret_c")
+
+[resource]
+script = ExtResource("3_liftd")
+id = &"ride_mag_lift"
+display_name = "Ride Mag Lift"
+executor_id = &"mag_lift"
+preconditions = Array[StringName]([&"cell_has_mag_lift"])
+considerations = Array[ExtResource("1_liftc")]([SubResource("Resource_lift_gain"), SubResource("Resource_lift_int"), SubResource("Resource_lift_ret")])
+base_weight = 1.0
+tiers = Array[StringName]([&"TRAINED", &"ELITE"])

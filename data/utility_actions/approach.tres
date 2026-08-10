@@ -45,10 +45,20 @@ script = ExtResource("1_otma3")
 input_id = &"objective_advance"
 curve = SubResource("Resource_qnh2b")
 
+[sub_resource type="Resource" id="Resource_ret_apprc"]
+script = ExtResource("2_uyq50")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_ret_appr"]
+script = ExtResource("1_otma3")
+input_id = &"can_return"
+curve = SubResource("Resource_ret_apprc")
+
 [resource]
 script = ExtResource("3_krc6j")
 id = &"approach"
 display_name = "Approach"
 executor_id = &"move"
 preconditions = Array[StringName]([&"enemy_known", &"cell_is_elsewhere"])
-considerations = Array[ExtResource("1_otma3")]([SubResource("Resource_2be1b"), SubResource("Resource_iwl4i"), SubResource("Resource_3dj6r"), SubResource("Resource_16oxh")])
+considerations = Array[ExtResource("1_otma3")]([SubResource("Resource_2be1b"), SubResource("Resource_iwl4i"), SubResource("Resource_3dj6r"), SubResource("Resource_16oxh"), SubResource("Resource_ret_appr")])

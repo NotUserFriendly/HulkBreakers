@@ -83,7 +83,29 @@ static func one_way_cells(
 ## The flood that answers "which cells can reach `origin`", by walking every edge backwards:
 ## a step from `cell` to `neighbour` is admitted when `move_cost(neighbour, cell)` is legal.
 static func _reverse_flood(grid: Grid, origin: Vector2i, step_height: float) -> Dictionary:
-	var pathfinder := Pathfinder.new(grid, false, step_height)
+	return cells_that_can_reach(grid, origin, Pathfinder.new(grid, false, step_height))
+
+
+## tb62 Pass D: **the same reverse flood, for a caller that has a real mover.**
+##
+## `_reverse_flood` judges a map against a bare step height, which is right for a generator
+## with no roster. A planner asking *"if I go there, can I get back?"* has an actual unit, and
+## a unit that can climb has return routes a bare pathfinder does not — so answering that
+## question with the conservative mover would refuse descents that are perfectly recoverable
+## for the body actually making them.
+##
+## One flood, not one per candidate. **The naive form is O(cells^2)** and this is the
+## established cheap shape: a cell can reach `origin` exactly when `origin` reaches it
+## backwards.
+static func cells_that_can_reach(
+	grid: Grid, origin: Vector2i, pathfinder: Pathfinder, exempt_origin: bool = false
+) -> Dictionary:
+	# `exempt_origin` is for flooding toward a cell somebody is standing in — "can I get to
+	# the enemy" is a question about a cell that is occupied by definition, and gating it on
+	# entering that cell answers "no" every time.
+	var restore: Variant = pathfinder.ignored_occupant_cell()
+	if exempt_origin:
+		pathfinder.set_ignored_occupant_cell(origin)
 	var seen: Dictionary = {origin: true}
 	var frontier: Array[Vector2i] = [origin]
 	while not frontier.is_empty():
@@ -95,6 +117,7 @@ static func _reverse_flood(grid: Grid, origin: Vector2i, step_height: float) -> 
 				continue
 			seen[neighbour] = true
 			frontier.append(neighbour)
+	pathfinder.set_ignored_occupant_cell(restore)
 	return seen
 
 

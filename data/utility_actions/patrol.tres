@@ -14,11 +14,21 @@ script = ExtResource("1_kh658")
 input_id = &"closes_to_patrol"
 curve = SubResource("Resource_a2ljq")
 
+[sub_resource type="Resource" id="Resource_ret_patrc"]
+script = ExtResource("2_or1qp")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_ret_patr"]
+script = ExtResource("1_kh658")
+input_id = &"can_return"
+curve = SubResource("Resource_ret_patrc")
+
 [resource]
 script = ExtResource("3_sv51r")
 id = &"patrol"
 display_name = "Patrol"
 executor_id = &"move"
 preconditions = Array[StringName]([&"enemy_unknown", &"free_to_search", &"cell_is_elsewhere", &"search_patrol"])
-considerations = Array[ExtResource("1_kh658")]([SubResource("Resource_oh4d0")])
+considerations = Array[ExtResource("1_kh658")]([SubResource("Resource_oh4d0"), SubResource("Resource_ret_patr")])
 base_weight = 0.8

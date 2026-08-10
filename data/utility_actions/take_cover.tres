@@ -54,11 +54,21 @@ script = ExtResource("1_vjdwd")
 input_id = &"objective_withdraw"
 curve = SubResource("Resource_l8lmb")
 
+[sub_resource type="Resource" id="Resource_ret_takec"]
+script = ExtResource("2_vavel")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_ret_take"]
+script = ExtResource("1_vjdwd")
+input_id = &"can_return"
+curve = SubResource("Resource_ret_takec")
+
 [resource]
 script = ExtResource("3_hfkhb")
 id = &"take_cover"
 display_name = "Take cover"
 executor_id = &"move"
 preconditions = Array[StringName]([&"enemy_known", &"cell_is_elsewhere", &"cell_is_covered"])
-considerations = Array[ExtResource("1_vjdwd")]([SubResource("Resource_pkp1m"), SubResource("Resource_ms5kh"), SubResource("Resource_ps2sm"), SubResource("Resource_ncqvf"), SubResource("Resource_arlhw")])
+considerations = Array[ExtResource("1_vjdwd")]([SubResource("Resource_pkp1m"), SubResource("Resource_ms5kh"), SubResource("Resource_ps2sm"), SubResource("Resource_ncqvf"), SubResource("Resource_arlhw"), SubResource("Resource_ret_take")])
 tiers = Array[StringName]([&"GRUNT", &"TRAINED", &"ELITE"])

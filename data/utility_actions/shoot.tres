@@ -42,13 +42,23 @@ script = ExtResource("1_a20ve")
 input_id = &"objective_hold"
 curve = SubResource("Resource_17i5u")
 
+[sub_resource type="Resource" id="Resource_ret_shooc"]
+script = ExtResource("2_02rk8")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_ret_shoo"]
+script = ExtResource("1_a20ve")
+input_id = &"can_return"
+curve = SubResource("Resource_ret_shooc")
+
 [resource]
 script = ExtResource("3_npjil")
 id = &"shoot"
 display_name = "Shoot"
 executor_id = &"shoot"
 preconditions = Array[StringName]([&"has_weapon", &"enemy_known", &"weapon_reaches", &"lof_possible"])
-considerations = Array[ExtResource("1_a20ve")]([SubResource("Resource_poawr"), SubResource("Resource_b70pp"), SubResource("Resource_2wjnm"), SubResource("Resource_gjpc2")])
+considerations = Array[ExtResource("1_a20ve")]([SubResource("Resource_poawr"), SubResource("Resource_b70pp"), SubResource("Resource_2wjnm"), SubResource("Resource_gjpc2"), SubResource("Resource_ret_shoo")])
 base_weight = 1.5
 repeatable = true
 tiers = Array[StringName]([&"GRUNT", &"TRAINED", &"ELITE"])

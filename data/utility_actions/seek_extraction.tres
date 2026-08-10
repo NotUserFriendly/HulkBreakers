@@ -14,11 +14,21 @@ script = ExtResource("1_r4qql")
 input_id = &"closes_to_extraction"
 curve = SubResource("Resource_sa8qx")
 
+[sub_resource type="Resource" id="Resource_ret_seekc"]
+script = ExtResource("2_ormq8")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_ret_seek"]
+script = ExtResource("1_r4qql")
+input_id = &"can_return"
+curve = SubResource("Resource_ret_seekc")
+
 [resource]
 script = ExtResource("3_ec2wo")
 id = &"seek_extraction"
 display_name = "Seek extraction"
 executor_id = &"move"
 preconditions = Array[StringName]([&"is_player_squad", &"objective_done", &"cell_is_elsewhere"])
-considerations = Array[ExtResource("1_r4qql")]([SubResource("Resource_g3v3l")])
+considerations = Array[ExtResource("1_r4qql")]([SubResource("Resource_g3v3l"), SubResource("Resource_ret_seek")])
 base_weight = 1.2

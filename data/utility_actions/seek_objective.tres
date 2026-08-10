@@ -14,10 +14,20 @@ script = ExtResource("1_5hocg")
 input_id = &"closes_to_objective"
 curve = SubResource("Resource_bcws4")
 
+[sub_resource type="Resource" id="Resource_ret_seekc"]
+script = ExtResource("2_8av5t")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_ret_seek"]
+script = ExtResource("1_5hocg")
+input_id = &"can_return"
+curve = SubResource("Resource_ret_seekc")
+
 [resource]
 script = ExtResource("3_17pcy")
 id = &"seek_objective"
 display_name = "Seek objective"
 executor_id = &"move"
 preconditions = Array[StringName]([&"is_player_squad", &"objective_open", &"cell_is_elsewhere"])
-considerations = Array[ExtResource("1_5hocg")]([SubResource("Resource_qx052")])
+considerations = Array[ExtResource("1_5hocg")]([SubResource("Resource_qx052"), SubResource("Resource_ret_seek")])

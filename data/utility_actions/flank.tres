@@ -41,12 +41,22 @@ script = ExtResource("1_sb0oo")
 input_id = &"predicted_threat"
 curve = SubResource("Resource_y8xv8")
 
+[sub_resource type="Resource" id="Resource_ret_flanc"]
+script = ExtResource("2_t3tt0")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_ret_flan"]
+script = ExtResource("1_sb0oo")
+input_id = &"can_return"
+curve = SubResource("Resource_ret_flanc")
+
 [resource]
 script = ExtResource("3_wv3uc")
 id = &"flank"
 display_name = "Flank"
 executor_id = &"move"
 preconditions = Array[StringName]([&"enemy_known", &"cell_is_elsewhere", &"lof_possible"])
-considerations = Array[ExtResource("1_sb0oo")]([SubResource("Resource_uqlwa"), SubResource("Resource_nuwtq"), SubResource("Resource_bk6kq"), SubResource("Resource_7otwx")])
+considerations = Array[ExtResource("1_sb0oo")]([SubResource("Resource_uqlwa"), SubResource("Resource_nuwtq"), SubResource("Resource_bk6kq"), SubResource("Resource_7otwx"), SubResource("Resource_ret_flan")])
 base_weight = 1.1
 tiers = Array[StringName]([&"TRAINED", &"ELITE"])

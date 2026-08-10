@@ -83,6 +83,11 @@ const PRED_LOF_POSSIBLE := &"lof_possible"
 ## grammar would be a much larger change than publishing one more boolean.
 const PRED_LOF_BLOCKED := &"lof_blocked"
 const PRED_CELL_IS_COVERED := &"cell_is_covered"
+## tb62 Pass E: this cell carries a mag lift pad with a real partner to ride to. **A
+## precondition rather than a consideration**, because a ride is not merely a bad idea where
+## there is no lift — it is not a thing that can happen, and offering it would put a
+## guaranteed refusal into every decision log on the board.
+const PRED_CELL_HAS_MAG_LIFT := &"cell_has_mag_lift"
 ## Some other living unit exists to defer to, which is `HoldAction`'s own
 ## legality requirement. Published so a hold that could never be enqueued is never
 ## even offered, rather than winning and then silently failing.
@@ -194,6 +199,53 @@ const INPUT_CLOSES_TO_EXTRACTION := &"closes_to_extraction"
 ## deliberately the SAFE reading rather than the neutral one — see below.
 const INPUT_PREDICTED_THREAT := &"predicted_threat"
 
+## tb62 Pass D: **"can I get back?"** — 1.0 when the unit could return to where it is
+## standing from this cell, 0.0 when going there strands it for the rest of the bout.
+##
+## The case is a hop-down: descent is free and ascent needs a step, a ladder, a lift or a
+## capability nothing authors, so a unit that drops off a ledge to reach something can put
+## itself somewhere it cannot leave. **Stranding is a legitimate outcome** — a player
+## knocking someone into a pit is the game working — **but a unit choosing it unknowingly is
+## not.**
+##
+## **A consideration, never a precondition**, which is the whole design of it. A prohibition
+## would forbid the drop that reaches an otherwise unreachable target, and that drop is
+## sometimes exactly right; a weight lets a good enough reason outbid it. The strength of the
+## penalty is authored per action in the `.tres` files, so it is data.
+##
+## ## "Slightly" is load-bearing, and it was measured rather than assumed
+##
+## `PLAN.md` asks for a candidate cell weighted *"slightly"* worse, and the first version
+## here ignored that: a curve flooring a stranding cell at **0.15** of its utility. On the
+## fixtures it looked right. On real generated maps it moved `seeds_to_first_win` from **1 to
+## 7** — "worth a look" territory, one seed off the cap.
+##
+## **The cause is that one-way ground is ordinary, not exceptional.** A terraced board is
+## covered in cells you can drop into and not climb out of, so an 85% cut was not pricing a
+## rare trap, it was reshaping every movement decision on the board. At **0.85** — a genuinely
+## slight nudge — the same measurement reads **2**, back inside the healthy band.
+##
+## Recorded because the fixture could never have caught it: a hand-built pit has one stranding
+## cell and a generated map has hundreds.
+##
+## **One reverse flood per turn, not one per candidate.**
+## `MapNavigability.cells_that_can_reach` walks every edge backwards from the unit's own
+## cell — the established cheap shape, since the naive form is O(cells^2).
+const INPUT_CAN_RETURN := &"can_return"
+
+## tb62 Pass E: **how much ground riding the lift from this cell would save.**
+##
+## The framework scores *cells*, and a lift's whole value sits at the **other** cell — so
+## boarding one can never be worth anything measured where you board. This publishes the
+## difference: the improvement in path distance to the target between the pad the unit is on
+## and the pad it would arrive at, normalised. 0.0 when the ride gains nothing, and it is 0.0
+## for every cell with no lift on it, so an action considering it is only ever pulled by a
+## lift that actually goes somewhere useful.
+##
+## **This is what makes a ride compete for AP against shooting rather than beating it.** A
+## lift that saves nothing scores nothing, and the shot wins on its own merits.
+const INPUT_LIFT_ADVANCE := &"lift_advance"
+
 ## What a unit that cannot see the future is told about it: **nothing threatens
 ## anywhere.**
 ##
@@ -245,6 +297,12 @@ var _origin: Vector2i = Vector2i.ZERO
 var _path_cost_from_target: Dictionary = {}
 ## The patrol point this unit is heading for, or null when it is not patrolling.
 var _patrol_target: Variant = null
+## tb62 Pass D: cells from which this unit could return to where it is standing. Built once
+## per turn in `build`; see `INPUT_CAN_RETURN`.
+var _returnable: Dictionary = {}
+## tb62 Pass E: cells from which this unit could reach the target's own cell. See
+## `INPUT_LIFT_ADVANCE`.
+var _can_reach_target: Dictionary = {}
 
 var _standoff: float = DEFAULT_STANDOFF_CELLS
 var _integrity: float = 1.0
@@ -324,6 +382,10 @@ static func build(
 	var reachable: Array[Vector2i] = pathfinder.reachable(p_unit.cell, context._move_budget)
 	if not reachable.has(p_unit.cell):
 		reachable.append(p_unit.cell)
+	# tb62 Pass D: one reverse flood, before any candidate is scored — see `INPUT_CAN_RETURN`.
+	context._returnable = MapNavigability.cells_that_can_reach(
+		p_view.grid, p_unit.cell, pathfinder
+	)
 
 	if context.target == null:
 		# No enemy, so no rectangle to cull toward — the whole reachable set is the
@@ -342,6 +404,13 @@ static func build(
 	# Same shape as the visibility field: one per target per turn, shared by every
 	# candidate.
 	context._path_cost_from_target = pathfinder.reachable_costs(context.target.cell, INF)
+	# tb62 Pass E: which cells the MOVER could actually reach the target from. Distinct from
+	# the flood above, which measures outward from the target and therefore answers the
+	# target's question, not the mover's — the two disagree exactly on one-way ground, which
+	# is the ground a lift exists to serve.
+	context._can_reach_target = MapNavigability.cells_that_can_reach(
+		p_view.grid, context.target.cell, pathfinder, true
+	)
 	# taskblock-43 Pass B's rectangle carries forward: it is candidate-set geometry
 	# with no planner state in it, so nothing about replacing the scorer invalidates
 	# it.
@@ -406,6 +475,45 @@ static func _record_recent(unit: Unit) -> void:
 ## every cell outside the trail identical and leave the unit free to bounce between
 ## two cells eight steps apart — the same oscillation with a longer period. Distance
 ## to the nearest trail entry is what makes it a gradient rather than a wall.
+## 1.0 when `cell` has a route back to where the unit stands, 0.0 when it does not.
+##
+## The unit's own cell is trivially returnable and is seeded into the flood, so standing
+## still never reads as stranding. An empty map — a context built before the flood ran, which
+## every hand-made fixture produces — reads as returnable rather than as stranded: a missing
+## measurement must not become a penalty.
+func _can_return(cell: Vector2i) -> float:
+	if _returnable.is_empty():
+		return 1.0
+	return 1.0 if _returnable.has(cell) else 0.0
+
+
+## See `INPUT_LIFT_ADVANCE`. Zero unless `cell` carries a lift pad whose partner is genuinely
+## closer to the target than `cell` is; the gain is scaled against the unit's own move budget
+## so "a lift worth an action" means "it saved about a turn's walking".
+func _lift_advance(cell: Vector2i) -> float:
+	if target == null or _path_cost_from_target.is_empty():
+		return 0.0
+	var partner: Variant = Surface.mag_lift_destination(view.grid, cell)
+	if partner == null:
+		return 0.0
+	var here: float = float(_path_cost_from_target.get(cell, INF))
+	var there: float = float(_path_cost_from_target.get(partner as Vector2i, INF))
+	# A partner the flood never reached is not an improvement of unknown size — it is a cell
+	# the target cannot be walked to from, which is the opposite of progress.
+	if not is_finite(there):
+		return 0.0
+	# **The strongest case, and the one the action exists for: the ride is the only way the
+	# two units ever meet.** Measured against where the MOVER can go, not where the target
+	# could walk — the outward flood above reads a one-way shelf as nearly free to reach,
+	# because walking *down* off it is cheap, and that is the wrong direction entirely.
+	var partner_connects: bool = _can_reach_target.has(partner as Vector2i)
+	if partner_connects and not _can_reach_target.has(cell):
+		return 1.0
+	if not is_finite(here) or not is_finite(there) or there >= here:
+		return 0.0
+	return clampf((here - there) / maxf(_move_budget, 1.0), 0.0, 1.0)
+
+
 func _unvisited(cell: Vector2i) -> float:
 	if unit == null or unit.recent_cells.is_empty():
 		return 1.0
@@ -476,6 +584,8 @@ func inputs_for(cell: Vector2i) -> Dictionary:
 			INPUT_UNVISITED: _unvisited(cell),
 			INPUT_FLANK_ANGLE: 0.0,
 			INPUT_PREDICTED_THREAT: predicted_threat(cell),
+			INPUT_CAN_RETURN: _can_return(cell),
+			INPUT_LIFT_ADVANCE: 0.0,
 		}
 		idle.merge(_objective_inputs())
 		idle.merge(_mission_inputs(cell))
@@ -494,6 +604,8 @@ func inputs_for(cell: Vector2i) -> Dictionary:
 		INPUT_UNVISITED: _unvisited(cell),
 		INPUT_FLANK_ANGLE: _flank_angle(cell),
 		INPUT_PREDICTED_THREAT: predicted_threat(cell),
+		INPUT_CAN_RETURN: _can_return(cell),
+		INPUT_LIFT_ADVANCE: _lift_advance(cell),
 	}
 	inputs.merge(_objective_inputs())
 	inputs.merge(_mission_inputs(cell))
@@ -559,6 +671,7 @@ func predicates_for(cell: Vector2i) -> Dictionary:
 		PRED_LOF_POSSIBLE: target != null and _lof_possible(cell),
 		PRED_LOF_BLOCKED: target != null and not _lof_possible(cell),
 		PRED_CELL_IS_COVERED: target != null and _is_covered(cell),
+		PRED_CELL_HAS_MAG_LIFT: Surface.mag_lift_destination(view.grid, cell) != null,
 		PRED_CAN_DEFER_TURN: _can_defer,
 		PRED_OBJECTIVE_OPEN: _objective_cell != null,
 		PRED_OBJECTIVE_DONE: mission != null and not _has_open_objective(),

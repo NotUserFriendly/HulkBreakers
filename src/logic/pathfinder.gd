@@ -87,6 +87,19 @@ var _step_height: float
 var _origin_cell: Vector2i = Vector2i.ZERO
 var _origin_height: float = NAN
 
+## tb62 Pass D: **a unit never blocks itself.**
+##
+## `_base_cost` refuses any occupied cell, which is right for everyone else and wrong for the
+## mover — its own cell is the one cell it is guaranteed to be able to stand on. Forward
+## floods never noticed, because `reachable_costs` exempts its origin from cost-checking by
+## construction. A **reverse** flood does notice: asking "which cells can reach where I am
+## standing" gated every answer on entering a cell the asker was occupying, so the honest
+## answer was always "none".
+##
+## Set by `for_unit` alone. A pathfinder built for a grid rather than a unit has no such cell
+## and behaves exactly as before.
+var _ignore_occupant_at: Variant = null
+
 
 static func reset_diagnostics() -> void:
 	floods = 0
@@ -110,7 +123,20 @@ static func for_unit(grid: Grid, unit: Unit) -> Pathfinder:
 	var pathfinder := Pathfinder.new(grid, unit.shell.can_climb(), unit.step_height())
 	pathfinder._origin_cell = unit.cell
 	pathfinder._origin_height = unit.height
+	pathfinder._ignore_occupant_at = unit.cell
 	return pathfinder
+
+
+## Read/write access to `_ignore_occupant_at` for a caller that needs to flood *toward* an
+## occupied cell (`MapNavigability.cells_that_can_reach`). Deliberately a pair of methods
+## rather than a public field: the exemption is a temporary borrow, and a caller that takes it
+## has to give it back.
+func ignored_occupant_cell() -> Variant:
+	return _ignore_occupant_at
+
+
+func set_ignored_occupant_cell(cell: Variant) -> void:
+	_ignore_occupant_at = cell
 
 
 ## The height an edge leaving `cell` starts from: the mover's own body height when `cell` is
@@ -166,7 +192,7 @@ func _height_leaving(cell: Vector2i) -> float:
 func _base_cost(cell: Vector2i) -> float:
 	if not _grid.in_bounds(cell):
 		return -1.0
-	if _grid.get_occupant_id(cell) != -1:
+	if _grid.get_occupant_id(cell) != -1 and cell != _ignore_occupant_at:
 		return -1.0
 	if _grid.blockers.has(cell) and (_grid.blockers[cell] as Part).hp > 0:
 		return -1.0

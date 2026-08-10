@@ -14,12 +14,22 @@ script = ExtResource("1_g0mfm")
 input_id = &"own_integrity"
 curve = SubResource("Resource_vkbyj")
 
+[sub_resource type="Resource" id="Resource_ret_gathc"]
+script = ExtResource("2_3pu21")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_ret_gath"]
+script = ExtResource("1_g0mfm")
+input_id = &"can_return"
+curve = SubResource("Resource_ret_gathc")
+
 [resource]
 script = ExtResource("3_gy6mh")
 id = &"gather"
 display_name = "Gather"
 executor_id = &"gather"
 preconditions = Array[StringName]([&"is_player_squad", &"objective_open", &"cell_is_objective"])
-considerations = Array[ExtResource("1_g0mfm")]([SubResource("Resource_24b3h")])
+considerations = Array[ExtResource("1_g0mfm")]([SubResource("Resource_24b3h"), SubResource("Resource_ret_gath")])
 base_weight = 3.0
 repeatable = true

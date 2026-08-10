@@ -23,11 +23,21 @@ script = ExtResource("1_2xlyt")
 input_id = &"unvisited"
 curve = SubResource("Resource_xesra")
 
+[sub_resource type="Resource" id="Resource_ret_huntc"]
+script = ExtResource("2_yelhc")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_ret_hunt"]
+script = ExtResource("1_2xlyt")
+input_id = &"can_return"
+curve = SubResource("Resource_ret_huntc")
+
 [resource]
 script = ExtResource("3_0tn4q")
 id = &"hunt"
 display_name = "Hunt"
 executor_id = &"move"
 preconditions = Array[StringName]([&"enemy_unknown", &"free_to_search", &"cell_is_elsewhere", &"search_hunt"])
-considerations = Array[ExtResource("1_2xlyt")]([SubResource("Resource_07l5g"), SubResource("Resource_s3hr5")])
+considerations = Array[ExtResource("1_2xlyt")]([SubResource("Resource_07l5g"), SubResource("Resource_s3hr5"), SubResource("Resource_ret_hunt")])
 base_weight = 1.2
