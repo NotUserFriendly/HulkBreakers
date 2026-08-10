@@ -436,6 +436,66 @@ func reachable_costs(origin: Vector2i, mp: float) -> Dictionary:
 	return dist
 
 
+## taskblock-63 Pass C: **`reachable_costs` with every edge walked backwards** —
+## `cell -> what it costs to travel FROM that cell TO `origin``, always including
+## `origin` itself at 0.0.
+##
+## **These are two different questions and the forward one had been answering both.**
+## `reachable_costs(target)` says *how far the target could walk to here*;
+## this says *how far I must walk to the target*. On symmetric ground they agree
+## exactly and the difference never showed. **On one-way ground they disagree
+## exactly** — dropping off a shelf is cheap and climbing back is not — and a terraced
+## board is made of one-way ground, so the outward flood read a cell under a shelf as
+## nearly as good as one on it.
+##
+## **The relaxation is the whole trick.** Dijkstra needs a settled node to expand
+## from, so the flood still grows outward from `origin`; what changes is that the edge
+## priced when reaching `neighbor` is `move_cost(neighbor, current)` — the step that
+## would be taken *toward* the origin — rather than the step away from it. Same
+## complexity, one flood, no per-candidate pathfind.
+##
+## **`exempt_origin` is not optional decoration and taskblock-61 already paid for
+## learning that.** `_base_cost` refuses an occupied cell, and `move_cost(from, to)`
+## checks the DESTINATION — so in a reverse flood the one cell whose occupancy is ever
+## tested as a destination is `origin` itself. Flooding toward a cell somebody is
+## standing in (which "how far to the enemy" always is) therefore answers "nothing can
+## reach it" for every cell on the board unless the origin is exempted. Every other
+## cell on the board is only ever a *source* here, so nothing else needs exempting and
+## nothing walks through anyone.
+##
+## Note the asymmetry with `reachable_costs`, which needs no such flag: an outward
+## flood never has to *enter* its own root.
+func costs_to_reach(origin: Vector2i, mp: float, exempt_origin: bool = false) -> Dictionary:
+	floods += 1
+	var restore: Variant = _ignore_occupant_at
+	if exempt_origin:
+		_ignore_occupant_at = origin
+	var dist: Dictionary = {origin: 0.0}
+	var frontier: Array[Vector2i] = [origin]
+
+	while not frontier.is_empty():
+		var current: Vector2i = frontier[0]
+		var current_index: int = 0
+		for i in range(1, frontier.size()):
+			var cand: Vector2i = frontier[i]
+			if dist[cand] < dist[current]:
+				current = cand
+				current_index = i
+		frontier.remove_at(current_index)
+
+		for neighbor: Vector2i in _grid.neighbors(current):
+			var cost: float = move_cost(neighbor, current)
+			if cost < 0.0:
+				continue
+			var total: float = dist[current] + cost
+			if total <= mp and total < dist.get(neighbor, INF):
+				dist[neighbor] = total
+				frontier.append(neighbor)
+
+	_ignore_occupant_at = restore
+	return dist
+
+
 ## tb33 Pass B (BR32.10): the same Dijkstra flood as `reachable()`, but
 ## "give me the first cell matching X" instead of "give me everything" —
 ## `stop_at` (`Callable(Vector2i) -> bool`) is evaluated once per cell, in

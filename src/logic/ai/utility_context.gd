@@ -292,17 +292,20 @@ var candidate_cells: Array[Vector2i] = []
 ## position change stays where it belongs, in RESOLUTION replaying the queue.
 var _origin: Vector2i = Vector2i.ZERO
 
-## `cell -> path cost from the target's own cell`, flooded once per turn. Absent
-## means genuinely unreachable from the target, which is a different thing from far.
-var _path_cost_from_target: Dictionary = {}
+## `cell -> what it costs THIS MOVER to travel from that cell to the target's own
+## cell`, flooded once per turn. Absent means the target genuinely cannot be walked to
+## from there, which is a different thing from far.
+##
+## taskblock-63 Pass C: **was `_path_cost_from_target`, a flood rooted at the target
+## running outward**, which answered *"how far could the target walk to this cell"*.
+## Renamed as well as reversed, because the old name described the old flood correctly
+## and the bug was that nobody noticed it was not the question being asked.
+var _path_cost_to_target: Dictionary = {}
 ## The patrol point this unit is heading for, or null when it is not patrolling.
 var _patrol_target: Variant = null
 ## tb62 Pass D: cells from which this unit could return to where it is standing. Built once
 ## per turn in `build`; see `INPUT_CAN_RETURN`.
 var _returnable: Dictionary = {}
-## tb62 Pass E: cells from which this unit could reach the target's own cell. See
-## `INPUT_LIFT_ADVANCE`.
-var _can_reach_target: Dictionary = {}
 
 var _standoff: float = DEFAULT_STANDOFF_CELLS
 var _integrity: float = 1.0
@@ -383,9 +386,7 @@ static func build(
 	if not reachable.has(p_unit.cell):
 		reachable.append(p_unit.cell)
 	# tb62 Pass D: one reverse flood, before any candidate is scored — see `INPUT_CAN_RETURN`.
-	context._returnable = MapNavigability.cells_that_can_reach(
-		p_view.grid, p_unit.cell, pathfinder
-	)
+	context._returnable = MapNavigability.cells_that_can_reach(p_view.grid, p_unit.cell, pathfinder)
 
 	if context.target == null:
 		# No enemy, so no rectangle to cull toward — the whole reachable set is the
@@ -397,20 +398,25 @@ static func build(
 	context._standoff = standoff_for(context.weapon)
 	context._current_distance = Grid.distance_chebyshev(p_unit.cell, context.target.cell)
 	context.field = VisibilityField.build(state.grid, context.target.cell)
-	# taskblock-46 Pass C (BR32.10): one flood rooted at the TARGET, giving every
-	# cell its real path distance to the enemy. Rooted there rather than at the unit
-	# because the enemy's own cell is what distance is measured to, and a flood from
-	# the unit cannot answer that — the enemy's cell is occupied and never entered.
-	# Same shape as the visibility field: one per target per turn, shared by every
-	# candidate.
-	context._path_cost_from_target = pathfinder.reachable_costs(context.target.cell, INF)
-	# tb62 Pass E: which cells the MOVER could actually reach the target from. Distinct from
-	# the flood above, which measures outward from the target and therefore answers the
-	# target's question, not the mover's — the two disagree exactly on one-way ground, which
-	# is the ground a lift exists to serve.
-	context._can_reach_target = MapNavigability.cells_that_can_reach(
-		p_view.grid, context.target.cell, pathfinder, true
-	)
+	# taskblock-46 Pass C (BR32.10): one flood giving every cell its real path distance
+	# to the enemy, shared by every candidate — the same shape as the visibility field,
+	# one per target per turn.
+	#
+	# **taskblock-63 Pass C: it runs backwards now.** It was
+	# `reachable_costs(target.cell)`, a forward flood rooted at the target, which
+	# answers *"how far could the target walk to this cell"* — not *"how far must I
+	# walk to the target"*. Symmetric ground makes those identical and it never
+	# mattered; one-way ground makes them disagree exactly, and a terraced board is
+	# made of one-way ground, so a cell under a shelf read as nearly as good as one on
+	# it because dropping off is cheap.
+	#
+	# **And it absorbs the flood tb62 Pass E had to add beside it.** `_can_reach_target`
+	# was `MapNavigability.cells_that_can_reach`, an unweighted reverse flood built for
+	# `lift_advance` precisely because the weighted one ran the wrong way — the same
+	# question asked twice, in two directions, by two systems. The key set of this
+	# dictionary IS "which cells can reach the target", so the second flood is gone
+	# rather than kept in step.
+	context._path_cost_to_target = pathfinder.costs_to_reach(context.target.cell, INF, true)
 	# taskblock-43 Pass B's rectangle carries forward: it is candidate-set geometry
 	# with no planner state in it, so nothing about replacing the scorer invalidates
 	# it.
@@ -491,23 +497,23 @@ func _can_return(cell: Vector2i) -> float:
 ## closer to the target than `cell` is; the gain is scaled against the unit's own move budget
 ## so "a lift worth an action" means "it saved about a turn's walking".
 func _lift_advance(cell: Vector2i) -> float:
-	if target == null or _path_cost_from_target.is_empty():
+	if target == null or _path_cost_to_target.is_empty():
 		return 0.0
 	var partner: Variant = Surface.mag_lift_destination(view.grid, cell)
 	if partner == null:
 		return 0.0
-	var here: float = float(_path_cost_from_target.get(cell, INF))
-	var there: float = float(_path_cost_from_target.get(partner as Vector2i, INF))
+	var here: float = float(_path_cost_to_target.get(cell, INF))
+	var there: float = float(_path_cost_to_target.get(partner as Vector2i, INF))
 	# A partner the flood never reached is not an improvement of unknown size — it is a cell
 	# the target cannot be walked to from, which is the opposite of progress.
 	if not is_finite(there):
 		return 0.0
 	# **The strongest case, and the one the action exists for: the ride is the only way the
-	# two units ever meet.** Measured against where the MOVER can go, not where the target
-	# could walk — the outward flood above reads a one-way shelf as nearly free to reach,
-	# because walking *down* off it is cheap, and that is the wrong direction entirely.
-	var partner_connects: bool = _can_reach_target.has(partner as Vector2i)
-	if partner_connects and not _can_reach_target.has(cell):
+	# two units ever meet.** taskblock-63 Pass C: this used to consult a second, unweighted
+	# reverse flood built specifically because the weighted one ran outward from the target.
+	# The weighted flood runs backwards now, so its own key set answers this — one flood,
+	# one direction, no pair to keep in step.
+	if not _path_cost_to_target.has(cell):
 		return 1.0
 	if not is_finite(here) or not is_finite(there) or there >= here:
 		return 0.0
@@ -788,34 +794,68 @@ func _standoff_match(distance: int) -> float:
 ## nothing calls it any more. **Being stuck became a scoring outcome**, and the fix
 ## belongs in the score.
 ##
-## Path cost comes from one flood rooted at the target (`_path_cost_from_target`),
-## so a cell behind a wall is correctly *further* even when it is spatially nearer.
-## A cell the flood never reached is genuinely unreachable from the target and falls
-## back to straight-line, which keeps a fully walled-off target from vetoing every
-## approach rather than merely ranking them.
+## Path cost comes from one flood (`_path_cost_to_target`), so a cell behind a wall is
+## correctly *further* even when it is spatially nearer.
+##
+## **taskblock-63 Pass C: the flood is the mover's, not the target's.** It used to run
+## outward from the target, which prices *the target walking here*. Where the two
+## disagree is exactly where elevation exists: a cell at the foot of a shelf is a cheap
+## drop away from a target standing on it and an expensive climb back, so the outward
+## flood scored standing under the shelf as almost as good as standing on it.
+##
+## ## And absence had to change meaning with it
+##
+## Under the outward flood, "absent" meant *the target cannot walk here*, which is
+## nearly always a walled-off target rather than a fact about the candidate — so
+## falling back to straight-line was right, and vetoing would have made a sealed enemy
+## veto every approach equally.
+##
+## Under the reverse flood, "absent" means **I cannot walk to the target from there**,
+## which is a fact about the candidate and the strongest one this input has. Keeping
+## the old fallback would have thrown the fix away in exactly the case it was for: the
+## cell under the shelf is *adjacent* to a target standing on it, so straight-line
+## scores it as excellent while the mover genuinely cannot get up.
+##
+## So there are three cases, and the middle one is the whole point:
+##
+## - **Neither here nor there can reach** — nobody on this board can walk to the
+##   target, so rank on straight line as before. A sealed enemy still must not flatten
+##   every candidate to the same score.
+## - **There cannot reach and here can** — 0.0. Stepping somewhere the target becomes
+##   unreachable from is the opposite of closing.
+## - **Here cannot reach and there can** — 1.0. Anywhere that restores a route beats
+##   standing where there is none.
 func _closes_distance(cell: Vector2i, distance: int) -> float:
-	var here: float = _path_distance_to_target(_origin, float(_current_distance))
-	var there: float = _path_distance_to_target(cell, float(distance))
+	var here: float = _path_distance_to_target(_origin)
+	var there: float = _path_distance_to_target(cell)
+	if not is_finite(here) and not is_finite(there):
+		here = float(_current_distance)
+		there = float(distance)
+	elif not is_finite(there):
+		return 0.0
+	elif not is_finite(here):
+		return 1.0
 	if here <= 0.0:
 		return 0.5
 	return clampf(0.5 + 0.5 * (here - there) / here, 0.0, 1.0)
 
 
-## Path cost from `cell` to the target, or `fallback` when the flood never reached
-## it. **The unit's own cell is normally absent** — it is occupied, so the flood
-## cannot enter it — and is answered from its cheapest neighbour plus one step,
-## which is exactly what it would cost to leave and continue.
-func _path_distance_to_target(cell: Vector2i, fallback: float) -> float:
-	if _path_cost_from_target.is_empty():
-		return fallback
-	if _path_cost_from_target.has(cell):
-		return float(_path_cost_from_target[cell])
-	var best: float = INF
-	for offset: Vector2i in Grid.NEIGHBOR_OFFSETS:
-		var neighbour: Vector2i = cell + offset
-		if _path_cost_from_target.has(neighbour):
-			best = minf(best, float(_path_cost_from_target[neighbour]) + 1.0)
-	return best if best < INF else fallback
+## Path cost from `cell` to the target, or `INF` when there is no route at all.
+##
+## **The cheapest-neighbour-plus-one rule that used to live here is gone**, and its
+## reason went with the outward flood. It existed because the unit's own cell is
+## occupied and an outward flood can never enter it — but a *reverse* flood only ever
+## reads a cell as a source, and `move_cost(from, to)` checks the destination, so the
+## mover's own cell is priced normally. Keeping the rule would have let a stranded cell
+## borrow a reachable neighbour's cost and read as connected.
+##
+## `INF` for a context with no flood at all (every hand-made fixture) puts the caller
+## in its own straight-line branch, which is the honest answer when there is no
+## measurement rather than a penalty invented from its absence.
+func _path_distance_to_target(cell: Vector2i) -> float:
+	if _path_cost_to_target.has(cell):
+		return float(_path_cost_to_target[cell])
+	return INF
 
 
 ## Chebyshev distance against the turn's movement budget — a deliberate PROXY for
