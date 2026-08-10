@@ -21,8 +21,9 @@ const RISE: float = 2.0
 func _lift_grid() -> Grid:
 	var grid := GridFixture.flat(3, 1)
 	GridFixture.place_floor(grid, UPPER, RISE)
-	GridPlacement.place(grid, LOWER, DataLibrary.get_part(PAD).duplicate(true), 0.0)
-	GridPlacement.place(grid, UPPER, DataLibrary.get_part(PAD).duplicate(true), RISE)
+	# taskblock-63 Pass E: **placed as a pair**, which is the only way a lift is made now — the
+	# pads record each other rather than being paired up afterwards by proximity.
+	GridPlacement.place_mag_lift_pair(grid, LOWER, 0.0, UPPER, RISE)
 	return grid
 
 
@@ -158,10 +159,14 @@ func test_the_lift_rides_back_down_for_the_same_one_ap() -> void:
 	assert_true(action.is_legal(state), "a unit on the upper pad may ride down")
 	action.apply(state)
 
-	gut.p("rode down to %s at height %.2f for %d AP" % [unit.cell, unit.height, ap_before - unit.ap])
+	gut.p(
+		"rode down to %s at height %.2f for %d AP" % [unit.cell, unit.height, ap_before - unit.ap]
+	)
 	assert_eq(unit.cell, LOWER, "the descent lands on the lower pad's cell")
 	assert_almost_eq(unit.height, 0.0, 0.0001, "at the low floor's own height")
-	assert_eq(unit.ap, ap_before - MagLiftAction.AP_COST, "for the same single AP the ride up costs")
+	assert_eq(
+		unit.ap, ap_before - MagLiftAction.AP_COST, "for the same single AP the ride up costs"
+	)
 
 
 ## **A ride is worth an action only where one was built**, and that is the whole of what makes
@@ -249,9 +254,7 @@ func test_a_shot_from_the_upper_pad_originates_at_the_upper_height() -> void:
 	var after: float = UnitGeometry.muzzle_point(unit, weapon).y
 
 	gut.p("muzzle Y %.2f -> %.2f after riding a %.1f lift" % [before, after, RISE])
-	assert_almost_eq(
-		after - before, RISE, 0.0001, "the muzzle rose by exactly the lift's own rise"
-	)
+	assert_almost_eq(after - before, RISE, 0.0001, "the muzzle rose by exactly the lift's own rise")
 
 
 # --- the generator -------------------------------------------------------------------
@@ -276,9 +279,12 @@ func test_generated_maps_stand_lifts_where_ladders_would_go() -> void:
 		pads += seed_pads
 		if seed_pads > 0:
 			with_lifts += 1
-	gut.p("%d of 8 seeds carry a lift; %d pads and %d ladder segments in total" % [
-		with_lifts, pads, ladders
-	])
+	gut.p(
+		(
+			"%d of 8 seeds carry a lift; %d pads and %d ladder segments in total"
+			% [with_lifts, pads, ladders]
+		)
+	)
 
 	assert_gt(pads, 0, "some generated route up must be a lift, or the branch is unreachable")
 	assert_eq(pads % 2, 0, "and every pad is placed as half of a pair, never alone")
@@ -313,8 +319,10 @@ func test_every_generated_pad_pairs_with_one_that_pairs_back() -> void:
 	assert_eq(
 		broken,
 		[] as Array[String],
-		"a pad whose partner does not ride back is a one-way trip nobody authored:\n%s"
-		% "\n".join(broken)
+		(
+			"a pad whose partner does not ride back is a one-way trip nobody authored:\n%s"
+			% "\n".join(broken)
+		)
 	)
 
 

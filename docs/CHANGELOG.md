@@ -1,5 +1,215 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 63 — finish what taskblock 62 exposed
+
+### Pass A — the file-size cap is the project's number, not gdlint's
+
+**`gdlintrc`'s `max-file-lines` goes 1000 -> 2500.** The 1000 was **gdlint's own default,
+inherited rather than decided** — this project already overrides `max-returns` and
+`max-public-methods` for stated reasons, so the one rule nobody had argued for was the one doing
+damage. A line count cannot tell code from comments, and *carry the fact inline* is a standing
+convention here, so **the cap penalised exactly the files that explain themselves**. `BR62.02`
+records it biting three source files in one taskblock with **the cost coming out of documentation
+twice**. Everything else gdlint does is untouched.
+
+**It cost more than one line, and that is the finding.** `test_retired_planner_sweep.gd` asserted
+the literal `max-file-lines: 1000`, because taskblock-45 Pass E made the cap coming back down the
+*objective proof* that `src/logic/ai/unit_ai.gd` — the file eight cap bumps had been taken for —
+was truly replaced. **That proof was delivered and cannot be delivered twice**, and a frozen number
+in a file about a deleted planner had become the reason an unrelated decision could not be made.
+The assertion moves to `test/unit/test_lint_config.gd` at 2500, keeping the *mechanism* tb45 valued
+— the cap cannot drift without someone saying why in a test — with a number that was chosen.
+
+### Pass B — a body's standing height derives from its legs
+
+**`UnitGeometry.standing_offset`: the feet rest on the floor and the body sits wherever that puts
+it.** `assembly_placements` used to pin the root at the cell's floor and hang the legs from the
+torso's own `HIP` socket — a transform that lives on the torso and is shared — so **a longer leg
+put its foot below the floor plane** instead of raising the hip, and no leg whose length differed
+from `leg.tres`'s could be authored at all. That is why tb62 Pass A's long leg was deleted rather
+than shipped.
+
+**Four cases, each a decision.** No legs -> `0.0` (a wall, a scrap pile, a legless ally is not
+claiming to stand). A leg shorter than its hip socket -> a *negative* offset, deliberately not
+clamped, or a short leg leaves the body hovering. **Legs of different lengths -> the deeper one
+sets the height and the shorter dangles**, because `torso.tres` has `HIP_L`/`HIP_R` and no hip
+*segment* and a leg has no knee, so there is nowhere to bend; making mismatch mean something is
+`PLAN`'s own *legs must match* item. A destroyed leg contributes nothing, the same `hp > 0` test
+the box walk applies. **Pose is not consulted** — a standing height is a fact about the assembly,
+and reading the pose would move a downed unit for a case nobody asked about.
+
+**`UnitGeometry.unit_transform` extracted.** `assembly_placements`, `shoulder_height` and
+`bounding_box` each built the body's placement by hand, which was harmless while it was two
+multiplications and stops being harmless the moment a term is added — the shoulder would have gone
+on reading the floor while the rendered shoulder socket read the legs.
+
+**The taskblock's own premise was wrong about the shot plane and it is corrected here.** It says
+the hit volumes and the shot plane agree "since both read `assembly_placements`". **They do not**:
+`BodyProjector.project` composes the body in its own local space and `ShotPlane` adds world
+elevation itself, so the standing height had to be wired in there explicitly. Tested against the
+rendered extent rather than against a second copy of the sum.
+
+**The reference humanoid measures `-2.98e-8`, not `0`.** `Transform3D` is single-precision, so a
+hip at 0.9 composed with a leg reaching -0.9 leaves ~30 nanometres — and without a snap, **every
+body in the game would have moved by that much**. Snapped against the same `0.001`
+`Unit.STEP_EPSILON` every other height comparison here uses, so *"no existing unit's assembly
+changes"* is exactly true rather than nearly true.
+
+**`data/parts/long_leg.tres` authored** — the reference leg scaled by **1.5 throughout**: 1.35
+long, 0.6 step height, 9.0 mass. **One scale factor applied to every number**, so it exercises the
+rule without any figure claiming to be tuned. It authors no cladding socket, because
+`leg_cladding` is 0.93 tall and does not fit a 1.35 leg; a cladding for it is content somebody can
+add.
+
+### Pass C — the AI's distance flood runs the mover's way
+
+**`Pathfinder.costs_to_reach` — `reachable_costs` with every edge walked backwards.**
+`UtilityContext` flooded outward from the target, which answers *"how far could the target walk to
+this cell"*, not *"how far must I walk to the target"*. **On symmetric ground those are the same
+number and it never mattered; on one-way ground they disagree exactly**, and a terraced board is
+made of one-way ground.
+
+**`exempt_origin` is not decoration.** `move_cost(from, to)` checks the DESTINATION, so in a
+reverse flood the origin is the one cell whose occupancy is ever tested — and *"how far to the
+enemy"* is a question about an occupied cell by definition. taskblock-61 hit the mirror of this
+and it was checked against rather than rediscovered.
+
+**One flood where there were two.** tb62 Pass E added an unweighted reverse flood
+(`_can_reach_target`) beside the weighted forward one precisely because the weighted one ran the
+wrong way. The reverse flood's own key set answers that question, so the second flood is gone
+rather than kept in step.
+
+**"Absent" changed meaning with the direction, so `_closes_distance` changed with it.** Under the
+outward flood, absent meant *the target cannot walk here* — nearly always a walled-off target, so
+falling back to straight line was right. Under the reverse flood it means **I cannot walk to the
+target from there**, which is the strongest fact this input has. A candidate that cannot reach
+scores `0.0`; a mover that cannot reach scores anywhere that can at `1.0`; only when *neither* can
+does straight line rank them. **The cheapest-neighbour-plus-one rule is deleted** — it existed
+because an outward flood cannot enter its own occupied root, and it would have let a stranded cell
+borrow a reachable neighbour's cost.
+
+**Measured.** On a ditch board, cells in an inescapable ditch scored **0.682 and 0.864 — identical
+to the shelf cells beside them** — and now score 0.0. **The chosen cell did not change on any of
+five probe boards**, before or after, and `seeds_to_first_win` read `1, 5, 1, 4` before and
+`5, 1, 1, 1` after: overlapping, no detectable delta. The correction is real in the input and
+invisible in the outcome, which is worth knowing and is what tb62 predicted about this instrument.
+
+### Pass D3 — blockers get the placement record surfaces have had since tb38 (`BR62.05`)
+
+**A blocker's placement context was a dictionary key.** `Grid.blockers` held a bare `Part` while a
+surface was a `Surface(part, height, facing)` record and a body part received a full `Transform3D`
+from the socket-tree walk — **the one placement kind whose runtime representation was poorer than
+the format describing it**. `MapPlacement` has carried `height`, `size`, `offset` and `facing`
+since tb59 and `MapSerializer` dropped all four on load *and* on save, so it round-tripped by
+discarding the same things at both ends.
+
+- **`src/logic/blocker.gd`** — the runtime half of `MapPlacement`, same four field names,
+  mirroring `Surface`. **Not a second transform concept**; that is how the surface and blocker
+  paths came to disagree in the first place.
+- **`Grid.place_blocker` / `blocker_part_at` / `blocker_at` / `move_blocker`.** Keys are unchanged,
+  so every `has()` guard and every `for cell in blockers` sweep is untouched. **192 read/write
+  sites migrated across 72 files.**
+- **`UnitGeometry.blocker_height_for_cell`.** Seven places derived a blocker's world height from
+  the tile alone; one answer now, read by `ShotPlane`, `RayCaster`, `SightSpans`, `PartPicker`,
+  `Detonation`, `BoardView` and the camera framing module alike.
+- **`MapSerializer._sized` moved to `PlacedVolume.placed_part`**, because the generator needs it
+  too — a wall following its neighbours up is a sized placement exactly like an authored one.
+- **`facing` is carried and still drawn at `0.0`.** `PLAN`'s *blockers need a real transform* item
+  owns the drawing half; the limit is stated in `Blocker`'s own header rather than left to be
+  found.
+
+### Pass D2 — a third fixed generation height
+
+**`MapGen.TALL_ROOM_LEVEL = 4`, alongside 0 and +1**, at a flagged `TALL_ROOM_SHARE = 0.25`. One
+level is a rise a stair crosses in three cells and a unit crosses in one turn, so ladders, lifts,
+partial climbs and one-way awareness had all shipped without being put against a rise that needs
+several turns. **A tall room usually gets no stair and that is the point** — a +4 rise needs ten
+steps across nine cells of clear lower ground, so the route up is a ladder or a lift.
+
+**Walls follow the floors beside them.** A wall was placed with no placement facts at all, so it
+stood from world zero to its own 2.4 whatever the ground did — invisible while the tallest floor
+was +1, and **a +4 shelf sits above every wall on the board**. It is now placed at the lowest floor
+beside it and *sized* to clear the highest, which is authoring rather than a rule and became
+expressible only because Pass D3 gave a blocker a placement. Measured over 30 seeds: **6214 walls
+at their natural size, 292 sized to span, 1751 standing above zero.**
+
+**+4 appears on 9 of 30 seeds**, and every tall-shelf cell across that sweep is reachable.
+
+### Pass D1 — `BR60.01`'s repair
+
+**Of the three shapes the entry named — flatten it, stand a route to it, accept it as scenery —
+standing a route is the one built.** Flattening is the most destructive answer available (seed 2
+carried a **232-cell** shelf, a fifth of that board's elevation) and this block adds a third height
+on the grounds that the vertical work is under-stressed; scenery renames the defect rather than
+repairing it; **a route is what `guarantee_navigability` already gives the mirror defect**, and
+unreachable ground should not get a second, differently-shaped repair. The known objection — that
+the entry's own summary reads *"reachable only by ladder"*, so more ladders may be the complaint
+rather than the fix — is answered by `LIFT_SHARE` on the one-way path and is a real cost either
+way.
+
+- **`_repair_stranded_elevation` groups before it flattens** and keeps every region a route can be
+  stood to, **grown to a fixed point** because keeping is transitive.
+- **`_reach_unreachable_ground` stands the route**, on the **lower** of the two cells whichever
+  side that is — a raised shelf wants a ladder on the reachable ground below it, and low ground
+  ringed by a +4 shelf wants one *inside* the region. The far end must be ground a spawn can
+  actually reach: without that it connected one unreachable region to another.
+- **Ladders only, here.** The invariant this repair satisfies is measured by a non-climbing
+  `Pathfinder`, and **a mag lift is not a `Pathfinder` edge at all**. `_open_a_route_out`'s own
+  `LIFT_SHARE` roll has the same blind spot; filed rather than quietly changed, because making a
+  teleport into a pathfinder edge is a design question about what "navigable" means.
+- **A region with no reachable neighbour at any height is sealed.** The wall ring turns each
+  `UNCARVED` cell with a carved neighbour into an OPEN cell carrying a wall, so a carved pocket
+  inside it comes out walkable and reachable by nobody. **The sweep has been reporting these for
+  two taskblocks** — four of tb61's twelve pinned entries were one-cell regions.
+- **`_fill_pits` makes "no cell ringed by higher ground" an explicit rule**, where it used to hold
+  as a side effect of flattening whole regions together. Keeping a region breaks that, because a
+  pocket a unit can drop into is *reachable* and so was never in any region the keep decision saw.
+- **`_reuniform_spawn_zones`** — the emergency corridor carve runs *after* zones are marked and
+  `_set_open` flattens what it touches, so a zone could end up straddling a ledge. `BR40.04`'s
+  defect arriving from a direction `_mark_zone` has already run past.
+
+**And a ladder serves descent as well as ascent** (`Pathfinder.move_cost`). The up branch has
+consulted `ladder_serves_climb` since tb53; the down branch capped at `MAX_HOP_DOWN_LEVELS` and
+consulted nothing, so **a +4 shelf was impassable in both directions** — too tall to climb bare,
+too tall to drop. Measured at 40x30: five seeds carrying regions of 65 to 286 cells, every one of
+them low ground ringed by a rise of exactly 4.0. The ladder is read at the *destination*, mirroring
+the up branch's "at the climber's feet". **The same price in both directions is a placeholder, not
+a design.**
+
+**Unreachable regions at 40x30 over 50 seeds: 12 -> 0.** `test_map_gen_reachability.gd`'s
+`KNOWN_UNREACHABLE` is empty, and the anchor-theory contingency table now reads 0 defective boards
+against 19 raised anchors.
+
+### Pass E — the vertical routes are readable
+
+**`BR62.03` — one predicate, asked by both stampers.** `Surface.has_vertical_route_at` is a ladder
+or a pad, and tb62's refusal knew about *pads and nothing else*, exactly as the supervisor's report
+guessed. The refusal lives on `GridPlacement.place_mag_lift_pair` rather than in `MapGen`, because
+a check in the generator leaves an author or a fixture free to stack a pad on a ladder — which is
+the original defect's own shape: two stampers with two private ideas of "is this cell already a way
+up".
+
+**`GridPlacement.place_mag_lift_pair` — a lift is placed as a pair, or not at all**, and **each pad
+is turned to face the other**. The pairing used to be *inferred*: `mag_lift_destination` swept the
+neighbours for a pad at a different height and took the closest, which is where tb62's cross-linked
+chains came from — three pads near each other have several defensible answers and a tie-break
+returns one with a straight face. `facing` is a field a `Surface` already carries and
+`MapSerializer` already round-trips, so a recorded partner needs **no new field and no new format**,
+and the honest failure (a pad pointing at nothing) is a `null` rather than a plausible wrong answer.
+
+**`BR62.04` — `WorldPalette.LADDER_TINT` and `surface_color`.** A ladder did not pick the floor's
+green; it **inherited** it, because the tile tint answers for every placed surface and a ladder is
+one. The vertical-route family is **blue** — the lift's navy is the dark end and the ladder's teal
+the bright end — and `surface_color` is split from `tile_color` because *what colour is this
+material* and *what is this surface for* are different questions. **Steps are deliberately not in
+the family**: a step *is* floor at a fractional height, and tinting it would need the generator to
+mark treads.
+
+**A colour that passed by 0.01 is a threshold not doing anything.** The first ladder tint separated
+from `TEAM_A` by 0.31 against a 0.3 bar; pushed toward teal, and the bar raised to 0.4.
+
+**Not built: the mag lift's two surfaces stacking in one cell.** See `SUPERSEDED.md` and `PLAN.md`.
+
 ## Taskblock 62 — the AI learns to go up
 
 ### Pass A — `step_height` is a leg's offer, resolved as a maximum

@@ -73,6 +73,60 @@ static func can_place(grid: Grid, cell: Vector2i, part: Part, height: float = 0.
 ## A side-attaching placement genuinely OCCUPIES the neighbour's socket via
 ## `PartGraph.attach`, not just a legality check, so a later pass can walk
 ## the graph a placed catwalk actually formed.
+## **A mag lift is placed as a pair, or not at all.** taskblock-63 Pass E.
+##
+## Until this pass a lift was two independent `place` calls and its pairing was *inferred*
+## afterwards, by `Surface.mag_lift_destination` sweeping the neighbours for a pad at a
+## different height. That inference is what taskblock-62's cross-linked-chain failure came out
+## of: three pads near each other have several defensible answers, and a tie-break returns one
+## of them with a straight face. **A guess with extra steps.**
+##
+## So there is one way to make a lift now, and it records the pairing as it places: each pad
+## is turned to face the other, in the `facing` a `Surface` already carries and
+## `MapSerializer` already round-trips. No new field, no new format, and a partner that cannot
+## drift because nothing derives it.
+##
+## **All or nothing**, checked before anything is written — a lower pad with no upper is a
+## route that visibly promises a way up and has none, which is worse than no route at all.
+## Same posture `MapGen._stair_run_fits` takes for a stair.
+##
+## Returns whether the pair was placed. **The two ends must be adjacent** (`facing` names one
+## cell step) and at different heights (a lift that goes nowhere is an action that spends AP
+## to stand still).
+static func place_mag_lift_pair(
+	grid: Grid, lower_cell: Vector2i, lower_height: float, upper_cell: Vector2i, upper_height: float
+) -> bool:
+	var pad: Part = DataLibrary.get_part(&"mag_lift_pad")
+	if pad == null:
+		return false
+	if lower_cell == upper_cell or absf(upper_height - lower_height) <= 0.001:
+		return false
+	var step: Vector2i = upper_cell - lower_cell
+	if absi(step.x) > 1 or absi(step.y) > 1:
+		return false
+	# taskblock-63 Pass E (`BR62.03`): **neither end may already be a route up.** The refusal
+	# lives here rather than in `MapGen`, because this is the one way a lift is made — a check
+	# in the generator would leave every other caller (an author, a fixture) free to stack a
+	# pad on a ladder, which is precisely the shape the original defect had: two stampers with
+	# two private ideas of "is this cell already a way up".
+	if Surface.has_vertical_route_at(grid, lower_cell):
+		return false
+	if Surface.has_vertical_route_at(grid, upper_cell):
+		return false
+	var lower: Part = pad.duplicate(true)
+	var upper: Part = pad.duplicate(true)
+	if not can_place(grid, lower_cell, lower, lower_height):
+		return false
+	if not can_place(grid, upper_cell, upper, upper_height):
+		return false
+	var up: float = BodyProjector.orientation_for(Vector2(step))
+	var down: float = BodyProjector.orientation_for(Vector2(-step))
+	return (
+		place(grid, upper_cell, upper, upper_height, down) != null
+		and place(grid, lower_cell, lower, lower_height, up) != null
+	)
+
+
 static func place(
 	grid: Grid, cell: Vector2i, part: Part, height: float, facing: float = 0.0
 ) -> Surface:

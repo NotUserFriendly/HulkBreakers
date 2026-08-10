@@ -434,7 +434,10 @@ func _build_tiles(p_grid: Grid, material_table: MaterialTable) -> MeshInstance3D
 	var by_color: Dictionary = {}
 	var color_order: Array[Color] = []
 	for surface: Surface in p_grid.placements():
-		var color: Color = WorldPalette.tile_color(material_table, surface.part.material)
+		# taskblock-63 Pass E (`BR62.04`): a ladder is a placed surface, so it took the floor's
+		# own tint by inheritance and a route up read as more floor. `surface_color` is the
+		# board's question — what is this surface *for* — rather than the material's.
+		var color: Color = WorldPalette.surface_color(material_table, surface.part)
 		if not by_color.has(color):
 			by_color[color] = [] as Array[BoxPlacement]
 			color_order.append(color)

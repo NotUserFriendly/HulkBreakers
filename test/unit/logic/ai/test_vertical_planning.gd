@@ -66,7 +66,10 @@ func test_the_pit_is_genuinely_one_way() -> void:
 	gut.p(
 		(
 			"down %.1f, back up %.1f"
-			% [pf.move_cost(Vector2i(1, 2), Vector2i(1, 1)), pf.move_cost(Vector2i(1, 1), Vector2i(1, 2))]
+			% [
+				pf.move_cost(Vector2i(1, 2), Vector2i(1, 1)),
+				pf.move_cost(Vector2i(1, 1), Vector2i(1, 2))
+			]
 		)
 	)
 	assert_gt(pf.move_cost(Vector2i(1, 2), Vector2i(1, 1)), 0.0, "the drop in is a legal edge")
@@ -161,8 +164,12 @@ func test_every_relocating_action_prices_stranding() -> void:
 			missing.append(String(action.id))
 
 	gut.p("%d authored actions checked" % DataLibrary.utility_actions_pool().size())
-	assert_eq(missing, [] as Array[String], "these can relocate and ignore stranding: %s" % [missing])
-	assert_eq(pinned, [] as Array[String], "these cannot move and should not price it: %s" % [pinned])
+	assert_eq(
+		missing, [] as Array[String], "these can relocate and ignore stranding: %s" % [missing]
+	)
+	assert_eq(
+		pinned, [] as Array[String], "these cannot move and should not price it: %s" % [pinned]
+	)
 
 
 # --- Pass E: the AI rides the lift -----------------------------------------------------
@@ -176,8 +183,8 @@ func _lift_board() -> Grid:
 	for y: int in range(5):
 		for x: int in range(3, 20):
 			GridFixture.place_floor(grid, Vector2i(x, y), 2.0)
-	GridPlacement.place(grid, Vector2i(2, 2), DataLibrary.get_part(PAD).duplicate(true), 0.0)
-	GridPlacement.place(grid, Vector2i(3, 2), DataLibrary.get_part(PAD).duplicate(true), 2.0)
+	# taskblock-63 Pass E: **placed as a pair**, which is the only way a lift is made now.
+	GridPlacement.place_mag_lift_pair(grid, Vector2i(2, 2), 0.0, Vector2i(3, 2), 2.0)
 	return grid
 
 
@@ -194,7 +201,9 @@ func test_the_shelf_is_unreachable_by_walking() -> void:
 		"no walking route onto the shelf exists at all"
 	)
 	assert_eq(
-		Surface.mag_lift_destination(grid, Vector2i(2, 2)), Vector2i(3, 2), "but the lift goes there"
+		Surface.mag_lift_destination(grid, Vector2i(2, 2)),
+		Vector2i(3, 2),
+		"but the lift goes there"
 	)
 
 

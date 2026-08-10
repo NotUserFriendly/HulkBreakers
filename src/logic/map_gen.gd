@@ -356,6 +356,13 @@ static func _open_a_route_out(
 ## held to the same attachment grammar an author would be — a ladder the grammar refuses is a
 ## ladder that should not exist, and finding that out here is the point of having a grammar.
 static func _stamp_ladder(grid: Grid, cell: Vector2i, height: float, rise: float) -> bool:
+	# taskblock-63 Pass E (`BR62.03`): **not into a cell that already carries a lift.** The
+	# supervisor's first play of the lifts found a ladder and a pad sharing a cell, and this
+	# is one of the two halves of it — a repair pass reaching a cell a previous pass already
+	# gave a route to. Ladder segments stack on each other by design, so this refuses only
+	# the *other* kind of route.
+	if Surface.has_mag_lift_at(grid, cell):
+		return false
 	var segments: int = int(ceil(rise / Surface.LADDER_SEGMENT_RISE))
 	var placed := 0
 	for i: int in range(segments):
@@ -402,18 +409,17 @@ static func _stamp_mag_lift(
 	var pad: Part = DataLibrary.get_part(&"mag_lift_pad")
 	if pad == null:
 		return false
+	# taskblock-63 Pass E (`BR62.03`): the "neither end already carries a route up" refusal
+	# lives on `GridPlacement.place_mag_lift_pair` now — tb62's refusal here asked
+	# `_pad_in_reach_of`, which knows about pads and nothing else, exactly as the supervisor's
+	# report guessed. What stays here is the *neighbour* rule, which is about pad pairing
+	# ambiguity specifically and has no ladder analogue.
 	if _pad_in_reach_of(grid, cell) or _pad_in_reach_of(grid, landing):
 		return false
-	var lower: Part = pad.duplicate(true)
-	var upper: Part = pad.duplicate(true)
-	if not GridPlacement.can_place(grid, cell, lower, height):
-		return false
-	if not GridPlacement.can_place(grid, landing, upper, landing_height):
-		return false
-	return (
-		GridPlacement.place(grid, landing, upper, landing_height) != null
-		and GridPlacement.place(grid, cell, lower, height) != null
-	)
+	# taskblock-63 Pass E: **one way to make a lift**, and it is the one that records the
+	# pairing rather than leaving it to be inferred. The generator is held to the same
+	# constructor a fixture and an author use.
+	return GridPlacement.place_mag_lift_pair(grid, cell, height, landing, landing_height)
 
 
 ## True if `cell` or any neighbour of it already carries a mag lift pad — i.e. if a pad

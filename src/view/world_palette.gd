@@ -40,6 +40,35 @@ const TILE_TEMP := Color("#2E4A32")
 ## The one switch. `false` restores the material read this override replaced, and a test asserts
 ## both branches so turning it off cannot quietly break the path it falls back to.
 const TEMPORARY_TILE_TINT := true
+
+## taskblock-63 Pass E (`BR62.04`): **the vertical-route family, and it is a placeholder for
+## the same reason `TILE_TEMP` is.**
+##
+## The supervisor: *"ladders are the same green as ship floor tiles"*, so a route up read as
+## more floor. It was not given that green — it **inherited** it, because `tile_color` answers
+## for every placed surface and a ladder is one.
+##
+## **The board now has three ways up — steps, ladders, lifts — and they should read as a
+## family**, distinguishable from each other and from the floor rather than each picking a
+## colour independently. The family is **blue**, because the mag lift pad already is
+## (`BoardOverlays.COLOR`, navy, the supervisor's own pick): the lift is the dark end and a
+## ladder the bright end of one hue.
+##
+## **Steps are deliberately not in it.** A step is `ship_floor` at a fractional height — it
+## *is* floor, and the thing that makes it a route is its geometry, which is already visible.
+## Colouring it would need the generator to mark which tiles are treads, and a tile that reads
+## as not-floor because of how it was made is a worse lie than one that reads as floor because
+## it is.
+##
+## **The separations this has to hold, all of which are why it is not simply "blue":**
+## far from the floor's `#2E4A32`, far from `BoardOverlays.COLOR`'s `#000080` so the two
+## routes are told apart, and far from `TEAM_A`'s `#3A7BD5` — a route drawn in a team's own
+## colour would read as somebody's unit. **The first value here was `#2FBFD6` and failed that
+## last one on measurement**: it separated from team blue by 0.31 against a 0.3 bar, which is
+## a number passing rather than a colour being distinguishable. Pushed toward teal, where it
+## reads as its own thing rather than as a lighter ally.
+const LADDER_TINT := Color("#22D9C0")
+
 const TEAM_A := Color("#3A7BD5")
 const TEAM_B := Color("#D53A3A")
 ## docs/10 taskblock05 C: the hover-highlight rim (inventory row <-> 3D
@@ -173,6 +202,18 @@ static func tile_color(material_table: MaterialTable, material: StringName) -> C
 	if TEMPORARY_TILE_TINT:
 		return TILE_TEMP
 	return material_table.color_for(material)
+
+
+## What a placed surface is drawn in. taskblock-63 Pass E.
+##
+## Split out from `tile_color` rather than folded into it: `tile_color` answers *what colour is
+## this material*, which the resource editor and the tile path both ask, and a ladder is not a
+## statement about steel. This is the board's question — *what is this surface for* — and it is
+## the only caller that should get a route-coded answer.
+static func surface_color(material_table: MaterialTable, part: Part) -> Color:
+	if part != null and Surface.LADDER_TAG in part.tags:
+		return LADDER_TINT
+	return tile_color(material_table, part.material if part != null else &"")
 
 
 ## Lit material for real geometry — parts, blockers — so adjacent same-

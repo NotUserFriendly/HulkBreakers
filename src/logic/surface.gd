@@ -174,6 +174,22 @@ static func ladder_serves_climb(grid: Grid, from_cell: Vector2i, to_cell: Vector
 	return destination.height <= reach + 0.001
 
 
+## **True if any vertical route stands at `cell` — a ladder or a mag lift pad.** taskblock-63
+## Pass E, `BR62.03`.
+##
+## The supervisor's first play of taskblock-62's work found **both in the same cell**, and the
+## cause was the shape this closes: the generator's own refusal
+## (`MapGen._pad_in_reach_of`) knew about *pads* and nothing else, so a repair pass could
+## stamp a ladder into a cell that already carried a lift, or the reverse. Two stampers, two
+## private ideas of "is this cell already a way up".
+##
+## **One predicate, asked by both.** A cell holds at most one route up, which is also what
+## makes a route legible: a player reading a cell should get one answer about how to leave it
+## vertically, not two overlapping ones.
+static func has_vertical_route_at(grid: Grid, cell: Vector2i) -> bool:
+	return has_ladder_at(grid, cell) or has_mag_lift_at(grid, cell)
+
+
 ## tb62 Pass B: true if any mag lift pad is placed at `cell`. The shape's twin is
 ## `has_ladder_at`, and deliberately so — one shared formula per route-up, so an action
 ## and the pathfinder cannot develop separate ideas of what a lift is.
@@ -219,28 +235,37 @@ static func has_mag_lift_at(grid: Grid, cell: Vector2i) -> bool:
 ## action needs and what a caller can do anything with. The pad itself is a marker; the
 ## cell is the position.
 static func mag_lift_destination(grid: Grid, from_cell: Vector2i) -> Variant:
-	if not has_mag_lift_at(grid, from_cell):
-		return null
-	var here: Surface = first_walkable(grid.surfaces_at(from_cell))
+	var here: Surface = _mag_lift_at(grid, from_cell)
 	if here == null:
 		return null
-	var best: Variant = null
-	var best_delta: float = INF
-	for neighbour: Vector2i in grid.neighbors(from_cell):
-		if not has_mag_lift_at(grid, neighbour):
-			continue
-		var landing: Surface = first_walkable(grid.surfaces_at(neighbour))
-		if landing == null:
-			continue
-		var delta: float = absf(landing.height - here.height)
-		# A pad at the same height is a different lift's end, not this one's — a lift that
-		# went nowhere would be an action that spends AP to stand still.
-		if delta <= 0.001:
-			continue
-		if delta > best_delta:
-			continue
-		if delta == best_delta and best != null and not neighbour < (best as Vector2i):
-			continue
-		best_delta = delta
-		best = neighbour
-	return best
+	# **taskblock-63 Pass E: read off the pad, not searched for.** This used to sweep the eight
+	# neighbours for a pad at a different height and take the closest — pairing *inferred from
+	# proximity*, which is what taskblock-62's cross-linked-chain failure came out of: three
+	# pads near each other have several defensible answers and the tie-break returns one of
+	# them with a straight face.
+	#
+	# **The pad now says where it goes**, in the `facing` its `Surface` has always carried and
+	# `MapPlacement` has always round-tripped, so no new field and no new format. A partner
+	# recorded at placement time cannot cross-link, and the honest failure — a pad pointing at
+	# a cell with no pad on it — is a `null` rather than a plausible wrong answer.
+	var partner: Vector2i = from_cell + _facing_step(here.facing)
+	if _mag_lift_at(grid, partner) == null:
+		return null
+	return partner
+
+
+## The pad placed at `cell`, or null. Distinct from `has_mag_lift_at`, which answers the
+## boolean every precondition wants; this is for the callers that need the placement itself.
+static func _mag_lift_at(grid: Grid, cell: Vector2i) -> Surface:
+	for surface: Surface in grid.surfaces_at(cell):
+		if MAG_LIFT_TAG in surface.part.tags:
+			return surface
+	return null
+
+
+## The single cell step a `facing` points at, on the same 8-way adjacency `Grid.neighbors`
+## uses. Rounded rather than truncated so a facing authored a hair off a cardinal still names
+## the cell it obviously means.
+static func _facing_step(facing: float) -> Vector2i:
+	var direction: Vector2 = BodyProjector.forward_for(facing)
+	return Vector2i(roundi(direction.x), roundi(direction.y))
