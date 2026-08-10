@@ -101,7 +101,7 @@ func _armed_unit(cell: Vector2i, squad_id: int, weapon_id: StringName = &"") -> 
 ## own cell (unwalkable) and out-of-bounds (3,-1) doesn't exist.
 func _covered_scene() -> Dictionary:
 	var grid := GridFixture.flat(10, 10)
-	grid.blockers[Vector2i(3, 1)] = _blocker()
+	grid.place_blocker(Vector2i(3, 1), _blocker())
 	var unit := _armed_unit(Vector2i(3, 0), 0, &"rifle")
 	var target := _armed_unit(Vector2i(3, 9), 1)
 	var state := CombatState.new(grid, [unit, target])

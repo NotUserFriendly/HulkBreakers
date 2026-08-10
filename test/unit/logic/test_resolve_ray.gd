@@ -68,7 +68,7 @@ func test_the_rays_hit_part_always_equals_the_frontmost_region_at_the_correspond
 	var grid := Grid.new(5, 5)
 	var state := CombatState.new(grid)
 	var crate := _part(&"crate", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6)))
-	grid.blockers[Vector2i(2, 2)] = crate
+	grid.place_blocker(Vector2i(2, 2), crate)
 
 	var muzzle := Vector3(2.0, 0.5, 0.0)
 	var dir := Vector3(0.0, 0.0, 1.0)
@@ -157,8 +157,8 @@ func test_a_level_shot_passes_over_a_short_part_and_hits_a_taller_one_behind_it(
 	var state := CombatState.new(grid)
 	var short_crate := _part(&"short", Box.new(Vector3(0.0, 0.25, 0.0), Vector3(2.0, 0.5, 0.6)))
 	var tall_wall := _part(&"tall", Box.new(Vector3(0.0, 1.5, 0.0), Vector3(2.0, 2.0, 0.6)))
-	grid.blockers[Vector2i(2, 2)] = short_crate
-	grid.blockers[Vector2i(2, 6)] = tall_wall
+	grid.place_blocker(Vector2i(2, 2), short_crate)
+	grid.place_blocker(Vector2i(2, 6), tall_wall)
 
 	# Above the short crate's own rect ([0.0, 0.5]) but within the tall
 	# wall's ([0.5, 2.5]).

@@ -170,7 +170,7 @@ func _click_at(screen_pos: Vector2, camera: Camera3D, battle: BattleScene) -> vo
 	_log_fallback(battle, cell as Vector2i, visible)
 	if not visible:
 		return
-	var cell_root: Part = battle.combat_state.grid.blockers.get(cell)
+	var cell_root: Part = battle.combat_state.grid.blocker_part_at(cell)
 	if cell_root == null:
 		# **taskblock-57 Pass D: the floor tile, and only when it has been asked for.**
 		#

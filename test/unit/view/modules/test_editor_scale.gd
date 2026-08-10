@@ -159,14 +159,14 @@ func test_a_resized_wall_s_hp_is_proportional_to_its_volume() -> void:
 	editor.controller.place(Vector2i(2, 2), &"ship_floor")
 	editor.controller.place(Vector2i(2, 2), &"wall", MapPlacement.KIND_BLOCKER)
 	editor.refresh()
-	var natural_hp: int = overlay.battle.combat_state.grid.blockers[Vector2i(2, 2)].max_hp
+	var natural_hp: int = overlay.battle.combat_state.grid.blocker_part_at(Vector2i(2, 2)).max_hp
 
 	var wall: Part = DataLibrary.get_part(&"wall")
 	var doubled: Vector3 = PlacedVolume.natural_size(wall) * Vector3(2.0, 1.0, 1.0)
 	editor.controller.set_placement_size(Vector2i(2, 2), doubled)
 	editor.refresh()
 
-	var grown_hp: int = overlay.battle.combat_state.grid.blockers[Vector2i(2, 2)].max_hp
+	var grown_hp: int = overlay.battle.combat_state.grid.blocker_part_at(Vector2i(2, 2)).max_hp
 	gut.p("hp %d -> %d for twice the wall" % [natural_hp, grown_hp])
 	assert_eq(grown_hp, natural_hp * 2, "twice the wall is twice the hp")
 
@@ -180,7 +180,7 @@ func test_the_resized_wall_is_what_the_board_is_built_from() -> void:
 	editor.controller.set_placement_size(Vector2i(2, 2), Vector3(3.0, 2.4, 0.5))
 	editor.refresh()
 
-	var drawn: Part = overlay.battle.board_view.grid.blockers[Vector2i(2, 2)]
+	var drawn: Part = overlay.battle.board_view.grid.blocker_part_at(Vector2i(2, 2))
 	var extent: Vector3 = PlacedVolume.natural_size(drawn)
 	gut.p("the board's own wall measures %s" % extent)
 	assert_almost_eq(extent.x, 3.0, 0.001, "the board is drawing the part's authored dimensions")

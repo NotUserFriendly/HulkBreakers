@@ -109,7 +109,7 @@ func test_an_empty_cell_is_still_reported_when_the_grid_is_known() -> void:
 ## A blocker counts too — pointing over a wall at the board behind it must not report the wall.
 func test_a_cell_holding_a_blocker_is_not_reported_either() -> void:
 	var grid := Grid.new(6, 6)
-	grid.blockers[Vector2i(3, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(3, 3), DataLibrary.get_part(&"wall"))
 
 	assert_true(BoardInspectModule._pick_or_bare_cell({}, Vector2i(3, 3), grid).is_empty())
 

@@ -30,7 +30,7 @@ func _deflecting_fixture() -> Dictionary:
 	cover.hp = 20
 	cover.max_hp = 20
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	grid.blockers[Vector2i(2, 2)] = cover
+	grid.place_blocker(Vector2i(2, 2), cover)
 
 	var table := DataLibrary.material_table()
 	var origin := Vector2(2, 0)

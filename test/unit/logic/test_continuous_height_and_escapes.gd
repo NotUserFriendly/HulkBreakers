@@ -188,7 +188,7 @@ func test_a_shot_that_strikes_a_wall_is_not_counted_as_escaped() -> void:
 	for y: int in range(10):
 		for x: int in range(10):
 			_floor_at(grid, Vector2i(x, y), 0.0)
-	grid.blockers[Vector2i(4, 1)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(4, 1), DataLibrary.get_part(&"wall"))
 
 	var before: int = CombatState.shots_escaped
 	var shooter: Unit = _shooter(Vector2i(1, 1))

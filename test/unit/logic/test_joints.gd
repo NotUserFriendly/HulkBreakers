@@ -115,7 +115,7 @@ func test_depleting_joint_hp_severs_and_drops_the_intact_subtree_sockets_still_p
 		state.grid.field_items[Vector2i(2, 2)].has(arm),
 		"the dropped arm must land as a recoverable field item"
 	)
-	assert_eq(state.grid.blockers[Vector2i(2, 2)], arm)
+	assert_eq(state.grid.blocker_part_at(Vector2i(2, 2)), arm)
 
 
 func test_depleting_part_hp_runs_failure_mode_and_never_touches_the_joint() -> void:

@@ -30,7 +30,7 @@ func _cutout_material(view: BoardView) -> ShaderMaterial:
 
 func test_update_wall_cutout_feeds_the_focal_units_own_screen_position() -> void:
 	var grid := GridFixture.flat(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -76,7 +76,7 @@ func test_update_wall_cutout_feeds_the_focal_units_own_screen_position() -> void
 
 func test_update_wall_cutout_feeds_zero_units_with_an_empty_list() -> void:
 	var grid := GridFixture.flat(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -99,7 +99,7 @@ func test_update_wall_cutout_feeds_zero_units_with_an_empty_list() -> void:
 ## read back against a real `Camera3D`, not re-derived by hand.
 func test_update_wall_cutout_radius_shrinks_as_the_camera_moves_away() -> void:
 	var grid := GridFixture.flat(5, 20)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -131,7 +131,7 @@ func test_update_wall_cutout_radius_shrinks_as_the_camera_moves_away() -> void:
 
 func test_wall_material_shading_path_is_unchanged_lit() -> void:
 	var grid := GridFixture.flat(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -149,7 +149,7 @@ func test_wall_material_shading_path_is_unchanged_lit() -> void:
 ## left the board from.
 func test_update_wall_cutout_skips_an_extracted_unit() -> void:
 	var grid := GridFixture.flat(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -179,7 +179,7 @@ func test_update_wall_cutout_skips_an_extracted_unit() -> void:
 ## view-level removal `BattleScene` tracks and reports here).
 func test_update_wall_cutout_skips_a_unit_excluded_via_remove_unit_view() -> void:
 	var grid := GridFixture.flat(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -234,7 +234,7 @@ func test_build_clears_previously_excluded_units_for_a_fresh_battle() -> void:
 ## decided alone — which is how a wall nothing was hiding behind still got cut.
 func test_update_wall_cutout_skips_a_unit_with_nothing_between_it_and_the_camera() -> void:
 	var grid := GridFixture.flat(5, 12)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -263,7 +263,7 @@ func test_update_wall_cutout_skips_a_unit_with_nothing_between_it_and_the_camera
 ## test is the unit being dead.
 func test_update_wall_cutout_skips_a_dead_unit() -> void:
 	var grid := GridFixture.flat(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -290,7 +290,7 @@ func test_update_wall_cutout_skips_a_dead_unit() -> void:
 ## geometry, but `CombatState.can_take_a_turn` excludes it and so does the cutout.
 func test_update_wall_cutout_skips_a_shut_down_unit() -> void:
 	var grid := GridFixture.flat(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -320,7 +320,7 @@ func test_update_wall_cutout_skips_a_shut_down_unit() -> void:
 ## matrix, so this fixture is genuinely downed rather than merely asserted to be.
 func test_update_wall_cutout_still_cuts_for_a_downed_unit() -> void:
 	var grid := GridFixture.flat(5, 8)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -349,7 +349,7 @@ func test_update_wall_cutout_still_cuts_for_a_downed_unit() -> void:
 ## it blamed for every unit it kept. Without this the next report is another adjudication.
 func test_the_cutout_log_names_the_cell_it_blamed() -> void:
 	var grid := GridFixture.flat(5, 12)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -388,7 +388,7 @@ func test_the_cutout_log_names_the_cell_it_blamed() -> void:
 ## position is stated as a world point the test itself chose, not recomputed with the same formula.
 func test_the_cutout_follows_the_rendered_body_mid_slide() -> void:
 	var grid := GridFixture.flat(5, 12)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())
@@ -442,7 +442,7 @@ func test_the_cutout_follows_the_rendered_body_mid_slide() -> void:
 ## before views exist, every headless fixture) must behave exactly as it did before `BR32.04`.
 func test_a_unit_with_no_rendered_view_falls_back_to_its_logical_position() -> void:
 	var grid := GridFixture.flat(5, 12)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var view := BoardView.new()
 	add_child_autofree(view)
 	view.build(grid, DataLibrary.material_table())

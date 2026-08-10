@@ -211,7 +211,7 @@ func test_a_burst_across_a_wide_surface_retains_a_spread_not_one_repeated_value(
 	wall.hp = 50
 	wall.max_hp = 50
 	wall.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(4.0, 1.0, 0.6))]
-	grid.blockers[Vector2i(5, 2)] = wall
+	grid.place_blocker(Vector2i(5, 2), wall)
 
 	var table := DataLibrary.material_table()
 	# Low threshold: everything but a near dead-center shot reads oblique
@@ -254,7 +254,7 @@ func test_depth_cap_of_zero_stops_a_deflection_from_spawning_any_ricochet() -> v
 	cover.hp = 20
 	cover.max_hp = 20
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	grid.blockers[Vector2i(2, 2)] = cover
+	grid.place_blocker(Vector2i(2, 2), cover)
 
 	var table := DataLibrary.material_table()
 	var origin := Vector2(2, 0)
@@ -283,7 +283,7 @@ func test_damage_floor_stops_a_deflection_from_spawning_a_ricochet() -> void:
 	cover.hp = 20
 	cover.max_hp = 20
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	grid.blockers[Vector2i(2, 2)] = cover
+	grid.place_blocker(Vector2i(2, 2), cover)
 
 	var table := DataLibrary.material_table()
 	var origin := Vector2(2, 0)
@@ -318,7 +318,7 @@ func test_a_ricochet_can_tag_a_pre_positioned_third_party_and_replays_identicall
 	cover.hp = 20
 	cover.max_hp = 20
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	grid.blockers[Vector2i(10, 10)] = cover
+	grid.place_blocker(Vector2i(10, 10), cover)
 
 	var table := DataLibrary.material_table()
 	var origin := Vector2(10, 0)
@@ -362,7 +362,7 @@ func test_a_ricochet_can_tag_a_pre_positioned_third_party_and_replays_identicall
 		run_cover.max_hp = 20
 		run_cover.volume = cover.volume
 		var run_grid := Grid.new(20, 20)
-		run_grid.blockers[Vector2i(10, 10)] = run_cover
+		run_grid.place_blocker(Vector2i(10, 10), run_cover)
 
 		var run_victim := Part.new()
 		run_victim.id = &"victim"
@@ -405,7 +405,7 @@ func test_each_ricochet_hop_stamps_its_own_real_origin_and_hit_point() -> void:
 	cover.hp = 20
 	cover.max_hp = 20
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
-	grid.blockers[Vector2i(10, 10)] = cover
+	grid.place_blocker(Vector2i(10, 10), cover)
 
 	var table := DataLibrary.material_table()
 	var origin := Vector2(10, 0)
@@ -553,7 +553,7 @@ func test_destroying_a_volatile_part_detonates_and_hits_units_in_radius_only() -
 	rack.max_hp = 1
 
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(5, 5)] = rack
+	grid.place_blocker(Vector2i(5, 5), rack)
 
 	var near_root := Part.new()
 	near_root.hp = 10
@@ -585,7 +585,7 @@ func test_destroying_a_volatile_part_detonates_and_hits_units_in_radius_only() -
 func test_the_goo_barrel_field_object_detonates() -> void:
 	var barrel: Part = DataLibrary.get_part(&"goo_barrel")
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(5, 5)] = barrel
+	grid.place_blocker(Vector2i(5, 5), barrel)
 
 	var near_root := Part.new()
 	near_root.hp = 20
@@ -606,7 +606,7 @@ func test_detonate_is_a_no_op_without_real_detonate_damage() -> void:
 	inert.hp = 0
 	inert.max_hp = 1
 	var grid := Grid.new(5, 5)
-	grid.blockers[Vector2i(2, 2)] = inert
+	grid.place_blocker(Vector2i(2, 2), inert)
 	var state := CombatState.new(grid)
 	assert_eq(Detonation.resolve(inert, state, DamageResolver.locate_cell), [] as Array[Unit])
 
@@ -636,7 +636,7 @@ func test_fragment_sprays_rays_that_hit_and_terminate() -> void:
 	part.max_hp = 1
 
 	var grid := Grid.new(20, 20)
-	grid.blockers[Vector2i(5, 5)] = part
+	grid.place_blocker(Vector2i(5, 5), part)
 
 	var victim_root := Part.new()
 	victim_root.hp = 10
@@ -781,7 +781,7 @@ func test_meltdown_detonates_early_if_re_killed_mid_countdown() -> void:
 	reactor.max_hp = 1
 
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(5, 5)] = reactor
+	grid.place_blocker(Vector2i(5, 5), reactor)
 
 	var near_root := Part.new()
 	near_root.hp = 10
@@ -862,8 +862,8 @@ func test_a_tilted_flight_vertical_slope_changes_which_region_resolve_shot_hits(
 	far_high.hp = 20
 	far_high.max_hp = 20
 	far_high.volume = [Box.new(Vector3(0.0, 1.5, 0.0), Vector3(2.0, 1.0, 0.6))]  # y [1.0, 2.0]
-	grid.blockers[Vector2i(2, 2)] = near_low
-	grid.blockers[Vector2i(2, 6)] = far_high
+	grid.place_blocker(Vector2i(2, 2), near_low)
+	grid.place_blocker(Vector2i(2, 6), far_high)
 
 	var origin := Vector2(2, 0)
 	var direction := Vector2(0, 1)

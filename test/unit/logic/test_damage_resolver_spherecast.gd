@@ -22,8 +22,8 @@ func _wall(id: StringName) -> Part:
 ## ShotPlane's own `_offset` math — see the fixture's own comment below).
 func _gapped_grid() -> Grid:
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(4, 5)] = _wall(&"left_wall")
-	grid.blockers[Vector2i(5, 5)] = _wall(&"right_wall")
+	grid.place_blocker(Vector2i(4, 5), _wall(&"left_wall"))
+	grid.place_blocker(Vector2i(5, 5), _wall(&"right_wall"))
 	return grid
 
 

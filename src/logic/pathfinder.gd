@@ -194,7 +194,7 @@ func _base_cost(cell: Vector2i) -> float:
 		return -1.0
 	if _grid.get_occupant_id(cell) != -1 and cell != _ignore_occupant_at:
 		return -1.0
-	if _grid.blockers.has(cell) and (_grid.blockers[cell] as Part).hp > 0:
+	if _grid.blockers.has(cell) and (_grid.blocker_part_at(cell) as Part).hp > 0:
 		return -1.0
 	return DEFAULT_COST if Surface.first_walkable(_grid.surfaces_at(cell)) != null else -1.0
 

@@ -92,7 +92,7 @@ func _place_cover(grid: Grid, cell: Vector2i) -> void:
 	crate.material = &"steel"
 	var top: float = LoS.SIGHT_HEIGHT * 0.6
 	crate.volume = [Box.new(Vector3(0.0, top * 0.5, 0.0), Vector3(1.0, top, 1.0))]
-	grid.blockers[cell] = crate
+	grid.place_blocker(cell, crate)
 
 
 func _restricted_view(state: CombatState) -> WorldView:

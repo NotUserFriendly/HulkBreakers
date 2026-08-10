@@ -30,10 +30,10 @@ func test_set_get_cell_data_roundtrip() -> void:
 	# source of truth for cover now — no separate scalar to round-trip.
 	var cover := Part.new()
 	cover.id = &"test_cover"
-	_grid.blockers[cell] = cover
+	_grid.place_blocker(cell, cover)
 	assert_eq(_grid.get_spawn_marker(cell), Enums.SpawnMarker.SPAWN_A)
 	assert_eq(_grid.get_occupant_id(cell), 7)
-	assert_eq(_grid.blockers[cell], cover)
+	assert_eq(_grid.blocker_part_at(cell), cover)
 	# Unrelated cell stays default.
 	assert_eq(_grid.get_spawn_marker(Vector2i(0, 0)), Enums.SpawnMarker.NONE)
 
@@ -209,7 +209,7 @@ func test_shootable_part_at_returns_the_blocker_when_present() -> void:
 	part.id = &"wall"
 	part.hp = 10
 	part.max_hp = 10
-	_grid.blockers[Vector2i(2, 2)] = part
+	_grid.place_blocker(Vector2i(2, 2), part)
 
 	assert_eq(_grid.shootable_part_at(Vector2i(2, 2)), part)
 

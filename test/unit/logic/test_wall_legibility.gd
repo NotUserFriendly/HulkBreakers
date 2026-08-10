@@ -110,7 +110,7 @@ func _short_wall(grid: Grid, cell: Vector2i, height: float) -> void:
 	wall.max_hp = 60
 	wall.tags = [&"terrain", WallLegibility.CUTOUT_TAG]
 	wall.volume = [Box.new(Vector3(0.0, height * 0.5, 0.0), Vector3(1.0, height, 1.0))]
-	grid.blockers[cell] = wall
+	grid.place_blocker(cell, wall)
 
 
 func test_sight_to_a_unit_in_the_open_is_not_blocked() -> void:
@@ -125,7 +125,7 @@ func test_sight_to_a_unit_in_the_open_is_not_blocked() -> void:
 
 func test_sight_through_a_wall_between_the_camera_and_the_unit_is_blocked() -> void:
 	var grid := GridFixture.flat(5, 12)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var unit := _standing_unit(Vector2i(2, 6))
 
 	assert_true(
@@ -141,7 +141,7 @@ func test_sight_through_a_wall_between_the_camera_and_the_unit_is_blocked() -> v
 ## SAME side of a wall... the cutout still fires."
 func test_a_wall_beyond_the_unit_does_not_block_sight_to_it() -> void:
 	var grid := GridFixture.flat(5, 12)
-	grid.blockers[Vector2i(2, 9)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 9), DataLibrary.get_part(&"wall"))
 	var unit := _standing_unit(Vector2i(2, 6))
 
 	assert_false(
@@ -202,7 +202,7 @@ func test_a_body_with_no_geometry_reports_a_single_sample_point() -> void:
 ## drive it through the real uniform feed; these two paths have no view route to reach them.
 func test_cuts_for_refuses_an_extracted_unit_even_behind_a_wall() -> void:
 	var grid := GridFixture.flat(5, 12)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var unit := _standing_unit(Vector2i(2, 6))
 	var camera := Vector3(2, 5, -5)
 	assert_true(
@@ -238,7 +238,7 @@ func test_cuts_for_without_a_grid_still_refuses_a_dead_unit() -> void:
 ## CC had chosen the opposite deliberately, on a "safe direction" argument that was wrong.
 func test_cover_between_the_camera_and_the_unit_does_not_keep_the_cutout() -> void:
 	var grid := GridFixture.flat(5, 12)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"pillar")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"pillar"))
 	var unit := _standing_unit(Vector2i(2, 6))
 	var camera := Vector3(2, 5, -5)
 
@@ -270,7 +270,7 @@ func test_cover_between_the_camera_and_the_unit_does_not_keep_the_cutout() -> vo
 ## change that silences the gate entirely cannot pass both.
 func test_a_tagged_wall_between_the_camera_and_the_unit_still_keeps_the_cutout() -> void:
 	var grid := GridFixture.flat(5, 12)
-	grid.blockers[Vector2i(2, 3)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 3), DataLibrary.get_part(&"wall"))
 	var unit := _standing_unit(Vector2i(2, 6))
 
 	assert_true(
@@ -291,7 +291,7 @@ func test_any_part_carrying_the_tag_counts_regardless_of_its_id() -> void:
 	bulkhead.max_hp = 60
 	bulkhead.tags = [&"terrain", WallLegibility.CUTOUT_TAG]
 	bulkhead.volume = [Box.new(Vector3(0.0, 1.2, 0.0), Vector3(1.0, 2.4, 1.0))]
-	grid.blockers[Vector2i(2, 3)] = bulkhead
+	grid.place_blocker(Vector2i(2, 3), bulkhead)
 	var unit := _standing_unit(Vector2i(2, 6))
 
 	assert_true(

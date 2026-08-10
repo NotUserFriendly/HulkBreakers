@@ -51,10 +51,22 @@ static func to_map_file(grid: Grid, map_name: String = "") -> MapFile:
 						surface.facing
 					)
 				)
-			if grid.blockers.has(cell):
+			# taskblock-63 Pass D3: **read back off the record, not measured off the part.**
+			# `size` and `offset` are baked into the part's own `volume` at load, so a save
+			# that looked at the part could only ever re-derive them by comparing against the
+			# library copy — which is why they were simply dropped. The record is what the
+			# author asked for and this emits that.
+			var blocker: Blocker = grid.blocker_at(cell)
+			if blocker != null:
 				map.placements.append(
 					MapPlacement.new(
-						cell, MapPlacement.KIND_BLOCKER, (grid.blockers[cell] as Part).id
+						cell,
+						MapPlacement.KIND_BLOCKER,
+						blocker.part.id,
+						blocker.height,
+						blocker.facing,
+						blocker.size,
+						blocker.offset
 					)
 				)
 			for item: Variant in grid.field_items.get(cell, []):
@@ -166,7 +178,19 @@ static func _add_placement(grid: Grid, map: MapFile, index: int) -> String:
 					"placement %d puts a second blocker at %s; a cell holds one"
 					% [index, placement.cell]
 				)
-			grid.blockers[placement.cell] = part
+			# taskblock-63 Pass D3 (`BR62.05`): **all four fields, not just the part.** This
+			# was `grid.blockers[placement.cell] = part` — the part and nothing else — and
+			# the save below reconstructed a placement from the cell and the part id alone.
+			# It round-tripped because both ends dropped the same things, so an author
+			# could place a wall at height 4.0, save, load, and get a wall at 0 silently.
+			grid.place_blocker(
+				placement.cell,
+				part,
+				placement.height,
+				placement.size,
+				placement.offset,
+				placement.facing
+			)
 		MapPlacement.KIND_FIELD_ITEM:
 			if not grid.field_items.has(placement.cell):
 				grid.field_items[placement.cell] = []

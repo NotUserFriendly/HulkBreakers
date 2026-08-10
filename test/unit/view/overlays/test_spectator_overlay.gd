@@ -304,7 +304,7 @@ func test_clicking_a_bare_cell_or_a_cells_object_opens_the_same_inspect_panel() 
 	crate.id = &"crate"
 	crate.hp = 4
 	crate.max_hp = 4
-	built.state.grid.blockers[Vector2i(4, 0)] = crate
+	built.state.grid.place_blocker(Vector2i(4, 0), crate)
 	var overlay: ControlOverlay = _spectate(built)
 	overlay.playback().playing = true
 

@@ -198,7 +198,7 @@ func test_a_penetration_continues_along_the_same_heading() -> void:
 		plate.hp = 200
 		plate.max_hp = 200
 		plate.volume = [Box.new(Vector3(0.0, 1.0, 0.0), Vector3(0.2, 1.0, 1.0))]
-		grid.blockers[Vector2i(6 + i * 2, 7)] = plate
+		grid.place_blocker(Vector2i(6 + i * 2, 7), plate)
 		plates.append(plate)
 	var state := CombatState.new(grid, [shooter])
 	var results: Array[ImpactResult] = RayChain.resolve(
@@ -238,7 +238,7 @@ func test_a_penetrating_round_never_strikes_the_same_box_twice() -> void:
 	plate.hp = 10000
 	plate.max_hp = 10000
 	plate.volume = [Box.new(Vector3(0.0, 1.0, 0.0), Vector3(0.2, 1.0, 1.0))]
-	grid.blockers[Vector2i(6, 7)] = plate
+	grid.place_blocker(Vector2i(6, 7), plate)
 	var state := CombatState.new(grid, [shooter])
 	var results: Array[ImpactResult] = RayChain.resolve(
 		state,
@@ -272,7 +272,7 @@ func test_a_hollow_part_is_struck_entering_and_exiting() -> void:
 	shell_part.hp = 10000
 	shell_part.max_hp = 10000
 	shell_part.volume = [Box.new(Vector3(0.0, 1.0, 0.0), Vector3(1.0, 1.0, 1.0))]
-	grid.blockers[Vector2i(6, 7)] = shell_part
+	grid.place_blocker(Vector2i(6, 7), shell_part)
 	var state := CombatState.new(grid, [shooter])
 	var results: Array[ImpactResult] = RayChain.resolve(
 		state,

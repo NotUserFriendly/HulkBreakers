@@ -638,7 +638,7 @@ func test_destroying_a_scrap_pile_along_the_shot_credits_its_salvage_to_the_miss
 	var target := _make_target(Vector2i(2, 4))
 	var grid := GridFixture.flat(10, 10)
 	var scrap: Part = DataLibrary.get_part(&"scrap_pile")
-	grid.blockers[Vector2i(2, 2)] = scrap
+	grid.place_blocker(Vector2i(2, 2), scrap)
 	var state := CombatState.new(grid, [shooter, target])
 	var mission := MissionState.new(RunState.new(), state)
 
@@ -658,7 +658,7 @@ func test_destroying_a_field_object_with_no_mission_context_does_not_crash() -> 
 	var target := _make_target(Vector2i(2, 4))
 	var grid := GridFixture.flat(10, 10)
 	var scrap: Part = DataLibrary.get_part(&"scrap_pile")
-	grid.blockers[Vector2i(2, 2)] = scrap
+	grid.place_blocker(Vector2i(2, 2), scrap)
 	var state := CombatState.new(grid, [shooter, target])
 
 	AttackAction.new(shooter, &"pistol", target.cell).apply(state)
@@ -674,7 +674,7 @@ func test_is_legal_true_with_a_blocker_but_no_unit_at_the_target_cell() -> void:
 	var weapon := _make_weapon(&"pistol", 10.0)
 	var shooter := _make_shooter(Vector2i(2, 0), weapon)
 	var grid := GridFixture.flat(10, 10)
-	grid.blockers[Vector2i(2, 4)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 4), DataLibrary.get_part(&"wall"))
 	var state := CombatState.new(grid, [shooter])
 
 	var action := AttackAction.new(shooter, &"pistol", Vector2i(2, 4))
@@ -702,7 +702,7 @@ func test_apply_resolves_a_declared_shot_against_a_blocker_with_no_unit_there() 
 	var shooter := _make_shooter(Vector2i(2, 0), weapon)
 	var grid := GridFixture.flat(10, 10)
 	var wall: Part = DataLibrary.get_part(&"wall")
-	grid.blockers[Vector2i(2, 4)] = wall
+	grid.place_blocker(Vector2i(2, 4), wall)
 	var state := CombatState.new(grid, [shooter])
 
 	AttackAction.new(shooter, &"pistol", Vector2i(2, 4)).apply(state)
@@ -767,7 +767,7 @@ func test_a_hip_height_muzzle_behind_low_cover_hits_the_cover_not_the_target() -
 	var target := _make_target(Vector2i(2, 4))
 	var grid := GridFixture.flat(10, 10)
 	var cover := _make_low_cover(0.6)
-	grid.blockers[Vector2i(2, 2)] = cover
+	grid.place_blocker(Vector2i(2, 2), cover)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -808,7 +808,7 @@ func test_shouldering_clears_cover_the_unshouldered_position_would_not() -> void
 	var target := _make_target(Vector2i(2, 4))
 	var grid := GridFixture.flat(10, 10)
 	var cover := _make_low_cover(0.4)
-	grid.blockers[Vector2i(2, 2)] = cover
+	grid.place_blocker(Vector2i(2, 2), cover)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -841,7 +841,7 @@ func test_cover_shorter_than_the_muzzle_does_not_obstruct_the_shot() -> void:
 	var target := _make_target(Vector2i(2, 4))
 	var grid := GridFixture.flat(10, 10)
 	var cover := _make_low_cover(0.4)  # shorter than the 0.9 muzzle
-	grid.blockers[Vector2i(2, 2)] = cover
+	grid.place_blocker(Vector2i(2, 2), cover)
 	var state := CombatState.new(grid, [shooter, target])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)

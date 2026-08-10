@@ -53,6 +53,24 @@ static func true_height_for_cell(cell: Vector2i, grid: Grid) -> float:
 	return surface.height if surface != null else 0.0
 
 
+## **The world height a blocker at `cell` actually sits at** — the tile it rests on,
+## plus whatever its own placement says. taskblock-63 Pass D3.
+##
+## Every consumer of a blocker's geometry read `true_height_for_cell` directly, which was
+## correct while a blocker had no height of its own to carry — and there were seven of
+## them (`ShotPlane`, `RayCaster` in four places, `SightSpans`, `PartPicker`,
+## `Detonation`, `BoardView`, the camera framing module). **Seven places re-deriving a
+## height the moment one of them could disagree is the shape this project keeps paying
+## for**, so it is one call now.
+##
+## `Blocker.height` defaults to `0.0`, which reads as "resting on the tile" — every
+## blocker on every board authored before the record existed, unchanged.
+static func blocker_height_for_cell(cell: Vector2i, grid: Grid) -> float:
+	var blocker: Blocker = grid.blocker_at(cell)
+	var placed: float = blocker.height if blocker != null else 0.0
+	return true_height_for_cell(cell, grid) + placed
+
+
 ## Every living part's boxes, each as a BoxPlacement carrying that part's
 ## full world transform (unit facing + board position + socket chain +
 ## pose).

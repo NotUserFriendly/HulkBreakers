@@ -71,7 +71,7 @@ func test_a_mover_whose_torso_stays_masked_by_cover_does_not_trigger() -> void:
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
 	var grid := GridFixture.flat(10, 10)
-	grid.blockers[Vector2i(0, 2)] = _make_blocker(2.0)  # taller than the torso's own Y=1.0 center
+	grid.place_blocker(Vector2i(0, 2), _make_blocker(2.0))  # taller than the torso's Y=1.0 center
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 
@@ -88,7 +88,7 @@ func test_a_mover_whose_torso_clears_cover_does_trigger() -> void:
 	var overwatcher: Unit = built.unit
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
 	var grid := GridFixture.flat(10, 10)
-	grid.blockers[Vector2i(0, 2)] = _make_blocker(0.3)  # well below the torso's Y=1.0 center
+	grid.place_blocker(Vector2i(0, 2), _make_blocker(0.3))  # well below the torso's Y=1.0 center
 	var state := CombatState.new(grid, [overwatcher, mover])
 	overwatcher.overwatch_weapon_id = &"pistol"
 	var sink := MemorySink.new()
@@ -292,7 +292,7 @@ func test_torso_visible_agrees_with_an_independently_built_resolve_ray_call() ->
 	var pistol: Part = built.pistol
 	var mover: Unit = _make_mover(Vector2i(0, 5), 1)
 	var grid := GridFixture.flat(10, 10)
-	grid.blockers[Vector2i(0, 2)] = _make_blocker(0.3)  # clears the torso — a real positive case
+	grid.place_blocker(Vector2i(0, 2), _make_blocker(0.3))  # clears the torso — a real positive
 	var state := CombatState.new(grid, [overwatcher, mover])
 
 	var visible: bool = Overwatch._torso_visible(state, overwatcher, mover, pistol)

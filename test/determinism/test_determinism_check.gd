@@ -38,10 +38,10 @@ func test_check_supports_a_custom_compare_fn_for_reference_types() -> void:
 		# content).
 		var a_blocker_ids: Dictionary = {}
 		for cell: Vector2i in a.blockers:
-			a_blocker_ids[cell] = (a.blockers[cell] as Part).id
+			a_blocker_ids[cell] = a.blocker_part_at(cell).id
 		var b_blocker_ids: Dictionary = {}
 		for cell: Vector2i in b.blockers:
-			b_blocker_ids[cell] = (b.blockers[cell] as Part).id
+			b_blocker_ids[cell] = b.blocker_part_at(cell).id
 		return (
 			a.width == b.width
 			and a.rows == b.rows

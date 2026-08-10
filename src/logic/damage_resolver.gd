@@ -273,7 +273,7 @@ static func _cell_of_body(body: Variant, state: CombatState) -> Vector2i:
 	if body is Unit:
 		return (body as Unit).cell
 	for cell: Vector2i in state.grid.blockers:
-		if state.grid.blockers[cell] == body:
+		if state.grid.blocker_part_at(cell) == body:
 			return cell
 	return Vector2i(-1, -1)
 
@@ -429,7 +429,7 @@ static func locate_cell(part: Part, state: CombatState) -> Vector2i:
 		if part in unit.shell.all_parts():
 			return unit.cell
 	for cell: Vector2i in state.grid.blockers:
-		if state.grid.blockers[cell] == part:
+		if state.grid.blocker_part_at(cell) == part:
 			return cell
 	return Vector2i(-1, -1)
 
@@ -528,7 +528,7 @@ static func _register_dropped(part: Part, cell: Vector2i, state: CombatState) ->
 	if not state.grid.blockers.has(cell):
 		if not DROPPED_TAG in part.tags:
 			part.tags.append(DROPPED_TAG)
-		state.grid.blockers[cell] = part
+		state.grid.place_blocker(cell, part)
 
 
 ## Every consequence of a part actually reaching 0 hp, gathered onto one

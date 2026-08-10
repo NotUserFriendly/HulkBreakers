@@ -47,7 +47,7 @@ static func grid_to_text(grid: Grid, occupants: Dictionary = {}) -> String:
 ## it outright). `SPAWN_A`/`SPAWN_B` stay direct `Grid.spawn_marker`
 ## reads — game markers, not physical facts (docs/PLAN.md).
 static func _terrain_char(grid: Grid, cell: Vector2i) -> String:
-	var blocker: Variant = grid.blockers.get(cell)
+	var blocker: Variant = grid.blocker_part_at(cell)
 	if blocker != null and (blocker as Part).id == &"wall":
 		return CHAR_WALL
 	if Surface.first_walkable(grid.surfaces_at(cell)) == null:

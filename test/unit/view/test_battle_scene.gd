@@ -364,7 +364,7 @@ func test_sync_board_view_picks_up_a_blocker_placed_after_load_battle() -> void:
 	scrap.hp = 4
 	scrap.max_hp = 4
 	scrap.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 0.5, 0.5))]
-	scene.combat_state.grid.blockers[Vector2i(3, 3)] = scrap
+	scene.combat_state.grid.place_blocker(Vector2i(3, 3), scrap)
 
 	scene.sync_board_view()
 

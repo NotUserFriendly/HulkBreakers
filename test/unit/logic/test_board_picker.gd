@@ -79,7 +79,7 @@ func test_a_ray_over_a_flat_neighbor_of_a_raised_cell_stays_at_ground_level() ->
 ## far side of a wall — one the player has never seen.
 func test_a_cell_hidden_behind_a_wall_is_not_visible_from_the_camera() -> void:
 	var grid := GridFixture.flat(10, 10)
-	grid.blockers[Vector2i(4, 4)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(4, 4), DataLibrary.get_part(&"wall"))
 	# Camera low and level, so the wall is squarely between it and the cell beyond.
 	var camera := Vector3(1.0, 1.2, 4.0)
 
@@ -98,7 +98,7 @@ func test_a_cell_hidden_behind_a_wall_is_not_visible_from_the_camera() -> void:
 ## that blinded whoever clicked it would be the failure `LoS` warns about.
 func test_a_cell_is_never_hidden_by_whatever_stands_on_it() -> void:
 	var grid := GridFixture.flat(10, 10)
-	grid.blockers[Vector2i(4, 4)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(4, 4), DataLibrary.get_part(&"wall"))
 	var camera := Vector3(1.0, 1.2, 4.0)
 
 	assert_true(

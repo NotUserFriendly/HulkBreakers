@@ -174,7 +174,7 @@ func test_a_sized_wall_reaches_the_board_at_that_size_and_leaves_a_hole_of_it() 
 	var loaded: Dictionary = MapSerializer.to_grid(map)
 	assert_eq(loaded.get("error", ""), "", "the sized map must load")
 	var grid: Grid = loaded["grid"]
-	var placed: Part = grid.blockers[Vector2i(3, 3)]
+	var placed: Part = grid.blocker_part_at(Vector2i(3, 3))
 
 	var extent: Vector3 = PlacedVolume.natural_size(placed)
 	gut.p("  the placed wall is %s at %d hp" % [extent, placed.hp])
@@ -217,7 +217,7 @@ func test_an_unsized_placement_is_the_authored_part_unchanged() -> void:
 
 	var loaded: Dictionary = MapSerializer.to_grid(map)
 	assert_eq(loaded.get("error", ""), "")
-	var placed: Part = (loaded["grid"] as Grid).blockers[Vector2i(1, 1)]
+	var placed: Part = (loaded["grid"] as Grid).blocker_part_at(Vector2i(1, 1))
 	var authored: Part = DataLibrary.get_part(&"wall")
 
 	assert_eq(placed.hp, authored.hp, "its hp is the authored one, not a recomputed one")

@@ -90,7 +90,7 @@ func test_clicking_a_wall_while_armed_enters_aim_mode_with_a_part_target() -> vo
 	wall.id = &"wall"
 	wall.hp = 10
 	wall.max_hp = 10
-	built.state.grid.blockers[Vector2i(5, 5)] = wall
+	built.state.grid.place_blocker(Vector2i(5, 5), wall)
 
 	controller.click_cell(Vector2i(0, 0))
 	controller.arm_action(&"shoot")
@@ -113,7 +113,7 @@ func test_confirming_a_shot_aimed_at_a_part_queues_an_attack_action_at_that_cell
 	wall.id = &"wall"
 	wall.hp = 10
 	wall.max_hp = 10
-	built.state.grid.blockers[Vector2i(5, 5)] = wall
+	built.state.grid.place_blocker(Vector2i(5, 5), wall)
 
 	controller.click_cell(Vector2i(0, 0))
 	controller.arm_action(&"shoot")
@@ -508,7 +508,7 @@ func test_a_queued_move_behind_cover_changes_the_aim_plane_before_resolution() -
 	wall.volume = [Box.new(Vector3.ZERO, Vector3(1.0, 2.0, 1.0))]
 	var built: Dictionary = _setup([a, b])
 	var state: CombatState = built.state
-	state.grid.blockers[Vector2i(2, 3)] = wall
+	state.grid.place_blocker(Vector2i(2, 3), wall)
 	var controller: TacticsController = built.controller
 	a.mp = 10.0
 
@@ -862,7 +862,7 @@ func test_a_shot_through_cover_is_legal_and_queues() -> void:
 	var built: Dictionary = _setup([shooter, enemy])
 	var controller: TacticsController = built.controller
 	var state: CombatState = built.state
-	state.grid.blockers[Vector2i(2, 2)] = DataLibrary.get_part(&"pillar")
+	state.grid.place_blocker(Vector2i(2, 2), DataLibrary.get_part(&"pillar"))
 	assert_false(
 		LoS.has_los(state.grid, Vector2i(2, 4), Vector2i(2, 0)),
 		"sanity: the pillar really does break the cell-to-cell line — the retired gate's own input"

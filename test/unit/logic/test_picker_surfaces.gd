@@ -114,7 +114,7 @@ func test_surfaces_are_not_picked_unless_asked_for() -> void:
 ## A blocker still wins over the floor it is standing on — the nearest hit, unchanged.
 func test_a_blocker_still_wins_over_the_floor_under_it() -> void:
 	var grid: Grid = _grid_with_a_floor()
-	grid.blockers[Vector2i(1, 1)] = DataLibrary.get_part(&"pillar")
+	grid.place_blocker(Vector2i(1, 1), DataLibrary.get_part(&"pillar"))
 
 	var struck: Dictionary = PartPicker.hit(
 		[] as Array[Unit], grid, _straight_down_at(Vector2i(1, 1)), Vector3.DOWN, true

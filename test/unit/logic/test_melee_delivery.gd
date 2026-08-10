@@ -82,7 +82,7 @@ func _blocker(top_y: float) -> Part:
 
 func _grid_with_blocker() -> Grid:
 	var grid := GridFixture.flat(10, 10)
-	grid.blockers[Vector2i(0, 3)] = _blocker(2.0)
+	grid.place_blocker(Vector2i(0, 3), _blocker(2.0))
 	return grid
 
 

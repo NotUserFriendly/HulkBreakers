@@ -61,7 +61,7 @@ static func resolve(part: Part, state: CombatState, locate: Callable) -> Array[U
 			# else, so a barrel beside a barrel could not chain and an explosion beside a wall
 			# left it untouched — the same units-only assumption that hid the drawing gate.
 			for cell: Vector2i in state.grid.blockers:
-				var blocker: Part = state.grid.blockers[cell]
+				var blocker: Part = state.grid.blocker_part_at(cell)
 				if blocker == blast or blocker in exploded:
 					continue
 				if Grid.distance_chebyshev(cell, centre) > reach:
@@ -96,9 +96,9 @@ static func _origin(part: Part, state: CombatState) -> Variant:
 				return placement.transform.origin / UnitGeometry.CELL_SIZE
 		return Vector3(unit.cell.x, unit.height, unit.cell.y)
 	for cell: Vector2i in state.grid.blockers:
-		if state.grid.blockers[cell] == part:
+		if state.grid.blocker_part_at(cell) == part:
 			return Vector3(
-				float(cell.x), UnitGeometry.true_height_for_cell(cell, state.grid), float(cell.y)
+				float(cell.x), UnitGeometry.blocker_height_for_cell(cell, state.grid), float(cell.y)
 			)
 	return null
 

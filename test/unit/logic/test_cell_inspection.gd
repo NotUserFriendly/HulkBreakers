@@ -85,7 +85,7 @@ func test_inspect_ignores_a_dead_unit_at_the_cell() -> void:
 func test_inspect_reports_a_field_object_at_the_cell() -> void:
 	var grid := GridFixture.flat(5, 5)
 	var scrap: Part = DataLibrary.get_part(&"scrap_pile")
-	grid.blockers[Vector2i(1, 1)] = scrap
+	grid.place_blocker(Vector2i(1, 1), scrap)
 	var state := CombatState.new(grid)
 
 	var info: Dictionary = CellInspection.inspect(state, Vector2i(1, 1))

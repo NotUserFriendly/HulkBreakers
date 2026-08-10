@@ -200,7 +200,7 @@ func test_destroying_cover_removes_its_region_from_the_plane() -> void:
 	var grid := Grid.new(5, 5)
 	var state := CombatState.new(grid)
 	var crate := _part(&"crate", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6)))
-	grid.blockers[Vector2i(2, 2)] = crate
+	grid.place_blocker(Vector2i(2, 2), crate)
 
 	var origin := Vector2(2, 0)
 	var direction := Vector2(0, 1)
@@ -238,7 +238,7 @@ func test_a_multi_part_blocker_projects_every_box_not_just_the_root() -> void:
 	var grip := Socket.new(&"GRIP")
 	grip.occupant = pistol
 	arm.sockets = [grip]
-	grid.blockers[Vector2i(2, 2)] = arm
+	grid.place_blocker(Vector2i(2, 2), arm)
 
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	print("\n=== dropped assembly: arm + pistol riding along ===")
@@ -271,7 +271,7 @@ func test_a_dead_root_blockers_living_child_still_projects() -> void:
 	var wrist := Socket.new(&"WRIST")
 	wrist.occupant = hand
 	shoulder.sockets = [wrist]
-	grid.blockers[Vector2i(2, 2)] = shoulder
+	grid.place_blocker(Vector2i(2, 2), shoulder)
 
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
@@ -293,7 +293,7 @@ func test_build_tags_every_region_with_its_owning_body() -> void:
 	var near_unit := _standing_unit(&"near", 0.5, Vector2i(2, 2))
 	state.add_unit(near_unit)
 	var crate := _part(&"crate", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6)))
-	grid.blockers[Vector2i(2, 4)] = crate
+	grid.place_blocker(Vector2i(2, 4), crate)
 
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
@@ -346,7 +346,7 @@ func test_center_of_returns_null_with_no_regions() -> void:
 func test_center_of_returns_the_frontmost_regions_rect_center_for_a_part() -> void:
 	var grid := Grid.new(10, 10)
 	var wall := _part(&"wall", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 0.2)))
-	grid.blockers[Vector2i(2, 2)] = wall
+	grid.place_blocker(Vector2i(2, 2), wall)
 	var state := CombatState.new(grid, [])
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 
@@ -394,7 +394,7 @@ func test_a_wall_part_between_shooter_and_target_blocks_the_shot() -> void:
 	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
 	state.add_unit(target)
 	var wall_part: Part = DataLibrary.get_part(&"wall")
-	grid.blockers[Vector2i(2, 2)] = wall_part
+	grid.place_blocker(Vector2i(2, 2), wall_part)
 
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	print("\n=== a wall cell standing between shooter and target ===")
@@ -420,7 +420,7 @@ func test_destroying_a_wall_removes_its_region_from_the_plane() -> void:
 	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
 	state.add_unit(target)
 	var wall_part: Part = DataLibrary.get_part(&"wall")
-	grid.blockers[Vector2i(2, 2)] = wall_part
+	grid.place_blocker(Vector2i(2, 2), wall_part)
 
 	var before: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 	assert_eq(ShotPlane.resolve_projectile(before, Vector2(0.0, 0.5)).part.id, &"wall")
@@ -489,7 +489,7 @@ func test_build_with_a_flat_direction_matches_a_bare_project_assembly_call() -> 
 	var part := _part(&"crate", box)
 	var grid := Grid.new(10, 10)
 	var state := CombatState.new(grid)
-	grid.blockers[Vector2i(3, 3)] = part
+	grid.place_blocker(Vector2i(3, 3), part)
 
 	var origin := Vector3(3.0, 0.0, 3.0)
 	var direction := Vector3(0.0, 0.0, 1.0)
@@ -587,7 +587,7 @@ func test_depth_of_returns_null_with_no_regions() -> void:
 func test_depth_of_returns_the_frontmost_regions_own_depth_for_a_part() -> void:
 	var grid := Grid.new(10, 10)
 	var wall := _part(&"wall", Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 0.2)))
-	grid.blockers[Vector2i(2, 2)] = wall
+	grid.place_blocker(Vector2i(2, 2), wall)
 	var state := CombatState.new(grid, [])
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)
 

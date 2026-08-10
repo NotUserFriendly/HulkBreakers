@@ -399,8 +399,8 @@ func test_place_cover_adds_a_real_blocker_and_blocks_movement() -> void:
 	var ok: bool = injector.place_cover(Vector2i(2, 2), &"scrap_pile", pool)
 
 	assert_true(ok)
-	assert_not_null(state.grid.blockers.get(Vector2i(2, 2)))
-	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"scrap_pile")
+	assert_not_null(state.grid.blocker_part_at(Vector2i(2, 2)))
+	assert_eq((state.grid.blocker_part_at(Vector2i(2, 2)) as Part).id, &"scrap_pile")
 	assert_lt(
 		Pathfinder.new(state.grid).move_cost(Vector2i(0, 0), Vector2i(2, 2)),
 		0.0,
@@ -411,20 +411,20 @@ func test_place_cover_adds_a_real_blocker_and_blocks_movement() -> void:
 func test_place_cover_refuses_an_already_blocked_cell() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(GridFixture.flat(5, 5), [a])
-	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"existing")
+	state.grid.place_blocker(Vector2i(2, 2), _cover_part(&"existing"))
 	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.place_cover(Vector2i(2, 2), &"scrap_pile", pool)
 
 	assert_false(ok)
-	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"existing")
+	assert_eq((state.grid.blocker_part_at(Vector2i(2, 2)) as Part).id, &"existing")
 
 
 func test_clear_cover_removes_the_blocker_and_restores_passage() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(GridFixture.flat(5, 5), [a])
-	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"scrap_pile")
+	state.grid.place_blocker(Vector2i(2, 2), _cover_part(&"scrap_pile"))
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.clear_cover(Vector2i(2, 2))
@@ -450,7 +450,7 @@ func test_set_passable_false_makes_a_cell_impassable() -> void:
 	var ok: bool = injector.set_passable(Vector2i(2, 2), false)
 
 	assert_true(ok)
-	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"wall")
+	assert_eq((state.grid.blocker_part_at(Vector2i(2, 2)) as Part).id, &"wall")
 	assert_true(state.grid.blockers.has(Vector2i(2, 2)), "the wall is what blocks sight")
 	assert_lt(Pathfinder.new(state.grid).move_cost(Vector2i(0, 0), Vector2i(2, 2)), 0.0)
 
@@ -578,7 +578,7 @@ func test_set_part_hp_reaches_a_blocker_at_a_cell() -> void:
 	var injector := BoutInjector.new(state)
 	var cell := Vector2i(3, 3)
 	assert_true(injector.place_cover(cell, &"goo_barrel", pool), "sanity: a barrel is on the board")
-	var barrel: Part = state.grid.blockers[cell]
+	var barrel: Part = state.grid.blocker_part_at(cell)
 
 	var ok: bool = injector.set_part_hp({"kind": Enums.HitKind.CELL, "cell": cell}, &"", 0)
 
@@ -598,7 +598,7 @@ func test_a_named_part_in_a_blockers_tree_is_reachable_and_an_unknown_one_is_ref
 	var target := {"kind": Enums.HitKind.CELL, "cell": cell}
 
 	assert_true(injector.set_part_hp(target, &"scrap_pile", 3), "named by its own id")
-	assert_eq((state.grid.blockers[cell] as Part).hp, 3)
+	assert_eq((state.grid.blocker_part_at(cell) as Part).hp, 3)
 	assert_false(injector.set_part_hp(target, &"not_a_part", 1), "an unknown id is refused")
 
 
@@ -637,7 +637,7 @@ func test_the_part_hit_a_cover_click_produces_is_a_usable_target() -> void:
 	var injector := BoutInjector.new(state)
 	var cell := Vector2i(2, 2)
 	assert_true(injector.place_cover(cell, &"scrap_pile", pool))
-	var cover: Part = state.grid.blockers[cell]
+	var cover: Part = state.grid.blocker_part_at(cell)
 
 	# The shape `TacticsController._cell_at` emits for a click that lands on cover: kind
 	# PART, no unit, and the struck part carried through.

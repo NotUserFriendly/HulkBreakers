@@ -36,11 +36,11 @@ func _barrel() -> Part:
 
 func _overlay(cover_cell: Vector2i = Vector2i(5, 5)) -> ControlOverlay:
 	var grid: Grid = GridFixture.flat(12, 12)
-	grid.blockers[cover_cell] = _barrel()
+	grid.place_blocker(cover_cell, _barrel())
 	# A second object, so "open a second inspect over the first" can be driven without a unit:
 	# `open(unit)` reaches the live-view lookup and needs a real 3D scenario this fixture has
 	# no reason to build, and the residue question is about the isolate state either way.
-	grid.blockers[Vector2i(7, 7)] = _barrel()
+	grid.place_blocker(Vector2i(7, 7), _barrel())
 	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(2, 2), 0)
 	var state := CombatState.new(grid, [unit])
 	state.assign_rest_to_ai([] as Array[int])
@@ -56,7 +56,7 @@ func _overlay(cover_cell: Vector2i = Vector2i(5, 5)) -> ControlOverlay:
 ## uninspectable while stopping the empty case.
 func test_a_cell_holding_cover_still_opens() -> void:
 	var overlay: ControlOverlay = _overlay()
-	var root: Part = overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5))
+	var root: Part = overlay.battle.combat_state.grid.blocker_part_at(Vector2i(5, 5))
 	assert_not_null(root, "the fixture put a barrel there")
 
 	overlay.inspect().panel.open_cell(Vector2i(5, 5), root)
@@ -72,7 +72,7 @@ func test_a_cell_holding_cover_still_opens() -> void:
 func test_opening_and_closing_twice_leaves_no_residue() -> void:
 	var overlay: ControlOverlay = _overlay()
 	var panel: InspectPanel = overlay.inspect().panel
-	var root: Part = overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5))
+	var root: Part = overlay.battle.combat_state.grid.blocker_part_at(Vector2i(5, 5))
 	var rest_mask: int = panel.viewer.camera.cull_mask
 
 	for cycle in range(2):
@@ -99,9 +99,9 @@ func test_opening_a_second_inspect_over_the_first_leaves_no_residue() -> void:
 	var panel: InspectPanel = overlay.inspect().panel
 	var rest_mask: int = panel.viewer.camera.cull_mask
 
-	var blockers: Dictionary = overlay.battle.combat_state.grid.blockers
-	panel.open_cell(Vector2i(5, 5), blockers.get(Vector2i(5, 5)))
-	panel.open_cell(Vector2i(7, 7), blockers.get(Vector2i(7, 7)))
+	var grid: Grid = overlay.battle.combat_state.grid
+	panel.open_cell(Vector2i(5, 5), grid.blocker_part_at(Vector2i(5, 5)))
+	panel.open_cell(Vector2i(7, 7), grid.blocker_part_at(Vector2i(7, 7)))
 	panel.close()
 
 	assert_false(panel.visible)
@@ -114,7 +114,9 @@ func test_close_resets_the_panel_whatever_it_was_showing() -> void:
 	var overlay: ControlOverlay = _overlay()
 	var panel: InspectPanel = overlay.inspect().panel
 
-	panel.open_cell(Vector2i(5, 5), overlay.battle.combat_state.grid.blockers.get(Vector2i(5, 5)))
+	panel.open_cell(
+		Vector2i(5, 5), overlay.battle.combat_state.grid.blocker_part_at(Vector2i(5, 5))
+	)
 	panel.close()
 
 	assert_false(panel.visible)

@@ -38,7 +38,7 @@ func test_a_straight_down_ray_through_a_units_box_still_hits_that_unit() -> void
 func test_a_ray_through_a_blocker_reports_the_blocker_part_with_a_null_unit() -> void:
 	var wall := _make_blocker(&"wall")
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(2, 3)] = wall
+	grid.place_blocker(Vector2i(2, 3), wall)
 
 	var result: Dictionary = PartPicker.hit(
 		[], grid, Vector3(2.0, 5.0, 3.0), Vector3(0.0, -1.0, 0.0)
@@ -77,7 +77,7 @@ func test_the_nearer_of_a_unit_and_a_blocker_along_the_same_ray_wins() -> void:
 	var near_unit := _make_unit(Vector2i(0, 0))
 	var far_wall := _make_blocker(&"wall")
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(0, 5)] = far_wall
+	grid.place_blocker(Vector2i(0, 5), far_wall)
 
 	# A ray along +Z through both cells' X == 0 column.
 	var result: Dictionary = PartPicker.hit(
@@ -91,7 +91,7 @@ func test_the_nearer_blocker_wins_over_a_farther_unit() -> void:
 	var near_wall := _make_blocker(&"wall")
 	var far_unit := _make_unit(Vector2i(0, 5))
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(0, 0)] = near_wall
+	grid.place_blocker(Vector2i(0, 0), near_wall)
 
 	var result: Dictionary = PartPicker.hit(
 		[far_unit], grid, Vector3(0.0, 0.5, -5.0), Vector3(0.0, 0.0, 1.0)
@@ -103,7 +103,7 @@ func test_the_nearer_blocker_wins_over_a_farther_unit() -> void:
 
 func test_a_ray_that_misses_everything_returns_nothing() -> void:
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(2, 3)] = _make_blocker(&"wall")
+	grid.place_blocker(Vector2i(2, 3), _make_blocker(&"wall"))
 
 	var result: Dictionary = PartPicker.hit(
 		[], grid, Vector3(20.0, 5.0, 20.0), Vector3(0.0, -1.0, 0.0)
@@ -118,7 +118,7 @@ func test_a_ray_that_misses_everything_returns_nothing() -> void:
 ## face from the hit point here would agree with the arithmetic under test and with nothing else.
 func test_a_pick_reports_the_face_it_struck() -> void:
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(4, 4)] = _make_blocker(&"wall")
+	grid.place_blocker(Vector2i(4, 4), _make_blocker(&"wall"))
 	# The blocker's own box: a 1.0 cube centred at (4.0, 0.5, 4.0) in world space.
 	var centre := Vector3(4.0, 0.5, 4.0)
 	var faces: Array[Vector3] = [
@@ -183,7 +183,7 @@ func test_the_normal_a_pick_reports_is_the_one_the_march_reports() -> void:
 ## So an absent face is an absent key, not a zeroed one.
 func test_a_miss_reports_no_normal_rather_than_a_zero_vector() -> void:
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(2, 3)] = _make_blocker(&"wall")
+	grid.place_blocker(Vector2i(2, 3), _make_blocker(&"wall"))
 
 	var result: Dictionary = PartPicker.hit(
 		[], grid, Vector3(20.0, 5.0, 20.0), Vector3(0.0, -1.0, 0.0)

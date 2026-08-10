@@ -45,7 +45,7 @@ func test_a_detonation_logs_its_centre_and_its_real_radius() -> void:
 	volatile.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 1.0))]
 
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(4, 4)] = volatile
+	grid.place_blocker(Vector2i(4, 4), volatile)
 	var bystander: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(5, 4), 0)
 	var shooter: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(0, 4), 1)
 	var state := CombatState.new(grid, [shooter, bystander])
@@ -93,7 +93,7 @@ func _barrel() -> Part:
 
 func test_zeroing_a_barrels_hp_detonates_it() -> void:
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(4, 4)] = _barrel()
+	grid.place_blocker(Vector2i(4, 4), _barrel())
 	var bystander: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(5, 4), 0)
 	var state := CombatState.new(grid, [bystander])
 	var sink := MemorySink.new()
@@ -116,7 +116,7 @@ func test_zeroing_a_barrels_hp_detonates_it() -> void:
 ## be worse than one that never detonated it at all.
 func test_setting_a_barrel_above_zero_does_not_detonate_it() -> void:
 	var grid := Grid.new(10, 10)
-	grid.blockers[Vector2i(4, 4)] = _barrel()
+	grid.place_blocker(Vector2i(4, 4), _barrel())
 	var state := CombatState.new(grid, [] as Array[Unit])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -135,8 +135,8 @@ func test_setting_a_barrel_above_zero_does_not_detonate_it() -> void:
 ## nothing else, so a barrel beside a barrel could not chain at all.
 func test_a_barrel_detonates_its_neighbour_exactly_once() -> void:
 	var grid := Grid.new(12, 12)
-	grid.blockers[Vector2i(4, 4)] = _barrel()
-	grid.blockers[Vector2i(6, 4)] = _barrel()
+	grid.place_blocker(Vector2i(4, 4), _barrel())
+	grid.place_blocker(Vector2i(6, 4), _barrel())
 	var state := CombatState.new(grid, [] as Array[Unit])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -156,8 +156,8 @@ func test_a_barrel_detonates_its_neighbour_exactly_once() -> void:
 ## than honour "never re-explode something that's already exploded".
 func test_two_barrels_in_range_of_each_other_do_not_loop() -> void:
 	var grid := Grid.new(12, 12)
-	grid.blockers[Vector2i(4, 4)] = _barrel()
-	grid.blockers[Vector2i(5, 4)] = _barrel()
+	grid.place_blocker(Vector2i(4, 4), _barrel())
+	grid.place_blocker(Vector2i(5, 4), _barrel())
 	var state := CombatState.new(grid, [] as Array[Unit])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)

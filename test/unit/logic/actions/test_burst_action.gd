@@ -419,7 +419,7 @@ func test_apply_resolves_a_declared_burst_against_a_blocker_with_no_unit_there()
 	var shooter := _make_shooter(Vector2i(0, 0), weapon)
 	var grid := GridFixture.flat(10, 10)
 	var wall: Part = DataLibrary.get_part(&"wall")
-	grid.blockers[Vector2i(3, 0)] = wall
+	grid.place_blocker(Vector2i(3, 0), wall)
 	var state := CombatState.new(grid, [shooter])
 
 	var action := BurstAction.new(shooter, &"chaingun", Vector2i(3, 0))

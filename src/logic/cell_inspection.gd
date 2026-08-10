@@ -34,7 +34,7 @@ static func inspect(state: CombatState, cell: Vector2i, selected: Unit = null) -
 		"cell": cell,
 		"terrain": _terrain_for(state.grid, cell),
 		"unit": _unit_at(state, cell),
-		"field_object": state.grid.blockers.get(cell),
+		"field_object": state.grid.blocker_part_at(cell),
 		"visible_from_selected": visible,
 	}
 

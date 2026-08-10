@@ -138,7 +138,7 @@ func test_cell_at_resolves_a_blocker_to_the_new_part_kind() -> void:
 	wall.hp = 10
 	wall.max_hp = 10
 	wall.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 0.2))]
-	built.state.grid.blockers[Vector2i(2, 3)] = wall
+	built.state.grid.place_blocker(Vector2i(2, 3), wall)
 
 	var hit: Variant = controller._cell_at(Vector3(2.0, 5.0, 3.0), Vector3(0.0, -1.0, 0.0))
 
@@ -159,7 +159,7 @@ func test_cell_at_still_prefers_a_unit_over_a_blocker_behind_it() -> void:
 	wall.hp = 10
 	wall.max_hp = 10
 	wall.volume = [Box.new(Vector3.ZERO, Vector3(1.0, 1.0, 1.0))]
-	built.state.grid.blockers[Vector2i(1, 0)] = wall
+	built.state.grid.place_blocker(Vector2i(1, 0), wall)
 
 	var hit: Variant = controller._cell_at(Vector3(1.0, 5.0, 0.0), Vector3(0.0, -1.0, 0.0))
 

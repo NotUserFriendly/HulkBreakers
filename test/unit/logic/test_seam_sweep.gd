@@ -105,7 +105,7 @@ func _plane_results(state: CombatState, damage: float = 0.0) -> Callable:
 func _wall_hp_total(grid: Grid) -> int:
 	var total := 0
 	for cell: Vector2i in grid.blockers:
-		total += (grid.blockers[cell] as Part).hp
+		total += (grid.blocker_part_at(cell) as Part).hp
 	return total
 
 

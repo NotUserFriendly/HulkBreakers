@@ -72,8 +72,8 @@ func test_an_empty_board_is_never_blocked_at_any_zoom() -> void:
 ## line. Still nothing between; the gate must still say clear at every zoom.
 func test_a_wall_off_to_the_side_is_never_blocked_at_any_zoom() -> void:
 	var grid := GridFixture.flat(32, 24)
-	grid.blockers[Vector2i(25, 8)] = DataLibrary.get_part(&"wall")
-	grid.blockers[Vector2i(25, 9)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(25, 8), DataLibrary.get_part(&"wall"))
+	grid.place_blocker(Vector2i(25, 9), DataLibrary.get_part(&"wall"))
 	var unit := _standing_unit(Vector2i(16, 8))
 	var pivot := Vector3(15.5, 0.0, 11.5)
 

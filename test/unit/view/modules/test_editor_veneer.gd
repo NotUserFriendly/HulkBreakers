@@ -164,8 +164,8 @@ func test_a_taller_veneer_is_tougher_on_the_board_that_gets_built() -> void:
 	editor.refresh()
 
 	var grid: Grid = editor.context.battle.board_view.grid
-	var tall: int = (grid.blockers[Vector2i(1, 2)] as Part).max_hp
-	var short: int = (grid.blockers[Vector2i(6, 7)] as Part).max_hp
+	var tall: int = (grid.blocker_part_at(Vector2i(1, 2)) as Part).max_hp
+	var short: int = (grid.blocker_part_at(Vector2i(6, 7)) as Part).max_hp
 	gut.p("a 3.0 veneer has %d hp, a 1.0 veneer %d" % [tall, short])
 	assert_gt(tall, short, "the rise did not reach the hp")
 

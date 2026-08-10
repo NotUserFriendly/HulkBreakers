@@ -104,7 +104,7 @@ func test_walls_and_cover_are_counted_separately_as_they_are_built() -> void:
 	var grid: Grid = GridFixture.flat(6, 6)
 	GridFixture.place_wall(grid, Vector2i(1, 1), 0.0)
 	GridFixture.place_wall(grid, Vector2i(2, 1), 0.0)
-	grid.blockers[Vector2i(4, 4)] = DataLibrary.get_part(&"crate")
+	grid.place_blocker(Vector2i(4, 4), DataLibrary.get_part(&"crate"))
 
 	var memory: MemorySink = _board_with_log(grid)
 

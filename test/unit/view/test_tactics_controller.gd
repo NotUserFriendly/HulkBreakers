@@ -526,7 +526,7 @@ func test_arming_burst_and_clicking_a_wall_enters_aim_mode() -> void:
 	var built: Dictionary = _setup([a])
 	var controller: TacticsController = built.controller
 	var state: CombatState = built.state
-	state.grid.blockers[Vector2i(5, 0)] = DataLibrary.get_part(&"wall")
+	state.grid.place_blocker(Vector2i(5, 0), DataLibrary.get_part(&"wall"))
 
 	controller.click_cell(Vector2i(0, 0))
 	controller.arm_action(&"burst")

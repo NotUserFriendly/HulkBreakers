@@ -278,7 +278,7 @@ func move_object(target: Dictionary, to_cell: Vector2i) -> bool:
 	if has_blocker and state.grid.blockers.has(to_cell):
 		return _refuse(&"move_object", &"destination_already_blocked", {"to": to_cell})
 	if has_blocker:
-		state.grid.blockers[to_cell] = state.grid.blockers[from_cell]
+		state.grid.move_blocker(from_cell, to_cell)
 		state.grid.blockers.erase(from_cell)
 	if has_items:
 		var moving: Array = state.grid.field_items[from_cell]
@@ -305,7 +305,7 @@ func _place_cover(cell: Vector2i, part_id: StringName, pool: Dictionary) -> Stri
 	var template: Part = pool.get(part_id)
 	if template == null:
 		return &"unknown_part_id"
-	state.grid.blockers[cell] = template.duplicate(true)
+	state.grid.place_blocker(cell, template.duplicate(true))
 	return &""
 
 
@@ -337,7 +337,7 @@ func _spawn_field_item(cell: Vector2i, part_id: StringName, pool: Dictionary) ->
 
 ## taskblock-31 (rolled into tb30) Pass A: places a real field-object
 ## blocker at `cell` — the SAME mechanism `MapGen._scatter_cover` already
-## uses (`grid.blockers[cell] = <a Part>`), never a parallel cover system.
+## uses (`grid.place_blocker(cell, <a Part>)`), never a parallel cover system.
 ## `Pathfinder.move_cost` already treats any `blockers` entry as
 ## impassable regardless of terrain, and `ShotPlane.build` already
 ## projects every `blockers` entry into the plane — so a placed cover
@@ -461,7 +461,7 @@ func set_passable(cell: Vector2i, passable: bool) -> bool:
 	if passable:
 		state.grid.blockers.erase(cell)
 	else:
-		state.grid.blockers[cell] = DataLibrary.get_part(&"wall")
+		state.grid.place_blocker(cell, DataLibrary.get_part(&"wall"))
 	_log_injection(
 		&"set_passable",
 		{"cell": cell, "passable": passable},
@@ -694,7 +694,7 @@ func _object_target(target: Variant) -> Dictionary:
 			return {"refusal": &"target_names_no_cell"}
 		if state.grid.blockers.has(cell):
 			return {
-				"root": state.grid.blockers[cell] as Part,
+				"root": state.grid.blocker_part_at(cell) as Part,
 				"describe": "blocker at %s" % [cell],
 			}
 		var items: Array = state.grid.field_items.get(cell, [])

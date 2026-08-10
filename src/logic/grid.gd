@@ -29,7 +29,7 @@ var rows: int
 ## docs/SUPERSEDED.md) is retired outright, along with `Grid.level`.
 var spawn_marker: Array[int] = []
 var occupant_id: Array[int] = []
-## Vector2i -> Part; a field object (cover, scrap, a barrel, ...) sitting
+## `Vector2i -> Blocker`; a field object (cover, scrap, a barrel, ...) sitting
 ## at this cell. taskblock-16 Pass B2: the ONE source of truth for "is
 ## this cell covered" — the old `cover_value` scalar is retired (it never
 ## fed hit resolution, LoS, or AI decisions to begin with; only a tooltip
@@ -37,6 +37,13 @@ var occupant_id: Array[int] = []
 ## `BodyProjector`/`ShotPlane` projection — is what "half vs full cover"
 ## falls out of now, not a stored number. Also blocks movement
 ## (`Pathfinder.move_cost`) — a unit can no longer stand inside cover.
+##
+## **taskblock-63 Pass D3: the value is a `Blocker` record, not a bare `Part`.** A
+## blocker's placement context used to be this dictionary's *key* and nothing else, so it
+## was the one placement kind whose runtime representation was poorer than the format
+## describing it (`BR62.05`). Read it through `blocker_part_at`/`blocker_at` and write it
+## through `place_blocker` — the keys are unchanged, so every `has(cell)` guard and every
+## `for cell in blockers` sweep works exactly as before.
 var blockers: Dictionary = {}
 var field_items: Dictionary = {}  # Vector2i -> Array[Part|Matrix]; loose items lying on the ground
 
@@ -105,7 +112,7 @@ func dup() -> Grid:
 	cloned.spawn_marker = spawn_marker.duplicate()
 	cloned.occupant_id = occupant_id.duplicate()
 	for cell: Vector2i in blockers:
-		cloned.blockers[cell] = (blockers[cell] as Part).duplicate(true)
+		cloned.blockers[cell] = (blockers[cell] as Blocker).duplicated()
 	for cell: Vector2i in field_items:
 		var cloned_items: Array = []
 		for item: Variant in field_items[cell]:
@@ -128,8 +135,53 @@ func dup() -> Grid:
 ## never a per-frame path.
 func cell_of_blocker(part: Part) -> Variant:
 	for cell: Vector2i in blockers:
-		if blockers[cell] == part:
+		if (blockers[cell] as Blocker).part == part:
 			return cell
+	return null
+
+
+## **Place a blocker, with the placement facts that go with it.** taskblock-63 Pass D3.
+##
+## The write half of the record. Every caller that used to do `blockers[cell] = part`
+## comes through here, so a placement's height/size/offset/facing has one authoring point
+## rather than being something the writer may or may not have known to record.
+##
+## Overwrites whatever was at `cell`: a cell holds one blocker, and re-placing is the same
+## clear-and-re-place idempotence `add_surface` already offers.
+func place_blocker(
+	cell: Vector2i,
+	part: Part,
+	height: float = 0.0,
+	size: Vector3 = Vector3.ZERO,
+	offset: Vector3 = Vector3.ZERO,
+	facing: float = 0.0
+) -> void:
+	blockers[cell] = Blocker.new(part, height, size, offset, facing)
+
+
+## Move an existing record to a new cell, placement facts and live damage state intact —
+## what a debug "move object" verb wants, and the one caller that must NOT rebuild the
+## record (a rebuilt one would silently drop whatever the old one carried).
+func move_blocker(from_cell: Vector2i, to_cell: Vector2i) -> void:
+	if not blockers.has(from_cell):
+		return
+	blockers[to_cell] = blockers[from_cell]
+	blockers.erase(from_cell)
+
+
+## The `Part` standing at `cell`, or null. The read half most callers want — they ask
+## *what is here*, not *how was it placed*.
+func blocker_part_at(cell: Vector2i) -> Part:
+	if blockers.has(cell):
+		return (blockers[cell] as Blocker).part
+	return null
+
+
+## The whole placement record at `cell`, or null — for the callers that need where it
+## sits as well as what it is (the serializer, the board view).
+func blocker_at(cell: Vector2i) -> Blocker:
+	if blockers.has(cell):
+		return blockers[cell]
 	return null
 
 
@@ -156,7 +208,7 @@ func find_field_item(cell: Vector2i, item_id: StringName) -> Variant:
 ## nothing for a shot to strike.
 func shootable_part_at(cell: Vector2i) -> Part:
 	if blockers.has(cell):
-		return blockers[cell]
+		return (blockers[cell] as Blocker).part
 	if field_items.has(cell):
 		for item: Variant in field_items[cell]:
 			if item is Part:
@@ -187,7 +239,7 @@ func surfaces_at(cell: Vector2i) -> Array[Surface]:
 ## the shape that goes stale when a fourth collection is added.
 func parts_at(cell: Vector2i) -> Array[Part]:
 	var parts: Array[Part] = []
-	var blocker: Part = blockers.get(cell)
+	var blocker: Part = blocker_part_at(cell)
 	if blocker != null:
 		parts.append(blocker)
 	for surface: Surface in surfaces_at(cell):

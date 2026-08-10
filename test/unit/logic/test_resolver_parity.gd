@@ -277,7 +277,7 @@ func _distance_to_nearest_blocker(grid: Grid, point: Vector3) -> float:
 	for cell: Vector2i in grid.blockers:
 		var height: float = UnitGeometry.true_height_for_cell(cell, grid)
 		var placements: Array[BoxPlacement] = UnitGeometry.assembly_placements(
-			grid.blockers[cell], cell, 0.0, null, height
+			grid.blocker_part_at(cell), cell, 0.0, null, height
 		)
 		for placement: BoxPlacement in placements:
 			var local: Vector3 = placement.transform.affine_inverse() * point

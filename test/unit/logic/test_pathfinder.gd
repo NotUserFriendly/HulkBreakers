@@ -337,7 +337,7 @@ func test_move_cost_treats_a_field_object_cell_as_blocked() -> void:
 	var grid := GridFixture.flat(3, 3)
 	var crate := Part.new()
 	crate.id = &"crate"
-	grid.blockers[Vector2i(1, 1)] = crate
+	grid.place_blocker(Vector2i(1, 1), crate)
 	var pf := Pathfinder.new(grid)
 	assert_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 1)), -1.0)
 	assert_false(pf.is_walkable(Vector2i(1, 1)))
@@ -354,7 +354,7 @@ func test_move_cost_treats_a_destroyed_field_object_as_passable() -> void:
 	var crate := Part.new()
 	crate.id = &"crate"
 	crate.hp = 0
-	grid.blockers[Vector2i(1, 1)] = crate
+	grid.place_blocker(Vector2i(1, 1), crate)
 	var pf := Pathfinder.new(grid)
 	assert_true(pf.is_walkable(Vector2i(1, 1)), "a destroyed blocker must no longer block movement")
 	assert_eq(pf.move_cost(Vector2i(0, 0), Vector2i(1, 1)), Pathfinder.DEFAULT_COST)
@@ -378,7 +378,7 @@ func test_astar_routes_around_a_field_object() -> void:
 	var grid := GridFixture.flat(3, 3)
 	var crate := Part.new()
 	crate.id = &"crate"
-	grid.blockers[Vector2i(1, 1)] = crate
+	grid.place_blocker(Vector2i(1, 1), crate)
 	var pf := Pathfinder.new(grid)
 	var path: Array[Vector2i] = pf.astar(Vector2i(0, 1), Vector2i(2, 1))
 	assert_does_not_have(path, Vector2i(1, 1), "the path must detour around the blocked cell")

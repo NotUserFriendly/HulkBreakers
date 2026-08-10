@@ -131,7 +131,7 @@ func test_an_attached_barrel_projects_into_the_shot_plane_as_its_own_hittable_re
 	PartGraph.attach(barrel, pallet, slot)
 
 	var grid := Grid.new(5, 5)
-	grid.blockers[Vector2i(2, 2)] = pallet
+	grid.place_blocker(Vector2i(2, 2), pallet)
 	var state := CombatState.new(grid)
 
 	var plane: Array[Region] = ShotPlane.build(Vector3(2, 0.0, 0), Vector3(0, 0.0, 1), state)

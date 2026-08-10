@@ -102,14 +102,14 @@ func test_corner_blocking_rule_other_bordering_cell() -> void:
 ## behaviour the old rule was reaching for without being able to express it.
 func test_cover_blocks_sight_when_it_stands_in_the_line_and_not_when_it_is_below_it() -> void:
 	var tall := _open_grid(7)
-	tall.blockers[Vector2i(3, 3)] = _crate(2.0)
+	tall.place_blocker(Vector2i(3, 3), _crate(2.0))
 	assert_false(
 		LoS.has_los(tall, Vector2i(0, 3), Vector2i(6, 3)),
 		"a crate taller than eye height is in the way, because it is in the way"
 	)
 
 	var low := _open_grid(7)
-	low.blockers[Vector2i(3, 3)] = _crate(0.5)
+	low.place_blocker(Vector2i(3, 3), _crate(0.5))
 	assert_true(
 		LoS.has_los(low, Vector2i(0, 3), Vector2i(6, 3)),
 		"and one you can see over is cover rather than a wall"

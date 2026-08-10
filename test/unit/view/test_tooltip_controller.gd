@@ -90,7 +90,7 @@ func test_hovering_a_field_object_shows_its_own_detail() -> void:
 	var controller: TacticsController = built.controller
 	var tooltip_view: TooltipView = built.tooltip_view
 	var crate: Part = DataLibrary.get_part(&"crate")
-	state.grid.blockers[Vector2i(5, 5)] = crate
+	state.grid.place_blocker(Vector2i(5, 5), crate)
 
 	controller.hovered_cell = Vector2i(5, 5)
 	controller.hover_changed.emit()

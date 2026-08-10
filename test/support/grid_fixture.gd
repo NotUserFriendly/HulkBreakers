@@ -87,5 +87,5 @@ static func enclosed_room(width: int, rows: int, level: float = 0.0) -> Grid:
 static func place_wall(grid: Grid, cell: Vector2i, level: float = 0.0) -> Part:
 	place_floor(grid, cell, level)
 	var wall: Part = DataLibrary.get_part(&"wall")
-	grid.blockers[cell] = wall
+	grid.place_blocker(cell, wall)
 	return wall

@@ -57,7 +57,7 @@ func _drawn_at(editor: EditorModule, cell: Vector2i) -> Array[StringName]:
 	for surface: Surface in grid.surfaces_at(cell):
 		found.append(surface.part.id)
 	if grid.blockers.has(cell):
-		found.append((grid.blockers[cell] as Part).id)
+		found.append((grid.blocker_part_at(cell) as Part).id)
 	for item: Variant in grid.field_items.get(cell, []):
 		found.append((item as Part).id)
 	found.sort()

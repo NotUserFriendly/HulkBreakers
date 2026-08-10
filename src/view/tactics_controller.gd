@@ -1295,7 +1295,7 @@ func _build_aim_state() -> Dictionary:
 		# **`docs/09`'s own rule, which the unit branch follows and this one did not:** never
 		# hold a bare `Part` reference across states; re-resolve it from the state you are
 		# actually working in.
-		var previewed: Part = preview.grid.blockers.get(aiming_at.cell)
+		var previewed: Part = preview.grid.blocker_part_at(aiming_at.cell)
 		if previewed == null:
 			var items: Array = preview.grid.field_items.get(aiming_at.cell, [])
 			for item: Variant in items:

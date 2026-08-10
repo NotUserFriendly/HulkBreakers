@@ -12,7 +12,7 @@ func test_build_spawns_a_ground_plane_and_one_box_per_blocker() -> void:
 	rack.hp = 5
 	rack.max_hp = 5
 	rack.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
-	grid.blockers[Vector2i(1, 1)] = rack
+	grid.place_blocker(Vector2i(1, 1), rack)
 
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -121,7 +121,7 @@ func test_spawn_blocker_sits_on_a_raised_cells_own_real_height() -> void:
 	crate.hp = 5
 	crate.max_hp = 5
 	crate.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
-	grid.blockers[Vector2i(2, 1)] = crate
+	grid.place_blocker(Vector2i(2, 1), crate)
 	var view := BoardView.new()
 	add_child_autofree(view)
 
@@ -150,7 +150,7 @@ func test_build_renders_every_box_in_a_blockers_whole_part_tree() -> void:
 	var grip := Socket.new(&"GRIP")
 	grip.occupant = pistol
 	arm.sockets = [grip]
-	grid.blockers[Vector2i(1, 1)] = arm
+	grid.place_blocker(Vector2i(1, 1), arm)
 
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -178,7 +178,7 @@ func test_a_destroyed_root_with_a_living_child_still_renders_the_child() -> void
 	var wrist := Socket.new(&"WRIST")
 	wrist.occupant = hand
 	shoulder.sockets = [wrist]
-	grid.blockers[Vector2i(1, 1)] = shoulder
+	grid.place_blocker(Vector2i(1, 1), shoulder)
 
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -197,7 +197,7 @@ func test_a_dropped_blocker_lies_on_its_side() -> void:
 	upright.hp = 5
 	upright.max_hp = 5
 	upright.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
-	grid.blockers[Vector2i(0, 0)] = upright
+	grid.place_blocker(Vector2i(0, 0), upright)
 
 	var dropped := Part.new()
 	dropped.id = &"dropped_arm"
@@ -205,7 +205,7 @@ func test_a_dropped_blocker_lies_on_its_side() -> void:
 	dropped.max_hp = 4
 	dropped.tags = [DamageResolver.DROPPED_TAG]
 	dropped.volume = [Box.new(Vector3.ZERO, Vector3(0.3, 0.9, 0.3))]
-	grid.blockers[Vector2i(2, 1)] = dropped
+	grid.place_blocker(Vector2i(2, 1), dropped)
 
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -224,7 +224,7 @@ func test_a_blockers_mesh_uses_its_own_material_color() -> void:
 	var grid := GridFixture.flat(2, 2)
 	var table := DataLibrary.material_table()
 	var scrap := DataLibrary.get_part(&"scrap_pile")
-	grid.blockers[Vector2i(0, 0)] = scrap
+	grid.place_blocker(Vector2i(0, 0), scrap)
 
 	var view := BoardView.new()
 	add_child_autofree(view)
@@ -330,7 +330,7 @@ func test_a_destroyed_blocker_spawns_no_mesh() -> void:
 	dead.hp = 0
 	dead.max_hp = 5
 	dead.volume = [Box.new(Vector3.ZERO, Vector3(1, 1, 1))]
-	grid.blockers[Vector2i(0, 0)] = dead
+	grid.place_blocker(Vector2i(0, 0), dead)
 
 	var view := BoardView.new()
 	add_child_autofree(view)

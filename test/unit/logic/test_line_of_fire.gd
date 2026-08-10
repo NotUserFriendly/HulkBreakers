@@ -34,7 +34,7 @@ func test_has_clear_line_of_fire_is_false_when_a_wall_blocks_the_shot() -> void:
 	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
 	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
 	var state := CombatState.new(grid, [shooter, target])
-	grid.blockers[Vector2i(2, 2)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 2), DataLibrary.get_part(&"wall"))
 
 	assert_false(LineOfFire.has_clear_line_of_fire(shooter, target, shooter.cell, state))
 
@@ -48,7 +48,7 @@ func test_has_clear_line_of_fire_matches_the_real_shotplanes_own_first_hit() -> 
 	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
 	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
 	var state := CombatState.new(grid, [shooter, target])
-	grid.blockers[Vector2i(2, 2)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 2), DataLibrary.get_part(&"wall"))
 
 	var direction := Vector2(target.cell - shooter.cell)
 	var plane: Array[Region] = ShotPlane.build(
@@ -107,7 +107,7 @@ func test_first_hit_never_resolves_to_a_wall_behind_the_shooter() -> void:
 	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(5, 5))
 	var target := _standing_unit(&"target", 0.5, Vector2i(5, 9))
 	var state := CombatState.new(grid, [shooter, target])
-	grid.blockers[Vector2i(5, 1)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(5, 1), DataLibrary.get_part(&"wall"))
 
 	var hit: Region = LineOfFire.first_hit(shooter, target, shooter.cell, state)
 
@@ -124,7 +124,7 @@ func test_cached_first_hit_agrees_with_the_uncached_resolution() -> void:
 	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
 	var target := _standing_unit(&"target", 0.5, Vector2i(2, 9))
 	var state := CombatState.new(grid, [shooter, target])
-	grid.blockers[Vector2i(2, 4)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 4), DataLibrary.get_part(&"wall"))
 
 	var uncached: Region = LineOfFire.first_hit(shooter, target, shooter.cell, state)
 	var cache: Dictionary = {}
@@ -158,7 +158,7 @@ func test_has_clear_line_of_fire_agrees_with_and_without_a_cache() -> void:
 	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
 	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
 	var state := CombatState.new(grid, [shooter, target])
-	grid.blockers[Vector2i(2, 2)] = DataLibrary.get_part(&"wall")
+	grid.place_blocker(Vector2i(2, 2), DataLibrary.get_part(&"wall"))
 	var cache: Dictionary = {}
 
 	assert_eq(

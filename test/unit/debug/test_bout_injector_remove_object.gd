@@ -74,7 +74,7 @@ func test_remove_object_on_a_unit_always_succeeds_even_if_already_dead() -> void
 func test_remove_object_on_a_cell_erases_the_blocker_there() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(Grid.new(5, 5), [a])
-	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"scrap_pile")
+	state.grid.place_blocker(Vector2i(2, 2), _cover_part(&"scrap_pile"))
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.remove_object(
@@ -102,7 +102,7 @@ func test_remove_object_on_a_cell_erases_loose_field_items_there_too() -> void:
 func test_remove_object_on_a_cell_erases_both_a_blocker_and_field_items_at_once() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(Grid.new(5, 5), [a])
-	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"scrap_pile")
+	state.grid.place_blocker(Vector2i(2, 2), _cover_part(&"scrap_pile"))
 	state.grid.field_items[Vector2i(2, 2)] = [_cover_part(&"salvage")]
 	var injector := BoutInjector.new(state)
 

@@ -263,12 +263,13 @@ static func _blocker_in_the_way(
 	limit: float,
 	exclude_parts: Array[Part]
 ) -> bool:
-	var part: Part = grid.blockers.get(cell)
+	var part: Part = grid.blocker_part_at(cell)
 	if part == null or exclude_parts.has(part) or not BodyProjector.projects(part):
 		return false
 	if not PartPicker.near_ray_flat(cell, from, dir):
 		return false
-	var height: float = UnitGeometry.true_height_for_cell(cell, grid)
+	# taskblock-63 Pass D3: a blocker's own placed height, not only the tile's.
+	var height: float = UnitGeometry.blocker_height_for_cell(cell, grid)
 	if not PartPicker.near_ray(cell, from, dir, height):
 		return false
 	return _any_box_hit(
@@ -332,12 +333,13 @@ static func blocker_obstructed_among(
 		return null
 
 	for cell: Vector2i in cells:
-		var part: Part = grid.blockers.get(cell)
+		var part: Part = grid.blocker_part_at(cell)
 		if part == null or exclude_parts.has(part) or not BodyProjector.projects(part):
 			continue
 		if required_tag != &"" and required_tag not in part.tags:
 			continue
-		var height: float = UnitGeometry.true_height_for_cell(cell, grid)
+		# taskblock-63 Pass D3: a blocker's own placed height, not only the tile's.
+		var height: float = UnitGeometry.blocker_height_for_cell(cell, grid)
 		# Built at most once per cell, and only for a cell some ray actually reaches — the
 		# allocation is what made this worth sharing rather than the arithmetic.
 		var box_placements: Array[BoxPlacement] = []
@@ -374,11 +376,12 @@ static func _geometry_into(
 ) -> float:
 	var result: float = best_t
 	for cell: Vector2i in grid.blockers:
+		# taskblock-63 Pass D3: a blocker's own placed height, not only the tile's.
 		if not PartPicker.near_ray(
-			cell, from, dir_n, UnitGeometry.true_height_for_cell(cell, grid)
+			cell, from, dir_n, UnitGeometry.blocker_height_for_cell(cell, grid)
 		):
 			continue
-		var part: Part = grid.blockers[cell]
+		var part: Part = grid.blocker_part_at(cell)
 		result = _consider_assembly(
 			best,
 			result,

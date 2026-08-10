@@ -164,7 +164,7 @@ static func build(
 			regions.append(region)
 
 	for cell: Vector2i in state.grid.blockers:
-		var part: Part = state.grid.blockers[cell]
+		var part: Part = state.grid.blocker_part_at(cell)
 		var offset := _offset(cell, origin_flat, dir, perp)
 		# docs/10 taskblock04 C2: a field object can be a whole part TREE (a
 		# dropped assembly — plate, weapon and all), not just one box, so
@@ -182,7 +182,12 @@ static func build(
 			# resolve against that SAME real height, not a lower one, or a
 			# hit on ramp-standing cover lands somewhere the rendered box
 			# never actually occupies.
-			region.rect.position.y += UnitGeometry.true_height_for_cell(cell, state.grid)
+			# taskblock-63 Pass D3: **the blocker's own height, not only the tile's.** A wall
+			# following a shelf up is authored above the floor it stands beside, and until
+			# `Blocker` existed there was nowhere for that to live — so the plane read every
+			# blocker at its cell's ground. `blocker_height_for_cell` is the one answer the
+			# board view reads too, which is what keeps the picture and the shot agreeing.
+			region.rect.position.y += UnitGeometry.blocker_height_for_cell(cell, state.grid)
 			if shear:
 				_shear(region, origin.y, vertical_slope)
 			region.body = part

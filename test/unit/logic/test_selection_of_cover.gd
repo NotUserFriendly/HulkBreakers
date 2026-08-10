@@ -29,7 +29,7 @@ func _barrel() -> Part:
 ## A live bout with a barrel standing beside the current unit.
 func _state_with_cover(cover_cell: Vector2i = Vector2i(4, 2)) -> CombatState:
 	var grid: Grid = GridFixture.flat(10, 10)
-	grid.blockers[cover_cell] = _barrel()
+	grid.place_blocker(cover_cell, _barrel())
 	var unit: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(2, 2), 0)
 	var state := CombatState.new(grid, [unit])
 	state.assign_rest_to_ai([] as Array[int])
@@ -41,7 +41,7 @@ func test_selecting_cover_selects_the_prop_not_the_cell_beneath_it() -> void:
 	var selection := SelectionController.new(state)
 
 	selection.select_target(
-		SelectionTarget.for_part(state.grid.blockers[Vector2i(4, 2)], Vector2i(4, 2))
+		SelectionTarget.for_part(state.grid.blocker_part_at(Vector2i(4, 2)), Vector2i(4, 2))
 	)
 
 	assert_true(selection.selected_target.is_part(), "the prop is what is selected")
@@ -54,7 +54,7 @@ func test_selecting_cover_selects_the_prop_not_the_cell_beneath_it() -> void:
 ## have loosened it while widening what else can be held.
 func test_a_prop_is_selectable_but_a_non_current_unit_still_is_not() -> void:
 	var grid: Grid = GridFixture.flat(10, 10)
-	grid.blockers[Vector2i(5, 5)] = _barrel()
+	grid.place_blocker(Vector2i(5, 5), _barrel())
 	var first: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(2, 2), 0)
 	var second: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(3, 3), 1)
 	var state := CombatState.new(grid, [first, second])
@@ -65,7 +65,9 @@ func test_a_prop_is_selectable_but_a_non_current_unit_still_is_not() -> void:
 	selection.select(other)
 	assert_null(selection.selected_unit, "a unit whose turn it is not stays unselectable")
 
-	selection.select_target(SelectionTarget.for_part(grid.blockers[Vector2i(5, 5)], Vector2i(5, 5)))
+	selection.select_target(
+		SelectionTarget.for_part(grid.blocker_part_at(Vector2i(5, 5)), Vector2i(5, 5))
+	)
 	assert_true(selection.selected_target.is_part(), "but a prop has no such gate")
 
 
@@ -97,7 +99,7 @@ func test_can_inspect_follows_what_is_selected() -> void:
 	assert_false(selection.can_inspect(), "a bare cell has no body to describe")
 
 	selection.select_target(
-		SelectionTarget.for_part(state.grid.blockers[Vector2i(4, 2)], Vector2i(4, 2))
+		SelectionTarget.for_part(state.grid.blocker_part_at(Vector2i(4, 2)), Vector2i(4, 2))
 	)
 	assert_true(selection.can_inspect(), "a prop does")
 

@@ -75,13 +75,17 @@ static func hit(
 		nearest_normal = unit_hit["normal"]
 
 	for cell: Vector2i in grid.blockers:
-		if not near_ray(cell, from, dir, UnitGeometry.true_height_for_cell(cell, grid)):
+		# taskblock-63 Pass D3: a blocker's own placed height, not only the tile's.
+		var blocker_height: float = UnitGeometry.blocker_height_for_cell(cell, grid)
+		if not near_ray(cell, from, dir, blocker_height):
 			continue
-		var box_hit: Dictionary = _nearest_hit(grid.blockers[cell], cell, grid, from, dir)
+		var box_hit: Dictionary = _nearest_hit(
+			grid.blocker_part_at(cell), cell, grid, from, dir, blocker_height
+		)
 		if not box_hit.is_empty() and float(box_hit["t"]) < nearest_t:
 			nearest_t = box_hit["t"]
 			nearest_unit = null
-			nearest_part = grid.blockers[cell]
+			nearest_part = grid.blocker_part_at(cell)
 			nearest_cell = cell
 			nearest_normal = box_hit["normal"]
 
@@ -228,13 +232,17 @@ static func near_ray(cell: Vector2i, from: Vector3, dir: Vector3, height: float 
 ## stood above it, which contradicts `docs/10`'s "render is hitbox" and was
 ## invisible on a flat map. `ShotPlane.build` already used
 ## `true_height_for_cell` for the same objects, making this the odd one of three.
+## taskblock-63 Pass D3: `height` is passed in rather than resolved here — a blocker carries
+## its own and a loose field item lies on the tile. `NAN` means "resolve the tile", which is
+## what both callers got before the record existed.
 static func _nearest_hit(
-	part: Part, cell: Vector2i, grid: Grid, from: Vector3, dir: Vector3
+	part: Part, cell: Vector2i, grid: Grid, from: Vector3, dir: Vector3, height: float = NAN
 ) -> Dictionary:
 	var nearest_t: float = INF
 	var nearest_normal := Vector3.ZERO
 	var hit_something := false
-	var height: float = UnitGeometry.true_height_for_cell(cell, grid)
+	if is_nan(height):
+		height = UnitGeometry.true_height_for_cell(cell, grid)
 	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell, 0.0, null, height):
 		var box_hit: Dictionary = UnitPicker.ray_box_hit(placement, from, dir)
 		if box_hit.is_empty():

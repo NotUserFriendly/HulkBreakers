@@ -187,11 +187,11 @@ func test_a_tie_resolves_identically_across_runs() -> void:
 func test_the_last_resort_sorts_on_the_cell_rather_than_on_insertion_order() -> void:
 	var state: CombatState = _shared_face_board()
 	var far: RayHit = RayHit.new()
-	far.part = state.grid.blockers[Vector2i(10, 6)]
+	far.part = state.grid.blocker_part_at(Vector2i(10, 6))
 	far.cell = Vector2i(10, 6)
 	far.root_origin = Vector3(1.0, 0.0, 0.0)
 	var near: RayHit = RayHit.new()
-	near.part = state.grid.blockers[Vector2i(10, 5)]
+	near.part = state.grid.blocker_part_at(Vector2i(10, 5))
 	near.cell = Vector2i(10, 5)
 	near.root_origin = Vector3(-1.0, 0.0, 0.0)
 

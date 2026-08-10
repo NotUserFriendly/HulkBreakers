@@ -56,8 +56,8 @@ func _differences(a: Grid, b: Grid) -> Array[String]:
 							% [cell, i, sa[i].facing, sb[i].facing]
 						)
 					)
-			var ba: Variant = a.blockers.get(cell)
-			var bb: Variant = b.blockers.get(cell)
+			var ba: Variant = a.blocker_part_at(cell)
+			var bb: Variant = b.blocker_part_at(cell)
 			var ba_id: StringName = (ba as Part).id if ba != null else &""
 			var bb_id: StringName = (bb as Part).id if bb != null else &""
 			if ba_id != bb_id:
@@ -119,11 +119,11 @@ func test_a_damaged_blocker_reloads_intact_because_parts_are_stored_by_id() -> v
 	var wall: Part = DataLibrary.get_part(&"wall")
 	var authored_hp: int = wall.max_hp
 	wall.hp = 1
-	grid.blockers[Vector2i(2, 2)] = wall
+	grid.place_blocker(Vector2i(2, 2), wall)
 
 	var loaded: Dictionary = MapSerializer.to_grid(MapSerializer.to_map_file(grid, "damaged"))
 	assert_eq(loaded.get("error", ""), "")
-	var reloaded: Part = (loaded["grid"] as Grid).blockers[Vector2i(2, 2)]
+	var reloaded: Part = (loaded["grid"] as Grid).blocker_part_at(Vector2i(2, 2))
 	assert_eq(reloaded.id, &"wall")
 	assert_eq(reloaded.hp, authored_hp, "the map stores the part, not the damage it had taken")
 

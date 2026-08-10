@@ -74,7 +74,7 @@ func test_move_object_moves_a_cover_blocker_preserving_its_own_state() -> void:
 	var state := CombatState.new(Grid.new(10, 10), [a])
 	var cover := _cover_part(&"scrap_pile")
 	cover.hp = 2
-	state.grid.blockers[Vector2i(2, 2)] = cover
+	state.grid.place_blocker(Vector2i(2, 2), cover)
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.move_object(
@@ -83,15 +83,19 @@ func test_move_object_moves_a_cover_blocker_preserving_its_own_state() -> void:
 
 	assert_true(ok)
 	assert_false(state.grid.blockers.has(Vector2i(2, 2)))
-	assert_eq(state.grid.blockers[Vector2i(3, 3)], cover, "the SAME Part, not a fresh duplicate")
-	assert_eq((state.grid.blockers[Vector2i(3, 3)] as Part).hp, 2, "damage state must travel too")
+	assert_eq(
+		state.grid.blocker_part_at(Vector2i(3, 3)), cover, "the SAME Part, not a fresh duplicate"
+	)
+	assert_eq(
+		(state.grid.blocker_part_at(Vector2i(3, 3)) as Part).hp, 2, "damage state must travel too"
+	)
 
 
 func test_move_object_refuses_a_cover_move_onto_an_occupied_blocker_cell() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(Grid.new(10, 10), [a])
-	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"scrap_pile")
-	state.grid.blockers[Vector2i(3, 3)] = _cover_part(&"existing")
+	state.grid.place_blocker(Vector2i(2, 2), _cover_part(&"scrap_pile"))
+	state.grid.place_blocker(Vector2i(3, 3), _cover_part(&"existing"))
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.move_object(
@@ -102,7 +106,7 @@ func test_move_object_refuses_a_cover_move_onto_an_occupied_blocker_cell() -> vo
 	assert_true(
 		state.grid.blockers.has(Vector2i(2, 2)), "a refused move must never mutate anything"
 	)
-	assert_eq((state.grid.blockers[Vector2i(3, 3)] as Part).id, &"existing")
+	assert_eq((state.grid.blocker_part_at(Vector2i(3, 3)) as Part).id, &"existing")
 
 
 func test_move_object_moves_loose_field_items_merging_into_an_occupied_destination() -> void:

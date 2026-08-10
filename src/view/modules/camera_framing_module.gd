@@ -78,13 +78,13 @@ static func content_bounds(grid: Grid) -> Variant:
 			)
 		)
 	for cell: Vector2i in grid.blockers:
-		var part: Part = grid.blockers[cell]
+		var part: Part = grid.blocker_part_at(cell)
 		if part == null:
 			continue
 		bounds = _absorb(
 			bounds,
 			UnitGeometry.assembly_placements(
-				part, cell, 0.0, null, UnitGeometry.true_height_for_cell(cell, grid)
+				part, cell, 0.0, null, UnitGeometry.blocker_height_for_cell(cell, grid)
 			)
 		)
 	return bounds

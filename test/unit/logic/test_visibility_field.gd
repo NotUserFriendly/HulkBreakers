@@ -79,7 +79,7 @@ func test_every_cell_shot_plane_calls_clear_is_set_in_the_field() -> void:
 			# from `Pathfinder.reachable`, which never returns a cell holding a
 			# live blocker, so the field's obligation is scoped to those — and a
 			# wall cell asked about itself is a question no call site can pose.
-			if BodyProjector.projects(grid.blockers.get(cell)):
+			if BodyProjector.projects(grid.blocker_part_at(cell)):
 				continue
 			if not LineOfFire.has_clear_line_of_fire(shooter, target, cell, state):
 				continue
@@ -126,7 +126,7 @@ func test_cover_does_not_occlude_the_field() -> void:
 	crate.hp = 5
 	crate.max_hp = 5
 	crate.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 1.0))]
-	grid.blockers[Vector2i(7, 4)] = crate
+	grid.place_blocker(Vector2i(7, 4), crate)
 	var target: Unit = _armed_unit(&"target", Vector2i(12, 4), 1)
 	var state := CombatState.new(grid, [_armed_unit(&"shooter", Vector2i(2, 4), 0), target])
 

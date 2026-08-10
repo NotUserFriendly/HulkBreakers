@@ -24,7 +24,7 @@ func _grid() -> Grid:
 ## (it is what stops you), then the highest walkable surface, then nothing.
 func _glyph(grid: Grid, cell: Vector2i) -> String:
 	if grid.blockers.has(cell):
-		return "#" if (grid.blockers[cell] as Part).id == &"wall" else "c"
+		return "#" if (grid.blocker_part_at(cell) as Part).id == &"wall" else "c"
 	var surfaces: Array[Surface] = grid.surfaces_at(cell)
 	if surfaces.is_empty():
 		return " "

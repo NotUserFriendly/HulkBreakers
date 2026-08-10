@@ -35,22 +35,22 @@ func test_spawn_object_as_cover_places_a_real_blocker() -> void:
 	var ok: bool = injector.spawn_object(Vector2i(2, 2), &"scrap_pile", pool, true)
 
 	assert_true(ok)
-	assert_not_null(state.grid.blockers.get(Vector2i(2, 2)))
-	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"scrap_pile")
+	assert_not_null(state.grid.blocker_part_at(Vector2i(2, 2)))
+	assert_eq((state.grid.blocker_part_at(Vector2i(2, 2)) as Part).id, &"scrap_pile")
 	assert_false(state.grid.field_items.has(Vector2i(2, 2)), "cover, not a loose item")
 
 
 func test_spawn_object_as_cover_refuses_an_already_blocked_cell() -> void:
 	var a := _make_unit(Vector2i(0, 0), 0)
 	var state := CombatState.new(GridFixture.flat(5, 5), [a])
-	state.grid.blockers[Vector2i(2, 2)] = _cover_part(&"existing")
+	state.grid.place_blocker(Vector2i(2, 2), _cover_part(&"existing"))
 	var pool := {&"scrap_pile": _cover_part(&"scrap_pile")}
 	var injector := BoutInjector.new(state)
 
 	var ok: bool = injector.spawn_object(Vector2i(2, 2), &"scrap_pile", pool, true)
 
 	assert_false(ok)
-	assert_eq((state.grid.blockers[Vector2i(2, 2)] as Part).id, &"existing")
+	assert_eq((state.grid.blocker_part_at(Vector2i(2, 2)) as Part).id, &"existing")
 
 
 func test_spawn_object_as_a_loose_item_adds_to_field_items_not_blockers() -> void:

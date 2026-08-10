@@ -44,10 +44,10 @@ func _grids_equal(a: Grid, b: Grid) -> bool:
 	# identical fix).
 	var a_blocker_ids: Dictionary = {}
 	for cell: Vector2i in a.blockers:
-		a_blocker_ids[cell] = (a.blockers[cell] as Part).id
+		a_blocker_ids[cell] = a.blocker_part_at(cell).id
 	var b_blocker_ids: Dictionary = {}
 	for cell: Vector2i in b.blockers:
-		b_blocker_ids[cell] = (b.blockers[cell] as Part).id
+		b_blocker_ids[cell] = b.blocker_part_at(cell).id
 	return (
 		a.spawn_marker == b.spawn_marker
 		and a_blocker_ids == b_blocker_ids
@@ -186,7 +186,7 @@ func _raised_regions(grid: Grid) -> Array:
 ## presence alone is not the test. Read from the one place rather than re-stated, so a
 ## change to what "blocked" means cannot leave this helper behind.
 func _is_blocked(grid: Grid, cell: Vector2i) -> bool:
-	return grid.blockers.has(cell) and (grid.blockers[cell] as Part).hp > 0
+	return grid.blockers.has(cell) and (grid.blocker_part_at(cell) as Part).hp > 0
 
 
 func test_generate_is_seed_deterministic() -> void:
@@ -233,7 +233,7 @@ func test_cover_density_within_target_band() -> void:
 				var cell := Vector2i(x, y)
 				if Surface.first_walkable(grid.surfaces_at(cell)) == null:
 					continue
-				var blocker: Variant = grid.blockers.get(cell)
+				var blocker: Variant = grid.blocker_part_at(cell)
 				if blocker != null and (blocker as Part).id == &"wall":
 					continue
 				open_count += 1
@@ -284,7 +284,7 @@ func test_generate_resolves_every_cell_into_a_destructible_wall_part_or_empty_sp
 						"seed %d: empty %s must carry no Part" % [map_seed, cell]
 					)
 					continue
-				var blocker: Variant = grid.blockers.get(cell)
+				var blocker: Variant = grid.blocker_part_at(cell)
 				if blocker != null and (blocker as Part).id == &"wall":
 					saw_wall_part = true
 					assert_true(
@@ -313,11 +313,11 @@ func test_barrel_pallet_barrel_count_is_deterministic_and_in_range() -> void:
 		var grid_a: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
 		var grid_b: Grid = MapGen.generate(map_seed, WIDTH, HEIGHT)
 		for cell: Vector2i in grid_a.blockers:
-			var part: Part = grid_a.blockers[cell]
+			var part: Part = grid_a.blocker_part_at(cell)
 			if part.id == &"barrel_pallet":
 				counts_a.append(_attached_barrel_count(part))
 		for cell: Vector2i in grid_b.blockers:
-			var part: Part = grid_b.blockers[cell]
+			var part: Part = grid_b.blocker_part_at(cell)
 			if part.id == &"barrel_pallet":
 				counts_b.append(_attached_barrel_count(part))
 
@@ -457,7 +457,7 @@ func test_sight_is_stopped_exactly_where_a_wall_part_sits() -> void:
 		for x in range(grid.width):
 			var cell := Vector2i(x, y)
 			var eye: float = UnitGeometry.true_height_for_cell(cell, grid) + LoS.SIGHT_HEIGHT
-			var blocker: Variant = grid.blockers.get(cell)
+			var blocker: Variant = grid.blocker_part_at(cell)
 			if blocker != null and (blocker as Part).id == &"wall":
 				assert_true(spans.blocks(cell, eye), "%s holds a wall and must stop sight" % cell)
 				saw_wall = true

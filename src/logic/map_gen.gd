@@ -711,7 +711,7 @@ static func _scatter_cover(
 			if stair_cells.has(cell):
 				continue
 			if rng.randf() < COVER_PROBABILITY:
-				grid.blockers[cell] = _make_cover(rng)
+				grid.place_blocker(cell, _make_cover(rng))
 
 
 static func _make_cover(rng: RandomNumberGenerator) -> Part:
@@ -924,7 +924,7 @@ static func _finalize_walls_and_empty(grid: Grid, scratch: MapGenScratch) -> voi
 	for cell: Vector2i in wall_cells:
 		if exposed_by_cell[cell]:
 			scratch.set_terrain(cell, MapGenScratch.CellKind.OPEN)
-			grid.blockers[cell] = DataLibrary.get_part(&"wall")
+			grid.place_blocker(cell, DataLibrary.get_part(&"wall"))
 		else:
 			scratch.set_terrain(cell, MapGenScratch.CellKind.EMPTY)
 

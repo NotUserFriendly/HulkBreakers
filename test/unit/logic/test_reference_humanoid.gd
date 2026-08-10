@@ -206,7 +206,7 @@ func test_half_cover_masks_the_legs_but_not_the_head() -> void:
 	]
 
 	var grid := Grid.new(12, 12)
-	grid.blockers[cover_cell] = cover
+	grid.place_blocker(cover_cell, cover)
 	var unit := _reference_unit(target_cell)
 	var state := CombatState.new(grid, [unit])
 
@@ -263,7 +263,7 @@ func test_full_cover_masks_the_torso_but_not_the_head() -> void:
 	]
 
 	var grid := Grid.new(12, 12)
-	grid.blockers[cover_cell] = cover
+	grid.place_blocker(cover_cell, cover)
 	var unit := _reference_unit(target_cell)
 	var state := CombatState.new(grid, [unit])
 

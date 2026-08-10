@@ -24,7 +24,7 @@ func _wall_at(grid: Grid, cell: Vector2i) -> Part:
 	if wall == null:
 		return null
 	var placed: Part = wall.duplicate(true) as Part
-	grid.blockers[cell] = placed
+	grid.place_blocker(cell, placed)
 	return placed
 
 
@@ -100,7 +100,7 @@ func test_a_duplicated_part_does_not_match_the_original_by_identity() -> void:
 		return
 	var state := CombatState.new(grid, [] as Array[Unit])
 	var copy: CombatState = state.dup()
-	var duplicated: Variant = copy.grid.blockers.get(Vector2i(6, 4))
+	var duplicated: Variant = copy.grid.blocker_part_at(Vector2i(6, 4))
 
 	assert_not_null(duplicated, "sanity: the clone still has a blocker there")
 	assert_false(

@@ -167,7 +167,7 @@ func test_a_deflect_logs_its_own_reflected_miss_endpoint() -> void:
 	# where that stated ray actually goes — cell (3, 2), not (2, 2). The incidence
 	# is printed below rather than asserted, so the number this fixture rests on is
 	# visible in the run log instead of being taken on trust.
-	grid.blockers[Vector2i(3, 2)] = cover
+	grid.place_blocker(Vector2i(3, 2), cover)
 	var state := CombatState.new(grid, [shooter])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)
@@ -348,7 +348,7 @@ func test_the_hops_of_one_shot_are_numbered_from_zero() -> void:
 	cover.max_hp = 20
 	cover.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(2.0, 1.0, 0.6))]
 	var grid := Grid.new(6, 6)
-	grid.blockers[Vector2i(2, 2)] = cover
+	grid.place_blocker(Vector2i(2, 2), cover)
 	var state := CombatState.new(grid, [shooter])
 	var sink := MemorySink.new()
 	state.combat_log.add_sink(sink)

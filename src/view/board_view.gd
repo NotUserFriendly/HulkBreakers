@@ -347,8 +347,14 @@ func build(
 	var walls := 0
 	var cover := 0
 	for cell: Vector2i in grid.blockers:
-		var blocker: Part = grid.blockers[cell]
-		_spawn_blocker(blocker, cell, material_table)
+		var record: Blocker = grid.blocker_at(cell)
+		var blocker: Part = record.part
+		# taskblock-63 Pass D3: **the blocker's own placed height, when it has one.** A
+		# blocker used to have nowhere to carry one, so this could only ever ask the cell
+		# what its floor was — which is right for a wall standing on the ground and wrong
+		# for one following its neighbours up a shelf. `0.0` still means "the floor here",
+		# which is every blocker on every board authored before the record existed.
+		_spawn_blocker(blocker, cell, material_table, record.height)
 		if blocker.id == &"wall":
 			walls += 1
 		else:
@@ -627,7 +633,9 @@ static func _add_box(mesh: ImmediateMesh, xform: Transform3D, size: Vector3) -> 
 ## A part tagged DROPPED (DamageResolver's own marker) lays on its side —
 ## the same trick HitVolumeView already uses for a downed unit (taskblock03 G) —
 ## so it reads as a fallen assembly, not upright cover.
-func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -> void:
+func _spawn_blocker(
+	part: Part, cell: Vector2i, material_table: MaterialTable, placed_height: float = 0.0
+) -> void:
 	var dropped: bool = DamageResolver.DROPPED_TAG in part.tags
 	# taskblock-61 Pass C1: an authored tag, not `part.id == &"wall"` — content identity in code is
 	# what CLAUDE.md forbids, and a second cuttable terrain type would have needed an edit here.
@@ -644,7 +652,16 @@ func _spawn_blocker(part: Part, cell: Vector2i, material_table: MaterialTable) -
 	# placed walkable `Surface`). A blocker standing on a tile is a part on a
 	# part — real geometry resting on real geometry — so this is the one height
 	# read the pass leaves exactly as it was.
-	var height: float = _height_for(cell)
+	#
+	# taskblock-63 Pass D3: **plus the placement's own height, when it has one.** The cell's
+	# tile is where a blocker rests by default; a wall following a shelf up is authored
+	# above it, and until `Blocker` existed there was nowhere for that fact to live. Added
+	# to the tile height rather than replacing it, so `0.0` — every blocker on every board
+	# authored before this — means exactly what it always did. This is the same sum
+	# `UnitGeometry.blocker_height_for_cell` makes for the resolvers; it is spelled out here
+	# rather than called because `_spawn_blocker` also draws loose field items, which carry
+	# no record and must keep resting on the tile.
+	var height: float = _height_for(cell) + placed_height
 	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell, 0.0, null, height):
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()

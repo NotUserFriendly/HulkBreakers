@@ -101,7 +101,7 @@ func test_a_stepper_killed_mid_step_out_freezes_in_the_firing_cell_and_never_ret
 	blocker.is_destructible = false
 	blocker.material = &"hull_plate"
 	blocker.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
-	grid.blockers[Vector2i(3, 1)] = blocker
+	grid.place_blocker(Vector2i(3, 1), blocker)
 
 	var stepper := _stepper(Vector2i(3, 0), 0, 2)
 	var target := _stepper(Vector2i(3, 9), 1, 10)
@@ -166,7 +166,7 @@ func test_a_stepper_who_survives_the_trigger_still_freezes_and_never_returns() -
 	blocker.is_destructible = false
 	blocker.material = &"hull_plate"
 	blocker.volume = [Box.new(Vector3.ZERO, Vector3(0.5, 1.0, 0.5))]
-	grid.blockers[Vector2i(3, 1)] = blocker
+	grid.place_blocker(Vector2i(3, 1), blocker)
 
 	var stepper := _stepper(Vector2i(3, 0), 0, 1000)  # generous — must survive to prove the point
 	var target := _stepper(Vector2i(3, 9), 1, 10)

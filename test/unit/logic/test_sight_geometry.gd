@@ -178,7 +178,7 @@ func test_a_deck_plate_at_eye_height_blocks_sight() -> void:
 func _top_of_blocker(grid: Grid, cell: Vector2i) -> float:
 	var height: float = UnitGeometry.true_height_for_cell(cell, grid)
 	var placements: Array[BoxPlacement] = UnitGeometry.assembly_placements(
-		grid.blockers[cell], cell, 0.0, null, height
+		grid.blocker_part_at(cell), cell, 0.0, null, height
 	)
 	var top: float = -INF
 	for placement: BoxPlacement in placements:
