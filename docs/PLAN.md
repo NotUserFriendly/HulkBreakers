@@ -2167,6 +2167,105 @@ not; it has no 40% chance of one.*
 becomes *load it at this seed*. That is a real loss for a debugging surface — and it is the same trade
 the completion sampler already makes deliberately.
 
+### A pathfinding node is a surface, not a cell
+**Needs:** nothing. **Unblocks:** the stacked mag lift; `A cell holds one blocker`; catwalks,
+mezzanines and gantries; and it is the first instalment of *Position is a `Vector3` in a grid's frame*.
+
+**`Surface.first_walkable` returns the *first* walkable surface in a cell, and the pathfinder uses only
+that.** `Grid.surfaces_at(cell)` is an `Array` — a cell can genuinely hold several walkable heights —
+but **to movement a cell has exactly one floor.**
+
+**So the stacked mag lift is not a special case that broke. It is the first thing to make an existing
+limitation visible.** A catwalk over a floor, a mezzanine, a gantry above a deck: all unrepresentable
+to movement today, because the second walkable surface in a cell cannot be addressed.
+
+taskblock-63 declined to stack the lift's two pads for exactly this reason — *stack both pads in one
+cell and the path-cost difference is identically zero, because the cell has not changed.* **True, and
+the cause is that a cell has one address and one height.**
+
+#### The change
+
+**A node becomes `(cell, surface)` rather than `cell`** — the standard multi-level formulation, where
+nodes are (x, z, level) rather than (x, z).
+
+| | today | needed |
+|---|---|---|
+| node | `Vector2i` | cell **and which walkable surface** |
+| walkability | `first_walkable != null` | per surface |
+| neighbours | eight cells | surfaces reachable **from this surface** |
+| cost | cell to cell | surface to surface |
+
+**This is a strict subset of *Position is a `Vector3` in a grid's frame*, not a competing design.** That
+item makes cells a query over a frame; a node keyed on a surface is the same idea **arriving in the
+pathfinder first**, and it is the piece the lift actually needs.
+
+#### Three things to settle when it is picked up
+
+- **A ride becomes an edge, not a teleport.** Two surfaces in one cell with an AP-priced edge between
+  them **is** an elevator — a unit ends up vertically displaced *in place*, which is what a lift does.
+  **The neighbouring-pad model was a workaround for nodes not existing**, and it should retire with the
+  limitation rather than being kept alongside.
+- **`lift_advance` gets a real measurement.** Today it compares path cost at the **partner cell**. With
+  surface nodes it compares path cost at the **upper surface** — which genuinely differs, because
+  reachability from up there is different. The consideration stops being a proxy.
+- **Measure the blast radius before committing.** `is_walkable`, `move_cost`, `reachable`, the AI's
+  candidate enumeration and `Cover.is_covered_from` all take `Vector2i`. **This is the 360-`.cell`
+  question one layer down**, and it wants counting rather than assuming.
+
+### The chaingun dead end — three shapes, and one is a design call
+**Needs:** nothing. **Unblocks:** `BR63.04`; any roster armed with a burst-only weapon.
+
+**A chaingun unit cannot fire.** `shoot` wins the selection and `AttackAction.is_legal` then refuses it
+on `provides_a_single_pull` — correctly. The three fixes are not equivalent and only one is a repair:
+
+1. **`_find_weapon_id` stops picking a weapon the planner cannot use.** Smallest change. Makes a
+   chaingun unit fall back to whatever else it carries — **often nothing**, so the unit still does not
+   fight.
+2. **A `weapon_provides_this_action` precondition.** Stops the action being *offered*, so the decision
+   log stops showing a choice that cannot happen. **Honest, and still gives the unit nothing to do.**
+3. **A `burst` utility action offered to `GRUNT`.** The only option that lets a chaingun grunt actually
+   fight — **and a design call, not a repair.** It decides whether grunts get automatic fire, and
+   `suppress`'s existing `TRAINED`/`ELITE` gate says somebody already decided they should not.
+
+**1 and 2 are both worth taking regardless** — a planner that selects an unusable weapon and an action
+offered where it cannot execute are defects on their own terms. **3 is the supervisor's.**
+
+**And the seam is the real finding.** No test crosses between *what a generated bout arms* and *what the
+planner can offer*: headless bouts pick presets that provide `shoot` and fired 481 rounds during
+taskblock-63's own gate while this was live. **That gap is worth a test more than the fix is.**
+
+### Bout modes
+**Needs:** nothing. **Unblocks:** bouts that end for reasons other than extraction; a reason to fight
+rather than to leave.
+
+**Three modes, and only the first exists:**
+
+- **Try to Extract** — today's. Both squads race for their extraction points.
+- **Deathmatch** — no extraction at all; **the only objective is to destroy the other squad.** The
+  cleanest test surface the AI could have, because every non-combat action stops competing.
+- **Defend** — **squad 0 has no extraction condition and squad 1 does.** An asymmetric objective, which
+  is the shape most real missions have.
+
+**Deathmatch is worth building first for a reason beyond content**: `seeds_to_first_win` and every AI
+measurement currently run against a mode where *leaving* is a winning move, so a squad that never fires
+can still complete. **A deathmatch bout cannot be won by walking away**, which makes it a far sharper
+instrument for exactly the class of defect `BR63.04` and `BR63.05` are.
+
+### Spotting interrupts movement
+**Needs:** the mid-move interrupt hook (built — `MoveAction` and `ClimbAction` both check it).
+**Unblocks:** a unit not walking blindly past something it just noticed.
+
+**Seeing an enemy for the first time should stop a move, the way overwatch does.** The machinery exists:
+`MoveAction` already checks a trigger at each cell it steps onto, and taskblock-53 gave `ClimbAction` the
+same. **This is a second trigger on the same hook, not a new mechanism.**
+
+- **First sighting only.** An enemy already known does not re-interrupt every cell.
+- **It is a player-facing rule as much as an AI one** — a queued multi-cell move that walks into a
+  previously-unseen enemy should stop there rather than completing, which is the same fairness argument
+  overwatch rests on.
+- **Pairs with the die-roll rule below**: a spotting is information the player did not have when they
+  queued, so it is exactly the kind of event that should re-open planning.
+
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
 that cross a room boundary meaningfully.

@@ -42,6 +42,31 @@ This stays out of scope for netcode (`99`) — but `CombatState` must remain ser
 every mutation must flow through a queued Action, so a future authoritative host could replay
 one turn's queues.
 
+## A die roll splits a player's turn
+
+**A player may reset to the start of their turn — until they have seen the result of a die roll.**
+Once any roll's outcome is visible to them, the turn is committed up to that point and cannot be
+rewound past it.
+
+**So a player turn is not one plan-then-resolve.** It is either:
+
+- **Several sub-rounds** — plan an action, resolve it, see what happened, plan the next against that
+  knowledge; or
+- **One batch** — queue everything without resolving anything, and send it in a single resolve.
+
+**Both are legitimate and the choice is the player's.** Batching keeps the whole turn rewindable and
+buys no information; resolving as you go buys information and spends the ability to take it back.
+**That trade is the mechanic**, and it is why undo does not need to be limited by anything other than
+what the player has seen.
+
+**Anything that reveals a roll's outcome closes the window** — a hit or a miss, a deflection, a
+detonation, a spotted enemy that a roll determined. **Anything that reveals no roll does not**, so pure
+movement into already-known space stays rewindable.
+
+**This is also the rule that makes a spotting interrupt fair** (`PLAN.md`): a first sighting is
+information the player did not have when they queued, and stopping the move there lets them re-plan
+against it rather than completing a move they would not have ordered.
+
 ## The combat log
 A **rolling, structured log** — a real game feature, and simultaneously CC's and your
 monitoring channel.

@@ -4728,3 +4728,360 @@ is zero.** CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
 - **Closed by removal, taskblock-62 Pass C1** — `ClimbAction`/`HopDownAction` are retired and
   `Pathfinder.move_cost` is the only place a vertical step is priced. `Resolved` rather than
   `Obsolete` because the disagreement was verified before the code carrying it was removed.
+
+### BR62.03 — Resolved — owner: `SUPERVISOR`
+**Ladders and mag lifts generate in the same cell**
+- **cluster:** `map-generation`
+- **Source:** `SUPERVISOR`, 2026-08-10, observed in-game after taskblock-62.
+- Both routes up are being placed at the same location, so a cell carries a ladder **and** a lift pad.
+- **The generator treats them as alternatives** — `MapGen.LIFT_SHARE` decides how often a route up costs
+  AP instead of MP — so placing both means the share is choosing without excluding, or two repair passes
+  each placed one.
+- **taskblock-62 already hit the neighbouring case**: pads cross-linked into chains and one cell held
+  two pads from two repair passes, fixed by refusing to build a lift within one cell of an existing pad.
+  **Check whether that refusal covers ladders**; it very likely only knows about other pads.
+- **`Pending` (taskblock-63 Pass E) — the guess above was right.** `MapGen._pad_in_reach_of` asked
+  `Surface.has_mag_lift_at` and nothing else, so a repair pass could stamp a ladder into a cell that
+  already carried a lift or the reverse. Two stampers with two private ideas of *"is this cell already
+  a way up"*. [CC `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`]
+- **The fix is one predicate asked by both**, `Surface.has_vertical_route_at`, **and it lives on
+  `GridPlacement.place_mag_lift_pair` rather than in `MapGen`** — a check in the generator would leave
+  an author or a fixture free to stack a pad on a ladder, which is the same shape the defect had.
+- **To see it work:** generate boards and look for a cell drawing both. A sweep asserts it directly
+  over 40 seeds at the played board size (`test_vertical_routes.gd`), which found 135 laddered cells
+  and 76 pad cells and no cell holding both.
+- **2026-08-10 (supervisor check via `HBPaR3`) — RESOLVED.** Ladders and lifts no longer share a cell.
+  **Exposed two further ladder defects, filed separately.**
+
+### BR51.01 — Resolved — owner: `SUPERVISOR`
+**Sniper rifle and chaingun consistently shoot wide left of the aim point**
+- **cluster:** `shot-geometry`
+- **Source:** `SUPERVISOR`  ·  **Found:** 2026-07-30, taskblock-51 Pass A.
+- **Repro:** aim a sniper rifle or a chaingun at a goo barrel and fire. The shot lands
+  **consistently left** of where the reticle sits. Reported first for the sniper rifle alone, then
+  confirmed on the chaingun — so it is not one weapon's authored geometry.
+- **taskblock-51 sixth hunt — the supervisor widened the symptom, and it is no longer lateral-only:**
+  *"Firing to the left bug is also a 'fire down into the floor bug' — shots go left AND down at a steep
+  angle."* **That changes the shape of the suspect.** A lateral-only error can be a sign flip on one axis;
+  left *and* down together is a single rotational offset applied to the whole ray, which points at the
+  transform the ray is built from rather than at either axis on its own. The fixed camera sitting back
+  and right of the shooter is the supervisor's own candidate for that rotation.
+- **taskblock-51 — MECHANISM FOUND, and the suspect list had it backwards.** The note above reads *"the
+  aim lean applied to the rendered view but not to the camera the projection reads"*. There is **one**
+  `Camera3D` (`CameraRig._camera`), and `TacticsController.camera` caches it once — so the lean is applied
+  to **both**, and that is the defect rather than the exemption.
+- **`CameraRig.aim_at` rotates the real camera by up to `MAX_LEAN_DEG` (5 degrees) toward the reticle
+  point**, via `look_at(centre)` then a second `look_at` along a leaned forward vector. Every subsequent
+  `project_ray_origin`/`project_ray_normal` therefore casts through a camera that has been turned away
+  from where the player believes they are sighting. **A rotational offset on the whole ray** — which is
+  exactly the shape the supervisor's widened symptom describes: left *and* down together, not a sign flip
+  on one axis.
+- **It also explains why the frame-mismatch measurement came back clean at 0.0000 cells.** The reticle and
+  the resolver agree because they are handed the same ray; the ray itself is the thing that is wrong, and
+  a test comparing those two can never see it. **Any new test must compare against the camera pose the
+  player is looking through, not against the other consumer of the same ray.**
+- **And it is a feedback loop:** the lean is computed *from* the reticle point, and the reticle is
+  computed by projecting *through* the leaned camera. Worth establishing whether the offset is stable or
+  compounds across frames before choosing a fix.
+- **SUPERVISOR'S SPECIFICATION, and it is stronger than CC's proposed fix.** CC suggested projecting
+  through an un-leaned basis. The supervisor rejected the framing:
+
+  > *"The camera shouldn't be involved in actual shot processing at all. Like you said, it's a flourish,
+  > so why is it affecting aim? The purpose is for the camera to give a better view of the target. The
+  > mouse cursor, when clicked, is aimed at a point on a part the player wants to aim at. The player
+  > camera should not be involved in drawing a line from the shooter's gun to that clicked point."*
+
+  **Un-leaning the projection would keep the camera in the loop and merely change its pose.** The stated
+  model removes it: the camera converts a cursor pixel into **a world point on a part**, and the shot is
+  then a line from the **muzzle to that point**. After the pick, the camera has no further part in it —
+  so no camera pose, leaned or not, can move a shot.
+- **Also stated, and it rules out the obvious shortcut:** *"Without the lean, the camera is behind the
+  shooter, making it impossible to aim at a further target."* Simply removing `MAX_LEAN_DEG` is not
+  available — the lean is what makes the over-the-shoulder view usable.
+- **What that means for the code, concretely.** The click currently produces a `reticle_offset` **in an
+  aim plane anchored on shooter and target cells**, and the shot is built from that offset — which is how
+  a camera pose reaches shot geometry at all. Under the stated model the click produces a **world point**
+  (`PartPicker` already returns exactly this: a part plus a real hit position), and the shot is built from
+  muzzle-to-point. **The shot plane stays** — `docs/02`'s depth-sorted resolution is untouched; what
+  changes is where the aim point comes from, not how a hit is resolved against it.
+- **Not started.** This is an aim-system change, not a patch, and tb51 is a bug hunt — flagged for
+  sequencing rather than begun at the end of a block.
+- **Consistent and directional, which is the useful part.** A scatter bug is symmetric; a systematic
+  left bias is a transform, not a roll. Suspects, in order: the reticle-to-world mapping in
+  `AimPlaneGeometry`, the muzzle anchor (`a shot originates at the real muzzle, not the cell centre`),
+  or the aim camera's own lean applying to the view but not to the resolved ray.
+- **Possibly one defect with `BR34.04`** (sniper camera frames the target from an odd angle) and
+  `BR33.01` (aim-view scroll/layer labels). If the aim camera is off-axis, everything mapped through
+  it inherits the offset. **Check the camera before the weapon.**
+- **Blocks reproducing `BR35.08`** — the supervisor could not reliably hit a goo barrel to detonate it.
+
+- **taskblock-56 Pass B — the player/AI split is eliminated as a suspect.** CC session
+  `4ec878cf-1434-4676-8bd3-05c92eed071a`. Both paths were traced from origin to the resolver's
+  input: `ActionCatalog.build_firing_action` is the **only** construction site for a firing action
+  in `src/`, and every firing action resolves through the one expression
+  `ShotPlane.center_of(plane, target) + aim_offset`. The player passes `reticle_offset`; the AI
+  omits the argument and takes the same `Vector2.ZERO` default. **There is one aiming
+  implementation, so no player/AI divergence can be moving these shots.** Pinned by
+  `test_one_aim_path.gd` so a later change cannot separate them quietly.
+- **But a second, independent source of left-and-down was confirmed while looking** — see
+  `BR54.01`. The aim point is the centre of the target's **frontmost region**, so it carries both
+  a lateral offset (an outstretched weapon or arm) and a height drop (to that part's height, e.g.
+  0.80 at a gun rather than 1.36 at the upper body). That is the same *shape* as this entry's
+  widened symptom — *"shots go left AND down at a steep angle"* — arriving from geometry rather
+  than from the camera. **It does not replace the camera-lean mechanism this entry already
+  established**; both can be live at once, and the supervisor's specification (take the camera out
+  of shot processing entirely) is unaffected either way.
+- **Note on provenance:** taskblock-56's Pass B text names this entry while describing
+  `BR54.01`'s measurements (*"AI rounds up to 43° off facing, chaingun units within 8.6°"*). The
+  findings have been appended to **both** — the confirmation to `BR54.01`, whose stated suspect it
+  settles, and the elimination to this one.
+
+- **taskblock-51 — the frame-mismatch theory is measured and WRONG. Ruled out, not deprioritised.**
+  The strongest hypothesis was that the reticle and the resolver work in different planes: the
+  reticle places `reticle_offset` against a plane anchored on the shooter and target **cells**
+  (`AimPlaneGeometry.perp_axis`), while `AttackAction` builds its plane anchored on the real
+  **muzzle** — and taskblock-27 Pass A1 fixed exactly that class of mismatch *inside* the action,
+  leaving the reticle still on cells. A constant lateral offset equal to the muzzle's lateral
+  displacement would explain "consistently left" perfectly.
+  **It does not happen.** `test_aim_offset_bias.gd` aims a ray at the resolver's own dead centre and
+  asks what offset the reticle maths records: **0.0000 cells across four geometries** (axis-aligned
+  both ways, and both diagonals). The two frames agree.
+- **What that leaves, in order.** The reticle is placed from `camera.project_ray_origin/normal`, so the
+  remaining suspects are all on the camera side rather than the geometry side: the aim lean applied to
+  the rendered view but not to the camera the projection reads; a rendered dartboard whose lateral axis
+  disagrees in sign with the plane it represents; or the drawn reticle sitting somewhere other than
+  where `reticle_offset` says. **The next attempt should instrument what the player sees against what
+  is fired**, not re-derive the geometry — that half is now measured and clean.
+- **The test stays as a regression guard.** It is cheap, it pins a real invariant, and it will catch the
+  frame mismatch if a later change introduces the thing that was suspected here.
+
+**taskblock-61 Pass A — re-verified, unchanged, and deliberately not started.**
+
+`CameraRig.aim_at` still rotates the real camera toward the reticle by up to `MAX_LEAN_DEG` (5.0),
+via `look_at(centre)` then a second `look_at` along a leaned forward vector, and there is still one
+`Camera3D`. **The mechanism this entry names is live.**
+
+**Not touched by any measurement in this block, and that is a property of the defect rather than an
+oversight.** Pass A's sweeps are AI bouts, and the AI path never involves a camera — 1391 impacts
+say nothing about this entry in either direction. **It is a player-path defect and needs the player
+path to see it.**
+
+**Scoped out of the hunt on judgement, flagged for the supervisor.** The specification recorded
+above — *"the camera shouldn't be involved in actual shot processing at all"* — is an
+architectural change to how `TacticsController` turns a cursor into an aim point, not a patch to
+the lean. Doing it inside a hunt pass would either half-build it or quietly become the whole block.
+**It wants its own item; the diagnosis is complete enough that it can be picked up cold.**
+
+## taskblock-61 — three CC hypotheses tried and killed by in-game evidence
+
+**Read this before proposing a fourth.** Each was measured, each looked convincing, and each was
+disproved by the supervisor firing real shots. **The pattern in all three is the same: a component
+was measured headlessly and the whole was inferred from it.**
+
+**1. The camera lean.** Removing it was implemented and the shot still went wide in game. The lean
+IS a real defect — `test_aim_ray_is_camera_dependent.gd` measures a stationary cursor's aim point
+moving **1.5 cells** when the camera leans, and that test stands — but it is not this entry's
+symptom. **Reverted; the flourish is deliberately kept.** The supervisor's correction: *"removing
+the flourish is not what we're going for, disconnecting the flourish and the actual result is what
+we're trying for here."*
+
+**2. The preview/resolution plane split.** Real and worth recording: `TacticsController._build_
+aim_state` anchors its plane on the shooter's **cell at ground height** (its own comment: *"no
+specific weapon is in view for the aim PREVIEW itself ... same no-muzzle convention"*), while
+`AttackAction.apply` anchors on the **shouldered muzzle at muzzle height**. taskblock-26 Pass A2
+moved the resolution anchor and left the preview behind. **Measured at 0.067 cells of centre-mass
+difference at 2 range, decaying to 0.006 — not "massive".** A real inconsistency, a wrong culprit.
+
+**3. The short-range depth degeneracy.** `ShotPlane.depth_of` for a target one cell away reports
+**0.06**, because `shouldered_muzzle_point` puts the muzzle **1.13 cells forward** of the shooter's
+cell centre — so the muzzle is nearly touching a close target. In `_aim_point_world`'s
+`origin + dir * depth + perp * point.x`, a near-zero `depth` lets the perpendicular term dominate,
+and the aim height (0.9) against a muzzle at 1.53 over ~0.13 cells of run is a ~78 degree dive.
+**Measured with a zero reticle offset, so no cursor and no camera are involved:**
+
+| range | aim lateral | `depth` | implied off-axis |
+|---|---|---|---|
+| 1 cell | +0.116 | 0.06 | 62.6° |
+| 2 cells | +0.101 | 0.64 | 9.0° |
+| 3 cells | +0.049 | 1.60 | 1.8° |
+| 5 cells | +0.024 | 3.58 | 0.4° |
+
+**This is a genuine defect and is NOT the reported one.** The supervisor's observation is ~90
+degrees on *roughly straight-on* shots; this reaches 62 degrees only at one cell and falls under 2
+degrees by three. **Do not treat the table above as the explanation.**
+
+## What is actually established, and what the next step is
+
+- **The announcement is correct.** `weapon_used` reports 4.4-5.4 degrees off facing on the shots in
+  question — the *intended* direction is right, so the fault is downstream of intent.
+- **The resolution diverges from it.** Sniper shot logged: announced 175.4 degrees (south), round
+  travelled `(-1.19, -0.32)` (west) — **~80 degrees off, and the hit is not on the announced ray.**
+- **~~It is not universal.~~ WITHDRAWN — that "control" was not the supervisor's test.** CC
+  reported a clean pistol shot in the same file as evidence the defect was selective. The
+  supervisor fired **three units — chaingun, sniper rifle, shotgun — and no pistol.** The pistol
+  shots sit under a different `bout_start` (seed=0 at line 1516) from the pillar test (seed=2 at
+  line 2822): a different bout entirely.
+- **So there is NO working control in the reported data.** All three of the supervisor's weapons
+  are broken, and any hypothesis previously discarded for "failing to explain the working pistol"
+  was discarded against nothing. **Re-examine anything ruled out on that basis.**
+- **The broken shots dive.** All three weapons hit `ship_floor` at height **0.00** from a muzzle at
+  **1.53**, under a cell downrange — the "left AND down" the entry's own widened symptom describes.
+
+**The one quantity never measured is the player's reticle offset**, because headless has no cursor.
+`ShotAnnouncement` now carries `aim_offset` (what the reticle asked for) and `aim_point` (what the
+resolver used); the emit was verified end to end rather than assumed. **This is a player-touched
+defect and the supervisor's instruction stands: it is confirmed in the real game, not headlessly.**
+
+## ROOT CAUSE FOUND AND FIXED — `Pending [CC 93549217-f453-4fd6-b8f3-cecf9532290e]`
+
+**Two defects stacked. Neither alone would have been more than a nuisance; together they aimed
+shots fourteen cells sideways and nineteen below the deck.**
+
+**1. A `Part` target was never re-resolved into the preview state.** `TacticsController._build_aim_
+state` builds its shot plane from `preview = queue.preview(state)` — a `CombatState.dup()` — so the
+plane's blockers and field items are **duplicated** `Part`s. The **unit** branch already
+re-resolved by id (`preview.find_unit(...)`) for exactly this reason. **The part branch did not
+exist**: `target = aiming_at` kept the original reference, and `ShotPlane.center_of_part` matched
+`region.body != part` **by identity**. So the lookup missed every time — **290 of 290 reticle
+events** in the supervisor's isolated session, all `unit=false`. This is `docs/09`'s own "never
+hold a bare `Part` reference across states" rule, followed on one branch and absent on the other.
+
+**2. The miss returned a cell address where a plane point belongs.**
+
+```gdscript
+if best == null:
+    return Vector2(fallback_cell.x, fallback_cell.y)   # the old shot_plane.gd
+```
+
+A plane point is `(lateral offset from the ray axis, world height)` — under a cell in each
+component for any real body. A **cell address** is wherever the target sits on the board.
+`aim_reticle_at_screen` then computes `reticle_offset = hit - centre`, and **nothing anywhere
+clamps it**. From the log, verbatim:
+
+```
+reticle: hit -7.74,-4.73  centre +7.00,+15.00  offset -14.74,-19.73
+         shooter (7, 18) -> target (7, 15) (unit=false)
+```
+
+`centre` is literally the target's cell. `depth_of` had the identical shape, answering `0.0` — and
+zero depth reads as *at the muzzle*.
+
+**It explains every symptom**: left *and* down together (both components are cell coordinates),
+worse the further the target sits from the map origin, only on inanimate targets, and independent
+of camera lean, range and weapon — which is why three earlier hypotheses all measured real things
+and none of them was this.
+
+**The fix, both halves:**
+- `_build_aim_state` re-resolves a `Part` target out of the preview's own `grid.blockers` /
+  `grid.field_items`, mirroring the unit branch.
+- **`center_of` and `depth_of` return `null` on a miss** and `push_error` the reason onto the
+  combat log via `EngineErrorTap`. **No fallback at all** — supervisor's call, *"misses loud"*, and
+  their reasoning is recorded in the function's own header: there is no correct aim point for a
+  body that is not in the plane, and every value returnable instead is a lie that looks like an
+  answer. **A null surfaces as a visible runtime error and deliberately does NOT become a refusal
+  to fire**, because refusals have their own machinery and their own open defect.
+- **Four functions folded into two.** `center_of`/`center_of_part` and `depth_of`/`depth_of_part`
+  were two pairs walking the same regions under two match rules that were already equivalent —
+  `ShotPlane.build` sets `region.body` to the unit for every one of its parts. One walk
+  (`_frontmost_for`) keyed on `region.body` serves both kinds. Supervisor's instruction: *"every
+  point where we can stop using two systems to do the same thing we need to consolidate."*
+
+**Tests:** `test_aim_point_units.gd` (four), plus three existing tests **reversed because they were
+pinning the bug** — `center_of` falling back to the cell, and `depth_of`/`depth_of_part` falling
+back to `0.0`. The loud miss also caught **two dishonest fixtures** in `test_taskblock21_gun_data.gd`
+that built a target with no `volume` at all — a board state that cannot occur, passing only because
+the old code invented a point for it.
+
+**To see it work:** place units by debug and fire at a pillar or wall from several facings, as in
+the reported session. Rounds should travel along the announced direction; `weapon_used` now logs
+`aim` and `offset` beside the facing, and a healthy shot has an `offset` under a cell in both
+components. **A `ShotPlane: no region for ...` line in the log means this has regressed.**
+- **2026-08-10 (supervisor check via `HBPaR3`) — RESOLVED.** Confirmed in play some time ago; the
+  entry stayed `Pending` longer than it should have. **A long-standing entry that is quietly fixed is
+  as costly as one that is quietly broken** — push for confirmation rather than waiting for it.
+
+### BR52.07 — Resolved — owner: `SUPERVISOR`
+**One shot in a burst flies off at roughly 90 degrees from the gun's facing**
+- **cluster:** `shot-geometry`
+- **Source:** `SUPERVISOR`  ·  **CC session:** `c0dfa479-2b43-4d9c-832d-12a7fd232bce`
+- **Found:** 2026-08-02, reading `out/combat.log` after a live burst. *"it had a strange 'one shot
+  flew off at 90 degrees from the gun facing' event."*
+- **Reproduced from the log, same burst, one origin `(19.54, 14.13)`:**
+
+  | pull | logged hit | displacement from origin |
+  |---|---|---|
+  | 7 | `crate (17.87, 11.37)` | (-1.67, -2.76) |
+  | 8 | `wall (20.57, 13.56)` | **(+1.03, -0.57)** |
+  | 9 | `goo_barrel (17.24, 6.00)` | (-2.30, -8.13) |
+  | 12 | `wall (16.46, 0.44)` | (-3.08, -13.69) |
+
+  Pull 8 goes **+x and almost no y** while the rest go steeply -y. As directions from one muzzle in
+  one burst those are near-perpendicular, which is exactly what the supervisor saw.
+- **Diagnosed, and it is the shot plane's lateral-offset artifact — the same family as `BR34.05`.**
+  `DamageResolver` reconstructs a logged hit as `origin + dir * region.depth + perp * point.x`.
+  `point.x` is the dartboard's lateral offset, and a late pull of a twelve-round burst is
+  recoil-widened (`RecoilResolver.widen`) and range-widened. Once `point.x` is large enough the
+  `perp` term dominates the `dir` term, so the *reported* impact swings toward perpendicular. The
+  round is not being fired sideways; it is being **drawn and logged** sideways.
+- **taskblock-52 Pass A measured the same mechanism from the other side:** the plane models a
+  scattered round as a ray *parallel* to the shooter-to-target line, displaced by the whole offset,
+  and only **100 of 152** of its reported hit points lie on the surface they claim to strike (the ray
+  chain: 216 of 216).
+- **So the fix already exists and is not switched on.** `RayChain` marches muzzle-to-aimed-point and
+  cannot express this. It becomes live when `CombatState.shot_resolver` inverts — see that field's own
+  doc comment for the 14 tests currently standing in the way.
+
+**`Pending [CC 93549217-f453-4fd6-b8f3-cecf9532290e]` — taskblock-61 Pass A: the mechanism this entry diagnosed is no longer
+reachable, and nothing in this block did it.**
+
+The entry's own closing line is *"the fix already exists and is not switched on ... it becomes live
+when `CombatState.shot_resolver` inverts"*. **It has.** `CombatState.shot_resolver` defaults to
+`&"ray"`, and `ShotResolution.RESOLVER_PLANE` is now named by exactly three places: its own
+constant, `ResolverDifferential` (the test harness that deliberately runs both), and a doc comment.
+**No production path selects the plane**, so the `origin + dir * region.depth + perp * point.x`
+reconstruction that drew a scattered round sideways cannot run in a real bout.
+
+**Marked `Pending` rather than closed, and the distinction matters here.** CC did not fix this and
+cannot confirm the *symptom* is gone — only that the diagnosed cause is unreachable. A sweep of
+1391 first-hop impacts found 36 exceeding 60 degrees off the announced direction, **every one of
+them inside 1.9 cells**, which is `BR54.01`'s close-range aim-point effect rather than this
+entry's long-range logging artifact. **If you see a burst throw one round sideways at a real
+distance again, this is not fixed and the theory is wrong.**
+
+**To see it work:** fire a long burst at a target 6+ cells away and read the impact lines. Every
+hit should lie along the muzzle-to-target axis; a hit that is perpendicular to it at that range is
+the defect returning.
+- **2026-08-10 (supervisor check via `HBPaR3`) — RESOLVED, and a duplicate of `BR51.01`.** Same root:
+  a cell address in a plane-space slot. Kept as its own archived entry because the symptom was reported
+  separately, but it was never a second defect.
+
+### BR62.04 — Obsolete — owner: `SUPERVISOR`
+**Ladders are the same green as ship floor tiles**
+- **cluster:** `input-affordance`
+- **Source:** `SUPERVISOR`, 2026-08-10, observed in-game after taskblock-62.
+- A ladder and the floor it climbs are indistinguishable at a glance, so a route up reads as more
+  floor.
+- **The floor green is a deliberate placeholder** — dark forest, chosen while tiles have no models so a
+  board stops reading as one undifferentiated mass. **The ladder inherited it rather than being given
+  its own.**
+- **Same reasoning applies**: a temporary distinct colour is worth more than a consistent one until real
+  materials exist. Vertical routes are exactly what a player needs to spot, and there are now three of
+  them — steps, ladders, lifts — which probably want to read as a family rather than each picking a
+  colour.
+- **`Pending` (taskblock-63 Pass E).** [CC `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`] `WorldPalette.LADDER_TINT`, reached through a new
+  `surface_color` — split from `tile_color` because *what colour is this material* and *what is this
+  surface for* are different questions, and the ladder was only ever getting the floor's answer to the
+  first one.
+- **The family is blue**: the lift's navy (`BoardOverlays.COLOR`, your own pick) is the dark end and
+  the ladder's teal the bright end. **Steps are deliberately NOT in it** — a step *is* `ship_floor` at
+  a fractional height, and tinting it would need the generator to mark which tiles are treads. A tile
+  that reads as not-floor because of how it was built is a worse lie than one that reads as floor
+  because it is. **Say if you want them in the family anyway**; that is a design call, not an
+  oversight.
+- **The first tint was retuned before it shipped** and the measurement is why: `#2FBFD6` separated
+  from `TEAM_A`'s blue by 0.31 against a 0.3 bar, which is a number passing rather than a colour being
+  distinguishable. A route drawn in a team's own colour would read as somebody's unit.
+- **2026-08-10 (supervisor via `HBPaR3`) — closed `Obsolete`: this was never a bug.** The ladder taking
+  the floor's placeholder green was a **design change**, not a defect — a colour nobody had chosen yet
+  rather than a wrong one. Closed as obsolete rather than resolved because **there was no defect to
+  verify**, and `CHANGELOG.md` carries the colour decision.
