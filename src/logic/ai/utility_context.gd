@@ -213,20 +213,33 @@ const INPUT_PREDICTED_THREAT := &"predicted_threat"
 ## sometimes exactly right; a weight lets a good enough reason outbid it. The strength of the
 ## penalty is authored per action in the `.tres` files, so it is data.
 ##
-## ## "Slightly" is load-bearing, and it was measured rather than assumed
+## ## "Slightly" is load-bearing, and the number that seemed to prove it was noise
 ##
-## `PLAN.md` asks for a candidate cell weighted *"slightly"* worse, and the first version
-## here ignored that: a curve flooring a stranding cell at **0.15** of its utility. On the
-## fixtures it looked right. On real generated maps it moved `seeds_to_first_win` from **1 to
-## 7** — "worth a look" territory, one seed off the cap.
+## `PLAN.md` asks for a candidate cell weighted *"slightly"* worse. The first version here
+## ignored that — a curve flooring a stranding cell at **0.15** of its utility — and a single
+## `seeds_to_first_win` reading of **7** appeared to catch it, against a **1** before the
+## block. The curve was softened to 0.85 on that reading.
 ##
-## **The cause is that one-way ground is ordinary, not exceptional.** A terraced board is
-## covered in cells you can drop into and not climb out of, so an 85% cut was not pricing a
-## rare trap, it was reshaping every movement decision on the board. At **0.85** — a genuinely
-## slight nudge — the same measurement reads **2**, back inside the healthy band.
+## **Retaken, the reading does not hold.** `BoutCorpus.sample()` is **clock-seeded on
+## purpose**, so this is a sampling measurement and a single draw compares nothing. Four
+## draws per tree:
 ##
-## Recorded because the fixture could never have caught it: a hand-built pit has one stranding
-## cell and a generated map has hundreds.
+##     pre-block          1, 1, 2, 3, 3
+##     0.15 floor         1, 2, 3   (and the original 7)
+##     0.85 floor         1, 1, 2, 2, 3, 4
+##
+## Three overlapping distributions. **The 7 was one outlier in fifteen draws**, not a
+## regression, and the decision it drove was made on a number that turned out to be wrong.
+##
+## **0.85 is kept anyway, on the design rather than on the measurement.** `PLAN` says
+## *slightly*, and the reasoning behind it stands on its own: one-way ground is **ordinary**
+## on a terraced board, not exceptional — a board is covered in cells you can drop into and
+## not climb out of — so an 85% cut would price every movement decision rather than a rare
+## trap. Flipping back on evidence this thin would be the same mistake in the other
+## direction.
+##
+## **What this actually costs is a way to tell.** Nothing here can currently distinguish a
+## real movement regression from sampling noise, which is worth more than either value.
 ##
 ## **One reverse flood per turn, not one per candidate.**
 ## `MapNavigability.cells_that_can_reach` walks every edge backwards from the unit's own

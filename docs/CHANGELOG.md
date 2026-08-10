@@ -1,5 +1,180 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 62 — the AI learns to go up
+
+### Pass A — `step_height` is a leg's offer, resolved as a maximum
+
+**`leg.tres` authors `step_height: 0.4`** — what a leg *offers*, in data, so a leg that strides
+differently is a `.tres` edit and not a code edit. `Unit.BASE_STEP_HEIGHT` narrows to meaning
+"what a body with no authored legs is assumed to step".
+
+**The supervisor's model, 2026-08-09**, and each clause does work: a leg's value is an absolute
+offer rather than a delta; the shell takes the **largest** offer, never the sum; and **two legs
+or you do not step up at all** — one leg offers a height it has nothing to push off against, so
+it resolves to 0.0.
+
+**The arithmetic was the wrong SHAPE, not a wrong number.** Step height summed across parts, so a
+0.4 leg beside a 0.6 leg resolved to **1.0** — a whole level walked for free — and four short legs
+out-strode two long ones. Nothing had ever caught it because no two parts in the library authored
+the stat at once. `Enums.ModOp.MAX` and an `op` argument on `StatResolver.gather_part_sources`
+fix it through the one resolver. **The op lives on the gather, never on the part**: how a stat
+combines is a property of the stat, and per-part ops would make `resolve()` depend on part order.
+
+**`BoutSetup` assembles its rosters before generating the map**, so `MapGen` and the spawn-spill
+flood both run at `Unit.lowest_step_height(units)`. Deliberately rng-neutral — `assemble_from_preset`
+draws no randomness — so every existing bout seed still builds the map it built before.
+
+**Superseded:** the long-legged part built against the first (additive) reading was deleted before
+it shipped. See `SUPERSEDED.md`.
+
+### Pass B — the mag lift
+
+**A third route up, and the only one that spends AP.** Two `mag_lift`-tagged pads placed by the same
+generator branch that stands a ladder — one on the low cell, one on the raised cell it serves. A unit
+on either pad pays **1 AP** and is at the other one.
+
+**It rides down as well as up** (supervisor, 2026-08-09), correcting an up-only version committed
+earlier in the same block. What separates a ride from a hop-down is **availability, not direction**:
+a hop-down works off any ledge, a lift works only where one was built. Recorded alongside it, because
+"cheaper" is easy to misread: a hop-down costs 1 MP and a ride costs 1 AP, so a *short* descent is
+not literally cheaper by the ride — where it wins is **depth**, since a drop beyond
+`MAX_HOP_DOWN_LEVELS` is not a legal edge at all.
+
+**`mag_lift_pad` authors no `volume`**, which makes *"neither surface blocks shots"* structural
+rather than measured-thin: `assembly_placements` yields nothing, so `RayCaster`, `ShotPlane` and
+`_build_tiles` have nothing to find. There is no thickness to get wrong.
+
+**Refusals name their gate** (`PLAN`'s bare-boolean item): `no_mag_lift_pad_here`,
+`lift_has_no_partner_pad`, `partner_pad_is_occupied`, `not_enough_ap`. `is_legal` is derived from
+`refusal_reason`, so the two cannot disagree.
+
+**Generator defect found and fixed at the source.** The repair sweep stamps lifts a cell or two
+apart, so pads cross-linked into chains and one cell held two pads from two passes (seeds 5, 9,
+4242). A cleverer tie-break would have returned one answer out of an ambiguous board — guessing with
+extra steps — so `_stamp_mag_lift` refuses to build within one cell of an existing pad and falls back
+to a ladder. **Pairing is unambiguous by construction.** After the guard: 4 of 8 seeds carry a lift,
+18 pads in 9 pairs, 25 ladder segments, 0 broken pairings.
+
+**`MapGen.LIFT_SHARE = 0.5` is a flagged placeholder, not a design number.** The RNG now reaches
+`guarantee_navigability` but draws **after** every other generation step, so no earlier draw moves
+and every seed carves the same rooms, raises the same floors and scatters the same cover as before.
+Callers with no RNG — the editor, direct test calls — still stamp ladders.
+
+**View, to the supervisor's spec:** both pads render as a 50%-opacity navy blue square under a
+100%-opacity narrow navy border, on the next free pair of rungs (0.035 / 0.040) of the ground-overlay
+height ladder. **A footgun was fixed at the source on the way**: `WorldPalette.overlay_material`
+never set `TRANSPARENCY_ALPHA`, so *any* marker colour carrying alpha rendered fully opaque and the
+authoring silently did nothing. `OverlayMarkers` now picks the material from the colour.
+
+**`BoardOverlays` extracted** — the board's statements about cells, extraction markers and lift pads
+— because `board_view.gd` sat at exactly `gdlint`'s 1000-line cap. See `BR62.02`.
+
+### Pass C1 — `ClimbAction` and `HopDownAction` retired
+
+**Measured, not assumed.** On one board with one unit: `Pathfinder.move_cost` prices a climb, a
+ladder edge and a drop; `astar` routes through all three; **`MoveAction.is_legal` was true for the
+identical step at the identical cost** the discrete action charged. A real planned AI turn already
+carried a unit from height 0 to height 2.0 on a board whose only route up was a ladder.
+`apply_stepwise` already fired the overwatch hook on **every** cell including the one it dropped
+onto. **Neither class was reachable from the player OR the AI** — only from `BoutInjector`.
+
+**So the taskblock's premise for Pass E is false as stated:** the AI was not playing a flat game.
+What was true is the narrower clause — no AI path queued those two *classes* — and giving them
+utility actions would have added a second representation of "go up there" and raced it against the
+first.
+
+**They had already drifted** (`BR62.01`): `move_cost` **ceils** a climb price and `ClimbAction._cost`
+did not, so a 0.7-level bare climb was quoted 3 MP and charged 2.8.
+
+**Retiring them costs no cost expressiveness** — every constant lives on `Pathfinder`, `move_cost`
+sees an edge's full rise, and shaping price by how tall a climb is is a change to that one
+expression. That was the supervisor's condition for the retirement and it is recorded in
+`pathfinder.gd`.
+
+**`CombatAction.apply_interruptible` collapses the branch cascade** `CombatState._resolve_until_body`
+had grown. It defaults to `apply()` plus "nothing stopped me", so an uninterruptible action needs no
+entry and an interruptible one needs no branch — and `MagLiftAction` gained a real interrupt from it
+for free.
+
+**The combat log keeps the distinction the retired events carried**: a `move` event now carries
+`rise`, and its text says so. A climb is a move with a rise, which is the whole finding.
+
+**Nothing was cut from the suite.** `test_vertical_movement.gd` carries all 16 rules from the three
+retired test files. **Two tests in `test_resolution_player_elevation.gd` were passing vacuously** the
+moment the event kinds went — they assert `position == ZERO` after playback, and an unmatched event
+kind falls through doing nothing, leaving exactly that zero.
+
+### Pass C2 — a climb has a position along it
+
+**A unit's position is `(cell, height)`**, and a climb it cannot finish leaves it partway up rather
+than not happening at all. Before this a tall ladder was not expensive, it was **impossible**:
+`is_legal` required the whole path affordable and a four-level ladder is one edge costing 16 MP.
+
+**Most of the concept was already expressible and nobody had noticed.**
+`UnitGeometry.placements` has always drawn and shot-planed from `Unit.height`, so a unit halfway up a
+ladder is visible and shootable at the height it reached with no new machinery. What genuinely had to
+be taught is `Pathfinder`, which read the **floor's** height where it wanted the **body's** —
+`_height_leaving` overrides exactly one cell, and `NAN` means no override.
+
+**Only a climb divides.** A horizontal step has nowhere to stop between two cells and a drop is one
+motion rather than a sustained effort. **The fraction paid is of COST, not of geometry**, so it stays
+correct if a taller climb is ever priced non-linearly.
+
+**A latent bug fixed while here:** `apply_stepwise` burned AP unconditionally and could drive it
+negative, safe only because `is_legal` had pre-cleared the whole path.
+
+**Named consequence:** a partial climb converts every remaining AP, so committing to a climb you
+cannot finish costs the turn's shooting too.
+
+### Passes D and E — what the planner knows about going up and coming down
+
+**Reshaped by Pass C1's measurement.** The climb/hop-down utility actions the taskblock specifies
+were not built, because the movement they would have queued already happens through `MoveAction`.
+What was genuinely missing was built instead.
+
+**`can_return` — "can I get back?"** — is a consideration on every action that can relocate, priced
+from **one reverse flood per turn** (`MapNavigability.cells_that_can_reach`). A prohibition would
+forbid the drop that reaches an otherwise unreachable target; a weight lets a good enough reason
+outbid it.
+
+**"Slightly" is load-bearing — but the number that appeared to prove it was noise, and the
+correction is the more useful result.** A curve flooring a stranding cell at **0.15** drew a
+`seeds_to_first_win` of **7** against a **1** before the block, and the curve was softened to 0.85 on
+that reading. **Retaken four times per tree, the reading does not hold**: pre-block **1, 1, 2, 3, 3**;
+0.15 floor **1, 2, 3** (plus the original 7); 0.85 floor **1, 1, 2, 2, 3, 4**. Three overlapping
+distributions, and the 7 is one outlier in fifteen draws. `BoutCorpus.sample()` is **clock-seeded on
+purpose**, so a single draw compares nothing — which is exactly how it was used.
+
+**0.85 is kept on the design rather than on the measurement.** `PLAN` says *slightly*, and the
+reasoning stands alone: **one-way ground is ordinary on a terraced board, not exceptional**, so an
+85% cut would price every movement decision rather than a rare trap. Flipping back on evidence this
+thin would be the same mistake pointing the other way. **What the episode actually exposes is that
+nothing here can currently tell a real movement regression from sampling noise**, which is worth more
+than either value.
+
+**A unit never blocks itself.** `Pathfinder._base_cost` refused any occupied cell, which is right for
+everyone else and wrong for the mover. Forward floods never noticed because `reachable_costs` exempts
+its origin by construction; a **reverse** flood did — "which cells can reach where I am standing"
+answered "none", every time.
+
+**`ride_mag_lift.tres` is the lift's planner action**, and it could not have arrived by accident: a
+lift is not a `Pathfinder` edge at all. **`lift_advance` measures the ride's value at the cell it
+takes you to**, which the framework does not do on its own — it scores cells, and a lift's whole
+point is the other one.
+
+**A second directionality finding, recorded not fixed:** `_path_cost_from_target` floods *outward
+from the target*, so on one-way ground it answers "how far could the target walk here", not "how far
+must I walk to them". The two disagree exactly on the ground a lift serves, which is why
+`lift_advance` reads the mover's own reachability instead. `_closes_distance` still uses the outward
+flood; that is the AI's distance model and its own item.
+
+**`seeds_to_first_win`, four draws per tree: 1, 1, 2, 3, 3 before the block and 1, 1, 2, 2, 3, 4
+after.** Indistinguishable, which is the honest answer — the block neither helped nor hurt mission
+completion on generated maps, and the taskblock's own guess that vertical actions might move it is
+not supported. **Whether generated maps use their verticality at all is the open half**, and it now
+has a measurement problem in front of it rather than a behaviour one.
+
+
 ## Taskblock 61 — the hunt
 
 ### Pass G — the supervisor's verdicts, and the ordering `BR51.21` uncovered

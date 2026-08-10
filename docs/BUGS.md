@@ -2657,23 +2657,6 @@ is_disabled` for the same part. The disappearance here is that disagreement made
 - **Judged against the ledger's hitch bar** — worst frame over roughly 100 ms — not against an average.
   Measure before treating it as severe.
 
-### BR62.02 — Active — owner: `CC`
-**Two `Control`-free source files sit exactly at gdlint's 1000-line cap, so any addition breaks the build**
-- **cluster:** `tooling`
-- **Source:** `CC`, 2026-08-09, taskblock-62 Passes B and C1.
-- `board_view.gd` and `bout_injector.gd` were both at **exactly 1000 lines**. Adding one line to
-  either fails `gdlint` and therefore the whole gate, including the targeted rung — so an
-  unrelated one-line change is blocked until someone extracts a file.
-- Hit **twice in one taskblock**: Pass B extracted `BoardOverlays` from `board_view.gd`; Pass C1
-  had to compress a debug verb to net zero lines in `bout_injector.gd` rather than extract,
-  because the extraction was not the pass's subject.
-- **And these are the same two files taskblock-61 hit** — `BR60.02`'s own archived closure records
-  *"third file this block to hit that cap, after `board_view.gd` and `bout_injector.gd`"*. Two
-  blocks running, the same files, the same tax.
-- **The cap is right and the response is the problem.** A file parked one line under a hard limit
-  turns "add a feature" into "refactor first, at a moment nobody chose". Worth a deliberate pass
-  over whichever files are within ~50 lines of the cap, rather than paying it per accident.
-
 ### BR61.14 — Active — owner: `SUPERVISOR`
 **A large hitch on the camera move from overview to over-the-shoulder**
 - **cluster:** `framerate`
@@ -2682,3 +2665,20 @@ is_disabled` for the same part. The disappearance here is that disagreement made
   OTS camera *swings behind* the unit; this is the transition into OTS at all.
 - **Both are likely retired by the aiming and camera rebuild**, so measure and record rather than
   tuning the current rig.
+
+### BR62.02 — Active — owner: `CC`
+**Two source files sit exactly at gdlint's 1000-line cap, so any addition breaks the build**
+- **cluster:** `tooling`
+- **Source:** `CC`, 2026-08-09, taskblock-62 Passes B and C1.
+- `board_view.gd` and `bout_injector.gd` were both at **exactly 1000 lines**. Adding one line to
+  either fails `gdlint` and therefore the whole gate, including the targeted rung — so an
+  unrelated one-line change is blocked until someone extracts a file.
+- Hit **twice in one taskblock**: Pass B extracted `BoardOverlays` from `board_view.gd`; Pass C1
+  had to compress a debug verb to net zero lines in `bout_injector.gd` rather than extract,
+  because the extraction was not the pass's subject.
+- **And these are the same two files taskblock-61 hit** — `BR57.02`'s own archived closure records
+  *"third file this block to hit that cap, after `board_view.gd` and `bout_injector.gd`"*. Two
+  blocks running, the same files, the same tax.
+- **The cap is right and the response is the problem.** A file parked one line under a hard limit
+  turns "add a feature" into "refactor first, at a moment nobody chose". Worth a deliberate pass
+  over whichever files are within ~50 lines of the cap, rather than paying it per accident.

@@ -335,11 +335,12 @@ func test_every_authored_action_declares_at_least_one_precondition() -> void:
 
 	# The pool has grown past Pass B's deliberate four: the mission actions (a
 	# combat-only pool completed 0% of bouts), overwatch, taskblock-46's four search
-	# verbs (a unit matching no gate was offered nothing at all), and Pass E's
-	# `flank` and `suppress` — the only two tier-table rows whose executors already
-	# existed. The count is asserted so a `.tres` going missing is loud, not because
-	# any number was ever the target.
-	assert_eq(pool.size(), 14, "the authored pool is fourteen rows")
+	# verbs (a unit matching no gate was offered nothing at all), Pass E's `flank` and
+	# `suppress` — the only two tier-table rows whose executors already existed — and
+	# tb62 Pass E's `ride_mag_lift`, the first action whose subject is the board rather
+	# than a part or an enemy. The count is asserted so a `.tres` going missing is loud,
+	# not because any number was ever the target.
+	assert_eq(pool.size(), 15, "the authored pool is fifteen rows")
 	for action: UtilityActionDef in pool:
 		assert_false(
 			action.preconditions.is_empty(), "%s must state when it is even possible" % action.id

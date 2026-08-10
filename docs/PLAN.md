@@ -91,104 +91,57 @@ results are then consumed in turn order — never to the acting itself.
 
 # NEXT
 
-### 1. Author `step_height` onto parts
-**Needs:** `step_height` existing, which landed at taskblock-60 Pass A. **Unblocks:** step height
-reading as *chassis* rather than as a constant.
+### 1. A body's standing height should derive from its legs
+**Needs:** nothing. **Unblocks:** any leg part whose length differs from `leg.tres`'s.
 
-**The number itself is settled: `Unit.BASE_STEP_HEIGHT` is 0.4**, the supervisor's call on
-2026-08-07 — three steps to climb one level, with 0.5 rejected as too generous a slope. The 0.3
-that shipped in Pass A was a misreading: `PLAN`'s own *"two ordinary tiles at 0.3 and 0.6"* names
-tile **heights**, and that flight's steps are 0.3, 0.3 and **0.4**, so the example needs 0.4 to
-work at all. Measured at 40x30 over eight seeds: **15.7% of walkable cells raised and 0 stranded**,
-against the retired ramps' 15.8% — so the retirement cost essentially no elevation at this value.
+**Found while authoring the first alternative leg (tb62 Pass A) and it is why that part was
+deleted rather than shipped.** `BodyAssembler` pins the torso at the cell's floor and hangs the
+legs down from the torso's own `HIP` socket, so a **longer leg puts its foot below the floor
+plane** instead of raising the hip. The socket transform lives on the torso and is shared, so no
+leg part can express "this body stands taller" today.
 
-**What is left is the per-unit half, which is real and untested by content.** Nothing carries a
-`step_height` modifier, so `Unit.lowest_step_height` always returns the base today.
+- **The stat half is done and is not blocked by this.** `Unit.step_height()` reads a maximum over
+  authored legs and a body with longer legs steps higher; what it cannot do is *look* like it.
+- **It is a real visual/logic disagreement**, the class taskblock-59 spent a block removing — the
+  data would say one thing and the screen another.
+- The shape is a standing height derived from the assembly rather than assumed at zero. Not
+  designed here.
 
-- **Legs are the obvious home**, and **long legs stepping higher is the thing a ramp could never
-  express** — it is the whole reason the stat is per-unit rather than a constant.
-- **A chassis with no step height at all is why ramps come back.** *That* is a real mechanical
-  category — tracked, legless, needing a continuous slope — and it is about the chassis, not about
-  a cell being labelled. It needs authored parts that set the stat to zero before it can be built,
-  which is why it sits behind this.
+### 2. The AI's distance model floods the wrong way on one-way ground
+**Needs:** nothing. **Unblocks:** `closes_distance` meaning what it says on a terraced board.
 
-### 2. Multi-level cleanup
-**Needs:** nothing. **Unblocks:** vertical movement being as legible and as interruptible as
-horizontal movement.
+**`UtilityContext._path_cost_from_target` is a forward flood rooted at the target**, so it answers
+*"how far could the target walk to this cell"* — not *"how far must I walk to the target"*. On
+symmetric ground the two agree and it has never mattered. **On one-way ground they disagree
+exactly**, and one-way ground is what a terraced map is made of: dropping off a shelf is cheap, so
+the flood reads a cell under a shelf as nearly as good as one on it.
 
-**Most of this item has landed.** `BR46.02` (one-way ground) closed in taskblock-53 Pass D when the
-generator took on navigability; ramps-where-missing landed with it; a climb became interruptible in
-Pass E; ladders arrived as the route that does not need a capability. **What is left is the tail.**
+- **Measured at tb62 Pass E**, where a lift's boarding pad scored a `lift_advance` of 0.08 against
+  a true value of 1.0 — the ride was the only route to the target and the outward flood said it
+  saved almost nothing.
+- **`lift_advance` works around it** by reading the mover's own reachability
+  (`MapNavigability.cells_that_can_reach`). `_closes_distance` still uses the outward flood, and
+  that is the item.
+- **The fix is a reverse flood with costs**, which does not exist yet — `cells_that_can_reach` is
+  unweighted. Weighing it is the work.
 
-- **A hop-down cannot be interrupted.** taskblock-53 Pass E made `ClimbAction` check the overwatch hook
-  on the cell it steps onto — `HopDownAction` still checks nothing. Half a pass, and the inconsistency
-  is the argument: *every real exposure the same* (`docs/09`).
-- **The planner does not know a hop-down is one-way.** A unit that drops off a ledge to reach something
-  strands itself for the rest of the bout. "Can I get back?" belongs in the decision rather than being
-  discovered afterwards. **Stranding is a legitimate outcome** — a player knocking someone into a pit is
-  the game working — but a unit choosing it *unknowingly* is not.
-- **Prefer access routes: penalise ungated descent, exempt ramps.** Weight a candidate cell *slightly*
-  worse when reaching it means dropping a level, and not at all via a ramp. Units then route through
-  ramps without any rule naming ramps, and a ramp is two-way. **"Slightly" is load-bearing:** a hop-down
-  to reach an otherwise unreachable target must still win when the reason is good enough. It is a
-  consideration weight, so it is data. **Deliberately held until after the one-way awareness above** —
-  with the generator already guaranteeing a route out, this is a *preference*, and landing both at once
-  would hide which one did the work.
-- **A confined unit should be legible, not silent.** Escalate to an **agitated roam** or **pace** —
-  visibly restless rather than idle — and after a few turns of no progress, **shut down**. This does not
-  fix terrain and must not be logged as though it did; it stops a stranded unit from being
-  indistinguishable from a hang.
+### 3. `BR60.01`'s repair — unreachable raised ground is detected and nothing fixes it
+**Needs:** nothing. **Unblocks:** closing `BR60.01`.
 
-**Not doing: authoring a `CLIMBER` part.** Climbing parts are the exception, not the rule, and **a map
-must be navigable without one** — which is what ladders are for. `Shell.can_climb()` reads a tag no part
-carries, and that is correct rather than a gap.
+Unchanged by taskblock-62, and now the last of the multi-level work. The generator detects raised
+ground no unit can reach and reports it; nothing repairs it. **A decision between three shapes** —
+flatten it, stand a route to it, or accept it as scenery — and that is a supervisor call rather
+than an implementation.
 
-**The AI queuing a vertical move is its own item** below, not part of this one.
+### 4. The destroyed-ladder fall
+**Needs:** forced movement. **Unblocks:** terrain destruction meaning something vertically.
 
-### 3. A climb needs a position along it
-**Needs:** nothing. **Unblocks:** partial climbs, mid-action terrain destruction, and the
-destroyed-ladder fall — see the fourth bullet.
-
-**A climb needs a position along it, and that unlocks four things at once.** taskblock-53 made a climb
-interruptible, but a climb is still *atomic in cost*: `ClimbAction` charges the whole rise as one
-action, which is why a four-level ladder priced at 16 MP and was unaffordable outright until
-`LADDER_COST_SCALE` was corrected. **If a climb can be interrupted midway it should be payable midway
-too** — pay what this turn affords, finish next turn.
-
-- **That is the real fix for tall ladders**, not a cheaper scale factor. A tall climb costing several
-  turns is correct; a tall climb being unpurchasable is not.
-- **It sharpens the intended contrast.** A **ladder is direct but exposed**; a **ramp is indirect but
-  safe**. A four-level ladder may be the *only* way up, and paying for it across turns while standing on
-  it is exactly the exposure that should cost something. A ramp reaching the same height needs a long
-  circuitous route — slower, safer, and a real choice rather than a strictly-worse one.
-- **It is the missing piece under the destroyed-ladder fall.** That needs four things this project does
-  not have: **terrain destruction affecting whatever stands on or attaches to it**, **a unit occupying a
-  position partway up**, **interrupts firing mid-action** (landed, taskblock-53), and **falls / throws /
-  knockback as real movement**. Partial climb and mid-action destruction are the same "a climb has a
-  position along it" concept — build that and two of the four are one piece of work.
-- **Falls, throws and knockback share machinery with *Forced movement* and with `eject`**, which waits
-  on the same ballistic motion. Three items, one dependency.
-
-### 4. The AI can queue a vertical move
-**Needs:** nothing — `ClimbAction`/`HopDownAction` exist, are interruptible, and ladders are
-authored and placed by the generator (tb53 C/D/E). **Unblocks:** vertical maps being played
-rather than merely built.
-
-**No AI path has ever queued either action.** The planner moves exclusively via `MoveAction`, so
-vertical movement has never happened in a real bout — a fact that survived taskblock-37 building
-both actions and taskblock-53 making them safe to be caught in. With ladders now authored and the
-generator placing routes, this is the difference between a usable map and a decorative one.
-
-- **The scoring already knows about height.** `UtilityContext._closes_distance` reads PATH
-  distance from a flood rooted at the target, and `Pathfinder.move_cost` already prices a climb
-  and a ladder edge. What is missing is the **executor**: the step that turns "the best cell is
-  up there" into a queued `ClimbAction` instead of a `MoveAction` that cannot make the step.
-- **Split from taskblock-53 Pass E deliberately.** The interruption half landed there and is
-  self-contained; this half touches `UtilityExecutors` and the planner's action construction,
-  which is where a regression would be hardest to attribute. Doing both in one pass would have
-  meant a planner change riding along with a movement change.
-- **The proving ground is the test surface** — a generated map may or may not produce the
-  geometry that exercises this; the authored one is built to.
+**Two of its four dependencies landed at taskblock-62 Pass C2.** *"A unit occupying a position
+partway up"* is built — a unit's position is `(cell, height)` and a partial climb rests there — and
+*"interrupts firing mid-action"* landed at taskblock-53. What is left is **terrain destruction
+affecting whatever stands on or attaches to it** and **falls / throws / knockback as real
+movement**, which is the same machinery *Forced movement* and `eject` wait on. Three items, one
+dependency.
 
 ### 5. Do the tests approximate things the game already defines?
 **Needs:** nothing. **Unblocks:** trusting a headless measurement; the class of failure taskblock-61
@@ -220,6 +173,45 @@ breaks. A fixture that only passes with a one-box stand-in is telling you someth
 
 # QUEUED
 
+
+<!-- ------------------------------------------------------------------------ -->
+## Going up
+
+### A confined unit should be legible, not silent
+**Needs:** nothing. **Unblocks:** a stranded unit being distinguishable from a hang.
+
+**The last unbuilt bullet of the old *Multi-level cleanup* item**, which taskblock-62 otherwise
+closed. Escalate a unit that cannot make progress to an **agitated roam** or **pace** — visibly
+restless rather than idle — and after a few turns of no progress, **shut down**.
+
+**This does not fix terrain and must not be logged as though it did.** It stops a stranded unit
+from being indistinguishable from a frozen one, which is a legibility problem, not a navigation
+one. `can_return` (tb62 Pass D) means the planner now *avoids* stranding itself; this is for when
+it happens anyway — knocked into a pit, or spawned somewhere the generator's repair gave up on.
+
+### Weight a hop-down against ramps, not just against stranding
+**Needs:** taskblock-62 Pass D's `can_return`, which landed. **Unblocks:** units routing through
+gentle ground without any rule naming a ramp.
+
+**Deliberately held until after the one-way awareness, and that reasoning held up.** Weight a
+candidate cell slightly worse when reaching it means dropping a level, and not at all via a shallow
+rise. Units then prefer two-way ground without any rule naming ramps.
+
+**Landing both at once would have hidden which one did the work — and taskblock-62 proved that is
+not hypothetical.** `can_return`'s first curve floored a stranding cell at 0.15 and moved
+`seeds_to_first_win` from 1 to 7; at 0.85 it reads 2. With two new movement weights in play at once,
+that would have been unattributable. **Whatever this item authors, measure it alone.**
+
+### `LIFT_SHARE` wants evidence, not a number
+**Needs:** bouts played on maps carrying lifts. **Unblocks:** nothing; this is a tuning question
+that should not be answered by guessing.
+
+`MapGen.LIFT_SHARE` is **0.5**, a flagged placeholder — half the routes-up a generator repairs are
+mag lifts and half are ladders. It decides how often going up competes with **shooting** (AP) rather
+than with **walking** (MP), which is a real texture question and not a cosmetic one.
+
+**An even split is the honest "both should appear" default**, chosen so neither fixture is
+theoretical. What it wants is a played answer.
 
 <!-- ------------------------------------------------------------------------ -->
 ## Aiming and the camera
