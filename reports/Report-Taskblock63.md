@@ -1,11 +1,15 @@
 # Taskblock 63 Report — finish what taskblock 62 exposed
 
-Passes landed A, B, C, D3, then D1+D2 together, then E; the suite is green. **All five acceptance
-criteria are met** — the cap is 2500, a longer leg stands a unit taller with its feet on the floor,
-distance-to-target is the mover's cost, every generated map passes the flood at 40x30 and +4 exists,
-and no cell holds both a ladder and a lift. **One item from Pass E's list was declined and is
-queued**: the mag lift's two surfaces stacking in one cell, because stacking them removes the only
-thing the planner can currently measure about a ride.
+Passes landed A, B, C, D3, then D1+D2 together, then E; the suite was green at 3497 tests. All five
+acceptance criteria were met — the cap is 2500, a longer leg stands a unit taller with its feet on
+the floor, distance-to-target is the mover's cost, every generated map passes the flood at 40x30 and
++4 exists, and no cell holds both a ladder and a lift.
+
+**And then the block's real result arrived from a played bout: no bout produces a shot.** Two
+sessions after this landed — one all-chaingun roster, one mixed — fired **zero rounds** with units
+at point-blank range. Two independent defects, filed as `BR63.04` and `BR63.05`. **One of them is
+probably this block's.** See *"What this block shipped, and what it broke"* at the end, which is
+written after the fact and supersedes anything above it that reads as a clean landing.
 
 **Two of the taskblock's own premises turned out to be wrong**, and both are recorded where they
 matter rather than only here: the shot plane does *not* read `assembly_placements` and had to be
@@ -178,3 +182,84 @@ readings are available and I cannot separate them: either `closes_distance` is o
 `can_return`, cover and line-of-fire on the boards I could construct, or the boards were not
 adversarial enough. **What is certain is that the model could not previously tell an inescapable
 ditch from the shelf above it**, and that is worth having fixed whether or not a turn changes.
+
+
+---
+
+# What this block shipped, and what it broke
+
+*Appended after the block closed, from a played session and taskblock-64 Pass A1. **The summary at
+the top has been rewritten to match this**; the body above it was written before any of it was
+known.*
+
+## The headline
+
+**No bout produces a shot.** Two played bouts fired zero rounds across 31 turns with units at
+point-blank range. **The suite fired 481 rounds during this block's own full gate on the exact tree
+where an all-chaingun roster could not fire once** — that is the most important thing this block
+produced, and it is a fact about the tests rather than about the code.
+
+Two independent defects, and neither fix produces a working bout alone:
+
+- **`BR63.04` — a chaingun unit has no firing action it can reach.** Proven from data, **pre-existing,
+  and this block touched none of it.**
+- **`BR63.05` — units do not see enemies at one to two cells.** The failure is proven at decision
+  time; the cause is not.
+
+## The hypothesis I offered for `BR63.05` was wrong in its mechanism
+
+**I proposed that Pass D2's `_stand_wall` broke sight by making walls taller** — up to 6.4 where they
+were 2.4 — so lines that used to pass over a wall now hit one. **The supervisor's correction is that
+walls were only rarely too short, and were already tall enough to block sight between characters
+most of the time.** That is decisive against the mechanism as I stated it, and working it through, the
+arithmetic says so too:
+
+- `_stand_wall` places a wall at the **lowest** neighbouring floor and sizes it to clear the highest.
+  **The base is what a sight line meets**, and `LoS.SIGHT_HEIGHT` is 1.25.
+- A wall based at 0 blocks an eye-level line **whether it is 2.4 tall or 6.4 tall**. Making it taller
+  changes nothing for an observer on the ground.
+- The base only rises for a wall whose neighbours are raised — and a wall that moved *up* blocks
+  **less** at ground level, not more. **1751 walls standing above zero means 1751 walls that occlude
+  less than they used to**, not more.
+
+**So the change should have made units see more, not less**, everywhere except one case: two units
+standing *on* raised ground, whose eye level is above where a 0-based 2.4 wall topped out. There the
+change genuinely does introduce blocking that did not exist. That is a real and much narrower
+mechanism than the one I filed, and it is the only part of the hypothesis that survives.
+
+**I should have caught this without being told.** The number I quoted — walls up to 6.4 tall — is
+about the *top* of a box, and occlusion at eye level is decided by the *bottom*. I reported the
+figure I had measured rather than the one the question needed.
+
+## What taskblock-64 Pass A1 then established
+
+A two-cell fixture (`test/unit/logic/test_close_range_sight.gd`) walks the matrix and **every case
+answers "yes"**: flat at one and two cells; a wall in each of the ten cells off the line; a wall or a
+ladder standing on either endpoint; height differences of 0.4, 1.0, 2.0 and 4.0; a wall beyond the
+target on raised ground; and the whole path through a restricted `WorldView.units_visible_to`.
+
+Two findings from it that outlive the negative result:
+
+- **A wall between two units does block**, so the "yes" everywhere else is not vacuity.
+- **Cover does not block sight.** A crate tops out below `SIGHT_HEIGHT`, so an eye-level line passes
+  over it. That removes the innocent reading of the two-cell observation — *"a crate was in the
+  way"* is not available. **Only walls blind.**
+
+Combined with the supervisor's correction, the two together point somewhere specific: **a walled
+board legitimately blinds most pairs**, walls were already doing that before this block, and the
+question is no longer "did taller walls break sight" but "was sight ever different, and is the
+19%-against-65% acquisition rate a regression at all or a property of these boards".
+
+## The test I wrote guarantees a failure mode rather than catching it
+
+`test_no_generated_wall_is_shorter_than_the_floor_beside_it` asserts walls are **tall enough** and
+nothing asserts the converse. Whatever taskblock-64 concludes, **the converse belongs in the suite** —
+and on the corrected mechanism the converse worth asserting is about a wall's **base**, not its
+height: a wall must not float above the ground it is supposed to occlude.
+
+## Corrected numbers
+
+Nothing in the measurements above is retracted. The one figure that was reported in a misleading
+frame is *"a wall can be 6.4 tall where it was 2.4"* — true, and **not the quantity that decides
+occlusion**. The quantity that decides it is the 1751 walls whose base moved off zero, and their
+effect is the opposite sign from the one I attributed to them.
