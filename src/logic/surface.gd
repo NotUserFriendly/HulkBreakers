@@ -83,7 +83,20 @@ const MAG_LIFT_TAG: StringName = &"mag_lift"
 ## rise the proving-ground map uses between its tiers, so one segment serves one tier.
 ## The real answer arrives with authored ladder art, whose box height should drive
 ## this instead of a constant.
-const LADDER_SEGMENT_RISE: float = 2.0
+## How much rise one ladder segment covers, and how tall `ladder.tres`'s own box is — the two
+## must agree or a ladder reaches somewhere its mesh does not.
+##
+## **2.0 -> 1.0 at tb64 Pass F (`BR63.01`), on the supervisor's call.** A 2.0 segment overshot its
+## own destination by a full level on the commonest rise the generator makes: `_stamp_ladder`
+## computes `ceil(rise / LADDER_SEGMENT_RISE)`, so a 1.0 rise got one piece standing 1.0 proud of
+## the floor it served.
+##
+## **Climb cost does not move, and did not need re-scaling.** `Pathfinder.move_cost` prices a
+## ladder edge as `ceil(CLIMB_COST * level_delta * LADDER_COST_SCALE)` — by **rise**, never by
+## segment count — so halving this changes how many pieces stand and nothing about what climbing
+## costs. The instruction was "hold climb cost steady"; it is held by the arithmetic already
+## being height-based, not by a compensating constant.
+const LADDER_SEGMENT_RISE: float = 1.0
 
 var part: Part
 ## This surface's own real world elevation — tb37 already made height

@@ -138,7 +138,8 @@ static func assembly_placements(
 	orientation: float = 0.0,
 	pose: Pose = null,
 	height: float = 0.0,
-	include_joints: bool = false
+	include_joints: bool = false,
+	include_sockets: bool = true
 ) -> Array[BoxPlacement]:
 	var result: Array[BoxPlacement] = []
 	_walk(
@@ -147,9 +148,38 @@ static func assembly_placements(
 		unit_transform(root, cell, orientation, height, pose),
 		result,
 		pose,
-		include_joints
+		include_joints,
+		include_sockets
 	)
 	return result
+
+
+## **Every box a placed `Surface` contributes — its own volume and nothing socketed onto it.**
+## `BR63.02`, tb64 Pass F.
+##
+## `GridPlacement.place` gives a side-attaching part **two homes**: it becomes a `Surface` at its
+## own cell *and* an occupant of a host's socket. Both were then drawn, from different transforms,
+## so one ladder rendered as two boxes 0.5 apart in z — the socket chain putting it on the host
+## floor's ledge and its own `Surface` record putting it at cell centre `+0.45`. That is the
+## "strange offset" `BR63.02` describes, and it is also two boxes for a ray to meet.
+##
+## **The `Surface` record wins, on the supervisor's call**, because it is already the authority
+## everything else reads: `Surface.ladder_reach_at` and `ladder_serves_climb` walk
+## `grid.surfaces_at`, never the socket links. The attachment stays — it is the placement grammar,
+## and an occupied socket is what stops a second ladder taking the same face — it simply stops
+## emitting geometry.
+##
+## **Safe because every socket occupant of a surface is independently placed**, measured rather
+## than assumed: across five generated boards, 35 occupants, all of them carrying their own
+## `Surface`, zero orphans. Only two terrain parts author sockets at all (`ladder`'s `STACK` and
+## `ship_floor`'s four `LEDGE`s), and both are filled exclusively by `GridPlacement.place`, which
+## always registers a `Surface`. **A future part that sockets a purely decorative child onto a
+## floor would stop being drawn** — that is the limit of this rule, and it is stated so the next
+## reader does not have to rediscover it.
+static func surface_placements(surface: Surface) -> Array[BoxPlacement]:
+	return assembly_placements(
+		surface.part, surface.cell, surface.facing, null, surface.height, false, false
+	)
 
 
 ## **The transform that puts an assembled body at a cell** — board position, the
@@ -280,7 +310,8 @@ static func _walk(
 	unit_transform: Transform3D,
 	result: Array[BoxPlacement],
 	pose: Pose,
-	include_joints: bool = false
+	include_joints: bool = false,
+	include_sockets: bool = true
 ) -> void:
 	# tb61 Pass B (`BR60.02`): **left as `hp > 0`, and the attempt to unify it is why.**
 	#
@@ -303,6 +334,10 @@ static func _walk(
 	if part.hp > 0:
 		for box: Box in part.volume:
 			result.append(BoxPlacement.new(part, box, unit_transform * part_transform))
+	# `BR63.02`, tb64 Pass F: a placed `Surface` emits its own volume only — see
+	# `surface_placements` for why, and for the one case it would get wrong.
+	if not include_sockets:
+		return
 	for socket: Socket in part.sockets:
 		if socket.occupant == null:
 			continue
@@ -326,7 +361,15 @@ static func _walk(
 					socket
 				)
 			)
-		_walk(socket.occupant, child_transform, unit_transform, result, pose, include_joints)
+		_walk(
+			socket.occupant,
+			child_transform,
+			unit_transform,
+			result,
+			pose,
+			include_joints,
+			include_sockets
+		)
 
 
 ## docs/10 taskblock04 A2: "compute each unit's bounding sphere from its

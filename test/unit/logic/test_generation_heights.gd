@@ -175,8 +175,16 @@ func test_a_ladder_carries_a_drop_too_tall_to_hop() -> void:
 		"a four-level drop is not a hop, and with no ladder it is not an edge"
 	)
 
-	GridPlacement.place(grid, Vector2i(0, 1), DataLibrary.get_part(&"ladder"), 0.0)
-	GridPlacement.place(grid, Vector2i(0, 1), DataLibrary.get_part(&"ladder"), 2.0)
+	# tb64 Pass F: enough segments to span the four-level drop, sized from the constant rather
+	# than hard-coded — `Surface.LADDER_SEGMENT_RISE` went 2.0 -> 1.0 and this fixture had the
+	# old spacing baked in, which left the ladder reaching 3.0 of a 4.0 face.
+	for step: int in range(int(4.0 / Surface.LADDER_SEGMENT_RISE)):
+		GridPlacement.place(
+			grid,
+			Vector2i(0, 1),
+			DataLibrary.get_part(&"ladder"),
+			float(step) * Surface.LADDER_SEGMENT_RISE
+		)
 
 	gut.p(
 		(

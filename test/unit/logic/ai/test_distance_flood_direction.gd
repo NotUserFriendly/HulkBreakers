@@ -45,7 +45,11 @@ func _terrace(laddered: bool) -> Grid:
 		for x: int in range(1, 8):
 			GridFixture.place_floor(grid, Vector2i(x, y), 2.0)
 	if laddered:
-		GridPlacement.place(grid, Vector2i(0, 1), DataLibrary.get_part(LADDER), 0.0)
+		# tb64 Pass F: the shelf is 2.0 and `Surface.LADDER_SEGMENT_RISE` is now 1.0, so the
+		# route up takes **two** segments. One reaches 1.0 and leaves `(0,1)` cut off entirely —
+		# which the flood reports by simply not containing the cell, not by costing more.
+		for height: float in [0.0, 1.0]:
+			GridPlacement.place(grid, Vector2i(0, 1), DataLibrary.get_part(LADDER), height)
 	return grid
 
 

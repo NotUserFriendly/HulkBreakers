@@ -274,7 +274,10 @@ func _ladder_board() -> Grid:
 	var grid := GridFixture.flat(6, 6)
 	for y: int in range(6):
 		GridFixture.place_floor(grid, Vector2i(2, y), 2)
-	GridPlacement.place(grid, Vector2i(1, 0), DataLibrary.get_part(LADDER), 0.0)
+	# tb64 Pass F: `LADDER_SEGMENT_RISE` is 1.0, so the 2.0 shelf takes **two** segments. The rise
+	# is unchanged and so is every MP figure below — a ladder edge is priced by rise, not by pieces.
+	for height: float in [0.0, 1.0]:
+		GridPlacement.place(grid, Vector2i(1, 0), DataLibrary.get_part(LADDER), height)
 	return grid
 
 
@@ -371,14 +374,24 @@ func test_an_overwatcher_catches_a_climb_through_no_second_code_path() -> void:
 # --- a climb has a position along it (tb62 Pass C2) -----------------------------------
 
 
-## A four-segment ladder: 8.0 of rise from (0,0) to the shelf at (1,0). At
+## An eight-segment ladder: 8.0 of rise from (0,0) to the shelf at (1,0). At
 ## `LADDER_COST_SCALE` that edge costs `ceil(4.0 * 8.0 * 0.5)` = 16 MP, which is more than
 ## any turn's whole budget — the case `LADDER_COST_SCALE` was lowered to paper over.
+##
+## **Eight pieces since tb64 Pass F, and the same 16 MP.** `LADDER_SEGMENT_RISE` went 2.0 -> 1.0,
+## so the same rise needs twice the segments — and costs exactly what it did, because
+## `Pathfinder.move_cost` prices the edge by rise and never counts pieces. The number in the
+## sentence above is the one that matters and it did not move.
 func _tall_ladder_board() -> Grid:
 	var grid := GridFixture.flat(3, 1)
 	GridFixture.place_floor(grid, Vector2i(1, 0), 8.0 / UnitGeometry.LEVEL_HEIGHT)
-	for height: float in [0.0, 2.0, 4.0, 6.0]:
-		GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), height)
+	for step: int in range(8):
+		GridPlacement.place(
+			grid,
+			Vector2i(0, 0),
+			DataLibrary.get_part(LADDER),
+			float(step) * Surface.LADDER_SEGMENT_RISE
+		)
 	return grid
 
 
@@ -403,9 +416,12 @@ func test_a_climb_longer_than_the_turn_leaves_the_unit_partway_up() -> void:
 	assert_true(move.is_legal(state), "a climb that can be STARTED is legal")
 	var result: Dictionary = move.apply_interruptible(state)
 
-	gut.p("after one turn: cell %s, height %.2f, ap %d, mp %.1f" % [
-		unit.cell, unit.height, unit.ap, unit.mp
-	])
+	gut.p(
+		(
+			"after one turn: cell %s, height %.2f, ap %d, mp %.1f"
+			% [unit.cell, unit.height, unit.ap, unit.mp]
+		)
+	)
 	assert_true(result.stopped, "the move reports it could not complete")
 	assert_eq(unit.cell, Vector2i(0, 0), "the unit is still on the ladder's own cell")
 	assert_gt(unit.height, 0.0, "but no longer on the floor of it")

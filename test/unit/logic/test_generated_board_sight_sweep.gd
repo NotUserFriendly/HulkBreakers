@@ -69,9 +69,7 @@ func _blamed(grid: Grid, a: Vector2i, b: Vector2i) -> String:
 			continue
 		if RayCaster._below_or_above(surface, y_low, y_high):
 			continue
-		var places: Array[BoxPlacement] = UnitGeometry.assembly_placements(
-			surface.part, surface.cell, surface.facing, null, surface.height
-		)
+		var places: Array[BoxPlacement] = UnitGeometry.surface_placements(surface)
 		for placement: BoxPlacement in places:
 			var hit: Dictionary = UnitPicker.ray_box_hit(placement, from, dir)
 			if not hit.is_empty() and float(hit["t"]) <= limit:
@@ -205,8 +203,16 @@ func test_the_sight_predicate_and_the_ray_march_agree_on_this_board() -> void:
 				if distance <= 0.0001:
 					continue
 				var any_hit: bool = RayCaster.obstructed(grid, from, to, excluded)
+				# **`span`, not `span / distance`.** `cast_geometry` normalises what it is
+				# given, so handing it an already-normalised vector normalises twice and lands
+				# one float ULP away from the `span / length` that `obstructed` computes
+				# internally. That is invisible until a ray passes through a box's exact corner,
+				# where one ULP decides hit from miss — measured on this seed at
+				# `(21,7)->(24,9)`, grazing a forklift's corner vertex at (21.45, 2.10, 7.30).
+				# Neither loop is wrong there; the query is ill-posed. Passing the raw span is
+				# what makes the two directions bit-identical and the comparison meaningful.
 				var nearest: RayHit = RayCaster.cast_geometry(
-					grid, from, span / distance, excluded, distance - 0.0001
+					grid, from, span, excluded, distance - 0.0001
 				)
 				compared += 1
 				if any_hit:

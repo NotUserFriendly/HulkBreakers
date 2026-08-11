@@ -167,6 +167,46 @@ a weapon straight onto a torso with no manipulator and no docked matrix; the bou
 minutes against one second of CPU. Rebuilt on `test_bout_runner.gd`'s known-good shape, and recorded
 because "nearly a unit" is a cheaper fixture only until it isn't.
 
+### Pass F — the ladder is one piece per level, drawn once
+
+**`BR63.01`: `Surface.LADDER_SEGMENT_RISE` 2.0 -> 1.0**, and `ladder.tres`'s box with it. A 1.0
+rise stamps **one piece topping out at exactly 1.00** where it used to stand a full level proud of
+the floor it served — `_stamp_ladder` computes `ceil(rise / LADDER_SEGMENT_RISE)`, so the segment
+size decides both the count and the overshoot. A 4.0 rise now stacks four flush segments where it
+stacked two.
+
+**Climb cost did not move, and the instruction to hold it steady needed no compensating number.**
+`Pathfinder.move_cost` already prices a ladder edge as `ceil(CLIMB_COST * level_delta *
+LADDER_COST_SCALE)` — **by rise, never by segment count** — so halving the segment changes how many
+pieces stand and nothing about what climbing costs. Pinned by its own test, because the claim only
+holds while that formula stays height-based.
+
+**`BR63.02` was a double-draw, not the offset its entry guessed at.** `GridPlacement.place` gives a
+side-attaching part **two homes** — its own `Surface` and a host's socket — and both were drawn,
+from different transforms, so one ladder rendered as two panels 0.5 apart in z. The `Surface` record
+wins on the supervisor's call, because it is already what `Surface.ladder_reach_at` and
+`ladder_serves_climb` read; the attachment stays as placement grammar and simply stops emitting
+geometry.
+
+**`UnitGeometry.surface_placements` is the one entry point**, not a flag threaded through
+`BoardView` and `RayCaster`'s two surface loops. A flag half-applied is exactly how the two ray
+loops came to disagree in `BR64.01`, and the same shape was available here.
+
+**Safe because every socket occupant of a surface is independently placed — measured, not assumed:
+35 occupants across five generated boards, all carrying their own `Surface`, zero orphans.** Only
+`ladder` and `ship_floor` author sockets at all. The limit is stated in the function's own comment:
+a part socketing a purely decorative child onto a floor would stop being drawn.
+
+**Measured on the sweep seed.** The `ladder (surface on ship_floor)` blame bucket — **57 blind
+pairs — is gone entirely**, and `ladder (surface)` falls **101 -> 37** because a 1.0 segment tops out
+below `LoS.SIGHT_HEIGHT` (1.25). Blind pairs inside Chebyshev 3: **722 -> 660**, Chebyshev 2
+**195 -> 172**, Chebyshev 3 **512 -> 469**.
+
+**One of this block's own tests became vacuous and was caught.** `BR64.01`'s control asserted *"a
+2.0 ladder across the line still blocks"*; with 1.0 segments it stopped blocking for a reason
+unrelated to what the test is about. It now stacks two segments, with the reason recorded — a
+control that silently stops controlling is worse than one that fails.
+
 ### Pass G — two clocks, and one of them was a second door onto an old bug
 
 **`BR63.03` was a gameplay defect as well as a drawing one**, which is the question the entry asked

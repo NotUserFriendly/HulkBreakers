@@ -46,7 +46,7 @@ func test_a_floor_authors_ledge_sockets_for_anything_to_attach_to() -> void:
 
 
 func test_a_ladder_side_attaches_to_a_raised_surface() -> void:
-	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var grid: Grid = _grid_with_step(0.0, 1.0)
 	var placed: Surface = GridPlacement.place(
 		grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0
 	)
@@ -70,8 +70,11 @@ func test_a_ladder_with_no_surface_to_attach_to_is_rejected() -> void:
 
 ## **Tileable to arbitrary height**, and the whole rule is that the same cell is searched.
 func test_three_stacked_segments_span_three_levels() -> void:
-	var grid: Grid = _grid_with_step(0.0, 6.0)
-	var heights: Array[float] = [0.0, 2.0, 4.0]
+	# tb64 Pass F: **the numbers and the name agree now.** `LEVEL_HEIGHT` is 1.0, so this asserted
+	# a reach of 6.0 while calling it "three levels" — it was counting in 2.0 segments. With
+	# `LADDER_SEGMENT_RISE` at 1.0 the three segments span three levels literally.
+	var grid: Grid = _grid_with_step(0.0, 3.0)
+	var heights: Array[float] = [0.0, 1.0, 2.0]
 	for height: float in heights:
 		var segment: Surface = GridPlacement.place(
 			grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), height
@@ -84,7 +87,7 @@ func test_three_stacked_segments_span_three_levels() -> void:
 	assert_eq(ladders, 3, "three segments stand at one cell, above the floor already there")
 	assert_almost_eq(
 		Surface.ladder_reach_at(grid, Vector2i(0, 0)),
-		6.0,
+		3.0,
 		0.001,
 		"three segments reach three levels"
 	)
@@ -93,7 +96,7 @@ func test_three_stacked_segments_span_three_levels() -> void:
 ## **The socket taken is the one physically faced.** Four `LEDGE` sockets exist so a platform
 ## can be laddered on any side; taking an arbitrary one would make the transforms decorative.
 func test_the_socket_taken_is_the_one_on_the_side_the_ladder_stands() -> void:
-	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var grid: Grid = _grid_with_step(0.0, 1.0)
 	var host: Part = grid.surfaces_at(Vector2i(1, 0))[0].part
 	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
 
@@ -124,7 +127,7 @@ func _climber(cell: Vector2i, grid: Grid) -> Unit:
 ## **The block's governing decision, tested directly:** a map must be navigable by a unit with
 ## no climbing capability, so a ladder is what a plain shell uses.
 func test_a_unit_with_no_climbing_capability_climbs_a_ladder() -> void:
-	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var grid: Grid = _grid_with_step(0.0, 1.0)
 	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
 	var unit: Unit = _climber(Vector2i(0, 0), grid)
 	assert_false(unit.shell.can_climb(), "sanity: this shell cannot climb a bare face")
@@ -139,7 +142,7 @@ func test_a_unit_with_no_climbing_capability_climbs_a_ladder() -> void:
 
 
 func test_the_same_unit_cannot_climb_a_bare_face() -> void:
-	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var grid: Grid = _grid_with_step(0.0, 1.0)
 	var unit: Unit = _climber(Vector2i(0, 0), grid)
 	var state := CombatState.new(grid, [unit])
 	state.assign_all_to_human()
@@ -182,7 +185,7 @@ func test_a_ladders_reach_is_what_bounds_the_climb_not_the_bare_face_cap() -> vo
 
 ## **One term in `move_cost`**, and the planner's idea of a legal edge must match the action's.
 func test_move_cost_opens_a_ladder_edge_for_a_non_climber() -> void:
-	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var grid: Grid = _grid_with_step(0.0, 1.0)
 	var bare := Pathfinder.new(grid)
 	assert_lt(
 		bare.move_cost(Vector2i(0, 0), Vector2i(1, 0)),
@@ -210,7 +213,7 @@ func test_move_cost_prefers_a_stair_step_over_a_ladder() -> void:
 	var stair_grid: Grid = _grid_with_step(0.0, Unit.BASE_STEP_HEIGHT)
 	var stair_cost: float = Pathfinder.new(stair_grid).move_cost(Vector2i(0, 0), Vector2i(1, 0))
 
-	var ladder_grid: Grid = _grid_with_step(0.0, 2.0)
+	var ladder_grid: Grid = _grid_with_step(0.0, 1.0)
 	GridPlacement.place(ladder_grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
 	var ladder_cost: float = Pathfinder.new(ladder_grid).move_cost(Vector2i(0, 0), Vector2i(1, 0))
 
@@ -237,7 +240,7 @@ func test_a_ladder_is_destructible_unlike_the_floor_it_hangs_from() -> void:
 ## **Cutting the ladder cuts the route** — the whole point of it being a part. Asserted
 ## through `move_cost` rather than by inspecting the grid, because the route is what matters.
 func test_removing_a_ladder_closes_the_route_again() -> void:
-	var grid: Grid = _grid_with_step(0.0, 2.0)
+	var grid: Grid = _grid_with_step(0.0, 1.0)
 	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
 	assert_gt(Pathfinder.new(grid).move_cost(Vector2i(0, 0), Vector2i(1, 0)), 0.0)
 
@@ -253,4 +256,126 @@ func test_removing_a_ladder_closes_the_route_again() -> void:
 		Pathfinder.new(grid).move_cost(Vector2i(0, 0), Vector2i(1, 0)),
 		0.0,
 		"with the ladder gone the ledge is unreachable again"
+	)
+
+
+# --- tb64 Pass F: BR63.01 and BR63.02 -----------------------------------------
+
+
+## **`BR63.01`: a one-level rise gets one piece that reaches exactly its destination.**
+##
+## `_stamp_ladder` computes `ceil(rise / Surface.LADDER_SEGMENT_RISE)`, so the segment size is
+## what decides both how many pieces stand and how far the top one overshoots. At 2.0 a 1.0 rise
+## got a single piece standing a full level proud of the floor it served — one ladder, twice as
+## tall as the thing it climbed.
+func test_a_one_level_rise_gets_one_segment_that_does_not_overshoot() -> void:
+	var grid: Grid = GridFixture.flat(6, 6, 0.0)
+	GridFixture.place_floor(grid, Vector2i(3, 2), 1.0)
+
+	assert_true(MapGen._open_a_route_out(grid, Vector2i(2, 2)), "a 1.0 rise gets a route")
+
+	var segments: Array[Surface] = []
+	var top: float = -INF
+	for surface: Surface in grid.surfaces_at(Vector2i(2, 2)):
+		if Surface.LADDER_TAG not in surface.part.tags:
+			continue
+		segments.append(surface)
+		for placement: BoxPlacement in UnitGeometry.surface_placements(surface):
+			var centre: Vector3 = placement.transform * placement.box.center
+			top = maxf(top, centre.y + placement.box.size.y * 0.5)
+
+	gut.p("  %d segment(s), topping out at %.2f for a 1.0 rise" % [segments.size(), top])
+	assert_eq(segments.size(), 1, "one level is one piece")
+	assert_almost_eq(top, 1.0, 0.001, "and it stops at the floor it serves, not a level above it")
+	assert_true(
+		Surface.ladder_serves_climb(grid, Vector2i(2, 2), Vector2i(3, 2)),
+		"and it still opens the climb it was stood for"
+	)
+
+
+## A rise that genuinely needs several pieces gets them, stacked with no gap.
+func test_a_four_level_rise_stacks_four_flush_segments() -> void:
+	var grid: Grid = GridFixture.flat(6, 6, 0.0)
+	GridFixture.place_floor(grid, Vector2i(3, 2), 4.0)
+	assert_true(MapGen._open_a_route_out(grid, Vector2i(2, 2)))
+
+	var heights: Array[float] = []
+	for surface: Surface in grid.surfaces_at(Vector2i(2, 2)):
+		if Surface.LADDER_TAG in surface.part.tags:
+			heights.append(surface.height)
+	heights.sort()
+
+	gut.p("  segment heights: %s" % str(heights))
+	assert_eq(heights.size(), 4, "four levels, four pieces")
+	for i in range(heights.size()):
+		assert_almost_eq(
+			heights[i],
+			float(i) * Surface.LADDER_SEGMENT_RISE,
+			0.001,
+			"segment %d sits flush on the one below it — a gap is a ladder with a missing rung" % i
+		)
+	assert_true(Surface.ladder_serves_climb(grid, Vector2i(2, 2), Vector2i(3, 2)))
+
+
+## **`BR63.02`: one ladder, one set of boxes.**
+##
+## `GridPlacement.place` gives a side-attaching part two homes — its own `Surface` and a host's
+## socket — and both used to be drawn, from different transforms, so a single ladder rendered as
+## two panels 0.5 apart in z. Asserted by counting the boxes the whole cell emits rather than by
+## inspecting the socket, because "how many pieces are there" is the question that was wrong.
+func test_a_socketed_ladder_is_emitted_once_not_twice() -> void:
+	var grid: Grid = GridFixture.flat(6, 6, 0.0)
+	GridFixture.place_floor(grid, Vector2i(3, 2), 1.0)
+	assert_true(MapGen._open_a_route_out(grid, Vector2i(2, 2)))
+
+	var host: Surface = Surface.first_walkable(grid.surfaces_at(Vector2i(2, 2)))
+	assert_not_null(host, "the cell still has its floor")
+	var occupied := 0
+	for socket: Socket in host.part.sockets:
+		if socket.occupant != null:
+			occupied += 1
+
+	var ladder_boxes: Array[Vector3] = []
+	for surface: Surface in grid.surfaces_at(Vector2i(2, 2)):
+		for placement: BoxPlacement in UnitGeometry.surface_placements(surface):
+			if Surface.LADDER_TAG in placement.part.tags:
+				ladder_boxes.append(placement.transform * placement.box.center)
+
+	gut.p("  host floor sockets occupied: %d" % occupied)
+	gut.p("  ladder boxes emitted by the whole cell: %d" % ladder_boxes.size())
+	for centre: Vector3 in ladder_boxes:
+		gut.p("    (%.2f, %.2f, %.2f)" % [centre.x, centre.y, centre.z])
+
+	assert_eq(
+		ladder_boxes.size(),
+		1,
+		(
+			"one segment is one box — the socket chain and the Surface record both emitting it is "
+			+ "what BR63.02 saw as 'a strange offset' on one of two identical pieces"
+		)
+	)
+
+
+## **The claim that halving the segment held climb cost steady, asserted rather than argued.**
+##
+## `Pathfinder.move_cost` prices a ladder edge by **rise** (`CLIMB_COST * level_delta *
+## LADDER_COST_SCALE`), never by how many segments span it — which is why `BR63.01` needed no
+## compensating change to `LADDER_COST_SCALE`. If that ever becomes segment-count-based, this is
+## the test that says so.
+func test_a_climbs_price_follows_its_rise_not_its_segment_count() -> void:
+	var grid: Grid = _grid_with_step(0.0, 2.0)
+	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 0.0)
+	GridPlacement.place(grid, Vector2i(0, 0), DataLibrary.get_part(LADDER), 1.0)
+	var unit: Unit = _climber(Vector2i(0, 0), grid)
+	var pathfinder := Pathfinder.for_unit(grid, unit)
+
+	var cost: float = pathfinder.move_cost(Vector2i(0, 0), Vector2i(1, 0))
+	var expected: float = ceil(Pathfinder.CLIMB_COST * 2.0 * Pathfinder.LADDER_COST_SCALE)
+
+	gut.p("  a 2.0 rise over %d segments costs %.1f MP" % [2, cost])
+	assert_almost_eq(
+		cost,
+		expected,
+		0.001,
+		"the price is CLIMB_COST * rise * LADDER_COST_SCALE, whatever the segment size is"
 	)

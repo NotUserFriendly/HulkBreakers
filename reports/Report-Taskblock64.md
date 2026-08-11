@@ -1,10 +1,11 @@
 # Taskblock 64 Report — a bout that produces gunfire
 
-**Every pass except F has landed** — A (measure), B (the ray-march divergence), C (a chaingun unit
-can fire), D (the library cross-product), E (a bout can be won by fighting) and G (the two clocks),
-in that order, each green on the fast gate. **F is measured but not fixed**, deliberately: both its
-entries turn out to need design calls rather than repairs, and one of them had the wrong mechanism
-written down. The block's headline finding is that its
+**Every pass has landed** — A (measure), B (the ray-march divergence), C (a chaingun unit
+can fire), D (the library cross-product), E (a bout can be won by fighting), G (the two clocks) and
+F (the ladder), in that order, each green on the fast gate. **F went last on purpose** — both its
+entries needed design calls rather than repairs, and one of them had the wrong mechanism recorded,
+so it was measured, taken to the supervisor, and only then built. The block's headline finding is
+that its
 own premise was wrong: `BR63.05` is titled *"units do not see enemies at one to two cells"*, and at
 the decision level, on a bare board, **every preset saw its enemy in all 18 cases**. The silence was
 three unrelated things, none of them sight — a tier gate, a missing `burst` action, and a preset
@@ -60,13 +61,22 @@ chaingun had a perfectly operable weapon, so a functional-weapon test would have
 bout running to the turn cap — the exact thing the mode exists to stop. The alternative was the
 cheaper predicate; it would have made the instrument useless for the case it was built for.
 
-**Pass F was measured and left unfixed, and that is a scope decision.** `BR63.01`'s *"each should
-be 1 unit"* means changing `Surface.LADDER_SEGMENT_RISE` from 2.0, which is read by `Pathfinder`'s
-ladder branch and `Surface.ladder_serves_climb` — a balance change, not a repair. `BR63.02` turned
-out to be a **double-draw** rather than the offset its entry guessed at, and stopping one of the two
-emissions is a design call: the socket transform is the physically correct ledge, the `Surface`
-record is what the mover reads. Both entries got the arithmetic and the corrected mechanism; neither
-got a fix.
+**Pass F was measured first and escalated rather than decided.** `BR63.01`'s *"each should be 1
+unit"* meant changing `Surface.LADDER_SEGMENT_RISE`, which `Pathfinder`'s ladder branch and
+`Surface.ladder_serves_climb` both read; `BR63.02` turned out to be a **double-draw** rather than
+the offset its entry guessed at, so which of the two emissions to stop was a real fork. Both went
+to the supervisor with the arithmetic attached, and both came back decided.
+
+**One of those decisions turned out to cost nothing.** "Hold climb cost steady" needed no
+compensating constant at all: `Pathfinder.move_cost` prices a ladder edge by **rise**, never by
+segment count, so halving the segment moves no balance number. That is asserted rather than argued,
+because the claim only survives while the formula stays height-based.
+
+**Pass F's emission rule has a stated limit, not a hidden one.** `UnitGeometry.surface_placements`
+stops at sockets, which is safe only because every socket occupant of a surface is independently
+placed — measured at 35 occupants across five boards, zero orphans. **A future part socketing a
+purely decorative child onto a floor would stop being drawn.** That is written into the function's
+own comment rather than left for the next reader to rediscover.
 
 **Pass G stopped at the board clock and did not touch the unit-part one.** `BR54.02` is the same
 pairing from the other side, and the entry asks for it to be checked against whatever clock the
@@ -81,7 +91,7 @@ considerations decide — untested, and queued in `PLAN.md` rather than guessed 
 
 ## Tests that failed, then were corrected
 
-**Seven, five of them my own instruments reporting the wrong thing.**
+**Nine, six of them my own instruments reporting the wrong thing.**
 
 1. **`test_close_range_firing_decision.gd` read a working burst as silence.** It detected a shot
    with `action is AttackAction`; `BurstAction` extends `CombatAction` **beside** `AttackAction`,
@@ -110,7 +120,27 @@ considerations decide — untested, and queued in `PLAN.md` rather than guessed 
    12x5 grid (`set_occupant_id` out of bounds), and `BoutRosterEntry.profile_id`, which is actually
    `ai_profile`. Both mechanical, both caught on the first real run.
 
-7. **My own claim that `BR63.03` was a drawing defect only.** Targeting and cell occupancy did
+7. **Six ladder fixtures were pinned to the old 2.0 segment spacing** and broke when Pass F halved
+   it — `test_ladder.gd`, `test_vertical_movement.gd`, `test_distance_flood_direction.gd`,
+   `test_generation_heights.gd`, `test_vertical_planning.gd`, and my own `BR64.01` control. Every
+   one was a fixture assumption rather than a defect: the rises, and therefore every MP figure,
+   are unchanged. Two are worth naming:
+   - `test_three_stacked_segments_span_three_levels` asserted a reach of **6.0** while calling it
+     "three levels" — it was counting in 2.0 segments against a `LEVEL_HEIGHT` of 1.0. The name and
+     the number agree now.
+   - **`BR64.01`'s control went vacuous rather than red.** It asserted *"a 2.0 ladder across the
+     line still blocks"*; a 1.0 ladder tops out below `SIGHT_HEIGHT` and stops blocking for a
+     reason unrelated to the exemption under test. It stacks two segments now. **A control that
+     silently stops controlling is worse than one that fails.**
+8. **A "new" ray-loop disagreement that was a floating-point corner graze.** The sweep reported
+   `(21,7)->(24,9) obstructed=false march=forklift` after Pass F. The ray passes through the box's
+   **exact corner vertex** — hit point `(21.450001, 2.100000, 7.300000)` against a box ending at
+   x 21.45, y 2.10, z 7.30 — and the sweep was handing `cast_geometry` an already-normalised
+   direction which it normalised **again**, landing one float ULP away from the `span / length`
+   `obstructed` computes. Neither loop is wrong; the query is ill-posed. Passing the raw `span`
+   makes the two bit-identical. **Worth the chase**: the alternative was recording a structural
+   divergence that does not exist.
+9. **My own claim that `BR63.03` was a drawing defect only.** Targeting and cell occupancy did
    already exclude an extracted unit, so "the model is fine" looked right — until the turn-order
    case was actually run and reached the extracted unit. **It was a gameplay defect too**, and the
    entry's suspicion was correct where my first reading was not. The test that caught it is one I
@@ -125,6 +155,11 @@ considerations decide — untested, and queued in `PLAN.md` rather than guessed 
 - **`BR61.07`** — the destroyed thing's clock. **To see it work:** force a detonation that destroys
   more than one thing. Each should stay until its own explosion has played and then go, rather than
   all of them vanishing at the very end.
+- **`BR63.01`** — ladder height. **To see it work:** a one-level rise should be a single piece that
+  stops level with the floor it serves, not one standing a level proud of it. Climb costs are
+  unchanged and that is asserted, not assumed.
+- **`BR63.02`** — the double-draw. **To see it work:** a ladder should be one panel per level on one
+  face, with no second panel half a cell away from it.
 
 **`BR63.04` was closed `Resolved` by the supervisor** during this block, after Pass C.
 
@@ -154,9 +189,12 @@ engine startup and shutdown included.
 | fast | audit rebuild | 338 | 3277 | 675.8 s **(3 fail)** | 691.0 s | 635.4 s | 5.1 s | **92%** |
 | **fast** | registry + budget fix | 336 | 3249 | 664.9 s | 679.7 s | 624.2 s | 5.1 s | **92%** |
 | **full** | registry + budget fix | 362 | 3534 | 1443.5 s | 1458.7 s | 1386.1 s | 7.1 s | **95%** |
+| fast | Pass F, ladder fixtures red | 336 | — | 420.5 s **(aborted)** | 420.5 s | 374.3 s | 4.5 s | 90% |
+| fast | Pass F, corner graze red | 336 | — | 518.5 s **(aborted)** | 518.5 s | 464.3 s | 4.3 s | 90% |
+| **full** | **Pass F complete** | 362 | 3538 | 1378.3 s | 1393.7 s | 1318.3 s | 7.5 s | **95%** |
 
-**The full gate's wall-clock is not a stable number**: four runs of the same suite measured
-**1767.6, 1879.0, 1434.1 and 1443.5 s** — a 31% spread. `SUITE-PROFILE.md` says so in its own header
+**The full gate's wall-clock is not a stable number**: five runs of the same suite measured
+**1767.6, 1879.0, 1434.1, 1443.5 and 1378.3 s** — a 36% spread. `SUITE-PROFILE.md` says so in its own header
 (*"wall-clock is the softer number"*), and the spread is why the budget gates work counters and not
 seconds. **Compare the counts; do not compare these.** The two runs after the profile was
 regenerated agree to within 0.7% of each other, which is suggestive but is two data points, not a
@@ -177,6 +215,11 @@ full gate's 1429.1 s of summed test time, `unit/view/overlays/test_ai_batch_yiel
 Of the individual runs I invoked by hand, one is worth recording: **Pass E's first fixture hung for
 ~10 minutes** before I killed it — 9 minutes elapsed against 1 second of CPU. That ratio is how a
 stuck run is told from a slow one, and it cost more wall-clock than any real gate.
+
+**Two aborted fast gates are in the table on purpose.** Both are Pass F: a gate that stops early
+reports a *shorter* time and a green-looking exit code from a pipeline, and recording only the
+successful runs would make the block look cheaper than it was. Between them they cost ~16 minutes
+finding fixtures pinned to the old ladder spacing.
 
 ## The suite profile, rebuilt (last regenerated at taskblock-56)
 

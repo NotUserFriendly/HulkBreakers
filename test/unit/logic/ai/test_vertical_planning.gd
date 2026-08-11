@@ -304,7 +304,15 @@ func _ladder_board() -> Grid:
 	for y: int in range(3):
 		for x: int in range(1, 14):
 			GridFixture.place_floor(grid, Vector2i(x, y), 2.0)
-	GridPlacement.place(grid, Vector2i(0, 1), DataLibrary.get_part(LADDER), 0.0)
+	# tb64 Pass F: sized from `Surface.LADDER_SEGMENT_RISE` rather than assuming one piece spans
+	# the shelf — at 1.0 a 2.0 shelf takes two segments, and the rise (and so the MP) is unchanged.
+	for step: int in range(int(2.0 / Surface.LADDER_SEGMENT_RISE)):
+		GridPlacement.place(
+			grid,
+			Vector2i(0, 1),
+			DataLibrary.get_part(LADDER),
+			float(step) * Surface.LADDER_SEGMENT_RISE
+		)
 	return grid
 
 

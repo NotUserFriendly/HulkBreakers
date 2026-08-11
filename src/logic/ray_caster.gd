@@ -196,13 +196,7 @@ static func obstructed(
 		if _below_or_above(surface, y_low, y_high):
 			continue
 		if _any_box_hit(
-			UnitGeometry.assembly_placements(
-				surface.part, surface.cell, surface.facing, null, surface.height
-			),
-			from,
-			dir,
-			limit,
-			exclude_parts
+			UnitGeometry.surface_placements(surface), from, dir, limit, exclude_parts
 		):
 			return true
 
@@ -494,9 +488,7 @@ static func _consider_surface(
 		cell.x * UnitGeometry.CELL_SIZE, surface.height, cell.y * UnitGeometry.CELL_SIZE
 	)
 	var result: float = best_t
-	var placements: Array[BoxPlacement] = UnitGeometry.assembly_placements(
-		surface.part, cell, surface.facing, null, surface.height
-	)
+	var placements: Array[BoxPlacement] = UnitGeometry.surface_placements(surface)
 	for placement: BoxPlacement in placements:
 		result = _consider(
 			best,

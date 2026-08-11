@@ -258,7 +258,7 @@ bug and it is chased on its own terms.
   `profile_family == &"combat_tester"` for that reason, so this preset is measured by nothing.
 - It is still an equipping defect rather than a preset-authoring one — the kit names a chaingun and
   the equipper drops it — so it wants chasing on `KitEquipper`'s terms, not by editing the preset.
-### BR63.01 — Active — owner: `SUPERVISOR`
+### BR63.01 — Pending — owner: `SUPERVISOR`  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
 **Ladders generate for a one-level rise, and both pieces are two units tall**
 - **cluster:** `map-generation`
 - **Source:** `SUPERVISOR`, 2026-08-10, post-taskblock-63 review.
@@ -283,7 +283,21 @@ bug and it is chased on its own terms.
   seed `642296523` at 40x30 carries 16 ladder cells, and seeds `4242` and `7` carry **none at
   all**. Every ladder on `642296523` serves a rise of 2.80–4.00, so no one-level ladder appears on
   that board — the reported one came from a seed not sampled here.
-### BR63.02 — Active — owner: `SUPERVISOR`
+- **tb64 Pass F: fixed, unconfirmed.** `Surface.LADDER_SEGMENT_RISE` 2.0 -> 1.0 and `ladder.tres`'s
+  box with it, on the supervisor's call. A 1.0 rise now stamps **one piece topping out at exactly
+  1.00** instead of one standing a full level proud of the floor it served.
+- **Climb cost did not move and needed no compensating constant.** The instruction was "hold climb
+  cost steady", and `Pathfinder.move_cost` already prices a ladder edge as
+  `ceil(CLIMB_COST * level_delta * LADDER_COST_SCALE)` — by **rise**, never by segment count. So
+  halving the segment changes how many pieces stand and nothing about what climbing costs.
+  `test_a_climbs_price_follows_its_rise_not_its_segment_count` pins that, since the claim is only
+  true while the formula stays height-based.
+- **A 4.0 rise now stacks four flush segments** at 0/1/2/3 where it stacked two, asserted with no
+  gap between them.
+- **Side effect, measured:** a 1.0 ladder tops out below `LoS.SIGHT_HEIGHT` (1.25), so a
+  ground-level segment no longer blinds anyone. On the sweep seed `ladder (surface)` falls from
+  **101 blind pairs to 37**.
+### BR63.02 — Pending — owner: `SUPERVISOR`  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
 **The two ladder pieces are visually indistinguishable, and one is offset oddly**
 - **cluster:** `input-affordance`
 - **Source:** `SUPERVISOR`, 2026-08-10, post-taskblock-63 review.
@@ -312,6 +326,25 @@ bug and it is chased on its own terms.
   emissions has to stop being drawn, and **which one is the design call**, since the socket
   transform is the physically-correct ledge position and the `Surface` record is what the mover
   and `ladder_serves_climb` read.
+- **tb64 Pass F: fixed, unconfirmed. The `Surface` record won**, on the supervisor's call, because
+  it is already the authority everything else reads — `Surface.ladder_reach_at` and
+  `ladder_serves_climb` walk `grid.surfaces_at` and never touch the socket links.
+- **`UnitGeometry.surface_placements` is the one entry point** a placed `Surface` is emitted
+  through, and it walks the part's own volume without descending into sockets. A named function
+  rather than a flag threaded through `BoardView`, `RayCaster.obstructed` and
+  `RayCaster._consider_surface` — a flag half-applied is how the two ray loops came to disagree in
+  `BR64.01`, and the same shape was available here.
+- **The attachment itself is untouched.** It is the placement grammar, and an occupied socket is
+  what stops a second ladder taking the same face; it simply stops emitting geometry.
+- **Safe because every socket occupant of a surface is independently placed** — measured, not
+  assumed: across five generated boards, **35 occupants, all carrying their own `Surface`, zero
+  orphans**. Only `ladder` (`STACK`) and `ship_floor` (four `LEDGE`s) author sockets at all.
+  **The stated limit:** a future part socketing a purely decorative child onto a floor would stop
+  being drawn. That is written into `surface_placements`' own comment.
+- **Measured:** the `ladder (surface on ship_floor)` blame bucket — 57 blind pairs — is gone
+  entirely, and the cell emits one box per segment instead of two.
+- **To see it:** a ladder should be one panel per level, on one face, with no second panel half a
+  cell away from it.
 ### BR63.03 — Pending — owner: `SUPERVISOR`  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
 **Extracted units remain on the map**
 - **cluster:** `view-model-membership`

@@ -442,9 +442,7 @@ func _build_tiles(p_grid: Grid, material_table: MaterialTable) -> MeshInstance3D
 			by_color[color] = [] as Array[BoxPlacement]
 			color_order.append(color)
 		(by_color[color] as Array[BoxPlacement]).append_array(
-			UnitGeometry.assembly_placements(
-				surface.part, surface.cell, surface.facing, null, surface.height
-			)
+			UnitGeometry.surface_placements(surface)
 		)
 
 	for color: Color in color_order:

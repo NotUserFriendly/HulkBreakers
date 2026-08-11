@@ -287,8 +287,11 @@ func test_the_two_loops_agree_when_the_endpoint_exemption_is_applied() -> void:
 			if distance <= 0.0001:
 				continue
 			var any_hit: bool = RayCaster.obstructed(grid, from, to, excluded)
+			# `span`, not `span / distance` — see the note in
+			# `test_generated_board_sight_sweep.gd`: normalising twice lands one ULP off what
+			# `obstructed` computes, which only shows up on an exact corner graze.
 			var nearest: RayHit = RayCaster.cast_geometry(
-				grid, from, span / distance, excluded, distance - 0.0001
+				grid, from, span, excluded, distance - 0.0001
 			)
 			compared += 1
 			if any_hit:
@@ -335,7 +338,12 @@ func test_the_two_loops_agree_when_the_endpoint_exemption_is_applied() -> void:
 ## the exclusion per box. **A unit was blinded by the ladder it is standing next to.**
 ##
 ## `(2,1) -> (2,3)` is the control and must stay blocked: neither endpoint owns the ladder, so
-## nothing exempts it and a 2.0-tall panel across the line is a real occluder.
+## nothing exempts it and a tall enough panel across the line is a real occluder.
+##
+## **The control needs TWO segments since tb64 Pass F.** `LADDER_SEGMENT_RISE` went 2.0 -> 1.0
+## (`BR63.01`), so one ground-level segment now tops out at 1.0 — below `LoS.SIGHT_HEIGHT` of
+## 1.25 — and blinds nobody. A single segment would make this control silently vacuous, asserting
+## a block that no longer happens for a reason unrelated to the exemption being tested.
 func test_an_excluded_part_socketed_onto_a_neighbours_floor_does_not_blind() -> void:
 	var grid: Grid = GridFixture.flat(6, 5, 0.0)
 	# A height difference is what gives the ladder something to side-attach to.
@@ -344,6 +352,11 @@ func test_an_excluded_part_socketed_onto_a_neighbours_floor_does_not_blind() -> 
 		grid, Vector2i(2, 2), DataLibrary.get_part(&"ladder"), 0.0
 	)
 	assert_not_null(placed, "the fixture needs the ladder to actually place")
+	# The second segment is what carries the control above `SIGHT_HEIGHT`.
+	assert_not_null(
+		GridPlacement.place(grid, Vector2i(2, 2), DataLibrary.get_part(&"ladder"), 1.0),
+		"and a second segment stacked on it, or the control below asserts nothing"
+	)
 
 	var ladder: Part = null
 	for socket: Socket in Surface.first_walkable(grid.surfaces_at(Vector2i(1, 2))).part.sockets:
@@ -375,5 +388,5 @@ func test_an_excluded_part_socketed_onto_a_neighbours_floor_does_not_blind() -> 
 	assert_true(LoS.has_los(grid, Vector2i(2, 2), Vector2i(1, 3)), "and symmetrically")
 	assert_false(
 		LoS.has_los(grid, Vector2i(2, 1), Vector2i(2, 3)),
-		"the control: exempt from nothing, a 2.0 ladder across the line still blocks"
+		"the control: exempt from nothing, a two-segment ladder across the line still blocks"
 	)
