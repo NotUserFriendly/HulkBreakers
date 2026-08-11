@@ -62,6 +62,20 @@ var module_context: ModuleContext = null
 ## something about wall-clock instead. See `BR58.01` for why the budget is the wrong shape.
 var pacer_budget_msec: int = PlanPacer.DEFAULT_BUDGET_MSEC
 
+## tb65 Pass D: **how many turns one `advance_ai_turns` batch will resolve before stopping.**
+##
+## Defaults to `BoutRunner.DEFAULT_TURN_CAP` and production never sets it — the same standing
+## `pacer_budget_msec` beside it has, and for a related reason. `advance_ai_turns` builds its
+## own runner, so a driver that wants a bounded batch had no way to say so, and
+## `test_ai_batch_yield.gd` was playing a **mission-length** bout twice to prove that a yielding
+## batch and a tight loop reach the same state.
+##
+## **Bounding both paths at the same cap is not the same as shortening the bout to a cheap
+## seed.** The equality is over whatever turns actually run; running fewer of them proves it in
+## less time and, if anything, more sharply — a divergence lands at the turn it happens on
+## rather than being one difference in a four-hundred-turn fingerprint.
+var turn_cap: int = BoutRunner.DEFAULT_TURN_CAP
+
 ## The pacer `advance_ai_turns` last built, or null when it ran with none (outside a tree).
 ##
 ## **Diagnostics only, never read by planning** — the same standing that `PlanPacer.aborted` and
@@ -310,9 +324,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## yielding cannot reorder the sim. The test asserts a seeded bout is identical whether driven
 ## through here or through a tight loop with no yielding at all.
 func advance_ai_turns(p_battle: BattleScene) -> void:
-	var runner := BoutRunner.new(
-		p_battle.combat_state, p_battle.mission, BoutRunner.DEFAULT_TURN_CAP, wants_turn_for
-	)
+	var runner := BoutRunner.new(p_battle.combat_state, p_battle.mission, turn_cap, wants_turn_for)
 	# tb44 Pass D: the pacer is what makes a unit's turn watchable rather than a freeze. It carries
 	# the frame signal the planner suspends on — supplied here because only the view knows what a
 	# tree is — and the hard budget that guarantees the turn ends, which is what makes the label a
