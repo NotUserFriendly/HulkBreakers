@@ -17,4 +17,4 @@ preset_name = "combat_tester_pump_shotgun"
 loadout = SubResource("Resource_h7a4n")
 profile_family = &"combat_tester"
 variant_label = "Pump Shotgun"
-intelligence_tier = &"MINDLESS"
+intelligence_tier = &"TRAINED"

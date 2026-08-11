@@ -67,6 +67,18 @@ const INPUT_OWN_INTEGRITY := &"own_integrity"
 
 ## Some attached weapon can actually fire right now.
 const PRED_HAS_WEAPON := &"has_weapon"
+## **The picked weapon can single-pull** — it provides one of `ActionCatalog.ATTACK_ACTION_IDS`.
+##
+## tb64: `has_weapon` asks whether *a* weapon works, never whether it can do the thing the
+## action being offered would do. A chaingun provides `burst` only, so `shoot` passed every
+## precondition, won the scoring, and was then refused by `AttackAction.is_legal` on the same
+## fact — `UtilityPlanner._commit` returning silently. **The decision log showed a confident
+## `shoot@(25,13)` and then nothing**, which is what made the failure invisible for a whole
+## taskblock. An action offered where its executor cannot build is a lie told to the log.
+const PRED_WEAPON_SINGLE_FIRE := &"weapon_single_fire"
+## The picked weapon can fire a burst. The `burst`-side counterpart of the above, and what
+## `suppress` should always have asked — it names `executor_id = burst` and never checked.
+const PRED_WEAPON_BURSTS := &"weapon_bursts"
 ## This unit knows of a living enemy at all — which a `MINDLESS` unit stops doing
 ## the moment line of sight breaks (`WorldView.MEMORY_TIERS`).
 const PRED_ENEMY_KNOWN := &"enemy_known"
@@ -670,6 +682,8 @@ func predicates_for(cell: Vector2i) -> Dictionary:
 	var distance: int = Grid.distance_chebyshev(cell, target.cell) if target != null else 0
 	return {
 		PRED_HAS_WEAPON: _has_weapon,
+		PRED_WEAPON_SINGLE_FIRE: _weapon_provides_any(ActionCatalog.ATTACK_ACTION_IDS),
+		PRED_WEAPON_BURSTS: _weapon_provides_any([&"burst"] as Array[StringName]),
 		PRED_ENEMY_KNOWN: target != null,
 		PRED_CELL_IS_ELSEWHERE: cell != _origin,
 		PRED_CELL_IS_CURRENT: cell == _origin,
@@ -1022,8 +1036,37 @@ static func weapon_id_of(unit: Unit) -> StringName:
 	return _find_weapon_id(unit)
 
 
+## **Whether the weapon this context picked offers any of `ids`.** The one place the planner
+## asks what a weapon can actually do, so `shoot` and `burst` cannot drift apart from what
+## `ActionCatalog.build_firing_action` will accept.
+func _weapon_provides_any(ids: Array[StringName]) -> bool:
+	if weapon == null:
+		return false
+	for id: StringName in ids:
+		if id in weapon.provides_actions:
+			return true
+	return false
+
+
+## Which part is this unit's weapon.
+##
+## tb64: **a part that provides no action is not a weapon the planner can use.** This returned
+## the first living part with `damage > 0` and never consulted `provides_actions`, so a unit
+## carrying a damaging part with nothing to offer had the planner select it and then find
+## nothing to build with it. Preferring a part that provides something keeps every
+## single-weapon unit answering exactly as before — the overwhelmingly common case — while a
+## unit whose first damaging part is unusable now reaches the one behind it.
+##
+## The old answer stays as the fallback rather than returning `&""`: a damaging part with no
+## authored `provides_actions` is a data gap, and going silent on it would hide the gap
+## instead of surfacing it through `weapon_single_fire`/`weapon_bursts` reading false.
 static func _find_weapon_id(unit: Unit) -> StringName:
+	var fallback: StringName = &""
 	for part: Part in unit.shell.living_parts():
-		if part.damage > 0.0:
+		if part.damage <= 0.0:
+			continue
+		if not part.provides_actions.is_empty():
 			return part.id
-	return &""
+		if fallback == &"":
+			fallback = part.id
+	return fallback

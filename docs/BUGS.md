@@ -219,6 +219,39 @@ bug and it is chased on its own terms.
 
 ---
 
+### BR64.01 — Active — owner: `CC`
+**`RayCaster.cast_geometry` and `RayCaster.obstructed` disagree about what a ray meets**
+- **cluster:** `projection-and-targeting`
+- **Source:** `CC`, 2026-08-10, tb64 Pass A2  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
+- Sweeping seed `642296523` at 40x30, **56 of 751 blind pairs had `cast_geometry` return `null`
+  while `obstructed` reported the line blocked** — the largest single bucket, and enough to have
+  left the sweep's blame table mostly unexplained had it not been rebuilt on `obstructed`'s own
+  loops.
+- **`RayCaster`'s own header states the invariant this breaks:** *"This is the same march with the
+  unit loop left off, **not a second one** ... so the thing `LoS` sees and the thing a round meets
+  cannot drift apart."* They have drifted. **No-parallel-systems, in the file that documents it.**
+- **Suspected, unverified:** `obstructed`'s `_blocker_in_the_way` builds a blocker's boxes at
+  `UnitGeometry.blocker_height_for_cell`, while `_geometry_into` -> `_consider_assembly` builds
+  them at `UnitGeometry.true_height_for_cell`. tb63 Pass D3 moved the `near_ray` reject to the new
+  height in both paths but left `_consider_assembly`'s actual placement on the old one. Not
+  confirmed against a specific pair — the observed divergences were surface hits, so there may be
+  a second cause on the surface branch.
+- **A shot and a sight line reading different geometry is a correctness defect regardless of the
+  blindness question**, and it is what `test_sight_geometry.gd::test_the_any_hit_loop_agrees_with_
+  the_nearest_hit_march` claims to cover. That test evidently does not reach this case.
+### BR64.02 — Active — owner: `CC`
+**`kitted_chaingun` assembles with no weapon**
+- **cluster:** `data-authoring`
+- **Source:** `CC`, 2026-08-10, tb64 Pass A3  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
+- `KitEquipper.equip` pushes `KitEquipper: chaingun never made it into its own kit container
+  backpack` and the resulting unit has no damaging part at all — `_find_weapon_id` answers `&""`
+  and the unit can never fire.
+- **Filed, not fixed, and deliberately out of the combat cross-product.** The supervisor's call:
+  *"kitted chaingun and laborers were built as part of tests, not actually designed out. They
+  should not be used for combat testing."* `test_close_range_firing_decision.gd` scopes itself to
+  `profile_family == &"combat_tester"` for that reason, so this preset is measured by nothing.
+- It is still an equipping defect rather than a preset-authoring one — the kit names a chaingun and
+  the equipper drops it — so it wants chasing on `KitEquipper`'s terms, not by editing the preset.
 ### BR63.01 — Active — owner: `SUPERVISOR`
 **Ladders generate for a one-level rise, and both pieces are two units tall**
 - **cluster:** `map-generation`
@@ -248,8 +281,23 @@ bug and it is chased on its own terms.
   which `PLAN`'s *Player view and sim view* addresses structurally.
 - Check whether the unit is also still *targetable* and still *takes turns*, which would make it a
   gameplay defect rather than a drawing one.
-### BR63.04 — Active — owner: `SUPERVISOR`
+### BR63.04 — Pending — owner: `SUPERVISOR`  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
 **A chaingun unit has no firing action it can reach**
+- **tb64: fixed, unconfirmed.** `data/utility_actions/burst.tres` is a plain `burst` utility action
+  tier-gated **exactly as `shoot` is** (`GRUNT`/`TRAINED`/`ELITE`) — the supervisor's call, *"burst
+  needs to be aligned with shoot as an option; currently it's tied to a higher requirement."*
+  Pulling the trigger on an automatic weapon is a **weapon property, not intelligence**;
+  `suppress` keeps its `TRAINED` gate because a suppressive *tactic* is what that gate was for.
+  `SUPERSEDED.md` records the reversal.
+- **Two repairs that stand on their own merits, and the burst action does not work without them.**
+  `shoot` now carries a `weapon_single_fire` precondition and `burst`/`suppress` carry
+  `weapon_bursts`, so an action is never offered where its executor cannot build — the thing that
+  made this invisible, since the log showed a confident `shoot@(25,13)` and then nothing.
+  `UtilityContext._find_weapon_id` prefers a damaging part that actually provides an action.
+- **Measured on bare ground, at the decision level** (`test_close_range_firing_decision.gd`): a
+  `GRUNT` chaingun now selects `burst@(6,6)` and produces a `BurstAction` at 1, 2 and 3 cells,
+  where it previously selected `shoot` and produced nothing. All three combat presets fire at all
+  three distances.
 - **cluster:** `ai-behaviour`
 - **Source:** `SUPERVISOR`, 2026-08-10, post-taskblock-63 review.
 - **Proven from data; pre-existing, and taskblock-63 touched none of it.** Four pieces compose into a
@@ -273,6 +321,38 @@ bug and it is chased on its own terms.
   otherwise.
 ### BR63.05 — Active — owner: `SUPERVISOR`
 **Units do not see enemies at one to two cells**
+- **tb64: the stated cause is wrong for most of what was reported, and the title overstates it.**
+  Measured at the decision level on a **bare board with no geometry on it at all**
+  (`test_close_range_firing_decision.gd`): every preset saw its enemy at 1, 2 and 3 cells —
+  `enemies_visible = 1` in all 18 cases. **Sight was never the failure for the reported silence.**
+  - **The two `MINDLESS` units that chose `seek_extraction` at one cell had no firing action at
+    all.** `shoot.tres` is gated `GRUNT`/`TRAINED`/`ELITE` and `docs/11` says so deliberately, so
+    `shoot` was never in their candidate list — not offered, not refused, absent. The library's
+    only `MINDLESS` preset was `combat_tester_pump_shotgun`, **armed with a weapon its own tier
+    could never fire**. Fixed by re-tiering it to `TRAINED` on the supervisor's call (*"none of the
+    combat testers should be mindless"*); the tier gate itself is untouched.
+  - **The `ELITE` that chose `roam` at two cells is not reproduced on bare ground** — the sniper
+    plans, backs off past its own `min_range` to `(4,8)`/`(5,7)`, and fires. This is the one
+    observation still unexplained, and it is the only part of this entry that is still about sight.
+- **What the sight sweep did find** (`test_generated_board_sight_sweep.gd`, seed `642296523` at
+  40x30, 445 standable cells): blindness inside Chebyshev 3 is real but **ordinary geometry**, not
+  a regression — 25 blind pairs at 1 cell (1.97%), 208 at 2 (9.39%), 518 at 3 (17.84%). At
+  `316edc5` the same seed measured 1.60% / 7.08% / 15.69%, so tb63 made it ~2 points worse rather
+  than newly broken. **Caveat: not the same board** — tb63 Pass D1 changed generation (559
+  standable cells then, 445 now).
+- **Orthogonal adjacency is unblockable and that half of the narrowing below holds** — 667 pairs,
+  0 blind. **The diagonals are not**: 605 pairs, 25 blind. `_nearest_known_enemy` measures
+  `Grid.distance_chebyshev`, so *"one cell away"* includes the four diagonals, where two
+  non-exempt cells sit between the pair. tb64 Pass A1's fixture only ever tested `(2,2)->(3,2)`.
+- **`_stand_wall` is a minor contributor, not the cause.** Reverted to a bare `place_blocker` on an
+  identical board layout: 751 blind pairs -> 709, so tb63 Pass D2 accounts for **5.6%**.
+- **What blinds is decided by height, not by being a wall** — the blame table, by the occluding
+  box's own part: `ship_floor` 177, `wall` 168, `pillar` 157, `forklift` 85, `ladder` 130 (82 of
+  them socketed into a floor's `LEDGE` socket), `scrap_pile` 14, `goo_barrel` 10, `barrel_pallet`
+  8, `crate` 2. **Cover blames 276 against the walls' 168.** A prior CC session recorded the
+  opposite — *"cover does not block sight, only walls blind"* — generalising from `crate` (0.70)
+  to a class that contains `pillar` (1.80) against a `SIGHT_HEIGHT` of 1.25. That reading is what
+  steered this entry at the walls tb63 made taller.
 - **cluster:** `ai-behaviour`
 - **Source:** `SUPERVISOR`, 2026-08-10, post-taskblock-63 review.
 - **The failure is proven at decision time; the cause is suspected and unverified.** An `ELITE` unit

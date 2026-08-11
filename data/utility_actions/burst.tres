@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="UtilityActionDef" format=3]
+
+[ext_resource type="Script" path="res://src/data/consideration_def.gd" id="1_a20ve"]
+[ext_resource type="Script" path="res://src/data/response_curve.gd" id="2_02rk8"]
+[ext_resource type="Script" path="res://src/data/utility_action_def.gd" id="3_npjil"]
+
+[sub_resource type="Resource" id="Resource_brst_lofc"]
+script = ExtResource("2_02rk8")
+
+[sub_resource type="Resource" id="Resource_brst_lof"]
+script = ExtResource("1_a20ve")
+input_id = &"line_of_fire"
+curve = SubResource("Resource_brst_lofc")
+
+[sub_resource type="Resource" id="Resource_brst_stdc"]
+script = ExtResource("2_02rk8")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_brst_std"]
+script = ExtResource("1_a20ve")
+input_id = &"standoff_match"
+curve = SubResource("Resource_brst_stdc")
+
+[sub_resource type="Resource" id="Resource_brst_mvec"]
+script = ExtResource("2_02rk8")
+slope = 0.8
+offset = 0.2
+
+[sub_resource type="Resource" id="Resource_brst_mve"]
+script = ExtResource("1_a20ve")
+input_id = &"move_economy"
+curve = SubResource("Resource_brst_mvec")
+
+[sub_resource type="Resource" id="Resource_brst_objc"]
+script = ExtResource("2_02rk8")
+slope = 0.75
+offset = 0.25
+
+[sub_resource type="Resource" id="Resource_brst_obj"]
+script = ExtResource("1_a20ve")
+input_id = &"objective_hold"
+curve = SubResource("Resource_brst_objc")
+
+[sub_resource type="Resource" id="Resource_brst_retc"]
+script = ExtResource("2_02rk8")
+slope = 0.15
+offset = 0.85
+
+[sub_resource type="Resource" id="Resource_brst_ret"]
+script = ExtResource("1_a20ve")
+input_id = &"can_return"
+curve = SubResource("Resource_brst_retc")
+
+[resource]
+script = ExtResource("3_npjil")
+id = &"burst"
+display_name = "Burst"
+executor_id = &"burst"
+preconditions = Array[StringName]([&"has_weapon", &"weapon_bursts", &"enemy_known", &"weapon_reaches", &"lof_possible"])
+considerations = Array[ExtResource("1_a20ve")]([SubResource("Resource_brst_lof"), SubResource("Resource_brst_std"), SubResource("Resource_brst_mve"), SubResource("Resource_brst_obj"), SubResource("Resource_brst_ret")])
+base_weight = 1.5
+repeatable = true
+tiers = Array[StringName]([&"GRUNT", &"TRAINED", &"ELITE"])

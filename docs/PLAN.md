@@ -1106,6 +1106,46 @@ them. Same seed, same candidates in the same order, both paths abort identically
   was flaky rather than red** — it passed in isolation and failed under full-suite load, which is
   the failure mode to expect elsewhere. Both raises come out when this lands.
 
+### The AI tier table wants a rework, and tb64 patched a regression inside it
+**Needs:** nothing. **Unblocks:** a coherent answer to what each tier can do, which several items
+here currently work around one at a time.
+
+The supervisor, 2026-08-10: *"AI tiers are due for a rework, but this was a regression so needs to
+be fixed, not perfected."* tb64 Pass C did the narrow fix — `burst` gated exactly as `shoot` is, and
+`combat_tester_pump_shotgun` moved off `MINDLESS` — and deliberately changed no gate.
+
+**What the rework has to settle**, all of it visible now rather than speculative:
+- **`MINDLESS` has no firing action at all**, and that is authored (`docs/11`: `shoot` and
+  `take_cover` are Grunt-and-above). It is defensible for a melee rusher and indefensible for
+  anything issued a gun, and nothing stops a preset being armed with one — which is exactly what
+  `BR63.05`'s MINDLESS half turned out to be.
+- **The `overwatch` disagreement below** is the same shape: a table describing one thing and content
+  doing another.
+- **`suppress` was implemented from a doc line rather than designed.** It kept its `TRAINED` gate at
+  tb64 because a suppressive *tactic* is plausibly trained, but nothing has ever played it.
+
+### `burst.tres`'s weights are aligned with `shoot`, not tuned
+**Needs:** a played bout where a weapon offers both. **Unblocks:** nothing.
+
+`burst.tres` carries `base_weight = 1.5` and `shoot`'s five considerations verbatim, because
+*"aligned with shoot"* was the instruction and inventing a different number would be a balance
+decision presented as design (CLAUDE.md). **`auto_shotgun` provides both `shoot` and `burst`**, so
+the two tie on base weight and the considerations decide — untested, and the only weapon in the
+library where it matters. A burst also costs more AP (`burst_ap_cost` 3–4 against `ap_cost` 2),
+which nothing in the scoring currently accounts for.
+
+### Should a ladder blind? 130 of 751 blind pairs say it is worth deciding
+**Needs:** a design call. **Unblocks:** nothing; it is a question, not a gap.
+
+tb64 Pass A2's sweep blames `ladder` for **130 blind pairs** inside Chebyshev 3 on seed `642296523`
+— 82 of them socketed into a `ship_floor`'s `LEDGE` socket, sitting on the cell boundary at 2.0
+tall. A ladder is an open rung structure modelled as a solid 0.1-thick panel, and **tb63 Pass D1
+stamps far more of them than any earlier board carried**, so a previously-rare occluder became a
+common one without anyone choosing that.
+
+**Not filed as a bug**, because the geometry is doing exactly what it is authored to do. The
+question is whether the authoring is right, and it wants a played answer.
+
 ### `overwatch` starts at TRAINED, and the tier table says GRUNT
 **Needs:** a balance decision. **Unblocks:** nothing; it is a disagreement to resolve, not a gap.
 

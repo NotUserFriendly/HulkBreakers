@@ -1,5 +1,85 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 64 — a bout that produces gunfire
+
+### Pass A — measure the blindness, fix nothing
+
+**The blindness was measured at the wrong layer twice before it was measured at the right one, and
+that is the pass's finding.** Passes A1 and A2 both asked `LoS.has_los` — a ray between two cell
+centres. **That is not the gate.** `AttackAction.is_legal`'s `has_los` check was deleted at tb61
+Pass D on the supervisor's own call, and `WorldView._has_direct_sight` records in its own comment
+that it is deliberately `LoS` and not `LineOfFire`. A pair can pass every sight sweep and still
+never produce a round.
+
+**A1 (a prior session): the two-cell fixture, and a wrong mechanism recorded.** Every close-range
+case answered `yes` and the block concluded blindness did not reproduce. Two corrections:
+- It walked **orthogonally adjacent** cells only. `UtilityContext._nearest_known_enemy` measures
+  `Grid.distance_chebyshev`, so *"an enemy one cell away"* includes the four **diagonals**, where
+  two non-exempt cells sit between the pair. On a generated board: orthogonal 667 pairs / **0**
+  blind, diagonal 605 pairs / **25** blind.
+- It recorded *"cover does not block sight, only walls blind"*, generalising from `crate` (0.70)
+  to a class containing `pillar` (1.80) against a `SIGHT_HEIGHT` of 1.25. **Reversed** — see
+  `SUPERSEDED.md`. The test is now `test_what_blinds_is_decided_by_height_and_not_by_being_a_wall`
+  and enumerates `MapGen.COVER_IDS` rather than asserting about a category.
+
+**A2: the seed sweep** (`test_generated_board_sight_sweep.gd`, seed `642296523` at 40x30, 445
+standable cells). Blind pairs: **25 at Chebyshev 1 (1.97%), 208 at 2 (9.39%), 518 at 3 (17.84%)**.
+Blamed by the occluding box's own part — `ship_floor` 177, `wall` 168, `pillar` 157, `forklift` 85,
+`ladder` 130, `scrap_pile` 14, `goo_barrel` 10, `barrel_pallet` 8, `crate` 2. **Cover blames 276
+against the walls' 168.**
+
+**Not a tb63 regression.** The same seed at `316edc5` measures 1.60% / 7.08% / 15.69% — about two
+points better, not newly broken. **Stated as a caveat rather than a result: it is not the same
+board** (tb63 Pass D1 changed generation; 559 standable cells then, 445 now). The clean isolation
+is `_stand_wall` reverted to a bare `place_blocker` on an identical layout: **751 blind pairs ->
+709**, so tb63 Pass D2 accounts for **5.6%** of the blindness and the standing hypothesis is a
+minor contributor rather than the cause.
+
+**A3: the decision, which is what the bug reports were actually about.** Real presets, real
+planner, **bare flat board with no geometry on it at all** — `enemies_visible = 1` in all 18 cases.
+**Sight explains none of the reported silence.** Three separate silencers instead, none of them
+geometric, all recorded under `BR63.04`/`BR63.05`.
+
+### Pass C — a chaingun unit can fire
+
+**`burst` levels with `shoot`** — `data/utility_actions/burst.tres`, tier-gated
+`GRUNT`/`TRAINED`/`ELITE` exactly as `shoot` is. A tactic gate had been acting as a weapon gate:
+`suppress` was the only action naming `executor_id = burst` and it is `TRAINED`-and-above because
+*suppressive fire* is a trained tactic, which says nothing about pulling the trigger on an
+automatic weapon. **`suppress` is not moved, loosened or deleted** — it gains the `weapon_bursts`
+precondition it should always have carried.
+
+**Two repairs the burst action does not work without.** `shoot` now carries `weapon_single_fire`
+and `burst`/`suppress` carry `weapon_bursts`, both read off the picked weapon's own
+`provides_actions`, so **an action is never offered where its executor cannot build**. That is the
+thing that made `BR63.04` invisible: `shoot` won the scoring and `AttackAction.is_legal` refused it
+on a fact no precondition asked about, with `UtilityPlanner._commit` returning silently — a
+confident `shoot@(25,13)` in the log and then nothing. `UtilityContext._find_weapon_id` now prefers
+a damaging part that actually provides an action, keeping the old answer as a fallback so a data
+gap surfaces through the preconditions rather than going silent.
+
+**`combat_tester_pump_shotgun` moves `MINDLESS` -> `TRAINED`.** `docs/11` gates `shoot` and
+`take_cover` to Grunt-and-above deliberately, so the library's only `MINDLESS` preset was **armed
+with a pump shotgun it could never fire** — which is what `BR63.05`'s *"two `MINDLESS` units chose
+`seek_extraction` at one cell"* was. **The tier gate is untouched; the mis-armed preset is fixed.**
+The three combat testers now cover one tier each.
+
+**Measured at the decision level, on bare ground:** all three combat presets now produce a firing
+action at 1, 2 and 3 cells — chaingun `burst@(6,6)`, shotgun `shoot@(6,6)`, sniper `shoot@(4,8)`
+(it backs off past its own `min_range` of 3 first, which is the planner working). Before: chaingun
+and shotgun silent at every distance.
+
+**A false negative in the instrument, caught by the instrument.** The first version of
+`test_close_range_firing_decision.gd` detected a shot with `action is AttackAction` and read the
+working chaingun burst as silence — `BurstAction` extends `CombatAction` **beside** `AttackAction`,
+not under it. Recorded because a measuring test that under-reports is the failure mode this whole
+pass exists to catch.
+
+**Two findings filed rather than fixed** — `BR64.01` (`RayCaster.cast_geometry` and
+`RayCaster.obstructed` disagree on 56 of 751 blind pairs, breaking the no-parallel-systems
+invariant stated in `RayCaster`'s own header) and `BR64.02` (`kitted_chaingun` assembles with no
+weapon at all).
+
 ## Taskblock 63 — finish what taskblock 62 exposed
 
 ### Pass A — the file-size cap is the project's number, not gdlint's
