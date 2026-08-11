@@ -238,28 +238,50 @@ func test_the_planner_sees_an_adjacent_enemy_through_the_real_world_view() -> vo
 ## simply always said yes, that would read identically and mean nothing. A wall genuinely between
 ## two units must block them — and it does.
 ##
-## **And it kills the tempting alternative reading of `BR63.05`.** The one conclusive log
-## observation is an `ELITE` choosing `roam` at *two* cells, where there is a cell between them —
-## so "a piece of cover was in the way, and that is legitimate" looked like an innocent
-## explanation. **It is not available: cover does not block sight.** A crate's box tops out below
-## `LoS.SIGHT_HEIGHT` (1.25), so an eye-level line passes straight over it. Only a wall blinds, and
-## walls are the thing taskblock-63 made taller.
-func test_a_wall_between_two_units_blocks_but_cover_does_not() -> void:
+## ## What decides it is the object's own height, not whether it is called cover
+##
+## **A correction, and it was load-bearing** (tb64 Pass A2). This test previously asserted that
+## "cover does not block sight — only a wall blinds", generalising from the crate to the whole
+## class, and that reading is what steered `BR63.05` at the walls `taskblock-63` made taller.
+## `MapGen.COVER_IDS` holds six ids and they do not share a height:
+##
+##     scrap_pile 0.80   goo_barrel 1.00   crate 0.70
+##     forklift   1.10   barrel_pallet 0.30   pillar 1.80
+##
+## `SIGHT_HEIGHT` is 1.25, so **`pillar` blinds and the other five do not** — on flat ground.
+## On a generated board a `pillar` blamed 157 blind pairs inside Chebyshev 3 against a `wall`'s
+## 168, and cover as a class blamed 276 to the walls' 168. **Cover is the larger occluder, not
+## the exempt one.**
+##
+## Nothing here is a rule about categories: an object taller than the eye line stops it, and the
+## table above is what the authored parts happen to measure. A part edited to be taller changes
+## the answer and should.
+func test_what_blinds_is_decided_by_height_and_not_by_being_a_wall() -> void:
 	var grid: Grid = _board()
 	grid.place_blocker(Vector2i(2, 2), DataLibrary.get_part(WALL))
 	var walled: String = _sees(grid, Vector2i(1, 2), Vector2i(3, 2))
 	gut.p("  wall ON the line, two cells apart: %s" % walled)
 	assert_eq(walled, "NO", "a wall between two units must block them")
 
-	var open_board: Grid = _board()
-	open_board.place_blocker(Vector2i(2, 2), DataLibrary.get_part(&"crate"))
-	var covered: String = _sees(open_board, Vector2i(1, 2), Vector2i(3, 2))
-	gut.p("  crate ON the line, two cells apart: %s" % covered)
+	var offenders: Array[String] = []
+	for id: StringName in MapGen.COVER_IDS:
+		var part: Part = DataLibrary.get_part(id)
+		var top: float = -INF
+		for box: Box in part.volume:
+			top = maxf(top, box.center.y + box.size.y * 0.5)
+		var board: Grid = _board()
+		board.place_blocker(Vector2i(2, 2), part)
+		var answer: String = _sees(board, Vector2i(1, 2), Vector2i(3, 2))
+		var expected: String = "NO" if top > LoS.SIGHT_HEIGHT else "yes"
+		gut.p("  %-14s top %.2f, ON the line: %s" % [id, top, answer])
+		if answer != expected:
+			offenders.append("%s (top %.2f) -> %s, expected %s" % [id, top, answer, expected])
+
 	assert_eq(
-		covered,
-		"yes",
+		offenders,
+		[] as Array[String],
 		(
-			"cover tops out below SIGHT_HEIGHT, so it stops shots and not sight — recorded because it "
-			+ "removes the innocent explanation for BR63.05's two-cell observation"
+			"an object blinds exactly when it stands above SIGHT_HEIGHT (%.2f), whatever it is called: %s"
+			% [LoS.SIGHT_HEIGHT, ", ".join(offenders)]
 		)
 	)
