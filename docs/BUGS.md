@@ -268,6 +268,21 @@ bug and it is chased on its own terms.
   scenery pretending to be a route.
 - Check this against `MapGen`'s rise thresholds and against `step_height` — a rise of 1 is above the
   default free step but well below anything needing a two-piece ladder.
+- **tb64 Pass F, measured — confirmed, with the arithmetic.** `_open_a_route_out` on a 1.0 rise
+  returns true and stamps **one** segment: `_stamp_ladder` computes
+  `ceil(rise / Surface.LADDER_SEGMENT_RISE)` = `ceil(1.0 / 2.0)` = 1. **`LADDER_SEGMENT_RISE` is
+  2.0 and the part's box is 2.0 tall**, so a one-level rise gets a ladder that overshoots its own
+  destination by a full level. The report's *"each should be 1 unit"* is therefore a change to
+  `Surface.LADDER_SEGMENT_RISE` **and** to `ladder.tres`'s box, and it moves climb pricing —
+  `Pathfinder`'s ladder branch and `Surface.ladder_serves_climb` both read that constant.
+- **The "two pieces" are one ladder drawn twice, and that is `BR63.02`.** See that entry: on a 4.0
+  rise the segments are at `h=0.00` and `h=2.00`, but the cell also emits a **third** box at the
+  same height as the first, half a cell away in z. Fixing the double-draw may be all *"only the
+  top piece should generate"* actually needs.
+- **Ladders are rarer than the report implies**, which is worth knowing before tuning thresholds:
+  seed `642296523` at 40x30 carries 16 ladder cells, and seeds `4242` and `7` carry **none at
+  all**. Every ladder on `642296523` serves a rise of 2.80–4.00, so no one-level ladder appears on
+  that board — the reported one came from a seed not sampled here.
 ### BR63.02 — Active — owner: `SUPERVISOR`
 **The two ladder pieces are visually indistinguishable, and one is offset oddly**
 - **cluster:** `input-affordance`
@@ -277,6 +292,26 @@ bug and it is chased on its own terms.
   to know which end of a ladder they are looking at.
 - Likely the same placement-record work as `BR62.05`: an offset that was previously implicit is now
   carried explicitly, and one of the two pieces is not setting it.
+- **tb64 Pass F, measured — and it is a double-draw, not an offset on one piece.** A side-attaching
+  ladder gets **two homes** from `GridPlacement.place`: it becomes a `Surface` at its own cell
+  *and* an occupant of a floor's `LEDGE` socket. Both are then drawn, from different transforms.
+  On a 4.0 rise at cell `(2,2)`, `surfaces_at` emits three boxes where there are two segments:
+
+  ```
+  root=ship_floor  box=ladder  h=0.00  world_centre=(2.00, 1.00, 1.95)
+  root=ladder      box=ladder  h=0.00  world_centre=(2.00, 1.00, 2.45)
+  root=ladder      box=ladder  h=2.00  world_centre=(2.00, 3.00, 2.45)
+  ```
+
+  The first two are **the same physical ladder at the same height, 0.5 apart in z** — the socket
+  chain puts it on the floor's north ledge (`2.00 - 0.05`), its own `Surface` record puts it at
+  cell centre `+0.45`. *"One sits at a strange offset while the other is centred on its edge"* is
+  exactly this pair.
+- **Same root cause as `BR64.01`'s first half**, from the other side: one `Part` reachable through
+  two roots. Sight was fixed by excluding per box; drawing needs the opposite — one of the two
+  emissions has to stop being drawn, and **which one is the design call**, since the socket
+  transform is the physically-correct ledge position and the `Surface` record is what the mover
+  and `ladder_serves_climb` read.
 ### BR63.03 — Active — owner: `SUPERVISOR`
 **Extracted units remain on the map**
 - **cluster:** `view-model-membership`
