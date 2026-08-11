@@ -25,7 +25,7 @@ extends GutTest
 ## Runs `./run_tests.sh` with `args` and returns `{"code": int, "out": String}`.
 func _run(args: Array[String]) -> Dictionary:
 	var output: Array = []
-	var code: int = OS.execute("./run_tests.sh", args, output, true)
+	var code: int = SuiteProcess.execute("./run_tests.sh", args, output, true)
 	return {"code": code, "out": "\n".join(output)}
 
 
@@ -143,7 +143,7 @@ func test_an_ambiguous_name_fails_and_prints_every_match() -> void:
 		root = "/tmp"
 	root += "/hulk_ambiguity_check"
 	var output: Array = []
-	OS.execute(
+	SuiteProcess.execute(
 		"bash",
 		(
 			[
@@ -163,7 +163,7 @@ func test_an_ambiguous_name_fails_and_prints_every_match() -> void:
 	OS.set_environment("HB_TEST_ROOT", root)
 	var result: Dictionary = _run(["test_grid.gd"] as Array[String])
 	OS.set_environment("HB_TEST_ROOT", restore)
-	OS.execute("bash", ["-c", "rm -rf %s" % root] as Array[String], [], true)
+	SuiteProcess.execute("bash", ["-c", "rm -rf %s" % root] as Array[String], [], true)
 
 	gut.p(result["out"])
 	assert_eq(int(result["code"]), 2, "ambiguity is a usage error, not a test failure")
@@ -196,7 +196,9 @@ func test_a_targeted_run_refuses_to_write_the_profile_even_when_asked() -> void:
 	# original leak happened — so setting it here reproduces the real conditions.
 	OS.set_environment("WRITE_PROFILE", "1")
 
-	var code: int = OS.execute("./run_tests.sh", ["test_grid.gd"] as Array[String], output, true)
+	var code: int = SuiteProcess.execute(
+		"./run_tests.sh", ["test_grid.gd"] as Array[String], output, true
+	)
 
 	OS.set_environment("WRITE_PROFILE", "")
 	var text: String = "\n".join(output)

@@ -94,14 +94,47 @@ const HEADROOM := 0.15
 ## `plans`, `candidates` and `shot_planes` are re-recorded from the same run for consistency even
 ## though `GATED` does not gate them; leaving three of seven entries eight blocks stale would make
 ## the table a mix of two measurements and nobody could tell which was which.
+##
+## ## tb65 Pass F: two new counters, and two old ones that were never controlled
+##
+## `maps` and `spawns` join the table so the **zero-bout half of the suite** — 308 files and
+## 640 s that contributed nothing to any counter here — becomes visible. See `MapGen.
+## maps_generated` and `SuiteRun.processes_spawned` for why those two quantities and not
+## wall-clock.
+##
+## **Re-measuring for them exposed a flake this file did not know it had.** `BoutCorpus.sample()`
+## is clock-seeded and plays *until the first win*, capped at `CompletionSampler.FIRST_WIN_CAP`
+## (9) — so the number of bouts the corpus plays is a random variable, and it lands on whichever
+## `SuiteTier.CORPUS_READERS` file touches it first. Measured across two green full gates with
+## no relevant code change between them: **`test_watched_run.gd` went 2 bouts / 88 turns /
+## 121.9 s to 7 bouts / 246 turns / 279.2 s.** That is a 158-turn swing against 15% headroom on a
+## 1063 baseline, and it is the same class of defect `TURNS_EXCLUDED` already existed for.
+##
+## **The fix is not another exclusion.** Adding the other two corpus readers to
+## `TURNS_EXCLUDED` was tried and `test_the_exclusion_list_stays_small_and_gates_bouts_
+## regardless` rejected it, which is the guard doing its job: an exemption is a hole in the gate
+## and three of them is a habit. So `turns` is baselined at the **measured total of 786**, not at
+## the 540 that excludes every corpus reader — the corpus's contribution stays inside the number
+## and the headroom carries its swing. That costs tightness on purpose: the honest ratchet from
+## 1063 is to 786, not to a 540 that would flake the first time the corpus drew badly.
+##
+## **`bouts` is left gated too**: the corpus can add at most `FIRST_WIN_CAP` (9) and 15% of 85 is
+## 12, so the headroom covers it where a 158-turn swing it plainly could not.
+##
+## Making the corpus's own turn count observable would let `turns` come down by roughly 250 —
+## queued in `PLAN.md` rather than bodged here.
+##
+## Numbers below are the tb65 full gate, 363 scripts / 3547 tests / 0 failures / 1255.7 s.
 const BASELINE: Dictionary = {
-	"bouts": 76,
-	"turns": 1063,
-	"plans": 847,
-	"candidates": 1233514,
-	"shot_planes": 9616,
-	"floods": 6038,
+	"bouts": 85,
+	"turns": 786,
+	"plans": 571,
+	"candidates": 1292621,
+	"shot_planes": 9187,
+	"floods": 5128,
 	"ui_builds": 1267,
+	"maps": 941,
+	"spawns": 25,
 }
 
 ## Files whose **turns** are excluded from the gated suite total.
@@ -119,6 +152,12 @@ const BASELINE: Dictionary = {
 ##
 ## This is the honest version of a flaky threshold: not "raise the number until it
 ## stops", but "this quantity was never something the suite controls".
+## tb65 Pass F tried to add the other two `SuiteTier.CORPUS_READERS` here and
+## `test_the_exclusion_list_stays_small_and_gates_bouts_regardless` refused it — correctly.
+## **The guard is the better judgement**: an exemption is a hole in the gate, and the answer to
+## "this counter moved for a reason I do not control" is not to widen the hole until nothing
+## trips. The corpus swing is absorbed by the `turns` baseline instead, which keeps it *visible*
+## in a number rather than exempted out of the total. See `BASELINE`.
 const TURNS_EXCLUDED: Array[String] = ["res://test/integration/test_full_mission.gd"]
 
 ## Which counters are actually gated. **`candidates` and `shot_planes` are measured
@@ -132,7 +171,11 @@ const TURNS_EXCLUDED: Array[String] = ["res://test/integration/test_full_mission
 ## before. `test_spectator_overlay.gd` costs 33 s with zero bouts, so the suite's most
 ## expensive non-bout file was invisible to the thing meant to notice files getting
 ## expensive.
-const GATED: Array[String] = ["bouts", "turns", "floods", "ui_builds"]
+## tb65 Pass F: `maps` and `spawns` join them — the first counters here that can see a file
+## building no bout and mounting no surface. `test_spectator_overlay.gd` (56.6 s, 0 bouts, 36
+## maps) and `test_replay_wiring.gd` (22.3 s, 0 bouts, 8 spawns) were both invisible to every
+## gated counter except `ui_builds`, which cannot tell an expensive surface from a cheap one.
+const GATED: Array[String] = ["bouts", "turns", "floods", "ui_builds", "maps", "spawns"]
 
 ## Per-file caps for the files that dominate. **The suite total alone is not enough**:
 ## a file could double while another halved and the total would sit still, which is
@@ -142,6 +185,8 @@ const GATED: Array[String] = ["bouts", "turns", "floods", "ui_builds"]
 ## Values are the current measurement with the same headroom applied, rounded up.
 ## A `turns` entry for a file in `TURNS_EXCLUDED` is ignored — kept in the table as a
 ## record of what it measured, not as a limit.
+## tb65 Pass F: **"only files that build bouts get an entry" no longer holds**, and it was the
+## rule that made the zero-bout half unbudgetable per file as well as in aggregate.
 ## **Re-ratcheted at every pass that moved the numbers**: taskblock-47 Pass C took the
 ## sampler file from 88 bouts to 40 via `SAMPLE_SEEDS` 20 → 8, Pass E took it to 24 by
 ## retargeting and merging, and taskblock-48 Pass C took it to 10 with the shared corpus
@@ -153,8 +198,20 @@ const PER_FILE: Dictionary = {
 	# tb64 audit rebuild: 493 turns measured against a 136 cap set at taskblock-48. Nothing in
 	# tb64 touched this file — the cap simply had not been re-read since the profile went stale,
 	# and this is the suite's single most expensive file at 279.9 s (19.6% of the full gate).
-	"res://test/unit/view/overlays/test_ai_batch_yield.gd": {"bouts": 4, "turns": 493},
+	# tb65 Pass D took this file from 493 turns to 48 and 279.9 s to 22.4 s. Ratcheted down with
+	# it — a cap left at 493 would be pure slack, and this file is exactly the one that proved a
+	# stale cap hides growth for eight blocks.
+	"res://test/unit/view/overlays/test_ai_batch_yield.gd": {"bouts": 4, "turns": 56},
 	"res://test/unit/logic/ai/test_batch_plumbing.gd": {"bouts": 6, "turns": 37},
+	# tb65 Pass F: **the first per-file caps on files that build no bout**, which is the whole
+	# point of the two new counters. Measured, plus the same 15% headroom, rounded up.
+	"res://test/unit/logic/test_map_gen.gd": {"maps": 235},
+	"res://test/unit/view/test_battle_scene.gd": {"maps": 95},
+	"res://test/unit/logic/test_map_gen_reachability.gd": {"maps": 58},
+	"res://test/unit/view/overlays/test_spectator_overlay.gd": {"maps": 42},
+	"res://test/unit/logic/test_suite_run.gd": {"spawns": 10},
+	"res://test/unit/test_run_suite.gd": {"spawns": 10},
+	"res://test/unit/view/test_replay_wiring.gd": {"spawns": 10},
 }
 
 

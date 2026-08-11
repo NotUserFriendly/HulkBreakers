@@ -59,6 +59,22 @@ const RUNGS: Dictionary = {
 	&"fast": "fast",
 }
 
+## tb65 Pass F: **every real process this project spawns, counted in one place.**
+##
+## Homed here rather than in `test/support/` because a diagnostic the profiler reads has to live
+## where `src/logic/` can increment it, and this class is already the project's "spawn a process"
+## abstraction. The test-side wrapper `SuiteProcess` increments this same counter for the spawns
+## a test makes directly, so the number is the suite's total rather than one half of it.
+##
+## **Why subprocesses are worth their own gate.** `test_suite_run.gd` and `test_run_suite.gd`
+## cost **36.7 s between them and report zero bouts, zero turns, zero floods and zero ui_builds**
+## — every counter the budget gates on. A spawn pays `run_tests.sh`'s entire floor (gdlint, an
+## import pass, GUT startup) at roughly **3.7 s each**, so this is a small number where one extra
+## occurrence genuinely matters, unlike `ui_builds` where one more is nothing.
+##
+## Diagnostics only, never read by a decision.
+static var processes_spawned: int = 0
+
 ## Distinguishes concurrent runs. A counter rather than a clock read: two runs started
 ## in the same millisecond are exactly the case this has to survive.
 static var _next_id: int = 0
@@ -83,6 +99,10 @@ var _read_offset: int = 0
 var _rung: StringName = &"full"
 var _log_path: String = ""
 var _pgid_path: String = ""
+
+
+static func reset_diagnostics() -> void:
+	processes_spawned = 0
 
 
 ## Starts `rung` (or a single file when `target` is given) and returns whether it
@@ -111,6 +131,7 @@ func start(rung: StringName, target: String = "") -> bool:
 	# work" and "the checkbox worked and the run passed anyway" are different problems
 	# with the same appearance, and nothing on screen distinguished them.
 	launched_command = "%s./run_tests.sh %s" % [forced, argument]
+	processes_spawned += 1
 	pid = OS.create_process("/usr/bin/env", ["setsid", "bash", "-c", command])
 	if pid <= 0:
 		return false

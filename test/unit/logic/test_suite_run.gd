@@ -45,7 +45,7 @@ func _await_finish(run: SuiteRun, timeout_msec: int = 180000) -> void:
 ## different code path from `OS.create_process` + tail, so agreement means something.
 func test_the_launcher_agrees_with_the_shell_about_the_same_rung() -> void:
 	var shell_output: Array = []
-	var shell_code: int = OS.execute(
+	var shell_code: int = SuiteProcess.execute(
 		"./run_tests.sh", ["test_grid.gd"] as Array[String], shell_output, true
 	)
 
@@ -165,7 +165,7 @@ func test_kill_terminates_the_whole_process_group_not_just_the_shell() -> void:
 ## siblings, and the whole question here is about processes it did not create.
 func _godot_processes() -> int:
 	var output: Array = []
-	OS.execute("bash", ["-c", "pgrep -c godot || true"] as Array[String], output, true)
+	SuiteProcess.execute("bash", ["-c", "pgrep -c godot || true"] as Array[String], output, true)
 	var text: String = "\n".join(output).strip_edges()
 	return text.to_int() if text.is_valid_int() else 0
 

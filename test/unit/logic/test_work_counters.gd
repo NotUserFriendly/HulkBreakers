@@ -56,6 +56,8 @@ func _reset_all() -> void:
 	HulkTheme.reset_diagnostics()
 	Pathfinder.reset_diagnostics()
 	AiPlanner.reset_diagnostics()
+	MapGen.reset_diagnostics()
+	SuiteRun.reset_diagnostics()
 	UtilityPlanner.candidates_scored = 0
 	UtilityPlanner.empty_decisions = 0
 	ShotPlane.builds = 0
@@ -210,3 +212,75 @@ func test_resetting_clears_the_ui_counter() -> void:
 	HulkTheme.reset_diagnostics()
 
 	assert_eq(HulkTheme.ui_builds, 0)
+
+
+# --- tb65 Pass F: the counters that can see the zero-bout half --------------------
+
+
+## **The map counter moves for a file that builds no bout at all**, which is the whole reason it
+## exists: `test_generation_heights.gd` cost 42 s, generated 120 boards and reported zero to
+## every counter the budget gates on.
+##
+## Asserted in both directions, like `ui_builds` above — but the second direction is a **weaker**
+## claim and is written as the weaker claim deliberately. A bout generates exactly one map, so
+## this counter is not orthogonal to `bouts` the way `ui_builds` is. What it discriminates is
+## *how many boards were built*: one for a bout, fifty for a seed sweep. Asserting "a bout does
+## not move it" would be false, and asserting it anyway is how a guard starts lying.
+func test_maps_generated_moves_for_a_boardless_sweep_and_barely_for_a_bout() -> void:
+	_reset_all()
+
+	await _play()
+	var after_bout: int = MapGen.maps_generated
+	gut.p("after one bout: maps %d, turns %d" % [after_bout, CombatState.turns_resolved])
+	assert_eq(after_bout, 1, "a bout generates exactly one board, so the floor is one")
+
+	# The shape of a zero-bout map sweep — the thing the counter was added to see.
+	MapGen.reset_diagnostics()
+	for map_seed: int in range(5):
+		MapGen.generate(map_seed, 12, 10)
+
+	gut.p(
+		(
+			"after a five-seed sweep: maps %d, bouts %d"
+			% [MapGen.maps_generated, CombatState.bouts_built]
+		)
+	)
+	assert_eq(MapGen.maps_generated, 5, "a sweep that builds no bout moves it by its own size")
+
+
+## **`MapCorpus` reads must not move it**, or the counter would report the work Pass C removed as
+## though it were still being done — and the budget would then be ratcheted to a number that
+## rewards regenerating boards.
+func test_a_corpus_read_generates_nothing_and_counts_nothing() -> void:
+	MapCorpus.forget()
+	MapGen.reset_diagnostics()
+
+	MapCorpus.read(3, 12, 10)
+	var after_first: int = MapGen.maps_generated
+	for _i: int in range(4):
+		MapCorpus.read(3, 12, 10)
+
+	assert_eq(after_first, 1, "the cold read generated one board")
+	assert_eq(MapGen.maps_generated, 1, "and four warm reads generated none")
+	MapCorpus.forget()
+
+
+## The spawn counter is the other half, and a bout must not move it at all — this one *is*
+## orthogonal, which is what makes it able to see two files that cost 36.7 s and report zero
+## everywhere else.
+func test_a_bout_spawns_no_process() -> void:
+	_reset_all()
+
+	await _play()
+
+	assert_gt(CombatState.turns_resolved, 0, "sanity: the bout did real work")
+	assert_eq(SuiteRun.processes_spawned, 0, "a bout spawns nothing, so the counter is not noise")
+
+
+func test_resetting_clears_the_map_counter() -> void:
+	MapGen.generate(1, 12, 10)
+	assert_gt(MapGen.maps_generated, 0, "sanity: it counted")
+
+	MapGen.reset_diagnostics()
+
+	assert_eq(MapGen.maps_generated, 0)

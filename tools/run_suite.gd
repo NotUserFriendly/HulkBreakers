@@ -203,7 +203,16 @@ func _print_summary(total_usec: int, failures: int) -> void:
 	# enough — a counter nobody prints is a counter nobody reads, which is the whole reason it
 	# was added.
 	for key: String in [
-		"bouts", "turns", "plans", "candidates", "shot_planes", "floods", "ui_builds", "escaped"
+		"bouts",
+		"turns",
+		"plans",
+		"candidates",
+		"shot_planes",
+		"floods",
+		"ui_builds",
+		"escaped",
+		"maps",
+		"spawns"
 	]:
 		parts.append("%s %d" % [key, int(total.get(key, 0))])
 	print("  ".join(parts))
@@ -236,7 +245,7 @@ func _print_delta(row: Dictionary) -> void:
 		print("delta: %s is new — no previous numbers to compare against" % short)
 		return
 	var moved: Array[String] = []
-	for key: String in ["turns", "bouts", "floods", "ui_builds", "candidates"]:
+	for key: String in ["turns", "bouts", "floods", "ui_builds", "candidates", "maps", "spawns"]:
 		var change: int = int(row.get(key, 0)) - int(previous.get(key, 0))
 		if change != 0:
 			moved.append("%+d %s" % [change, key])
@@ -269,6 +278,11 @@ func _snapshot() -> Dictionary:
 		# taskblock-54 Pass B3: rounds that left the board without striking anything. A leaky
 		# board is a content problem, and this is the number that shows it.
 		"escaped": CombatState.shots_escaped,
+		# tb65 Pass F: the two counters that can see the zero-bout half of the suite. 308 files
+		# and 640 s contributed nothing to any counter above this line, and that half grew 3.3x
+		# between taskblock-56 and taskblock-64 with every budget green throughout.
+		"maps": MapGen.maps_generated,
+		"spawns": SuiteRun.processes_spawned,
 	}
 
 
@@ -610,7 +624,15 @@ func _render(total_usec: int) -> Array[String]:
 	lines.append("| tests | %d |" % _test_rows.size())
 	lines.append("| wall-clock | %.1f s |" % (float(total_usec) / 1_000_000.0))
 	for key: String in [
-		"bouts", "turns", "plans", "candidates", "shot_planes", "floods", "ui_builds"
+		"bouts",
+		"turns",
+		"plans",
+		"candidates",
+		"shot_planes",
+		"floods",
+		"ui_builds",
+		"maps",
+		"spawns"
 	]:
 		lines.append("| %s | %d |" % [key, int(total.get(key, 0))])
 	lines.append("")

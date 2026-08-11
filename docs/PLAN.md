@@ -498,6 +498,74 @@ it is a recorded limit rather than a rediscovery.
 <!-- ------------------------------------------------------------------------ -->
 ## The test suite
 
+### `BoutCorpus`'s own turn count is invisible, and it costs the budget ~250 turns of slack
+**Needs:** nothing. **Unblocks:** a tighter `turns` ratchet, and per-file numbers that mean what
+they say for three files.
+
+**`BoutCorpus.sample()` is clock-seeded and plays until the first win** (`CompletionSampler.
+seeds_to_first_win`, capped at `FIRST_WIN_CAP` 9). That was taskblock-50 Pass D's fix for a fixed
+sample making total turns swing 657–1305 (`BR49.01`), and it worked — but the count it plays is
+still a random variable, and **the file it is charged to is whichever `SuiteTier.CORPUS_READERS`
+entry ran first**, which `run_tests.sh`'s failure-history reordering changes between runs.
+
+**Measured across two green full gates with nothing between them that touches the file:
+`test_watched_run.gd` went 2 bouts / 88 turns / 121.9 s to 7 bouts / 246 turns / 279.2 s.** Read
+as a per-file number that is nonsense; read as "the corpus drew badly this time" it is fine.
+
+**The consequence is slack in the budget.** `SuiteBudget`'s `turns` baseline has to be the
+measured 786 rather than the 540 that excludes every corpus reader, because the swing has to fit
+inside the headroom. Adding the readers to `TURNS_EXCLUDED` was tried at taskblock-65 Pass F and
+`test_the_exclusion_list_stays_small_and_gates_bouts_regardless` refused it — correctly, since
+three exemptions is a habit rather than an exception.
+
+**The fix is to make the corpus's own work observable rather than exempt**: have `BoutCorpus`
+record how many bouts and turns it played, and subtract that one number from the total. Then
+`turns` ratchets to the controlled figure, the three reader files stop carrying a cost none of
+them owns, and the swing stays visible as its own line instead of hiding inside someone else's.
+
+### The third corpus is a mounted `BattleScene`, and it is bigger than the first two combined
+**Needs:** nothing to *measure* — this is the measurement. **Unblocks:** the largest remaining
+block of repeated work in the suite.
+
+**taskblock-65 Pass E swept for the shape that produced `BoutCorpus` (tb48) and `MapCorpus`
+(tb50) — N files each redoing the same expensive thing — and found four more.** Measured, with
+what each would cost to share and whether it should be:
+
+| shape | measured | verdict |
+|---|---|---|
+| **A mounted `BattleScene` + `ControlOverlay`** | **1177 ms each**; 41 files, 512 tests, 92 construction sites | the big one — **but not a corpus, see below** |
+| `DataLibrary.reset()` + `load_all()` in `before_each` | **15.4 ms**; 97 files, 904 tests = **13.9 s** | shareable, real, hazardous |
+| Subprocess spawns of `run_tests.sh` | ~3.7 s each; 10 spawns across 2 files = **36.7 s** | mostly *not* shareable |
+| Generated maps | done — taskblock-65 Pass C | — |
+
+**The mount is the headline and the corpus shape is the wrong answer for it.** At one mount per
+test the 41 files would be paying **~600 s**; at one per construction site, ~108 s. Either bound
+makes it the most expensive repeated thing left. But a `Grid` is read-mostly and a `BoutCorpus`
+record is immutable, whereas **a mounted overlay is the thing under test** — tests mutate it on
+purpose, so handing out a shared one reintroduces exactly the cross-test corruption `MapCorpus`
+needs its `copy()` escape hatch for, against an object far larger and with far more state.
+
+**The promising cut is narrower and it is a different job: several of these tests assert
+*declaration* properties by mounting a scene.** *"Which modules does this mode declare"* is a
+question about a `ViewMode` table entry, and answering it currently builds a `CanvasLayer`, a
+theme, every module's `Control`s and waits two frames. An assertion path that reads the
+declaration without mounting would take those tests to near zero without sharing any mutable
+state at all. **That is the item worth doing**, and it is not a corpus.
+
+**`DataLibrary` reloading is real but modest and its hazard is the same shape** — global mutable
+state, and the `before_each` exists precisely so a test that authors into the library cannot
+leak into the next one. Sharing it means proving no test mutates it, or giving it a
+copy-on-write path. 13.9 s is not worth that on its own; it becomes worth it alongside the
+mount work, which touches the same `before_each` blocks.
+
+**The subprocess spawns were checked and are mostly honest.** `test_suite_run.gd` (19.6 s) and
+`test_run_suite.gd` (17.1 s) spawn ~10 real `run_tests.sh` runs between them, and they genuinely
+differ — different targets, different `HB_TEST_ROOT`, different `WRITE_PROFILE`, different
+expected exit codes. **Two of them could merge** (the passing-target run and the
+profile-refusal run differ only in an environment variable that could be asserted about one
+run's output twice), worth ~7 s. The rest are a spawn per claim because the claim *is* about
+the spawn. Recorded so nobody re-derives 36 s as a promising target.
+
 ### The scripted bout, and why 133 files build state by hand
 **Needs:** nothing. **Unblocks:** most of the remaining suite cost, and combat tests that exercise the
 real path instead of an approximation of it.

@@ -114,10 +114,37 @@ const LIFT_SHARE: float = 0.5
 ## input that reshapes the board.
 const DESIGN_STEP_HEIGHT: float = Unit.BASE_STEP_HEIGHT
 
+## tb65 Pass F: **how many boards this suite generated** — the counter the budgets could not see.
+##
+## `test_suite_budget.gd` gates on bouts, turns, floods and ui_builds, and **308 files costing
+## 640 s contribute zero to every one of them.** That half of the suite grew 3.3× between
+## taskblock-56 and taskblock-64 with the budget green throughout, and its largest arrivals were
+## all zero-bout map sweeps — `test_generation_heights` at 42 s, `test_generated_board_sight_
+## sweep` at 34 s.
+##
+## **Maps rather than seconds**, because taskblock-47 settled that a wall-clock gate is
+## machine-dependent, flakes, and gets raised rather than investigated. A generation is exactly
+## countable, identical across runs, and priced: **224 ms at 32x24, 337 ms at 40x30** (tb65 Pass
+## A), so this counter converts directly into the thing anyone actually cares about.
+##
+## **Not orthogonal to `bouts`, and that is fine.** A bout generates exactly one map, so a new
+## bout test moves this by one — noise against a fifty-seed sweep moving it by fifty. What it
+## discriminates is not bout-vs-not, it is *how many boards were built*, which is the quantity
+## `floods` only ever saw a distorted shadow of: generation runs floods internally, so a map
+## sweep did move `floods`, but so does any planner change, and neither number named the cause.
+##
+## Diagnostics only, never read by a decision.
+static var maps_generated: int = 0
+
+
+static func reset_diagnostics() -> void:
+	maps_generated = 0
+
 
 ## A generated board, addressed entirely by `map_seed` and its dimensions. **Nothing about
 ## who will play there is an input** — see `DESIGN_STEP_HEIGHT`.
 static func generate(map_seed: int, width: int, rows: int) -> Grid:
+	maps_generated += 1
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
 
