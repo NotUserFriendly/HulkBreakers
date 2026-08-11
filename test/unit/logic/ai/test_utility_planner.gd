@@ -340,7 +340,15 @@ func test_every_authored_action_declares_at_least_one_precondition() -> void:
 	# tb62 Pass E's `ride_mag_lift`, the first action whose subject is the board rather
 	# than a part or an enemy. The count is asserted so a `.tres` going missing is loud,
 	# not because any number was ever the target.
-	assert_eq(pool.size(), 15, "the authored pool is fifteen rows")
+	#
+	# tb64 Pass C: **sixteen, with `burst`** — a plain burst action tier-gated exactly as
+	# `shoot` is, because `suppress` being the only thing naming `executor_id = burst` had a
+	# *tactic* gate acting as a *weapon* gate and an all-chaingun roster could not fire at all
+	# (`BR63.04`). **This assertion is why the number is here**: it is `skip_if_fast`, so five
+	# passes of green fast gates went by before the full gate caught the stale count. Working
+	# as intended — a pool that changed size said so — and the lesson is about which rung
+	# catches what, not about the guard.
+	assert_eq(pool.size(), 16, "the authored pool is sixteen rows")
 	for action: UtilityActionDef in pool:
 		assert_false(
 			action.preconditions.is_empty(), "%s must state when it is even possible" % action.id
