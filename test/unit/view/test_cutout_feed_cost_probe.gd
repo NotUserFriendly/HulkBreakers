@@ -33,7 +33,7 @@ func _usec(runs: int, body: Callable) -> float:
 
 
 func test_one_frame_of_the_cutout_feed_against_a_real_board() -> void:
-	var grid: Grid = MapGen.generate(4242, 32, 24)
+	var grid: Grid = MapCorpus.read(4242, 32, 24)
 	var preset: BotPreset = DataLibrary.get_preset(&"combat_tester_chaingun")
 	var units: Array[Unit] = []
 	for i in range(ROSTER):

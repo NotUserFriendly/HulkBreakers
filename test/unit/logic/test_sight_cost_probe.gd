@@ -45,7 +45,7 @@ func _usec(runs: int, body: Callable) -> float:
 
 func test_field_build_and_per_query_cost() -> void:
 	# The real generated board a bout is played on, at the size `BoutSetup` uses.
-	var grid: Grid = MapGen.generate(4242, 32, 24)
+	var grid: Grid = MapCorpus.read(4242, 32, 24)
 	var target := Vector2i(16, 12)
 	gut.p(
 		(

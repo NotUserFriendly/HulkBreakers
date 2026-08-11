@@ -33,7 +33,7 @@ func test_no_generated_cell_holds_both_a_ladder_and_a_lift_pad() -> void:
 	var ladders := 0
 	var pads := 0
 	for map_seed: int in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
 		for y: int in range(grid.rows):
 			for x: int in range(grid.width):
 				var cell := Vector2i(x, y)

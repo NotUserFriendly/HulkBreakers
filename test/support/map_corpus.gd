@@ -87,6 +87,24 @@ extends RefCounted
 ## **Two of those files are not `MapGen.generate`'s most-called sites and were found by
 ## measurement rather than by counting call sites.** A file calling the generator once inside
 ## a forty-seed loop looks cheaper in a grep than one calling it seven times at top level.
+##
+## ## What is left calling the generator directly, and why (tb65 Pass C)
+##
+## Pass C pointed **ten files** here. Everything still calling `MapGen.generate` in `test/`
+## does so for one of three stated reasons, and none of them is *"it was written before the
+## corpus"*:
+##
+## | file | why it holds out |
+## |---|---|
+## | `test_map_gen.gd` | its two determinism sites — the section above |
+## | `test_determinism_check.gd` | it builds a generator lambda to test the determinism *harness* |
+## | `test_map_generation_baseline.gd` | five seeds at 28x16, a size nothing else reads |
+## | `test_map_serializer.gd` | a fresh board per test, which is what a round-trip needs |
+## | `test_map_gen_reachability.gd` | reads here already; listed because it is what fills 40x30 |
+##
+## **Two keys were added to serve the retrofit** — seed 642296523 @ 40x30 and 4242 @ 24x18 —
+## each read by exactly one file. That is worth under a second each and was done anyway,
+## because a file asking for one board three times is the same waste at a smaller scale.
 
 ## Cached grids, keyed by `seed:width:rows`. `static` so it survives across scripts within
 ## one process, which is where the saving is — the two consumer files are separate scripts

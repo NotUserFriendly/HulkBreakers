@@ -81,7 +81,7 @@ func _blamed(grid: Grid, a: Vector2i, b: Vector2i) -> String:
 
 
 func test_close_range_sight_on_a_generated_board() -> void:
-	var grid: Grid = MapGen.generate(SWEEP_SEED, SWEEP_WIDTH, SWEEP_ROWS)
+	var grid: Grid = MapCorpus.read(SWEEP_SEED, SWEEP_WIDTH, SWEEP_ROWS)
 	var cells: Array[Vector2i] = _standable_cells(grid)
 	gut.p(
 		"seed %d at %dx%d: %d standable cells" % [SWEEP_SEED, SWEEP_WIDTH, SWEEP_ROWS, cells.size()]
@@ -140,7 +140,7 @@ func test_close_range_sight_on_a_generated_board() -> void:
 ## orthogonal adjacency being unblockable, and it is; the number that matters is what the other
 ## four neighbours do.
 func test_one_cell_blindness_splits_orthogonal_from_diagonal() -> void:
-	var grid: Grid = MapGen.generate(SWEEP_SEED, SWEEP_WIDTH, SWEEP_ROWS)
+	var grid: Grid = MapCorpus.read(SWEEP_SEED, SWEEP_WIDTH, SWEEP_ROWS)
 	var cells: Array[Vector2i] = _standable_cells(grid)
 	var seen: Dictionary = {}
 	for cell: Vector2i in cells:
@@ -176,7 +176,7 @@ func test_one_cell_blindness_splits_orthogonal_from_diagonal() -> void:
 ## other place the two paths could drift (`_blocker_in_the_way` reads
 ## `blocker_height_for_cell`, `_consider_assembly` reads `true_height_for_cell`).
 func test_the_sight_predicate_and_the_ray_march_agree_on_this_board() -> void:
-	var grid: Grid = MapGen.generate(SWEEP_SEED, SWEEP_WIDTH, SWEEP_ROWS)
+	var grid: Grid = MapCorpus.read(SWEEP_SEED, SWEEP_WIDTH, SWEEP_ROWS)
 	var cells: Array[Vector2i] = _standable_cells(grid)
 	var seen: Dictionary = {}
 	for cell: Vector2i in cells:

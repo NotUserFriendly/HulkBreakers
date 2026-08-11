@@ -48,7 +48,7 @@ func _heights(grid: Grid) -> Dictionary:
 func test_a_tall_shelf_is_generated_somewhere_in_a_seed_sweep() -> void:
 	var tall_seeds: Array[int] = []
 	for map_seed: int in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
 		if _heights(grid).has(float(MapGen.TALL_ROOM_LEVEL) * UnitGeometry.LEVEL_HEIGHT):
 			tall_seeds.append(map_seed)
 
@@ -68,7 +68,7 @@ func test_a_tall_shelf_is_generated_somewhere_in_a_seed_sweep() -> void:
 func test_every_generated_tall_shelf_is_reachable() -> void:
 	var checked := 0
 	for map_seed: int in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
 		var tall: float = float(MapGen.TALL_ROOM_LEVEL) * UnitGeometry.LEVEL_HEIGHT
 		var reached: Dictionary = MapNavigability.reachable_from_spawns(grid)
 		if reached.is_empty():
@@ -98,7 +98,7 @@ func test_no_generated_wall_is_shorter_than_the_floor_beside_it() -> void:
 	var worst := 0.0
 	var worst_at := Vector2i.ZERO
 	for map_seed: int in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
 		for cell: Vector2i in grid.blockers:
 			var record: Blocker = grid.blocker_at(cell)
 			if record.part.id != WALL_ID:
@@ -132,7 +132,7 @@ func test_spanning_a_level_change_is_the_exception_and_still_happens() -> void:
 	var sized := 0
 	var raised := 0
 	for map_seed: int in range(SEED_COUNT):
-		var grid: Grid = MapGen.generate(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
+		var grid: Grid = MapCorpus.read(map_seed, BOUT_WIDTH, BOUT_HEIGHT)
 		for cell: Vector2i in grid.blockers:
 			var record: Blocker = grid.blocker_at(cell)
 			if record.part.id != WALL_ID:

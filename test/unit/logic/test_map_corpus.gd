@@ -54,6 +54,36 @@ func test_copy_hands_back_something_safe_to_mutate() -> void:
 		assert_true(shared.blockers.has(cell), "mutating the copy left the shared grid alone")
 
 
+## **The hazard itself, asserted rather than only warned about** (tb65 Pass C).
+##
+## The test above proves `copy()` is safe. This proves the other half — that `read()` is
+## genuinely *not* — because tb65 pointed ten more files at this corpus and the failure mode
+## they now share is worth having in front of a reader as an executable fact rather than as a
+## sentence in a header.
+##
+## **What makes it nasty is the distance, not the mutation.** A file that erases one blocker
+## from a `read()` grid corrupts every later reader of that seed, in a different script, and
+## the red test is some unrelated sweep counting cover on a board it never touched. Nothing
+## about that failure points back here. So the corpus takes the deliberate design position of
+## sharing anyway — the sharing is the entire saving — and this is the receipt for that choice.
+func test_a_mutation_through_read_is_visible_to_every_later_reader() -> void:
+	var shared: Grid = MapCorpus.read(7, WIDTH, ROWS)
+	assert_gt(shared.blockers.size(), 0, "sanity: the board has blockers to remove")
+	var cell: Vector2i = shared.blockers.keys()[0]
+
+	shared.blockers.erase(cell)
+
+	var later: Grid = MapCorpus.read(7, WIDTH, ROWS)
+	assert_false(
+		later.blockers.has(cell),
+		(
+			"a mutation through read() reaches every later reader — which is why a mutating "
+			+ "consumer must call copy(), and why this is asserted rather than assumed"
+		)
+	)
+	assert_eq(MapCorpus.generated, 1, "and the corpus never notices, because it generated once")
+
+
 ## **The trap this corpus sets, pinned so nobody re-sets it.**
 ##
 ## `test_generate_is_seed_deterministic` compares two generations of one seed. Routed

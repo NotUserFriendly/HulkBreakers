@@ -72,7 +72,7 @@ func test_destroying_a_wall_restores_sight_with_no_flag_to_clear() -> void:
 ## real board and checks the containment rather than arguing it — the direction of the
 ## approximation is the entire safety argument, and an argument is not a measurement.
 func test_the_field_never_reports_blocked_where_the_march_reports_clear() -> void:
-	var grid: Grid = MapGen.generate(4242, 24, 18)
+	var grid: Grid = MapCorpus.read(4242, 24, 18)
 	var target := Vector2i(12, 9)
 	var field: VisibilityField = VisibilityField.build(grid, target)
 
@@ -200,7 +200,7 @@ func _unit(cell: Vector2i, squad: int) -> Unit:
 ## the boolean for every ray — which is the claim that lets the sight query skip the bookkeeping,
 ## and therefore the claim worth checking rather than asserting in a comment.
 func test_the_any_hit_loop_agrees_with_the_nearest_hit_march() -> void:
-	var grid: Grid = MapGen.generate(4242, 24, 18)
+	var grid: Grid = MapCorpus.read(4242, 24, 18)
 	var compared := 0
 	var blocked := 0
 	for angle in range(0, 360, 17):
@@ -259,7 +259,7 @@ func test_the_any_hit_loop_agrees_with_the_nearest_hit_march() -> void:
 ## `test_an_excluded_part_socketed_onto_a_neighbours_floor_does_not_blind` below is the guard;
 ## this one catches whatever else the two loops might disagree about later.
 func test_the_two_loops_agree_when_the_endpoint_exemption_is_applied() -> void:
-	var grid: Grid = MapGen.generate(4242, 24, 18)
+	var grid: Grid = MapCorpus.read(4242, 24, 18)
 	var pathfinder := Pathfinder.new(grid)
 	var cells: Array[Vector2i] = []
 	for y in range(grid.rows):

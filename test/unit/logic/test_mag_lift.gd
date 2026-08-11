@@ -269,7 +269,7 @@ func test_generated_maps_stand_lifts_where_ladders_would_go() -> void:
 	var pads := 0
 	var ladders := 0
 	for map_seed: int in [1, 2, 3, 4, 5, 9, 4242, 12345]:
-		var grid: Grid = MapGen.generate(map_seed, 32, 24)
+		var grid: Grid = MapCorpus.read(map_seed, 32, 24)
 		var seed_pads := 0
 		for surface: Surface in grid.placements():
 			if Surface.MAG_LIFT_TAG in surface.part.tags:
@@ -297,7 +297,7 @@ func test_every_generated_pad_pairs_with_one_that_pairs_back() -> void:
 	var broken: Array[String] = []
 	var pairs := 0
 	for map_seed: int in [1, 2, 3, 4, 5, 9, 4242, 12345]:
-		var grid: Grid = MapGen.generate(map_seed, 32, 24)
+		var grid: Grid = MapCorpus.read(map_seed, 32, 24)
 		for surface: Surface in grid.placements():
 			if not Surface.MAG_LIFT_TAG in surface.part.tags:
 				continue

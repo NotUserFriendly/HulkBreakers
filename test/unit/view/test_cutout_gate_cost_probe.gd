@@ -45,7 +45,7 @@ func _unit_at(cell: Vector2i) -> Unit:
 
 func test_the_sight_gate_costs_a_frame_less_than_the_full_obstruction_march() -> void:
 	# The real generated board a bout is played on, at the size `BoutSetup` uses.
-	var grid: Grid = MapGen.generate(4242, 32, 24)
+	var grid: Grid = MapCorpus.read(4242, 32, 24)
 	var camera_position := Vector3(16, 14, -10)
 	var unit: Unit = _unit_at(Vector2i(16, 12))
 	gut.p(

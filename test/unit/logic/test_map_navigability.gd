@@ -21,7 +21,7 @@ func should_skip_script():
 func test_no_generated_map_contains_ground_a_unit_cannot_leave() -> void:
 	var offenders: Array[String] = []
 	for map_seed: int in GATE_SEEDS:
-		var grid: Grid = MapGen.generate(map_seed, BOUT_WIDTH, BOUT_ROWS)
+		var grid: Grid = MapCorpus.read(map_seed, BOUT_WIDTH, BOUT_ROWS)
 		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid)
 		if not stranded.is_empty():
 			offenders.append(

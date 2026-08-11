@@ -101,7 +101,7 @@ func test_a_wall_off_to_the_side_is_never_blocked_at_any_zoom() -> void:
 ## behind a wall at those angles. Whether that agrees with what is on screen is what the cutout
 ## log's own blamed-cell field now answers live.
 func test_which_sample_ray_keeps_the_cutout_alive_across_zoom() -> void:
-	var grid: Grid = MapGen.generate(4242, 32, 24)
+	var grid: Grid = MapCorpus.read(4242, 32, 24)
 	var unit := _standing_unit(Vector2i(16, 8))
 	unit.height = UnitGeometry.true_height_for_cell(unit.cell, grid)
 	var pivot := Vector3(15.5, 0.0, 11.5)
