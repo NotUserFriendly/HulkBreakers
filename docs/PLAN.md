@@ -498,6 +498,92 @@ it is a recorded limit rather than a rediscovery.
 <!-- ------------------------------------------------------------------------ -->
 ## The test suite
 
+### Boards become an input, not a product — generate once, serialise, hand out
+**Needs:** nothing. **Unblocks:** a shard map with no corpus-affinity constraint, and a `Grid`
+fixture whose cost does not scale with however many processes want one.
+
+**Measured in taskblock-66 Pass A, on the supervisor's proposal.** Not committed fixtures — those
+were evaluated first and the staleness argument sank them. **Build fresh at gate start, serialise,
+hand out**, so the boards are exactly as fresh as the generator that made them:
+
+| board | generate | load | round-trip | size |
+|---|---:|---:|---:|---:|
+| 32×24 | 389 ms | **62.5 ms** | 5/5 faithful | 141 KB |
+| 40×30 | 414 ms | **81.6 ms** | 5/5 faithful | 219 KB |
+
+**Loading is 5–6× cheaper than generating and `MapSerializer` round-trips a full signature** — heights,
+blocker `height`/`size`/`facing`, surfaces, spawn markers.
+
+**The better shape is a lazy shared disk cache wiped at gate start**, not a prologue. `MapCorpus.read()`
+checks a scratch directory, loads if present, generates-and-saves if not. No need to know in advance
+which boards the suite wants, **the wipe is the invalidation**, races are benign (identical content,
+atomic rename), and the unsharded path is unchanged because the in-process cache short-circuits before
+touching disk.
+
+**The invalidation has one hole and it must be closed in the same pass.** The wipe covers the full
+gate; a *targeted* run does not wipe, so changing `MapGen` and running one file reads stale boards.
+**Wants a generator stamp in the cache key, or a wipe on any run** — a cache that is stale exactly
+during the edit loop is the kind people learn to distrust and then work around.
+
+**What it buys, in order.** It removes the `MapCorpus` half of a sharded gate's affinity constraint
+entirely — a board that is an *input* costs nothing to share, so the duplicated-fill quantity goes to
+zero rather than being subtracted. Plus ~20 s on an unsharded gate.
+
+**What it does not buy: the makespan.** A sharded gate ends when `BoutCorpus`'s draw ends, and that is
+missions being *played*, not maps being generated. This makes the other shards cheaper and
+unconstrained; it does not shorten the gate.
+
+**It goes after taskblock-66 because that is where the payoff is**, and because the fidelity risk is
+correctness work that should not ride on a scheduling block. **`BR62.05` is this bug having already
+happened once** — dropped blocker `height`/`size`/`offset`/`facing` that *"round-tripped because both
+ends discarded the same things."* Fixed at tb63 D3, and a future `Grid` field added without a
+serializer update would silently change what the whole suite sees, where today it is an editor
+inconvenience. **Under this design it is cheaply guarded in-run**: the board is generated and loaded in
+the same gate, so hashing before save and after load is nearly free. Build that guard with the cache,
+not after it.
+
+### What the completion rate measures, and two headers that say otherwise
+**Needs:** nothing. **Unblocks:** knowing whether the completion number is a statement about the game
+or about the harness.
+
+**`p` is 0.220** — taskblock-66 Pass A, 100 seeds across ten windows spanning the real 0–9999 draw
+space, 95% CI **0.139–0.301**. That supersedes every earlier figure, including `BR65.01`'s 0.15 and
+every four-draw estimate. **It is a wide interval and it should be quoted as one**; P(no win in nine
+seeds) runs 1-in-3.8 to 1-in-25 across it.
+
+**Two file headers state a belief the measurement contradicts.** `completion_sampler.gd:12` and
+`bout_corpus.gd:17` both carry the *"pessimistic window"* finding — seeds 0–11 at 41.7% against 12–23
+at 66.7% on an identical build — as evidence that the seed space has structure. **Fisher exact on 5/12
+against 8/12 gives 0.414**, and Pass A tested it directly: **chi-square across ten scattered windows is
+11.42 on 9 df against a 16.92 critical value.** No evidence the windows differ. **taskblock-46's
+decision to sample rather than pin is correct regardless and is not reopened** — sampling is the right
+method whether or not that particular spread was real. What wants correcting is the claim that the
+windows are *known* to differ, which is currently load-bearing in two places.
+
+**And the number is not what its name says.** `run_seed` plays to `TURN_CAP` (100) and counts only
+`EXTRACTED`, and **30 of Pass A's 78 losing seeds reached that cap** — 30% of all sampled seeds were
+still playing when the clock stopped. **`p` is P(complete within 100 turns)**, not P(complete). Two
+consequences:
+
+- **`TURN_CAP` is an unlisted cost lever.** It sets the cost of a losing bout (**61.3 turns measured**),
+  and under a sharded gate that cost *is* the makespan. Lowering it is the largest single knob on gate
+  length that nobody has listed.
+- **`p` and the loser cost are coupled through it**, so arithmetic that re-derives one against the
+  other while holding the other fixed is not quite valid — including `BR65.01`'s cap figures.
+
+**Turning the knob is a design decision, not a scheduling one**, which is why it is recorded here rather
+than done in taskblock-66: a lower cap makes the completion rate say something different about the game,
+and the supervisor has already stated that the rate falling from 72% to ~40% to today's figure was two
+deliberate difficulty changes. **Decide what the number is supposed to mean before changing what it
+measures.**
+
+**One modelling note for whoever prices this.** taskblock-66's cost model is turns-linear, and the
+evidence says there is a per-bout fixed component: Pass A's live draw ran 33 turns in 49.8 s (1.51 s per
+turn, outside the 0.77–1.39 band), which solved against the 100-seed run gives roughly **33 s fixed per
+bout plus 0.52 s per turn**. At current draw sizes the two models agree within a few seconds — but **a
+turn reduction bought against the linear model will over-credit itself**, and that is exactly what
+lowering `TURN_CAP` would be.
+
 ### `BoutCorpus`'s variable draw is subtracted, but its *bouts* still are not
 **Needs:** nothing. **Unblocks:** ratcheting `bouts` and `candidates` the way `turns` now can be.
 
@@ -512,11 +598,14 @@ one that is, so a filename was only ever a proxy.
 **`bouts` and `candidates` have the same problem and no equivalent.** The same three runs measured
 **80 / 85 / 88 bouts** and **911 200 / 1 292 621 / 1 816 411 candidates**, almost all of it the same
 draw. Both are still gated against a single-sample baseline, and `candidates` is not gated at all.
-The 15% completion rate (`BR65.01`) makes the swing wider than when this was last reasoned about:
-the sampler now routinely plays the full nine.
+At the measured completion rate — **0.220**, taskblock-66 Pass A — the draw averages **4.06 seeds**
+and reaches the cap about one gate in nine, so the swing is real but narrower than `BR65.01`'s 0.15
+implied. **The earlier reading, that the sampler routinely plays the full nine, was wrong.**
 
 **The work is the same shape as the turns fix** — count them beside `sampled_turns`, subtract in
-`violations()` — and it is small. It is queued rather than done because taskblock-65 fixed the one
+`violations()` — and it is small. **taskblock-66 builds the same machinery for `maps` and `floods`**,
+which sharding inflates by duplicating corpus fills; if that lands first, this becomes two more
+callers of a mechanism that already exists. It is queued rather than done because taskblock-65 fixed the one
 counter that had a live flake and stopped there.
 
 ### The third corpus is a mounted `BattleScene`, and it is bigger than the first two combined
@@ -540,6 +629,12 @@ makes it the most expensive repeated thing left. But a `Grid` is read-mostly and
 record is immutable, whereas **a mounted overlay is the thing under test** — tests mutate it on
 purpose, so handing out a shared one reintroduces exactly the cross-test corruption `MapCorpus`
 needs its `copy()` escape hatch for, against an object far larger and with far more state.
+
+**One file carries a disproportionate share and has a stated trigger.** `test_battle_scene.gd` is
+**63.3 s for 6 bouts and 3 turns** across 39 tests in 962 lines — scene-mount cost, not simulation.
+taskblock-66 deliberately left it unsplit because under a sharded gate it sits below the corpus shard
+and so is not the wall. **The trigger is recorded rather than the work: split it if it ever becomes the
+determiner of gate length.** It is also the largest single instance of the shape below.
 
 **The promising cut is narrower and it is a different job: several of these tests assert
 *declaration* properties by mounting a scene.** *"Which modules does this mode declare"* is a
