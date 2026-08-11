@@ -11,6 +11,11 @@ three unrelated things, none of them sight — a tier gate, a missing `burst` ac
 armed with a gun its own tier could never fire. All three combat presets now produce a firing action
 at one, two and three cells.
 
+The block ends with the suite profile rebuilt for the first time since taskblock-56. **That
+regeneration turned the fast gate red on three counts, none of them false** — two files were
+building bouts inside the fast gate and five work budgets were stale — and almost none of the
+overshoot was this block's. Details under *Gate timings and what the audit rebuild cost*.
+
 <!-- Rewrite this opening whenever a later pass moves it. -->
 
 ## Decisions made without asking
@@ -127,6 +132,87 @@ considerations decide — untested, and queued in `PLAN.md` rather than guessed 
 stated cause is corrected in place, but the one observation it was opened on — an `ELITE` choosing
 `roam` at two cells — does not reproduce, and marking it `Pending` would assert a verification
 nobody performed.
+
+## Gate timings, and what the audit rebuild cost
+
+**Paired CPU/real figures exist only for the runs at the end of the block.** The per-pass gates were
+never wrapped in `/usr/bin/time`, so their CPU time does not exist and is left blank rather than
+reconstructed. `suite` is what `run_tests.sh` reports (test execution); `REAL` is the whole process,
+engine startup and shutdown included.
+
+| Gate | After | Scripts | Tests | suite | REAL | USER | SYS | CPU |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| fast | A2 | 336 | 3263 | 650.1 s | — | — | — | — |
+| fast | A3/C | 336 | 3263 | 660.8 s | — | — | — | — |
+| fast | B | 336 | 3266 | 678.9 s | — | — | — | — |
+| fast | D | 337 | 3268 | 682.3 s | — | — | — | — |
+| fast | E | 337 | 3268 | 681.9 s | — | — | — | — |
+| fast | G | 338 | 3277 | 681.9 s | — | — | — | — |
+| full | G | 362 | 3534 | 1767.6 s **(1 fail)** | — | — | — | ~27m10s @ 28m35s |
+| full | pool fix | 362 | 3534 | 1879.0 s | — | — | — | 29m51s @ 31m15s, ~95% |
+| **full + `WRITE_PROFILE=1`** | audit rebuild | 362 | 3534 | 1434.1 s | 1449.8 s | 1375.2 s | 7.0 s | **95%** |
+| fast | audit rebuild | 338 | 3277 | 675.8 s **(3 fail)** | 691.0 s | 635.4 s | 5.1 s | **92%** |
+| **fast** | registry + budget fix | 336 | 3249 | 664.9 s | 679.7 s | 624.2 s | 5.1 s | **92%** |
+| **full** | registry + budget fix | 362 | 3534 | 1443.5 s | 1458.7 s | 1386.1 s | 7.1 s | **95%** |
+
+**The full gate's wall-clock is not a stable number**: four runs of the same suite measured
+**1767.6, 1879.0, 1434.1 and 1443.5 s** — a 31% spread. `SUITE-PROFILE.md` says so in its own header
+(*"wall-clock is the softer number"*), and the spread is why the budget gates work counters and not
+seconds. **Compare the counts; do not compare these.** The two runs after the profile was
+regenerated agree to within 0.7% of each other, which is suggestive but is two data points, not a
+finding — `run_tests.sh` reorders scripts by failure history, so run composition is not identical
+between them either.
+
+**Work counters move between runs too, and by more than the profile suggests.** The same green full
+gate reported `bouts 77 / turns 970 / candidates 1 313 572` where the profiled run recorded
+`76 / 1063 / 1 233 514`. `test_full_mission.gd` draws its seeds from the clock by design
+(`SuiteBudget.TURNS_EXCLUDED` documents exactly this), so turn counts downstream of it are not a
+controlled quantity — which is why `turns` is excluded per-file for it and why the budget carries
+15% headroom.
+
+**Runs over 10% of a gate's own time.** Only one file crosses it, and it is not close: within the
+full gate's 1429.1 s of summed test time, `unit/view/overlays/test_ai_batch_yield.gd` is **279.9 s —
+19.6%**. Second is `unit/logic/test_watched_run.gd` at 121.9 s (8.5%). Nothing else exceeds 5%.
+
+Of the individual runs I invoked by hand, one is worth recording: **Pass E's first fixture hung for
+~10 minutes** before I killed it — 9 minutes elapsed against 1 second of CPU. That ratio is how a
+stuck run is told from a slow one, and it cost more wall-clock than any real gate.
+
+## The suite profile, rebuilt (last regenerated at taskblock-56)
+
+**Totals, and where they come from.** Per-file figures are in `test/SUITE-PROFILE.md`, which is
+generated — this is the reading of them.
+
+| counter | total | files | most concentrated |
+|---|---:|---:|---|
+| bouts | 76 | 19 | `test_bout_setup.gd` 10 (13.2%), `test_per_tier_probe.gd` 9 (11.8%) |
+| turns | 1 063 | 48 | `test_ai_batch_yield.gd` 493 — **46.4% of every turn the suite resolves** |
+| candidates | 1 233 514 | 26 | `test_ai_batch_yield.gd` 412 366 — **33.4%** |
+
+**One file is a third of the suite's AI work**, and it is also its slowest at 19.6% of wall-clock.
+That is the single most actionable thing the rebuild surfaced.
+
+**Regenerating turned the fast gate red, and none of the three failures were false.** All were drift
+the eight-block-stale profile had been hiding, since both guards read the *committed* profile:
+
+- **Four files build bouts and were not registered** in `SuiteTier.BOUT_FILES`.
+  `test_intelligence_tiers.gd` and `test_step_height.gd` had **no `should_skip_script()` at all** and
+  were building bouts *inside the fast gate* — exactly what the list exists to prevent.
+  `suite_tier.gd` already carried a note about this happening at tb56 for the identical reason.
+- **`test_full_mission.gd` read as a stale entry and is not one.** It reaches the shared corpus
+  through `CompletionSampler`, so on a full run another reader always pays first and it measures
+  zero bouts while genuinely resolving a 43-turn mission. Moved to `CORPUS_READERS`.
+- **Five budget violations, and almost none of them are this block's.** Measured tb64 contribution
+  against each overshoot: **bouts +11 over (2 mine), turns +175 (~14 mine), floods +267 (~35 mine),
+  ui_builds +545 (0 mine)**. The per-file cap on `test_ai_batch_yield.gd` was 136 turns against 493
+  measured, and nothing in tb64 touches that file. Re-ratcheted to measurement.
+
+**The judgement half of the audit is not done.** `suite_audit.csv` is rebuilt — 3534 rows against
+3534 declared tests, with **2557 of 2607 hand-filled `rule_guarded` cells carried forward verbatim**
+(the 50 lost are tests that no longer exist: `ClimbAction`'s, retired at tb62, and the LoS legality
+gate's, removed at tb61). **977 rows carry no rule**, and `test_every_row_carries_a_rule` fails on
+exactly that. Per `TEST-AUDIT.md` a failing audit run is a report, not a broken build — this one
+reads "977 tests added since taskblock-56 have never been classified".
 
 ## Open questions
 

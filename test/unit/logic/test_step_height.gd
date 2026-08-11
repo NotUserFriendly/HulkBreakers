@@ -17,6 +17,7 @@ extends GutTest
 ## rendering through `RampGeometry`, and `CellInspection` still names the shape to a player —
 ## a cosmetic ramp is content this pass deliberately kept. What is retired is the *machinery*:
 ## these three names, each of which was a traversal decision made from a label.
+
 const RETIRED_IDENTIFIERS: Array[String] = ["is_ramp_at", "RAMP_MAX_RISE", "CellKind.RAMP"]
 const SELF_PATH := "res://test/unit/logic/test_step_height.gd"
 
@@ -28,6 +29,18 @@ const SELF_PATH := "res://test/unit/logic/test_step_height.gd"
 ## every claim about *disagreeing* strides needs a leg the library does not ship — and
 ## inventing a long-legged part in `data/` to satisfy a test would be authoring content to
 ## fit the test rather than the other way round.
+## tb64 audit rebuild: **this file builds bouts and was running them in the fast gate.** It
+## predates its own registration in `SuiteTier.BOUT_FILES` — the committed profile had not been
+## regenerated since taskblock-56, so nothing could see the bouts it had started building.
+##
+## Untyped return on purpose, against this project's static-typing rule: GUT declares
+## `func should_skip_script():` with no return type, and Godot treats an override that adds
+## `-> Variant` as a signature mismatch — the script then fails to parse and GUT reports it as
+## "does not extend GutTest", a long way from the real cause.
+func should_skip_script():
+	return SuiteTier.skip_if_fast()
+
+
 func _make_unit(cell: Vector2i, offers: Array[float] = []) -> Unit:
 	var root := Part.new()
 	root.id = &"test_torso"
@@ -297,8 +310,10 @@ func test_no_shipped_part_offers_less_than_the_base_step_height() -> void:
 		[] as Array[String],
 		(
 			"a part offering LESS than the base makes BASE_STEP_HEIGHT no longer the worst case, "
-			+ "so every roster-less MapGen.generate is certifying against the wrong floor:\n%s"
-			% "\n".join(shorter)
+			+ (
+				"so every roster-less MapGen.generate is certifying against the wrong floor:\n%s"
+				% "\n".join(shorter)
+			)
 		)
 	)
 
@@ -358,16 +373,19 @@ func test_the_navigability_flood_uses_the_minimum_and_fails_a_tallest_only_map()
 	var at_base: Dictionary = MapNavigability.flood(grid, Vector2i(0, 0), Unit.BASE_STEP_HEIGHT)
 	var at_tallest: Dictionary = MapNavigability.flood(grid, Vector2i(0, 0), tallest)
 
-	gut.p(
-		(
-			"rise %.2f: flood reaches %d cells at %.2f, %d cells at %.2f"
-			% [
-				only_the_tallest,
-				at_base.size(),
-				Unit.BASE_STEP_HEIGHT,
-				at_tallest.size(),
-				tallest,
-			]
+	(
+		gut
+		. p(
+			(
+				"rise %.2f: flood reaches %d cells at %.2f, %d cells at %.2f"
+				% [
+					only_the_tallest,
+					at_base.size(),
+					Unit.BASE_STEP_HEIGHT,
+					at_tallest.size(),
+					tallest,
+				]
+			)
 		)
 	)
 	assert_eq(at_base.size(), 1, "at the minimum step height the shelf is not reachable at all")

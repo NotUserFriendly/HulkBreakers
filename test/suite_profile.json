@@ -12,7 +12,7 @@
       "shot_planes": 17,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 12344
+      "usec": 36019
     },
     {
       "bouts": 0,
@@ -26,7 +26,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 77905
+      "usec": 100814
     },
     {
       "bouts": 0,
@@ -40,7 +40,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 429399
+      "usec": 619501
     },
     {
       "bouts": 0,
@@ -54,7 +54,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11568
+      "usec": 38875
     },
     {
       "bouts": 0,
@@ -68,21 +68,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 148891
+      "usec": 229284
     },
     {
-      "bouts": 2,
-      "candidates": 270002,
-      "dups": 1219,
-      "escaped": 2,
-      "floods": 293,
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
       "lookahead_fields": 0,
       "path": "res://test/integration/test_full_mission.gd",
-      "plans": 138,
-      "shot_planes": 708,
-      "turns": 138,
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
       "ui_builds": 0,
-      "usec": 56915202
+      "usec": 54972
     },
     {
       "bouts": 0,
@@ -96,7 +96,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 142578
+      "usec": 204838
     },
     {
       "bouts": 0,
@@ -110,7 +110,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 25214
+      "usec": 79112
     },
     {
       "bouts": 0,
@@ -124,7 +124,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 24984
+      "usec": 90074
     },
     {
       "bouts": 0,
@@ -138,7 +138,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 36572
+      "usec": 104429
     },
     {
       "bouts": 0,
@@ -152,7 +152,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 15122
+      "usec": 46615
     },
     {
       "bouts": 0,
@@ -166,13 +166,13 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 43498
+      "usec": 138172
     },
     {
       "bouts": 0,
       "candidates": 0,
       "dups": 0,
-      "escaped": 13,
+      "escaped": 7,
       "floods": 0,
       "lookahead_fields": 0,
       "path": "res://test/unit/data/test_taskblock21_gun_data.gd",
@@ -180,7 +180,7 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 86831
+      "usec": 147279
     },
     {
       "bouts": 0,
@@ -194,7 +194,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 40815
+      "usec": 84057
     },
     {
       "bouts": 0,
@@ -208,7 +208,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 120344
+      "usec": 201203
     },
     {
       "bouts": 0,
@@ -222,7 +222,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 37359
+      "usec": 95833
     },
     {
       "bouts": 0,
@@ -236,11 +236,11 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 880189
+      "usec": 1377598
     },
     {
       "bouts": 0,
-      "candidates": 84,
+      "candidates": 96,
       "dups": 6,
       "escaped": 0,
       "floods": 12,
@@ -250,7 +250,7 @@
       "shot_planes": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 35025
+      "usec": 86382
     },
     {
       "bouts": 0,
@@ -264,7 +264,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 38751
+      "usec": 93913
     },
     {
       "bouts": 0,
@@ -278,7 +278,7 @@
       "shot_planes": 0,
       "turns": 5,
       "ui_builds": 0,
-      "usec": 24949
+      "usec": 78442
     },
     {
       "bouts": 0,
@@ -292,7 +292,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 38238
+      "usec": 123918
     },
     {
       "bouts": 0,
@@ -306,7 +306,7 @@
       "shot_planes": 0,
       "turns": 3,
       "ui_builds": 0,
-      "usec": 32278
+      "usec": 112273
     },
     {
       "bouts": 0,
@@ -320,7 +320,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 35451
+      "usec": 83790
     },
     {
       "bouts": 0,
@@ -334,7 +334,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 40463
+      "usec": 98861
     },
     {
       "bouts": 0,
@@ -348,7 +348,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 24574
+      "usec": 77092
     },
     {
       "bouts": 0,
@@ -362,7 +362,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 31410
+      "usec": 67106
     },
     {
       "bouts": 0,
@@ -376,7 +376,7 @@
       "shot_planes": 28,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 251713
+      "usec": 284551
     },
     {
       "bouts": 0,
@@ -390,7 +390,7 @@
       "shot_planes": 15,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 337971
+      "usec": 354235
     },
     {
       "bouts": 0,
@@ -404,21 +404,7 @@
       "shot_planes": 1,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 89731
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "dups": 0,
-      "escaped": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "path": "res://test/unit/logic/actions/test_climb_action.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 81345
+      "usec": 176608
     },
     {
       "bouts": 0,
@@ -430,9 +416,9 @@
       "path": "res://test/unit/logic/actions/test_end_turn_action.gd",
       "plans": 0,
       "shot_planes": 0,
-      "turns": 12,
+      "turns": 14,
       "ui_builds": 0,
-      "usec": 167187
+      "usec": 331869
     },
     {
       "bouts": 0,
@@ -444,9 +430,9 @@
       "path": "res://test/unit/logic/actions/test_extract_action.gd",
       "plans": 0,
       "shot_planes": 0,
-      "turns": 0,
+      "turns": 3,
       "ui_builds": 0,
-      "usec": 104310
+      "usec": 208138
     },
     {
       "bouts": 0,
@@ -460,7 +446,7 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 97346
+      "usec": 188060
     },
     {
       "bouts": 0,
@@ -474,7 +460,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 70215
+      "usec": 137823
     },
     {
       "bouts": 0,
@@ -488,7 +474,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 54759
+      "usec": 107612
     },
     {
       "bouts": 0,
@@ -502,21 +488,7 @@
       "shot_planes": 0,
       "turns": 18,
       "ui_builds": 0,
-      "usec": 96413
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "dups": 0,
-      "escaped": 0,
-      "floods": 0,
-      "lookahead_fields": 0,
-      "path": "res://test/unit/logic/actions/test_hop_down_action.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 70792
+      "usec": 194363
     },
     {
       "bouts": 0,
@@ -530,7 +502,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 53637
+      "usec": 105359
     },
     {
       "bouts": 0,
@@ -544,7 +516,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 255962
+      "usec": 438012
     },
     {
       "bouts": 0,
@@ -558,7 +530,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 84614
+      "usec": 154311
     },
     {
       "bouts": 0,
@@ -572,7 +544,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 126674
+      "usec": 239688
     },
     {
       "bouts": 0,
@@ -586,7 +558,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6347
+      "usec": 6701
     },
     {
       "bouts": 0,
@@ -600,7 +572,7 @@
       "shot_planes": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 100690
+      "usec": 189249
     },
     {
       "bouts": 0,
@@ -614,7 +586,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 63875
+      "usec": 124387
     },
     {
       "bouts": 0,
@@ -628,7 +600,7 @@
       "shot_planes": 5,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 102571
+      "usec": 187583
     },
     {
       "bouts": 0,
@@ -642,12 +614,26 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 53910
+      "usec": 104297
     },
     {
       "bouts": 0,
-      "candidates": 64413,
-      "dups": 101,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 12,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/ai/test_ally_in_line.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 306973
+    },
+    {
+      "bouts": 0,
+      "candidates": 72280,
+      "dups": 86,
       "escaped": 0,
       "floods": 66,
       "lookahead_fields": 105,
@@ -656,49 +642,91 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4131561
+      "usec": 12627111
     },
     {
       "bouts": 5,
-      "candidates": 58192,
-      "dups": 192,
+      "candidates": 48680,
+      "dups": 240,
       "escaped": 0,
-      "floods": 74,
+      "floods": 82,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/ai/test_batch_plumbing.gd",
       "plans": 32,
-      "shot_planes": 96,
+      "shot_planes": 144,
       "turns": 32,
       "ui_builds": 0,
-      "usec": 10576048
+      "usec": 30930004
     },
     {
       "bouts": 0,
-      "candidates": 26291,
-      "dups": 139,
+      "candidates": 30506,
+      "dups": 141,
       "escaped": 0,
-      "floods": 60,
+      "floods": 73,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/ai/test_bout_runner.gd",
       "plans": 37,
       "shot_planes": 18,
       "turns": 29,
       "ui_builds": 0,
-      "usec": 863465
+      "usec": 1229854
     },
     {
-      "bouts": 8,
+      "bouts": 10,
       "candidates": 0,
       "dups": 0,
       "escaped": 0,
-      "floods": 16,
+      "floods": 32,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/ai/test_bout_setup.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1650218
+      "usec": 3450896
+    },
+    {
+      "bouts": 0,
+      "candidates": 10170,
+      "dups": 44,
+      "escaped": 0,
+      "floods": 23,
+      "lookahead_fields": 21,
+      "path": "res://test/unit/logic/ai/test_close_range_firing_decision.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 4223383
+    },
+    {
+      "bouts": 2,
+      "candidates": 981,
+      "dups": 9,
+      "escaped": 0,
+      "floods": 6,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/ai/test_contest_victory_mode.gd",
+      "plans": 1,
+      "shot_planes": 2,
+      "turns": 3,
+      "ui_builds": 0,
+      "usec": 1064010
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 14,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/ai/test_distance_flood_direction.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 241767
     },
     {
       "bouts": 0,
@@ -712,11 +740,11 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 472934
+      "usec": 993685
     },
     {
       "bouts": 0,
-      "candidates": 4004,
+      "candidates": 4576,
       "dups": 3,
       "escaped": 0,
       "floods": 3,
@@ -726,25 +754,39 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 304344
+      "usec": 417266
     },
     {
       "bouts": 2,
-      "candidates": 25319,
-      "dups": 107,
+      "candidates": 24138,
+      "dups": 109,
       "escaped": 0,
-      "floods": 41,
+      "floods": 45,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/ai/test_plan_pacer.gd",
       "plans": 17,
-      "shot_planes": 36,
+      "shot_planes": 48,
       "turns": 12,
       "ui_builds": 0,
-      "usec": 8543573
+      "usec": 14352714
     },
     {
       "bouts": 0,
-      "candidates": 81836,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/ai/test_preset_weapon_reachability.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 104253
+    },
+    {
+      "bouts": 0,
+      "candidates": 93532,
       "dups": 36,
       "escaped": 0,
       "floods": 81,
@@ -754,12 +796,12 @@
       "shot_planes": 0,
       "turns": 14,
       "ui_builds": 0,
-      "usec": 2803514
+      "usec": 3653114
     },
     {
       "bouts": 0,
-      "candidates": 6806,
-      "dups": 31,
+      "candidates": 7751,
+      "dups": 28,
       "escaped": 0,
       "floods": 25,
       "lookahead_fields": 0,
@@ -768,12 +810,12 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 1392573
+      "usec": 5595683
     },
     {
       "bouts": 0,
-      "candidates": 4045,
-      "dups": 15,
+      "candidates": 4604,
+      "dups": 13,
       "escaped": 0,
       "floods": 42,
       "lookahead_fields": 45,
@@ -782,21 +824,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1650249
+      "usec": 2395566
     },
     {
       "bouts": 3,
-      "candidates": 57692,
-      "dups": 222,
+      "candidates": 56245,
+      "dups": 233,
       "escaped": 0,
-      "floods": 98,
+      "floods": 102,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/ai/test_utility_planner.gd",
       "plans": 18,
-      "shot_planes": 51,
+      "shot_planes": 75,
       "turns": 19,
       "ui_builds": 0,
-      "usec": 9232050
+      "usec": 22771399
     },
     {
       "bouts": 0,
@@ -810,7 +852,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 252993
+      "usec": 486133
+    },
+    {
+      "bouts": 0,
+      "candidates": 1036,
+      "dups": 17,
+      "escaped": 3,
+      "floods": 14,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/ai/test_vertical_planning.gd",
+      "plans": 0,
+      "shot_planes": 3,
+      "turns": 1,
+      "ui_builds": 0,
+      "usec": 530719
     },
     {
       "bouts": 0,
@@ -824,7 +880,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 74262
+      "usec": 229567
     },
     {
       "bouts": 0,
@@ -838,7 +894,7 @@
       "shot_planes": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 121246
+      "usec": 159051
     },
     {
       "bouts": 0,
@@ -852,7 +908,7 @@
       "shot_planes": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 200166
+      "usec": 311065
     },
     {
       "bouts": 0,
@@ -866,21 +922,21 @@
       "shot_planes": 18,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 85207
+      "usec": 280371
     },
     {
       "bouts": 0,
       "candidates": 0,
       "dups": 40,
       "escaped": 0,
-      "floods": 2,
+      "floods": 0,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/test_aim_cost_probe.gd",
       "plans": 0,
       "shot_planes": 40,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3360541
+      "usec": 3381939
     },
     {
       "bouts": 0,
@@ -894,7 +950,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 23369
+      "usec": 55303
     },
     {
       "bouts": 0,
@@ -908,7 +964,7 @@
       "shot_planes": 4,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 111751
+      "usec": 144679
     },
     {
       "bouts": 0,
@@ -922,7 +978,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 55561
+      "usec": 151777
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 1,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_aim_point_units.gd",
+      "plans": 0,
+      "shot_planes": 1,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 106337
     },
     {
       "bouts": 0,
@@ -936,7 +1006,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 82675
+      "usec": 145852
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_announcements.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 128193
     },
     {
       "bouts": 0,
@@ -950,7 +1034,35 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 50283
+      "usec": 110339
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_battle_layout.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 170884
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_blocker_placement.gd",
+      "plans": 0,
+      "shot_planes": 1,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 104178
     },
     {
       "bouts": 0,
@@ -964,7 +1076,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 43863
+      "usec": 160594
     },
     {
       "bouts": 0,
@@ -978,7 +1090,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 60079
+      "usec": 189889
     },
     {
       "bouts": 0,
@@ -992,7 +1104,7 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 101558
+      "usec": 317663
     },
     {
       "bouts": 0,
@@ -1006,7 +1118,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 136073
+      "usec": 217280
     },
     {
       "bouts": 0,
@@ -1020,7 +1132,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 20462
+      "usec": 66767
     },
     {
       "bouts": 0,
@@ -1034,7 +1146,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 163442
+      "usec": 253843
     },
     {
       "bouts": 0,
@@ -1048,7 +1160,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 117897
+      "usec": 191587
     },
     {
       "bouts": 0,
@@ -1062,7 +1174,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 117259
+      "usec": 240742
     },
     {
       "bouts": 0,
@@ -1076,7 +1188,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 65243
+      "usec": 242017
     },
     {
       "bouts": 0,
@@ -1090,21 +1202,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 56525
+      "usec": 136870
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 2,
+      "dups": 0,
       "escaped": 0,
       "floods": 0,
       "lookahead_fields": 0,
-      "path": "res://test/unit/logic/test_climb_interrupt.gd",
+      "path": "res://test/unit/logic/test_close_range_sight.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 40214
+      "usec": 200134
     },
     {
       "bouts": 0,
@@ -1118,7 +1230,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 30476
+      "usec": 81587
     },
     {
       "bouts": 0,
@@ -1132,7 +1244,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 37000
+      "usec": 172190
     },
     {
       "bouts": 0,
@@ -1146,7 +1258,7 @@
       "shot_planes": 0,
       "turns": 22,
       "ui_builds": 0,
-      "usec": 156670
+      "usec": 377153
     },
     {
       "bouts": 0,
@@ -1160,7 +1272,7 @@
       "shot_planes": 0,
       "turns": 21,
       "ui_builds": 0,
-      "usec": 41225
+      "usec": 131196
     },
     {
       "bouts": 0,
@@ -1174,7 +1286,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 175965
+      "usec": 285697
     },
     {
       "bouts": 0,
@@ -1188,21 +1300,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 224954
+      "usec": 360011
     },
     {
       "bouts": 3,
-      "candidates": 43998,
-      "dups": 172,
-      "escaped": 3,
-      "floods": 72,
-      "lookahead_fields": 0,
+      "candidates": 132795,
+      "dups": 147,
+      "escaped": 4,
+      "floods": 138,
+      "lookahead_fields": 65,
       "path": "res://test/unit/logic/test_completion_sampler.gd",
-      "plans": 30,
-      "shot_planes": 84,
-      "turns": 30,
+      "plans": 51,
+      "shot_planes": 28,
+      "turns": 53,
       "ui_builds": 0,
-      "usec": 8298888
+      "usec": 33886232
     },
     {
       "bouts": 0,
@@ -1216,7 +1328,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17047
+      "usec": 57218
     },
     {
       "bouts": 0,
@@ -1230,7 +1342,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 81066
+      "usec": 138539
     },
     {
       "bouts": 0,
@@ -1244,7 +1356,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19218
+      "usec": 67069
     },
     {
       "bouts": 0,
@@ -1258,7 +1370,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 28637
+      "usec": 89524
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 2,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_cutout_gate_over_zoom.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 426875
     },
     {
       "bouts": 0,
@@ -1272,7 +1398,7 @@
       "shot_planes": 30,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 103297
+      "usec": 321138
     },
     {
       "bouts": 0,
@@ -1286,7 +1412,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 42504
+      "usec": 146035
     },
     {
       "bouts": 0,
@@ -1300,7 +1426,7 @@
       "shot_planes": 6,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 18332
+      "usec": 57982
     },
     {
       "bouts": 0,
@@ -1314,7 +1440,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19911
+      "usec": 55053
     },
     {
       "bouts": 0,
@@ -1328,7 +1454,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 20226
+      "usec": 56300
     },
     {
       "bouts": 0,
@@ -1342,7 +1468,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 49729
+      "usec": 129567
     },
     {
       "bouts": 0,
@@ -1356,7 +1482,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 169339
+      "usec": 279448
     },
     {
       "bouts": 0,
@@ -1370,7 +1496,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 76237
+      "usec": 225365
     },
     {
       "bouts": 0,
@@ -1384,7 +1510,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 48241
+      "usec": 98432
     },
     {
       "bouts": 0,
@@ -1398,7 +1524,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 26989
+      "usec": 87741
     },
     {
       "bouts": 0,
@@ -1412,7 +1538,7 @@
       "shot_planes": 0,
       "turns": 7,
       "ui_builds": 0,
-      "usec": 356431
+      "usec": 493335
     },
     {
       "bouts": 0,
@@ -1426,7 +1552,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 597947
+      "usec": 712812
     },
     {
       "bouts": 0,
@@ -1440,7 +1566,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 100198
+      "usec": 168281
     },
     {
       "bouts": 0,
@@ -1454,7 +1580,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17779
+      "usec": 65985
     },
     {
       "bouts": 0,
@@ -1468,7 +1594,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 74455
+      "usec": 150130
     },
     {
       "bouts": 0,
@@ -1482,7 +1608,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 582534
+      "usec": 1028574
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_editor_tools.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 246313
     },
     {
       "bouts": 0,
@@ -1496,7 +1636,35 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 59839
+      "usec": 145897
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 10,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_every_firing_path_announces_itself.gd",
+      "plans": 0,
+      "shot_planes": 3,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 491854
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_face_placement.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 226350
     },
     {
       "bouts": 0,
@@ -1510,7 +1678,7 @@
       "shot_planes": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 210449
+      "usec": 339410
     },
     {
       "bouts": 0,
@@ -1524,7 +1692,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 42275
+      "usec": 120292
     },
     {
       "bouts": 0,
@@ -1538,7 +1706,63 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 29447
+      "usec": 112542
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 6,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_generated_board_sight_sweep.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 33890365
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 240,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_generation_heights.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 42448523
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_gizmo.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 267769
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_gizmo_grow.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 108003
     },
     {
       "bouts": 0,
@@ -1552,7 +1776,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 80143
+      "usec": 254524
     },
     {
       "bouts": 0,
@@ -1566,7 +1790,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 25777
+      "usec": 89292
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_hover_and_turn_end.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 184637
     },
     {
       "bouts": 0,
@@ -1580,7 +1818,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 33098
+      "usec": 57975
     },
     {
       "bouts": 0,
@@ -1594,7 +1832,21 @@
       "shot_planes": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 34597
+      "usec": 103313
+    },
+    {
+      "bouts": 6,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 12,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_intelligence_tiers.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 2098262
     },
     {
       "bouts": 0,
@@ -1608,7 +1860,7 @@
       "shot_planes": 6,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 85040
+      "usec": 141708
     },
     {
       "bouts": 0,
@@ -1622,7 +1874,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 53622
+      "usec": 195854
     },
     {
       "bouts": 0,
@@ -1636,7 +1888,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 46131
+      "usec": 119936
     },
     {
       "bouts": 0,
@@ -1650,7 +1902,7 @@
       "shot_planes": 8,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 46468
+      "usec": 161756
     },
     {
       "bouts": 0,
@@ -1664,7 +1916,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 192046
+      "usec": 321277
     },
     {
       "bouts": 0,
@@ -1678,7 +1930,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 27402
+      "usec": 55486
     },
     {
       "bouts": 0,
@@ -1692,7 +1944,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 62853
+      "usec": 174271
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_ledge_veneer.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 261836
     },
     {
       "bouts": 0,
@@ -1706,7 +1972,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 27546
+      "usec": 104867
     },
     {
       "bouts": 0,
@@ -1720,7 +1986,7 @@
       "shot_planes": 13,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 45789
+      "usec": 129773
     },
     {
       "bouts": 0,
@@ -1734,7 +2000,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 221021
+      "usec": 335412
     },
     {
       "bouts": 0,
@@ -1748,7 +2014,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 72487
+      "usec": 151154
     },
     {
       "bouts": 0,
@@ -1762,7 +2028,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 33063
+      "usec": 110283
     },
     {
       "bouts": 0,
@@ -1776,7 +2042,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 32834
+      "usec": 101992
     },
     {
       "bouts": 0,
@@ -1790,7 +2056,21 @@
       "shot_planes": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 39898
+      "usec": 347443
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 33,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_mag_lift.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 3694184
     },
     {
       "bouts": 0,
@@ -1804,7 +2084,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1558797
+      "usec": 2460456
     },
     {
       "bouts": 0,
@@ -1818,21 +2098,35 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 25691577
+      "usec": 34888639
     },
     {
       "bouts": 0,
       "candidates": 0,
       "dups": 0,
       "escaped": 0,
-      "floods": 320,
+      "floods": 398,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/test_map_gen_raised_rooms.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3235866
+      "usec": 10889919
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 100,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_map_gen_reachability.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 20266614
     },
     {
       "bouts": 0,
@@ -1846,21 +2140,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2741232
+      "usec": 3531703
     },
     {
       "bouts": 2,
-      "candidates": 24340,
-      "dups": 128,
+      "candidates": 26776,
+      "dups": 88,
       "escaped": 0,
       "floods": 44,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/test_map_serializer.gd",
       "plans": 16,
-      "shot_planes": 72,
+      "shot_planes": 48,
       "turns": 16,
       "ui_builds": 0,
-      "usec": 7984728
+      "usec": 11439892
     },
     {
       "bouts": 0,
@@ -1874,7 +2168,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 46073
+      "usec": 114565
     },
     {
       "bouts": 0,
@@ -1888,7 +2182,7 @@
       "shot_planes": 12,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 157263
+      "usec": 112116
     },
     {
       "bouts": 0,
@@ -1902,7 +2196,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 56199
+      "usec": 132053
     },
     {
       "bouts": 0,
@@ -1916,7 +2210,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 99789
+      "usec": 236183
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_membership_disagreement.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 84395
     },
     {
       "bouts": 0,
@@ -1928,9 +2236,9 @@
       "path": "res://test/unit/logic/test_mission_state.gd",
       "plans": 0,
       "shot_planes": 0,
-      "turns": 0,
+      "turns": 5,
       "ui_builds": 0,
-      "usec": 153359
+      "usec": 357871
     },
     {
       "bouts": 0,
@@ -1944,7 +2252,7 @@
       "shot_planes": 4,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 58781
+      "usec": 106266
     },
     {
       "bouts": 0,
@@ -1958,7 +2266,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 168482
+      "usec": 188036
     },
     {
       "bouts": 0,
@@ -1972,7 +2280,7 @@
       "shot_planes": 1398,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5129480
+      "usec": 5851791
     },
     {
       "bouts": 0,
@@ -1986,7 +2294,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 143728
+      "usec": 362915
     },
     {
       "bouts": 0,
@@ -2000,7 +2308,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 59943
+      "usec": 227255
     },
     {
       "bouts": 0,
@@ -2014,7 +2322,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 188772
+      "usec": 492547
     },
     {
       "bouts": 0,
@@ -2028,7 +2336,21 @@
       "shot_planes": 13,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 191360
+      "usec": 310362
+    },
+    {
+      "bouts": 9,
+      "candidates": 82082,
+      "dups": 72,
+      "escaped": 0,
+      "floods": 90,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_per_tier_probe.gd",
+      "plans": 36,
+      "shot_planes": 0,
+      "turns": 36,
+      "ui_builds": 0,
+      "usec": 8129045
     },
     {
       "bouts": 0,
@@ -2042,7 +2364,49 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 112075
+      "usec": 273877
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_picker_surfaces.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 237059
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_placed_volume.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 384727
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_placement_position.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 394390
     },
     {
       "bouts": 0,
@@ -2056,7 +2420,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 123214
+      "usec": 212822
     },
     {
       "bouts": 0,
@@ -2070,7 +2434,7 @@
       "shot_planes": 0,
       "turns": 7,
       "ui_builds": 0,
-      "usec": 412888
+      "usec": 653852
     },
     {
       "bouts": 0,
@@ -2084,7 +2448,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 184338
+      "usec": 253616
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 30,
+      "escaped": 0,
+      "floods": 16,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_queue_log.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 810320
     },
     {
       "bouts": 0,
@@ -2098,7 +2476,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 44816
+      "usec": 97081
     },
     {
       "bouts": 0,
@@ -2112,7 +2490,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 61374
+      "usec": 103618
     },
     {
       "bouts": 0,
@@ -2126,7 +2504,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 68062
+      "usec": 163035
     },
     {
       "bouts": 0,
@@ -2140,7 +2518,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 213149
+      "usec": 353767
     },
     {
       "bouts": 0,
@@ -2154,7 +2532,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 662886
+      "usec": 906750
     },
     {
       "bouts": 0,
@@ -2168,7 +2546,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 579553
+      "usec": 772820
     },
     {
       "bouts": 0,
@@ -2182,7 +2560,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2163133
+      "usec": 2243896
     },
     {
       "bouts": 0,
@@ -2196,7 +2574,7 @@
       "shot_planes": 6,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 74796
+      "usec": 166306
     },
     {
       "bouts": 0,
@@ -2210,7 +2588,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 60060
+      "usec": 143393
     },
     {
       "bouts": 0,
@@ -2224,7 +2602,7 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 216054
+      "usec": 423927
     },
     {
       "bouts": 0,
@@ -2238,7 +2616,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 115233
+      "usec": 283582
     },
     {
       "bouts": 4,
@@ -2252,7 +2630,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1083058
+      "usec": 1605264
     },
     {
       "bouts": 0,
@@ -2266,7 +2644,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 99348
+      "usec": 214470
     },
     {
       "bouts": 0,
@@ -2280,7 +2658,7 @@
       "shot_planes": 20,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 90563
+      "usec": 215970
     },
     {
       "bouts": 0,
@@ -2294,7 +2672,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 503456
+      "usec": 604314
     },
     {
       "bouts": 0,
@@ -2308,7 +2686,7 @@
       "shot_planes": 1625,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 9915371
+      "usec": 11717105
     },
     {
       "bouts": 0,
@@ -2322,7 +2700,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 60509
+      "usec": 146072
     },
     {
       "bouts": 0,
@@ -2336,7 +2714,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 190168
+      "usec": 316198
     },
     {
       "bouts": 0,
@@ -2350,13 +2728,13 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 67497
+      "usec": 167707
     },
     {
       "bouts": 0,
       "candidates": 0,
       "dups": 0,
-      "escaped": 6,
+      "escaped": 2,
       "floods": 0,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/test_ricochet_stress.gd",
@@ -2364,12 +2742,12 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 87960
+      "usec": 153598
     },
     {
       "bouts": 8,
-      "candidates": 810,
-      "dups": 38,
+      "candidates": 1246,
+      "dups": 37,
       "escaped": 0,
       "floods": 42,
       "lookahead_fields": 0,
@@ -2378,7 +2756,7 @@
       "shot_planes": 0,
       "turns": 25,
       "ui_builds": 0,
-      "usec": 2945393
+      "usec": 3679173
     },
     {
       "bouts": 0,
@@ -2392,7 +2770,35 @@
       "shot_planes": 4259,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 9867410
+      "usec": 11630492
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_search_filter.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 167768
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_seated_placement.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 289861
     },
     {
       "bouts": 0,
@@ -2406,7 +2812,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 171755
+      "usec": 411146
     },
     {
       "bouts": 0,
@@ -2420,7 +2826,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 141733
+      "usec": 283143
     },
     {
       "bouts": 0,
@@ -2434,7 +2840,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 132324
+      "usec": 189779
     },
     {
       "bouts": 0,
@@ -2448,7 +2854,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 256178
+      "usec": 426533
     },
     {
       "bouts": 0,
@@ -2462,7 +2868,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 87238
+      "usec": 206502
     },
     {
       "bouts": 0,
@@ -2476,21 +2882,21 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 513802
+      "usec": 680675
     },
     {
       "bouts": 0,
-      "candidates": 840,
-      "dups": 10,
+      "candidates": 960,
+      "dups": 37,
       "escaped": 0,
-      "floods": 14,
+      "floods": 18,
       "lookahead_fields": 0,
       "path": "res://test/unit/logic/test_selection_of_cover.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 1947646
+      "usec": 4351734
     },
     {
       "bouts": 0,
@@ -2504,7 +2910,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 95554
+      "usec": 282815
     },
     {
       "bouts": 0,
@@ -2518,7 +2924,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 46571
+      "usec": 143549
     },
     {
       "bouts": 0,
@@ -2532,7 +2938,7 @@
       "shot_planes": 17,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 270490
+      "usec": 583420
     },
     {
       "bouts": 0,
@@ -2546,7 +2952,7 @@
       "shot_planes": 31,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 154933
+      "usec": 257972
     },
     {
       "bouts": 0,
@@ -2560,7 +2966,35 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 42643
+      "usec": 98665
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 2,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_sight_cost_probe.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 375324
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 6,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_sight_geometry.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 1509881
     },
     {
       "bouts": 0,
@@ -2574,7 +3008,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 27770
+      "usec": 66785
     },
     {
       "bouts": 0,
@@ -2588,7 +3022,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 47379
+      "usec": 116442
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_standing_height.gd",
+      "plans": 0,
+      "shot_planes": 2,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 315115
     },
     {
       "bouts": 0,
@@ -2602,7 +3050,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 78632
+      "usec": 93981
+    },
+    {
+      "bouts": 1,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 24,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_step_height.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 3544924
     },
     {
       "bouts": 0,
@@ -2616,7 +3078,7 @@
       "shot_planes": 10,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 102670
+      "usec": 146459
     },
     {
       "bouts": 0,
@@ -2630,7 +3092,7 @@
       "shot_planes": 4,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 277460
+      "usec": 425809
     },
     {
       "bouts": 0,
@@ -2644,7 +3106,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 73518
+      "usec": 180877
     },
     {
       "bouts": 0,
@@ -2658,7 +3120,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19169744
+      "usec": 19633340
     },
     {
       "bouts": 0,
@@ -2672,7 +3134,7 @@
       "shot_planes": 4,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 86042
+      "usec": 93274
     },
     {
       "bouts": 0,
@@ -2686,7 +3148,7 @@
       "shot_planes": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 90090
+      "usec": 212647
     },
     {
       "bouts": 0,
@@ -2700,7 +3162,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 80365
+      "usec": 193958
     },
     {
       "bouts": 0,
@@ -2714,7 +3176,7 @@
       "shot_planes": 0,
       "turns": 24,
       "ui_builds": 0,
-      "usec": 270667
+      "usec": 333115
     },
     {
       "bouts": 0,
@@ -2728,7 +3190,7 @@
       "shot_planes": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 28792
+      "usec": 67179
     },
     {
       "bouts": 0,
@@ -2742,7 +3204,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 119815
+      "usec": 292779
     },
     {
       "bouts": 0,
@@ -2756,7 +3218,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 40461
+      "usec": 98761
     },
     {
       "bouts": 0,
@@ -2770,7 +3232,7 @@
       "shot_planes": 31,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 46237
+      "usec": 84676
     },
     {
       "bouts": 0,
@@ -2784,7 +3246,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 70779
+      "usec": 129159
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_ui_layout.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 176253
     },
     {
       "bouts": 0,
@@ -2798,7 +3274,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 73664
+      "usec": 179552
     },
     {
       "bouts": 0,
@@ -2812,7 +3288,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 181810
+      "usec": 427491
     },
     {
       "bouts": 0,
@@ -2826,7 +3302,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 55022
+      "usec": 134864
     },
     {
       "bouts": 0,
@@ -2840,7 +3316,35 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 508594
+      "usec": 710373
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 1,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_vertical_movement.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 480437
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 80,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_vertical_routes.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 15316630
     },
     {
       "bouts": 0,
@@ -2854,7 +3358,7 @@
       "shot_planes": 299,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 313196
+      "usec": 476129
     },
     {
       "bouts": 0,
@@ -2868,21 +3372,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 80350
+      "usec": 452431
     },
     {
-      "bouts": 1,
-      "candidates": 237307,
-      "dups": 976,
-      "escaped": 0,
-      "floods": 202,
-      "lookahead_fields": 0,
+      "bouts": 2,
+      "candidates": 162534,
+      "dups": 354,
+      "escaped": 12,
+      "floods": 244,
+      "lookahead_fields": 216,
       "path": "res://test/unit/logic/test_watched_run.gd",
-      "plans": 100,
-      "shot_planes": 582,
-      "turns": 100,
+      "plans": 86,
+      "shot_planes": 126,
+      "turns": 88,
       "ui_builds": 0,
-      "usec": 51518149
+      "usec": 121939347
     },
     {
       "bouts": 0,
@@ -2896,7 +3400,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 97226
+      "usec": 215463
     },
     {
       "bouts": 0,
@@ -2910,7 +3414,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 69577
+      "usec": 161888
     },
     {
       "bouts": 0,
@@ -2924,7 +3428,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 64059
+      "usec": 145729
     },
     {
       "bouts": 0,
@@ -2938,35 +3442,35 @@
       "shot_planes": 7,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 367360
+      "usec": 572720
     },
     {
       "bouts": 3,
-      "candidates": 32190,
-      "dups": 132,
-      "escaped": 6,
-      "floods": 44,
-      "lookahead_fields": 0,
-      "path": "res://test/unit/logic/test_work_counters.gd",
-      "plans": 18,
-      "shot_planes": 72,
-      "turns": 19,
-      "ui_builds": 3,
-      "usec": 13616572
-    },
-    {
-      "bouts": 2,
-      "candidates": 29096,
-      "dups": 97,
+      "candidates": 32556,
+      "dups": 79,
       "escaped": 0,
       "floods": 39,
       "lookahead_fields": 0,
+      "path": "res://test/unit/logic/test_work_counters.gd",
+      "plans": 15,
+      "shot_planes": 36,
+      "turns": 16,
+      "ui_builds": 3,
+      "usec": 14752116
+    },
+    {
+      "bouts": 2,
+      "candidates": 24340,
+      "dups": 121,
+      "escaped": 0,
+      "floods": 43,
+      "lookahead_fields": 0,
       "path": "res://test/unit/logic/test_world_view_seam.gd",
       "plans": 16,
-      "shot_planes": 48,
+      "shot_planes": 72,
       "turns": 16,
       "ui_builds": 0,
-      "usec": 5448384
+      "usec": 15736393
     },
     {
       "bouts": 0,
@@ -2980,7 +3484,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 268034
+      "usec": 425150
     },
     {
       "bouts": 0,
@@ -2994,7 +3498,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1523
+      "usec": 1839
     },
     {
       "bouts": 0,
@@ -3008,7 +3512,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 480524
+      "usec": 603093
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/test_lint_config.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 46080
     },
     {
       "bouts": 0,
@@ -3022,7 +3540,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4459
+      "usec": 4585
     },
     {
       "bouts": 0,
@@ -3036,7 +3554,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 56576
+      "usec": 87694
     },
     {
       "bouts": 0,
@@ -3050,7 +3568,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 16890554
+      "usec": 17084827
     },
     {
       "bouts": 0,
@@ -3064,7 +3582,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 13531
+      "usec": 33820
     },
     {
       "bouts": 0,
@@ -3078,7 +3596,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 68889
+      "usec": 71782
     },
     {
       "bouts": 0,
@@ -3092,7 +3610,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 47231
+      "usec": 95639
     },
     {
       "bouts": 0,
@@ -3106,7 +3624,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 33860
+      "usec": 91009
     },
     {
       "bouts": 0,
@@ -3120,21 +3638,315 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 251795
+      "usec": 327939
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 234,
+      "escaped": 0,
+      "floods": 52,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_aim_mode.gd",
+      "plans": 0,
+      "shot_planes": 6,
+      "turns": 0,
+      "ui_builds": 36,
+      "usec": 13219087
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 196,
+      "escaped": 0,
+      "floods": 56,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_battle_placements.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 42,
+      "usec": 17381837
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 56,
+      "escaped": 0,
+      "floods": 24,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_editor_gizmo_followups.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 24,
+      "usec": 7113995
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 35,
+      "escaped": 0,
+      "floods": 15,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_editor_isolation.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 15,
+      "usec": 4561379
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 140,
+      "escaped": 0,
+      "floods": 60,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_editor_mode.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 60,
+      "usec": 17730033
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 56,
+      "escaped": 0,
+      "floods": 24,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_editor_scale.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 24,
+      "usec": 7316086
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 49,
+      "escaped": 0,
+      "floods": 21,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_editor_stacks.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 21,
+      "usec": 6365885
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 84,
+      "escaped": 0,
+      "floods": 36,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_editor_surfaces.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 36,
+      "usec": 10643008
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 56,
+      "escaped": 0,
+      "floods": 24,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_editor_veneer.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 24,
+      "usec": 7331226
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 63,
+      "escaped": 0,
+      "floods": 27,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_editor_view_agreement.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 27,
+      "usec": 8300895
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 112,
+      "escaped": 0,
+      "floods": 48,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_editor_visible_gaps.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 48,
+      "usec": 14812526
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 42,
+      "escaped": 0,
+      "floods": 18,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_gizmo_drag_fidelity.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 18,
+      "usec": 5421231
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 77,
+      "escaped": 0,
+      "floods": 33,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_gizmo_module.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 33,
+      "usec": 10815390
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 280,
+      "escaped": 0,
+      "floods": 90,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_layout_review.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 76,
+      "usec": 27430087
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 224,
+      "escaped": 0,
+      "floods": 68,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_layout_review_3.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 57,
+      "usec": 20816423
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 63,
+      "escaped": 0,
+      "floods": 27,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_parts_list.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 27,
+      "usec": 8274630
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 117,
+      "escaped": 0,
+      "floods": 32,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_pass_c_behaviours.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 2,
+      "ui_builds": 24,
+      "usec": 10332180
     },
     {
       "bouts": 0,
       "candidates": 0,
       "dups": 0,
       "escaped": 0,
-      "floods": 42,
+      "floods": 0,
       "lookahead_fields": 0,
-      "path": "res://test/unit/view/modules/test_editor_mode.gd",
+      "path": "res://test/unit/view/modules/test_slot_properties.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
-      "ui_builds": 63,
-      "usec": 8540880
+      "ui_builds": 0,
+      "usec": 3796
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 56,
+      "escaped": 0,
+      "floods": 18,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_slot_providers.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 15,
+      "usec": 5404768
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 28,
+      "escaped": 0,
+      "floods": 10,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_surfaces_do_not_overlap.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 9,
+      "usec": 3029227
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 189,
+      "escaped": 0,
+      "floods": 71,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_three_bars.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 66,
+      "usec": 20622036
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 28,
+      "escaped": 0,
+      "floods": 12,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/modules/test_ui_button_sync.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 12,
+      "usec": 3566829
     },
     {
       "bouts": 0,
@@ -3148,21 +3960,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 399089
+      "usec": 671521
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 0,
+      "dups": 110,
       "escaped": 0,
-      "floods": 26,
+      "floods": 42,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/modules/test_view_modes.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 38,
-      "usec": 4466509
+      "usec": 11811624
     },
     {
       "bouts": 0,
@@ -3176,77 +3988,63 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 238734
+      "usec": 387196
     },
     {
       "bouts": 3,
-      "candidates": 171154,
-      "dups": 704,
-      "escaped": 66,
-      "floods": 336,
+      "candidates": 412366,
+      "dups": 1449,
+      "escaped": 73,
+      "floods": 1119,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/overlays/test_ai_batch_yield.gd",
-      "plans": 136,
-      "shot_planes": 324,
-      "turns": 136,
+      "plans": 493,
+      "shot_planes": 661,
+      "turns": 493,
       "ui_builds": 4,
-      "usec": 37354500
+      "usec": 279908012
     },
     {
       "bouts": 2,
       "candidates": 0,
-      "dups": 0,
+      "dups": 119,
       "escaped": 0,
-      "floods": 38,
+      "floods": 55,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/overlays/test_generate_bout_overlay.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 36,
-      "usec": 6592931
+      "usec": 15037665
     },
     {
       "bouts": 0,
-      "candidates": 28,
-      "dups": 2,
+      "candidates": 1447,
+      "dups": 349,
       "escaped": 0,
-      "floods": 10,
-      "lookahead_fields": 0,
-      "path": "res://test/unit/view/overlays/test_single_unit_overlay.gd",
-      "plans": 2,
-      "shot_planes": 0,
-      "turns": 2,
-      "ui_builds": 9,
-      "usec": 1052791
-    },
-    {
-      "bouts": 0,
-      "candidates": 1365,
-      "dups": 108,
-      "escaped": 0,
-      "floods": 104,
+      "floods": 140,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/overlays/test_spectator_overlay.gd",
       "plans": 21,
       "shot_planes": 13,
       "turns": 13,
       "ui_builds": 108,
-      "usec": 39304732
+      "usec": 57863422
     },
     {
       "bouts": 0,
-      "candidates": 601,
-      "dups": 46,
+      "candidates": 677,
+      "dups": 340,
       "escaped": 4,
-      "floods": 35,
+      "floods": 89,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/overlays/test_squad_control_overlay.gd",
       "plans": 1,
       "shot_planes": 6,
-      "turns": 4,
-      "ui_builds": 45,
-      "usec": 7297273
+      "turns": 11,
+      "ui_builds": 64,
+      "usec": 20966754
     },
     {
       "bouts": 0,
@@ -3260,21 +4058,35 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 217108
+      "usec": 314616
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 51,
+      "dups": 78,
       "escaped": 0,
-      "floods": 9,
+      "floods": 14,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_aim_frame_probe.gd",
       "plans": 0,
       "shot_planes": 1,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 3158792
+      "usec": 5137166
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/test_aim_ray_is_camera_dependent.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 84188
     },
     {
       "bouts": 0,
@@ -3288,7 +4100,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 147969
+      "usec": 254263
     },
     {
       "bouts": 0,
@@ -3302,7 +4114,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 35153
+      "usec": 96382
     },
     {
       "bouts": 0,
@@ -3316,7 +4128,7 @@
       "shot_planes": 3,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 310146
+      "usec": 428016
     },
     {
       "bouts": 0,
@@ -3330,63 +4142,63 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 141727
+      "usec": 200139
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 0,
+      "dups": 7,
       "escaped": 0,
-      "floods": 2,
+      "floods": 3,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_batch_badge_view.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 1,
-      "usec": 377602
+      "usec": 948949
     },
     {
       "bouts": 6,
-      "candidates": 630,
-      "dups": 21,
+      "candidates": 540,
+      "dups": 565,
       "escaped": 0,
-      "floods": 171,
+      "floods": 249,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_battle_scene.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 3,
       "ui_builds": 45,
-      "usec": 27501939
+      "usec": 65031581
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 40,
+      "dups": 36,
       "escaped": 0,
-      "floods": 22,
+      "floods": 15,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_battle_scene_input.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
-      "ui_builds": 7,
-      "usec": 4407433
+      "ui_builds": 5,
+      "usec": 4251694
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 155,
+      "dups": 272,
       "escaped": 0,
-      "floods": 25,
+      "floods": 43,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_battle_scene_occlusion_fade.gd",
       "plans": 0,
       "shot_planes": 6,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 2238981
+      "usec": 5494954
     },
     {
       "bouts": 0,
@@ -3400,7 +4212,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 308975
+      "usec": 133443
     },
     {
       "bouts": 0,
@@ -3414,7 +4226,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 99197
+      "usec": 361277
     },
     {
       "bouts": 0,
@@ -3428,7 +4240,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 48663
+      "usec": 114358
     },
     {
       "bouts": 0,
@@ -3442,7 +4254,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 44626
+      "usec": 58605
     },
     {
       "bouts": 0,
@@ -3456,7 +4268,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 108947
+      "usec": 178307
     },
     {
       "bouts": 0,
@@ -3470,7 +4282,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 152380
+      "usec": 379585
     },
     {
       "bouts": 0,
@@ -3484,7 +4296,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 75189
+      "usec": 167254
     },
     {
       "bouts": 0,
@@ -3498,7 +4310,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 217486
+      "usec": 324242
     },
     {
       "bouts": 0,
@@ -3512,7 +4324,35 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 54818
+      "usec": 120681
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 2,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/test_cutout_feed_cost_probe.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 566043
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 2,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/test_cutout_gate_cost_probe.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 402452
     },
     {
       "bouts": 0,
@@ -3526,21 +4366,35 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 944604
+      "usec": 1445135
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 70,
+      "escaped": 0,
+      "floods": 30,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/test_debug_panel_layout.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 24,
+      "usec": 8547168
     },
     {
       "bouts": 0,
       "candidates": 0,
       "dups": 0,
       "escaped": 0,
-      "floods": 22,
+      "floods": 0,
       "lookahead_fields": 0,
-      "path": "res://test/unit/view/test_debug_panel_layout.gd",
+      "path": "res://test/unit/view/test_extracted_unit_leaves_the_board.gd",
       "plans": 0,
       "shot_planes": 0,
-      "turns": 0,
-      "ui_builds": 27,
-      "usec": 3826459
+      "turns": 11,
+      "ui_builds": 0,
+      "usec": 195209
     },
     {
       "bouts": 0,
@@ -3554,7 +4408,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 39630
+      "usec": 93612
     },
     {
       "bouts": 0,
@@ -3568,7 +4422,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 54570
+      "usec": 124504
     },
     {
       "bouts": 0,
@@ -3582,7 +4436,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 289874
+      "usec": 587298
     },
     {
       "bouts": 0,
@@ -3596,7 +4450,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 51255
+      "usec": 106762
     },
     {
       "bouts": 0,
@@ -3610,7 +4464,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 127726
+      "usec": 221889
     },
     {
       "bouts": 0,
@@ -3624,7 +4478,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 75303
+      "usec": 156214
     },
     {
       "bouts": 0,
@@ -3638,7 +4492,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 64821
+      "usec": 140788
     },
     {
       "bouts": 0,
@@ -3652,7 +4506,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 109598
+      "usec": 227662
     },
     {
       "bouts": 0,
@@ -3666,21 +4520,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 66787
+      "usec": 141320
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 0,
+      "dups": 28,
       "escaped": 0,
-      "floods": 8,
+      "floods": 12,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_inspect_dim.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 1477704
+      "usec": 3529092
     },
     {
       "bouts": 0,
@@ -3694,21 +4548,35 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 453626
+      "usec": 862384
     },
     {
       "bouts": 0,
       "candidates": 0,
       "dups": 0,
       "escaped": 0,
-      "floods": 4,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "path": "res://test/unit/view/test_inspect_viewer_lighting.gd",
+      "plans": 0,
+      "shot_planes": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 115869
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 14,
+      "escaped": 0,
+      "floods": 6,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_inspect_world_leak.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 6,
-      "usec": 735798
+      "usec": 1797766
     },
     {
       "bouts": 0,
@@ -3722,7 +4590,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 70186
+      "usec": 132665
     },
     {
       "bouts": 0,
@@ -3736,21 +4604,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 117202
+      "usec": 170949
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 0,
+      "dups": 35,
       "escaped": 0,
-      "floods": 12,
+      "floods": 17,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_perf_panel.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 9,
-      "usec": 1921550
+      "usec": 4523379
     },
     {
       "bouts": 0,
@@ -3764,63 +4632,49 @@
       "shot_planes": 1,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 88394
-    },
-    {
-      "bouts": 0,
-      "candidates": 0,
-      "dups": 93,
-      "escaped": 0,
-      "floods": 25,
-      "lookahead_fields": 0,
-      "path": "res://test/unit/view/test_queue_panel.gd",
-      "plans": 0,
-      "shot_planes": 0,
-      "turns": 0,
-      "ui_builds": 0,
-      "usec": 624529
+      "usec": 89945
     },
     {
       "bouts": 3,
-      "candidates": 630,
-      "dups": 0,
+      "candidates": 600,
+      "dups": 63,
       "escaped": 0,
-      "floods": 27,
+      "floods": 36,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_replay_wiring.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 27,
-      "usec": 16938581
+      "usec": 22549956
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 0,
+      "dups": 252,
       "escaped": 0,
-      "floods": 68,
+      "floods": 108,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_resolution_player.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
-      "ui_builds": 67,
-      "usec": 18508341
+      "ui_builds": 71,
+      "usec": 37373178
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 0,
+      "dups": 28,
       "escaped": 0,
-      "floods": 8,
+      "floods": 12,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_resolution_player_elevation.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 1387157
+      "usec": 3568252
     },
     {
       "bouts": 0,
@@ -3834,7 +4688,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 222578
+      "usec": 303835
     },
     {
       "bouts": 0,
@@ -3848,7 +4702,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 368945
+      "usec": 495562
     },
     {
       "bouts": 0,
@@ -3862,7 +4716,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 11,
-      "usec": 510975
+      "usec": 659139
     },
     {
       "bouts": 0,
@@ -3876,7 +4730,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 592031
+      "usec": 776495
     },
     {
       "bouts": 0,
@@ -3890,7 +4744,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 4,
-      "usec": 219158
+      "usec": 306959
     },
     {
       "bouts": 0,
@@ -3904,7 +4758,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 612693
+      "usec": 816343
     },
     {
       "bouts": 0,
@@ -3918,7 +4772,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 10,
-      "usec": 479518
+      "usec": 652612
     },
     {
       "bouts": 0,
@@ -3932,7 +4786,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 60361
+      "usec": 119919
     },
     {
       "bouts": 0,
@@ -3946,7 +4800,7 @@
       "shot_planes": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 235234
+      "usec": 311644
     },
     {
       "bouts": 0,
@@ -3960,21 +4814,21 @@
       "shot_planes": 105,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 3664513
+      "usec": 3983607
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 376,
+      "dups": 409,
       "escaped": 0,
-      "floods": 88,
+      "floods": 96,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_tactics_controller_aim.gd",
       "plans": 0,
-      "shot_planes": 12,
+      "shot_planes": 13,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 2829209
+      "usec": 3272398
     },
     {
       "bouts": 0,
@@ -3988,7 +4842,7 @@
       "shot_planes": 4,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 299636
+      "usec": 363636
     },
     {
       "bouts": 0,
@@ -4002,7 +4856,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 614692
+      "usec": 742209
     },
     {
       "bouts": 0,
@@ -4016,7 +4870,7 @@
       "shot_planes": 2,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 350319
+      "usec": 401911
     },
     {
       "bouts": 0,
@@ -4030,7 +4884,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 178461
+      "usec": 251929
     },
     {
       "bouts": 0,
@@ -4044,7 +4898,7 @@
       "shot_planes": 5,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1146143
+      "usec": 1302947
     },
     {
       "bouts": 0,
@@ -4058,7 +4912,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 170539
+      "usec": 264773
     },
     {
       "bouts": 0,
@@ -4072,7 +4926,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 96433
+      "usec": 150813
     },
     {
       "bouts": 0,
@@ -4086,7 +4940,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 677076
+      "usec": 754114
     },
     {
       "bouts": 0,
@@ -4100,7 +4954,7 @@
       "shot_planes": 10,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1062272
+      "usec": 1251296
     },
     {
       "bouts": 0,
@@ -4111,10 +4965,10 @@
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_tactics_controller_step_out.gd",
       "plans": 0,
-      "shot_planes": 162,
+      "shot_planes": 210,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3436284
+      "usec": 3827948
     },
     {
       "bouts": 0,
@@ -4128,7 +4982,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 141970
+      "usec": 210839
     },
     {
       "bouts": 0,
@@ -4142,21 +4996,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 94962
+      "usec": 186109
     },
     {
       "bouts": 0,
       "candidates": 0,
-      "dups": 0,
+      "dups": 21,
       "escaped": 0,
-      "floods": 6,
+      "floods": 9,
       "lookahead_fields": 0,
       "path": "res://test/unit/view/test_turn_indicator_timing.gd",
       "plans": 0,
       "shot_planes": 0,
       "turns": 3,
       "ui_builds": 6,
-      "usec": 1133018
+      "usec": 2676860
     },
     {
       "bouts": 0,
@@ -4170,7 +5024,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 110351
+      "usec": 212591
     },
     {
       "bouts": 0,
@@ -4184,7 +5038,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 52619
+      "usec": 102621
     },
     {
       "bouts": 0,
@@ -4198,7 +5052,7 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 161952
+      "usec": 228933
     },
     {
       "bouts": 0,
@@ -4212,21 +5066,21 @@
       "shot_planes": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 108117
+      "usec": 223428
     }
   ],
   "totals": {
-    "bouts": 57,
-    "candidates": 1141673,
-    "dups": 7741,
-    "escaped": 183,
-    "floods": 3642,
-    "lookahead_fields": 150,
-    "plans": 589,
-    "shot_planes": 10384,
-    "turns": 768,
-    "ui_builds": 627,
-    "usec": 526646678
+    "bouts": 76,
+    "candidates": 1233514,
+    "dups": 10881,
+    "escaped": 198,
+    "floods": 6038,
+    "lookahead_fields": 452,
+    "plans": 847,
+    "shot_planes": 9616,
+    "turns": 1063,
+    "ui_builds": 1267,
+    "usec": 1429107324
   },
-  "wall_clock_usec": 530286538
+  "wall_clock_usec": 1434126059
 }

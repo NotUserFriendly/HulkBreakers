@@ -13,7 +13,20 @@ extends GutTest
 ## The four tiers, **authored here as a fixture rather than read from a constant**, because
 ## CLAUDE.md's standing rule is that `intelligence_tier` is an open vocabulary and a test that needs
 ## a concrete list writes one.
+
 const TIERS: Array[StringName] = [&"MINDLESS", &"GRUNT", &"TRAINED", &"ELITE"]
+
+
+## tb64 audit rebuild: **this file builds bouts and was running them in the fast gate.** It
+## predates its own registration in `SuiteTier.BOUT_FILES` — the committed profile had not been
+## regenerated since taskblock-56, so nothing could see the bouts it had started building.
+##
+## Untyped return on purpose, against this project's static-typing rule: GUT declares
+## `func should_skip_script():` with no return type, and Godot treats an override that adds
+## `-> Variant` as a signature mismatch — the script then fails to parse and GUT reports it as
+## "does not extend GutTest", a long way from the real cause.
+func should_skip_script():
+	return SuiteTier.skip_if_fast()
 
 
 func before_each() -> void:
