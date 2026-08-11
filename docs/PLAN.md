@@ -2370,6 +2370,47 @@ same. **This is a second trigger on the same hook, not a new mechanism.**
 - **Pairs with the die-roll rule below**: a spotting is information the player did not have when they
   queued, so it is exactly the kind of event that should re-open planning.
 
+### The player wins battles; the design wins the war
+**Needs:** the meta layer for the loop it describes. **Unblocks:** knowing what an AI unit is *for*.
+
+**A cornerstone, and it settles a question that keeps coming back as a balance argument.**
+
+**The player's frame is the battle.** They are trying to win this fight, on this hulk, today.
+
+**The design's frame is the war.** An AI squad will rarely beat a competent player outright, and **it
+does not need to.** What it needs to do is **cost** — parts, ammo, a matrix's recovery time, a shell
+that has to be rebuilt before the next raid. **The more damage a losing squad does, the more the player
+has to compensate**, and the next raid is run more carefully or with less.
+
+**So AI competence is measured in attrition, not in wins.** That reframes several open questions:
+
+- **A completion rate is not a difficulty dial.** A squad that always loses but always takes an arm with
+  it is doing its job; one that loses cleanly is not.
+- **It is why `seeds_to_first_win` is the right shape** and a win rate is not — the interesting number
+  is what a fight *costs*, and a binary outcome cannot express it.
+- **It is also the argument for the parts economy mattering.** Damage that is free to repair is damage
+  that did not happen, and an enemy that only ever costs time is not applying pressure.
+
+**Worth stating because the alternative reads as a bug.** An AI that loses most fights looks like a
+broken AI, and by this cornerstone it is the expected shape — **the defect would be losing *cheaply*.**
+
+### Explosions do not interrupt the burst that caused them
+**Needs:** *Explosions: three types on one substrate*; `ResolutionPlayer`'s timeline. **Unblocks:** a
+burst reading as one continuous action.
+
+**If a barrel detonates mid-burst, the burst keeps firing and the explosion plays over it.** The rounds
+do not pause and wait; both play **concurrently**.
+
+**This is a playback rule, not a resolution one.** The shots and the detonation already resolve in a
+defined order; what is at stake is whether the *drawing* serialises them. **Today's player plays events
+in sequence**, which would show a burst stopping dead while a barrel goes up and then resuming — and a
+chaingun visibly pausing mid-magazine is the kind of thing that reads as a hitch rather than as a
+consequence.
+
+**It generalises past barrels.** Anything a shot triggers — a cook-off, a collapse, a unit falling —
+should overlay the action that caused it rather than queue behind it. **The timeline needs concurrent
+tracks**, which is the same machinery animation will want.
+
 ### Wall coatings, and walls that are not cell-wide
 **Needs:** *The section authoring vocabulary*. **Unblocks:** rooms that read as different places; shots
 that cross a room boundary meaningfully.

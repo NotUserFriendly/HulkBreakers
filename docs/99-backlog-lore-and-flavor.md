@@ -131,6 +131,12 @@ to something other than breathing.
   research** — what density real gas clouds and particle clusters actually have, and whether that reads
   in a game at all.
 
+- **Ultra gravity.** *"Warning, gravitational feedback loop detected. Advising lightweight arms."*
+  Ship gravity rises to roughly **five times normal**: movement slows, **AP-to-MP conversion costs extra
+  power**, and **falls deal far more damage**. **Projectile weapons are significantly weakened** — a
+  round drops faster than it was built to. Rewards exactly the loadout the event's own warning names,
+  which is the shape a good event has: readable, and answerable by preparation.
+
 ### The star system decides which ones you get
 
 **A simulated orbit view.** Planets at expected orbits; **voidhulks on erratic ones** — about the star,
