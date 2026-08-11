@@ -10,6 +10,47 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+### BR63.04 — Resolved — owner: `SUPERVISOR`  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
+**A chaingun unit has no firing action it can reach**
+- **tb64: fixed, unconfirmed.** `data/utility_actions/burst.tres` is a plain `burst` utility action
+  tier-gated **exactly as `shoot` is** (`GRUNT`/`TRAINED`/`ELITE`) — the supervisor's call, *"burst
+  needs to be aligned with shoot as an option; currently it's tied to a higher requirement."*
+  Pulling the trigger on an automatic weapon is a **weapon property, not intelligence**;
+  `suppress` keeps its `TRAINED` gate because a suppressive *tactic* is what that gate was for.
+  `SUPERSEDED.md` records the reversal.
+- **Two repairs that stand on their own merits, and the burst action does not work without them.**
+  `shoot` now carries a `weapon_single_fire` precondition and `burst`/`suppress` carry
+  `weapon_bursts`, so an action is never offered where its executor cannot build — the thing that
+  made this invisible, since the log showed a confident `shoot@(25,13)` and then nothing.
+  `UtilityContext._find_weapon_id` prefers a damaging part that actually provides an action.
+- **Measured on bare ground, at the decision level** (`test_close_range_firing_decision.gd`): a
+  `GRUNT` chaingun now selects `burst@(6,6)` and produces a `BurstAction` at 1, 2 and 3 cells,
+  where it previously selected `shoot` and produced nothing. All three combat presets fire at all
+  three distances.
+- **cluster:** `ai-behaviour`
+- **Source:** `SUPERVISOR`, 2026-08-10, post-taskblock-63 review.
+- **Proven from data; pre-existing, and taskblock-63 touched none of it.** Four pieces compose into a
+  dead end:
+  - `chaingun.tres` provides **`burst` only** — it cannot single-fire.
+  - `shoot.tres`'s preconditions **never ask whether the weapon provides `shoot`**.
+  - `suppress.tres` and `overwatch.tres` — the only planner actions with `executor_id = burst` — are
+    gated to **`TRAINED`/`ELITE`**, excluding `GRUNT`.
+  - `UtilityContext._find_weapon_id` returns the first living part with `damage > 0` and **never
+    consults `provides_actions`**.
+- So the chaingun is selected, `shoot` passes every precondition and wins, and `AttackAction.is_legal`
+  then refuses it on `provides_a_single_pull` — **working exactly as designed**. `UtilityPlanner._commit`
+  handles the refusal by returning silently. **10 of 10 in the log.**
+- **`combat_tester_chaingun.tres` is the only `GRUNT`-tier preset**, and the chaingun is the only weapon
+  in the library that does not provide `shoot`. **An all-chaingun roster cannot fire at all.**
+- **Green suite:** headless bouts pick presets that provide `shoot` and fired 481 rounds during
+  taskblock-63's gate. **No test crosses the seam between what a generated bout arms and what the
+  planner can offer.**
+- **Three fixes, and they are not equivalent** — see `PLAN`'s item. **Option 3 (a `burst` action offered
+  to GRUNT) is a design call**, and `suppress`'s existing tier gate says somebody already decided
+  otherwise.
+- **Closed by the supervisor, 2026-08-10**, after tb64 Pass C: *"63.04 is resolved."*
+  Owner-confirmed, not self-closed.
+
 ### BR64.01 — Resolved — owner: `CC`
 **`RayCaster.cast_geometry` and `RayCaster.obstructed` disagree about what a ray meets**
 - **cluster:** `projection-and-targeting`

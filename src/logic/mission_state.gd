@@ -110,9 +110,19 @@ func squad_ready_to_extract(squad_id: int) -> bool:
 ## the unit's own squad is the player's AND every one of its own squadmates
 ## is accounted for.
 func extract_unit(unit: Unit) -> void:
-	unit.alive = false
 	unit.extracted = true
-	combat_state.grid.set_occupant_id(unit.cell, -1)
+	# tb64 Pass G (`BR63.03`): **through `kill_unit`, not by hand.** This set `alive = false` and
+	# cleared the cell itself — the same two lines `CombatState.kill_unit` runs under a comment
+	# calling itself *"the one place a unit's alive flag flips to false"*. What it did not copy is
+	# the third thing that function does: **advance the turn when the unit leaving is the current
+	# one.** So an extracted unit stayed `_current_unit_id`, and the turn never ended.
+	#
+	# That is `BR51.04`/`BR51.05` exactly, reintroduced through a second door — the bug those
+	# entries fixed was a stranded `_current_unit_id` pointing at someone who was gone, and
+	# `SelectionController.select` requires `unit == current_unit()`, so it also takes selection
+	# down with it. Extraction is not death, but at the level of board state it is the identical
+	# event: off the board, out of the order, cell freed.
+	combat_state.kill_unit(unit)
 	combat_state.combat_log.emit(
 		LogEvent.new(
 			combat_state.round_number,

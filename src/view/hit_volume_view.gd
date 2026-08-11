@@ -324,6 +324,22 @@ func refresh() -> void:
 	if unit == null:
 		return
 
+	# `BR63.03`, tb64 Pass G: **a unit that extracted has left the board and is drawn as
+	# nothing.**
+	#
+	# Every other way a unit stops participating removes its geometry on its own — a destroyed
+	# part has `hp <= 0` and `BodyProjector.projects` refuses it, so a killed unit empties out
+	# box by box with no view-layer rule at all. **Extraction destroys nothing**: `extract_unit`
+	# sets `alive = false` and clears the cell's occupant, leaving every part intact, so
+	# `refresh()` faithfully rebuilt a whole body for someone who had gone home.
+	#
+	# Keyed on `extracted` and deliberately not on `alive`: an inert shell whose matrix was
+	# ejected is still lying there and must keep drawing. The model already agrees — turn order
+	# (`CombatState.advance_turn`) and every targeting path gate on `alive`, so this is the
+	# drawing half of a defect whose gameplay half never existed.
+	if unit.extracted:
+		return
+
 	_team_marker = _build_team_marker()
 	# tb32 Pass D (BR27.07): re-apply whatever `set_active_turn` last said
 	# — a mid-turn refresh() (e.g. taking damage) must not flash a
@@ -405,6 +421,10 @@ func refresh() -> void:
 ## only ever be correct or decline.
 func refresh_transforms() -> bool:
 	if unit == null or _structure_signature == "":
+		return false
+	# An extracted unit's parts are all intact, so the cheap path would happily keep redrawing
+	# it — refusing here is what routes it to `refresh()`, which clears the subtree and stops.
+	if unit.extracted:
 		return false
 	var pose: Variant = Poses.down() if is_downed() else null
 	var placements_by_part: Dictionary = {}

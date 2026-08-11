@@ -1,8 +1,10 @@
 # Taskblock 64 Report — a bout that produces gunfire
 
-Passes **A** (measure), **B** (the ray-march divergence), **C** (a chaingun unit can fire), **D**
-(the library cross-product) and **E** (a bout can be won by fighting) have landed, in that order,
-each green on the fast gate. **F and G are not yet done.** The block's headline finding is that its
+**Every pass except F has landed** — A (measure), B (the ray-march divergence), C (a chaingun unit
+can fire), D (the library cross-product), E (a bout can be won by fighting) and G (the two clocks),
+in that order, each green on the fast gate. **F is measured but not fixed**, deliberately: both its
+entries turn out to need design calls rather than repairs, and one of them had the wrong mechanism
+written down. The block's headline finding is that its
 own premise was wrong: `BR63.05` is titled *"units do not see enemies at one to two cells"*, and at
 the decision level, on a bare board, **every preset saw its enemy in all 18 cases**. The silence was
 three unrelated things, none of them sight — a tier gate, a missing `burst` action, and a preset
@@ -53,6 +55,20 @@ chaingun had a perfectly operable weapon, so a functional-weapon test would have
 bout running to the turn cap — the exact thing the mode exists to stop. The alternative was the
 cheaper predicate; it would have made the instrument useless for the case it was built for.
 
+**Pass F was measured and left unfixed, and that is a scope decision.** `BR63.01`'s *"each should
+be 1 unit"* means changing `Surface.LADDER_SEGMENT_RISE` from 2.0, which is read by `Pathfinder`'s
+ladder branch and `Surface.ladder_serves_climb` — a balance change, not a repair. `BR63.02` turned
+out to be a **double-draw** rather than the offset its entry guessed at, and stopping one of the two
+emissions is a design call: the socket transform is the physically correct ledge, the `Surface`
+record is what the mover reads. Both entries got the arithmetic and the corrected mechanism; neither
+got a fix.
+
+**Pass G stopped at the board clock and did not touch the unit-part one.** `BR54.02` is the same
+pairing from the other side, and the entry asks for it to be checked against whatever clock the
+teardown now reads. It is a *unit's* part, and unit views refresh **before** playback on purpose
+(`ResolutionPlayer._prime` needs that frame). Moving that would reopen `BR51.21`, so it is stated as
+untouched rather than attempted.
+
 **`burst.tres` copies `shoot`'s weights rather than choosing its own.** `base_weight = 1.5` and the
 same five considerations, because *"aligned with shoot"* was the instruction and a different number
 would be an invented balance decision. **`auto_shotgun` provides both**, so they tie and the
@@ -60,7 +76,7 @@ considerations decide — untested, and queued in `PLAN.md` rather than guessed 
 
 ## Tests that failed, then were corrected
 
-**Six, four of them my own instruments reporting the wrong thing.**
+**Seven, five of them my own instruments reporting the wrong thing.**
 
 1. **`test_close_range_firing_decision.gd` read a working burst as silence.** It detected a shot
    with `action is AttackAction`; `BurstAction` extends `CombatAction` **beside** `AttackAction`,
@@ -89,12 +105,23 @@ considerations decide — untested, and queued in `PLAN.md` rather than guessed 
    12x5 grid (`set_occupant_id` out of bounds), and `BoutRosterEntry.profile_id`, which is actually
    `ai_profile`. Both mechanical, both caught on the first real run.
 
+7. **My own claim that `BR63.03` was a drawing defect only.** Targeting and cell occupancy did
+   already exclude an extracted unit, so "the model is fine" looked right — until the turn-order
+   case was actually run and reached the extracted unit. **It was a gameplay defect too**, and the
+   entry's suspicion was correct where my first reading was not. The test that caught it is one I
+   wrote to confirm the opposite.
+
 ## `SUPERVISOR`-owned entries moved to `Pending`
 
-- **`BR63.04`** — a chaingun unit has no firing action it can reach. **To see it work:** run an
-  all-chaingun roster; it should now produce burst fire rather than 31 silent turns. `burst` is
-  gated `GRUNT`/`TRAINED`/`ELITE` exactly as `shoot` is, and `shoot` is now refused to a burst-only
-  weapon the way it is already refused to a saw.
+- **`BR63.03`** — extracted units remain on the map. **To see it work:** extract a unit; it should
+  vanish from the board, stop being handed turns, and stop blocking selection. Both halves were
+  real — the turn-order half is `BR51.04`/`BR51.05` reintroduced through `extract_unit` doing
+  `kill_unit`'s job by hand.
+- **`BR61.07`** — the destroyed thing's clock. **To see it work:** force a detonation that destroys
+  more than one thing. Each should stay until its own explosion has played and then go, rather than
+  all of them vanishing at the very end.
+
+**`BR63.04` was closed `Resolved` by the supervisor** during this block, after Pass C.
 
 `BR63.05` is **left `Active`** rather than moved. Most of what it describes is explained and its
 stated cause is corrected in place, but the one observation it was opened on — an `ELITE` choosing

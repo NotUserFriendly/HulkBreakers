@@ -219,12 +219,27 @@ func _on_debug_panel_applied(
 	# **Awaited, so the board rebuild genuinely follows the animation.** `_play_injection` suspends
 	# on `ResolutionModule.play`; calling it without `await` would detach at that first suspend and
 	# run the rebuild immediately, which is the bug this is fixing wearing a different shape.
-	await _play_injection(events)
+	#
+	# tb64 Pass G (`BR61.07` reopened): **the rebuild rides each destroying event, not the end of
+	# the sequence.** taskblock-61 moved it from resolution time to after the whole playback, which
+	# fixed the too-early symptom and produced a too-late one — the supervisor's word was
+	# *"comically late"*. A one-event injection is unchanged by this; a longer one no longer leaves
+	# wreckage standing until the last tracer in the sequence has finished.
+	var rebuilt: bool = false
+	var on_board_changed := func() -> void:
+		if DebugVerbs.affects_board(verb_id):
+			battle.sync_board_view()
+			rebuilt = true
+	await _play_injection(events, on_board_changed)
 	# taskblock-42 Pass E (`BR35.03`): only when the verb actually changed the board. Rebuilding
 	# terrain, grid lines and every blocker to reflect a changed AP value was the whole of that
 	# entry. **A verb that animated nothing still lands here in the same frame** — `_play_injection`
 	# returns immediately on an empty list — so a non-animating board verb is not delayed.
-	if DebugVerbs.affects_board(verb_id):
+	#
+	# **Still runs when nothing destroyed anything.** A board verb can change the board without
+	# emitting a `part_destroyed` at all (`place_cover`, `move_object`), and those have no event to
+	# ride; `rebuilt` is what stops a verb that already resynced mid-playback doing it twice.
+	if not rebuilt and DebugVerbs.affects_board(verb_id):
 		battle.sync_board_view()
 
 
@@ -244,12 +259,17 @@ func _on_debug_panel_applied(
 ## An empty list returns early rather than calling `play([])`, because `ResolutionPlayer.play`
 ## raises its banner and waits out `RESOLVE_LEAD_IN` before it looks at the list — so an empty
 ## playback is a visible pause on every Apply press, not a no-op.
-func _play_injection(events: Array[LogEvent]) -> void:
+func _play_injection(events: Array[LogEvent], on_board_changed: Callable = Callable()) -> void:
 	if events.is_empty():
 		return
 	var resolution: ViewModule = context.module(&"resolution") if context != null else null
 	if resolution != null:
-		await (resolution as ResolutionModule).play(events)
+		var module := resolution as ResolutionModule
+		# Set for this playback and cleared after it, so a callback bound to one verb's `battle`
+		# and `verb_id` cannot outlive the press that made it.
+		module.set_board_changed_hook(on_board_changed)
+		await module.play(events)
+		module.set_board_changed_hook(Callable())
 
 
 ## Re-published rather than acted on. **This module no longer owns any of the surfaces the debug

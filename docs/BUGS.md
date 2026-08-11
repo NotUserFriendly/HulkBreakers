@@ -312,7 +312,7 @@ bug and it is chased on its own terms.
   emissions has to stop being drawn, and **which one is the design call**, since the socket
   transform is the physically-correct ledge position and the `Surface` record is what the mover
   and `ladder_serves_climb` read.
-### BR63.03 — Active — owner: `SUPERVISOR`
+### BR63.03 — Pending — owner: `SUPERVISOR`  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
 **Extracted units remain on the map**
 - **cluster:** `view-model-membership`
 - **Source:** `SUPERVISOR`, 2026-08-10, post-taskblock-63 review.
@@ -322,44 +322,24 @@ bug and it is chased on its own terms.
   which `PLAN`'s *Player view and sim view* addresses structurally.
 - Check whether the unit is also still *targetable* and still *takes turns*, which would make it a
   gameplay defect rather than a drawing one.
-### BR63.04 — Pending — owner: `SUPERVISOR`  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
-**A chaingun unit has no firing action it can reach**
-- **tb64: fixed, unconfirmed.** `data/utility_actions/burst.tres` is a plain `burst` utility action
-  tier-gated **exactly as `shoot` is** (`GRUNT`/`TRAINED`/`ELITE`) — the supervisor's call, *"burst
-  needs to be aligned with shoot as an option; currently it's tied to a higher requirement."*
-  Pulling the trigger on an automatic weapon is a **weapon property, not intelligence**;
-  `suppress` keeps its `TRAINED` gate because a suppressive *tactic* is what that gate was for.
-  `SUPERSEDED.md` records the reversal.
-- **Two repairs that stand on their own merits, and the burst action does not work without them.**
-  `shoot` now carries a `weapon_single_fire` precondition and `burst`/`suppress` carry
-  `weapon_bursts`, so an action is never offered where its executor cannot build — the thing that
-  made this invisible, since the log showed a confident `shoot@(25,13)` and then nothing.
-  `UtilityContext._find_weapon_id` prefers a damaging part that actually provides an action.
-- **Measured on bare ground, at the decision level** (`test_close_range_firing_decision.gd`): a
-  `GRUNT` chaingun now selects `burst@(6,6)` and produces a `BurstAction` at 1, 2 and 3 cells,
-  where it previously selected `shoot` and produced nothing. All three combat presets fire at all
-  three distances.
-- **cluster:** `ai-behaviour`
-- **Source:** `SUPERVISOR`, 2026-08-10, post-taskblock-63 review.
-- **Proven from data; pre-existing, and taskblock-63 touched none of it.** Four pieces compose into a
-  dead end:
-  - `chaingun.tres` provides **`burst` only** — it cannot single-fire.
-  - `shoot.tres`'s preconditions **never ask whether the weapon provides `shoot`**.
-  - `suppress.tres` and `overwatch.tres` — the only planner actions with `executor_id = burst` — are
-    gated to **`TRAINED`/`ELITE`**, excluding `GRUNT`.
-  - `UtilityContext._find_weapon_id` returns the first living part with `damage > 0` and **never
-    consults `provides_actions`**.
-- So the chaingun is selected, `shoot` passes every precondition and wins, and `AttackAction.is_legal`
-  then refuses it on `provides_a_single_pull` — **working exactly as designed**. `UtilityPlanner._commit`
-  handles the refusal by returning silently. **10 of 10 in the log.**
-- **`combat_tester_chaingun.tres` is the only `GRUNT`-tier preset**, and the chaingun is the only weapon
-  in the library that does not provide `shoot`. **An all-chaingun roster cannot fire at all.**
-- **Green suite:** headless bouts pick presets that provide `shoot` and fired 481 rounds during
-  taskblock-63's gate. **No test crosses the seam between what a generated bout arms and what the
-  planner can offer.**
-- **Three fixes, and they are not equivalent** — see `PLAN`'s item. **Option 3 (a `burst` action offered
-  to GRUNT) is a design call**, and `suppress`'s existing tier gate says somebody already decided
-  otherwise.
+- **tb64 Pass G: it was both, and the answer to that question is yes.** Two independent causes:
+  - **Gameplay.** `MissionState.extract_unit` set `alive = false` and cleared the cell **by hand**
+    — the same two lines `CombatState.kill_unit` runs under a comment calling itself *"the one
+    place a unit's alive flag flips to false"*. It never copied the third thing that function
+    does: **advance the turn when the departing unit is the current one.** So `_current_unit_id`
+    pointed at someone who had gone home and the turn never ended — **`BR51.04`/`BR51.05`
+    reintroduced through a second door**, selection included, since `SelectionController.select`
+    requires `unit == current_unit()`. Fixed by routing extraction through `kill_unit`.
+  - **Drawing.** Every *other* way a unit stops participating destroys geometry: a killed unit's
+    parts drop to `hp <= 0` and `BodyProjector.projects` refuses them, so it empties out box by
+    box with no view rule at all. **Extraction destroys nothing**, so `HitVolumeView.refresh()`
+    faithfully rebuilt a whole intact body. It now draws nothing for an extracted unit, and
+    `refresh_transforms` refuses so the cheap path cannot keep it on screen.
+  - **Keyed on `extracted`, deliberately not on `alive`** — an inert shell whose matrix was ejected
+    is still lying there to be shot and stripped, and is pinned by its own test.
+  - Targeting and cell occupancy were **already** correct and are pinned rather than changed.
+  - **To see it:** extract a unit. It should vanish from the board, stop being handed turns, and
+    stop blocking selection.
 ### BR63.05 — Active — owner: `SUPERVISOR`
 **Units do not see enemies at one to two cells**
 - **tb64: the stated cause is wrong for most of what was reported, and the title overstates it.**
@@ -2361,7 +2341,7 @@ already passes `weapon.id` into `ActionCatalog.build_firing_action` a few lines 
 - **`Suspected` on purpose:** the mechanism is inferred from the log and the known default, not
   confirmed by reading the emitting code. Do not fix ahead of `BR60.02`'s refit, which owns the rule.
 
-### BR61.07 — Active — owner: `SUPERVISOR`
+### BR61.07 — Pending — owner: `SUPERVISOR`  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
 **A debug injection tears the destroyed thing off the board before its explosion animates**
 - **cluster:** `two-clocks`
 - **Source:** `SUPERVISOR`  ·  **CC session:** `906e0f07-5b0a-47bd-8444-fb42ed468da2`
@@ -2435,6 +2415,32 @@ is_disabled` for the same part. The disappearance here is that disagreement made
   playback rather than the individual hit that caused it.
 - **`BR54.02` is the same pairing from the other side** (a part vanishing before the tracer that
   destroyed it), so whatever clock this now reads, check that entry against it too.
+
+- **tb64 Pass G — `Pending` again, and the diagnosis in the reopening was right.** The rebuild was
+  running after `await _play_injection(events)` — after the **whole** sequence — so a one-event
+  injection looked fine and a longer one left wreckage standing until the last tracer finished.
+  *"Waiting for something longer than the impact"* is exactly what it was doing.
+- **The clock is now the destroying event's own playback.** `ResolutionPlayer` fires an optional
+  `on_board_changed` hook after it has finished awaiting an event whose kind is in
+  `BOARD_CHANGING_KINDS` (`part_destroyed`, `detonate` — open by content, so a later verb joins as
+  data). It rides the same *"is this the final hop of a pull"* decision the pacing already makes,
+  so a continuation hop cannot tear the board down before anything was seen.
+- **Both directions are pinned now, which is what the reopening cost.** Too-early stays covered by
+  `test_a_destroyed_blocker_keeps_its_mesh_until_its_explosion_has_played` (62 board meshes before,
+  62 while the explosion plays); too-late is covered by
+  `test_the_board_hook_fires_once_per_destroying_event_not_once_per_action` — **two destroying
+  events must produce two resyncs, not one.** Counted rather than timed, because wall-clock
+  ordering inside playback is flaky to assert and the count encodes the fix exactly.
+- **A board verb that destroys nothing still rebuilds once, in the same frame.** `place_cover` and
+  `move_object` change the board with no event to ride, so the end-of-playback rebuild survives for
+  them, guarded so a verb that already resynced mid-playback does not do it twice.
+- **`BR54.02` is NOT addressed and is not claimed to be.** That entry is about a *unit's* part, and
+  unit views are refreshed **before** playback on purpose — `ResolutionPlayer._prime` needs the
+  frame `refresh_unit_views()` ran in, which is `BR51.21`'s own reasoning. This pass moved the
+  board clock only; the unit-part clock is untouched and still wants the `part_destroyed`-driven
+  teardown `BR52.09` asks for.
+- **To see it:** force a detonation that destroys more than one thing. Each should stay on the
+  board until its own explosion has played and then go — not all of them at the very end.
 
 ### BR61.08 — Active — owner: `SUPERVISOR`
 **AI turns are not animated**

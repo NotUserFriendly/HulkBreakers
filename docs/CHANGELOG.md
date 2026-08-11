@@ -167,6 +167,45 @@ a weapon straight onto a torso with no manipulator and no docked matrix; the bou
 minutes against one second of CPU. Rebuilt on `test_bout_runner.gd`'s known-good shape, and recorded
 because "nearly a unit" is a cheaper fixture only until it isn't.
 
+### Pass G — two clocks, and one of them was a second door onto an old bug
+
+**`BR63.03` was a gameplay defect as well as a drawing one**, which is the question the entry asked
+and the opposite of this pass's first reading. `MissionState.extract_unit` set `alive = false` and
+cleared the cell **by hand** — the two lines `CombatState.kill_unit` runs under a comment calling
+itself *"the one place a unit's alive flag flips to false"* — and never copied the third thing that
+function does: **advance the turn when the departing unit is the current one.** So an extracted
+unit stayed `_current_unit_id`, the turn never ended, and selection went with it, since
+`SelectionController.select` requires `unit == current_unit()`. **That is `BR51.04`/`BR51.05`
+reintroduced through a second door**, and routing extraction through `kill_unit` closes it.
+
+Targeting and cell occupancy were already correct; they are pinned rather than changed. The drawing
+half is its own cause: **every other way a unit stops participating destroys geometry**, so a killed
+unit empties out box by box with no view rule at all, while extraction leaves every part intact and
+`HitVolumeView.refresh()` faithfully rebuilt a whole body. Keyed on `extracted` and deliberately not
+on `alive` — an inert shell whose matrix was ejected is still lying there to be shot and stripped.
+
+**`BR61.07`'s reopening was right, and its diagnosis was right.** taskblock-61 moved the board
+rebuild from resolution time to after `await _play_injection(events)` — after the **whole** sequence
+— so a one-event injection looked correct and a longer one left wreckage standing until the last
+tracer finished. *"Comically late"*, and *"waiting for something longer than the impact"* is exactly
+what it was doing.
+
+**The clock is now the destroying event's own playback.** `ResolutionPlayer` fires an optional
+`on_board_changed` hook after it finishes awaiting an event whose kind is in
+`BOARD_CHANGING_KINDS` — `part_destroyed`, `detonate`, open by content so a later verb joins as data.
+It rides the same *"is this the final hop of a pull"* decision the pacing already makes, so a
+continuation hop cannot tear the board down before anything has been seen.
+
+**Both directions are pinned now, which is what the reopening cost.** Too-early keeps its existing
+test (62 board meshes before, 62 while the explosion plays); too-late gets a new one asserting that
+**two destroying events produce two resyncs, not one**. Counted rather than timed — wall-clock
+ordering inside playback is flaky to assert, and the count encodes the fix exactly.
+
+**`BR54.02` is not addressed, and is not claimed to be.** It is about a *unit's* part, and unit
+views refresh **before** playback on purpose (`ResolutionPlayer._prime` needs that frame —
+`BR51.21`'s own reasoning). This pass moved the board clock only; the unit-part clock still wants
+the `part_destroyed`-driven teardown `BR52.09` asks for.
+
 ## Taskblock 63 — finish what taskblock 62 exposed
 
 ### Pass A — the file-size cap is the project's number, not gdlint's

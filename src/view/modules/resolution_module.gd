@@ -43,6 +43,17 @@ func play(events: Array[LogEvent]) -> void:
 		await player.play(events)
 
 
+## The per-event board hook `ResolutionPlayer` fires after a destroying event has finished
+## playing. tb64 Pass G (`BR61.07`) — a caller that wants the board resynced on its own impact
+## rather than at the end of the action sets one, and clears it when the playback is done.
+##
+## Null-safe on both ends: a mode with no player accepts the hook and drops it, which is the same
+## posture `play` and `set_speed` already take.
+func set_board_changed_hook(hook: Callable) -> void:
+	if player != null:
+		player.on_board_changed = hook
+
+
 func set_speed(multiplier: float) -> void:
 	if player != null:
 		player.speed = multiplier

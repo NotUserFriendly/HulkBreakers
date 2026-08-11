@@ -890,3 +890,89 @@ func test_inter_shot_break_separates_consecutive_impacts() -> void:
 	await player.play(events)
 
 	assert_eq(player._tracers.get_child_count(), 0, "both shots must have fully retired (count 0)")
+
+
+# --- BR61.07 reopened: the clock a destroyed thing reads -----------------------
+
+
+## **The vocabulary, asserted directly.** Which kinds leave the board different is the whole of
+## the decision, and reading it off a list rather than a branch is what lets a later verb join it
+## as data.
+func test_only_board_changing_kinds_trigger_the_board_hook() -> void:
+	assert_true(
+		ResolutionPlayer.changes_the_board(_event(&"part_destroyed")),
+		"a destroyed part changes what stands on the board"
+	)
+	assert_true(ResolutionPlayer.changes_the_board(_event(&"detonate")), "so does a detonation")
+	assert_false(
+		ResolutionPlayer.changes_the_board(_event(&"impact")),
+		"an ordinary impact does not — most shots leave the board exactly as they found it"
+	)
+	assert_false(ResolutionPlayer.changes_the_board(_event(&"move")), "nor does a move")
+	assert_false(ResolutionPlayer.changes_the_board(null), "and null is not a crash")
+
+
+## **`BR61.07`, reopened: the removal fires once per destroying event, not once per action.**
+##
+## taskblock-61 fixed a too-early teardown by moving the board rebuild to after the **whole**
+## playback. That is right for the first thing destroyed and progressively wrong for everything
+## after it — the supervisor's word for the result was *"comically late"*. A sequence that
+## destroys two things must resync twice, each time after the event that caused it, so wreckage
+## is never left standing while later tracers in the same action play out.
+##
+## Counted rather than timed: wall-clock ordering inside playback is a flaky thing to assert, and
+## "how many times did it fire" encodes the fix exactly — one per impact is the fix, one per
+## action is the bug.
+func test_the_board_hook_fires_once_per_destroying_event_not_once_per_action() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	player.speed = 1000.0
+
+	var fired: Array[int] = [0]
+	player.on_board_changed = func() -> void: fired[0] += 1
+
+	await (
+		player
+		. play(
+			(
+				[
+					_event(&"impact"),
+					_event(&"part_destroyed"),
+					_event(&"impact"),
+					_event(&"part_destroyed"),
+				]
+				as Array[LogEvent]
+			)
+		)
+	)
+
+	gut.p("  board hook fired %d time(s) across 2 destroying events" % fired[0])
+	assert_eq(
+		fired[0],
+		2,
+		(
+			"one resync per thing destroyed, at its own impact — firing once would be the "
+			+ "end-of-action clock BR61.07 was reopened for"
+		)
+	)
+
+
+## An action that destroys nothing must not rebuild the board at all — the rebuild is a full
+## `BoardView.build()`, and doing it per action regardless is what `BR35.03` was.
+func test_an_action_that_destroys_nothing_never_fires_the_board_hook() -> void:
+	var built: Dictionary = _setup_player()
+	var player: ResolutionPlayer = built.player
+	player.speed = 1000.0
+
+	var fired: Array[int] = [0]
+	player.on_board_changed = func() -> void: fired[0] += 1
+
+	await player.play([_event(&"impact"), _event(&"miss")] as Array[LogEvent])
+
+	assert_eq(fired[0], 0, "nothing was destroyed, so nothing about the board changed")
+
+
+func _event(kind: StringName) -> LogEvent:
+	if kind == &"":
+		return null
+	return LogEvent.new(1, Enums.Phase.RESOLUTION, 0, kind, {}, str(kind))

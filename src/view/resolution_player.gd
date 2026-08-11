@@ -90,6 +90,18 @@ const TRACER_DEFLECT_DULL_COLOR := Color(0.0, 0.15, 0.4, 0.3)
 ## joins the ring buffer.
 const TRACER_LIVE_RENDER_PRIORITY := 1
 const TRACER_RETIRED_RENDER_PRIORITY := 0
+## Event kinds that change what stands on the BOARD, as opposed to what a unit is made of.
+##
+## tb64 Pass G (`BR61.07`): the reopening said the removal is *"comically late"*, and this is the
+## list that fixes the clock. taskblock-61 moved the board rebuild from resolution time to after
+## the **whole** playback, which is correct for the first event that destroys something and
+## increasingly wrong for every event after it — a long injection left the wreckage standing until
+## the last tracer in the sequence had finished. **The clock a destroyed thing should read is its
+## own impact**, not the action that contained it.
+##
+## Open by content, not an enum: a later verb that flattens a wall adds its kind here and needs no
+## code change anywhere else.
+const BOARD_CHANGING_KINDS: Array[StringName] = [&"part_destroyed", &"detonate"]
 const INTER_SHOT_BREAK_MS := 100.0
 ## taskblock-27 Pass A2: "shot -> (pause) -> its deflect -> (delay) -> next
 ## pair," not a shot and its deflect firing simultaneously. A beat inside
@@ -101,6 +113,11 @@ const DEFLECT_BEAT_MS := 100.0
 ## taskblock-15 Pass B4: "editable fields at the top of the spectator
 ## overlay... temporary debug knobs." Public, mutable — `PlaybackModule`'s
 ## own UI writes into these directly; not baked constants.
+## Called after an event that changed the board has **finished playing**, never before. Optional —
+## an unset callback is every caller that existed before this, and the real resolution path still
+## sets nothing, so `BR52.09` (a destroyed blocker's mesh wrongly staying on the real path) is
+## deliberately untouched rather than half-fixed here.
+var on_board_changed: Callable = Callable()
 var slide_ms: float = 100.0
 var bullet_ms: float = 250.0
 var tracer_count: int = 100
@@ -200,6 +217,12 @@ func play(events: Array[LogEvent]) -> void:
 			_play_event(event)
 		else:
 			await _play_event(event)
+		# **After this event's own animation, not after the action's.** A continuation hop is not
+		# awaited above, so its teardown would land before anything had been seen — the board
+		# resync therefore rides the same "is this the final hop of a pull" decision the pacing
+		# does, rather than carrying a second opinion about when a shot is finished.
+		if on_board_changed.is_valid() and changes_the_board(event):
+			on_board_changed.call()
 		previous_was_shot = is_shot
 
 	await get_tree().create_timer(LogPlayback.RESOLVE_TAIL / speed).timeout
@@ -207,6 +230,11 @@ func play(events: Array[LogEvent]) -> void:
 		banner.text = TACTICS_BANNER
 	if _on_finished.is_valid():
 		_on_finished.call()
+
+
+## True when `event` is the kind that leaves the board different from how it was found.
+static func changes_the_board(event: LogEvent) -> bool:
+	return event != null and event.kind in BOARD_CHANGING_KINDS
 
 
 ## **Whether this event begins a new trigger pull**, rather than continuing the one before it.
