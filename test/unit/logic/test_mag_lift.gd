@@ -334,7 +334,7 @@ func test_a_repair_with_no_rng_is_still_a_ladder() -> void:
 	for y: int in range(3):
 		GridFixture.place_floor(grid, Vector2i(3, y), RISE)
 
-	MapGen.guarantee_navigability(grid, Unit.BASE_STEP_HEIGHT)
+	MapGen.guarantee_navigability(grid)
 
 	var pads := 0
 	for surface: Surface in grid.placements():

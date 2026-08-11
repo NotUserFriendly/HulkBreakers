@@ -335,18 +335,23 @@ func step_height(operable: Array[Part] = []) -> float:
 	return StatResolver.resolve(STEP_HEIGHT_STAT_KEY, context).current
 
 
-## The smallest step height among `units` — **what a map's navigability invariant must be
-## judged against**, since a rise that is free for the long-legged and not for everyone else
-## strands whoever is shortest. `BASE_STEP_HEIGHT` for an empty roster, so a generator running
-## before any unit exists assumes the unmodified body rather than assuming nothing.
+## The smallest step height among `units` — the stride the whole roster is limited by, since a
+## rise that is free for the long-legged and not for everyone else strands whoever is shortest.
+## `BASE_STEP_HEIGHT` for an empty roster, so a caller with nobody in hand assumes the
+## unmodified body rather than assuming nothing.
 ##
-## tb62 Pass A: **0.0 is now a real answer**, for a roster holding a unit with fewer than
-## `LEGS_TO_STEP_UP` authored legs. A generator handed 0.0 degrades honestly rather than
-## dangerously — `MapGen._connect_with_a_stair` sizes a stair at `ceil(rise / step_height)`,
-## finds no run long enough to fit, stamps nothing, and `_repair_stranded_elevation`
-## flattens the room. A board with no rises on it is the correct board for a roster that
-## cannot cross one; it is not a hang and it is not silent, because the flattening is what
-## the elevation sweeps already report on.
+## tb65 Pass B: **this reports; it no longer shapes.** It was introduced at tb62 so the
+## generator's invariant could assume the worst case in play, and `MapGen.generate` took it as
+## an argument — which made a board a function of who was going to play there. Generation is
+## fixed at `MapGen.DESIGN_STEP_HEIGHT` now, and the two live callers of this ask questions
+## about a **pairing** rather than about a map: `MapNavigability.roster_report`, which says
+## whether this squad can get around a board already built, and `BoutSetup._placement_cells`,
+## which seats the squad it actually has. See `SUPERSEDED.md` for what that trade gives up.
+##
+## tb62 Pass A: **0.0 is a real answer**, for a roster holding a unit with fewer than
+## `LEGS_TO_STEP_UP` authored legs. It degrades honestly rather than dangerously — a roster
+## reporting 0.0 is one `roster_report` will refuse to certify on any board with a rise on it,
+## which is exactly true and is now said out loud instead of being flattened away.
 static func lowest_step_height(units: Array[Unit]) -> float:
 	var lowest: float = BASE_STEP_HEIGHT
 	var seen := false

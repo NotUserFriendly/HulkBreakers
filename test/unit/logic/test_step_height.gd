@@ -287,15 +287,17 @@ func test_a_shell_with_no_authoring_gets_the_base_step_height() -> void:
 	assert_almost_eq(bare.step_height(), Unit.BASE_STEP_HEIGHT, 0.0001, "the unmodified body")
 
 
-## **What makes the roster-less default honest.** `MapGen.generate` and `MapNavigability`
-## both default to `Unit.BASE_STEP_HEIGHT` for a caller with no roster — a persistent hulk
-## map is generated once, long before anyone walks it. That default is only the worst case
-## while no shipped part offers *less*, so this asserts exactly that and no more.
+## **What makes the design baseline honest.** `MapGen` authors and repairs every board at
+## `DESIGN_STEP_HEIGHT` — the unmodified body — and `MapNavigability.roster_report` skips its
+## flood outright for any roster stepping at least that far, on the grounds that such a roster
+## can walk every edge a baseline unit can. **That shortcut is exact only while no shipped part
+## offers less than the baseline**, so this asserts exactly that and no more.
 ##
 ## **When this goes red it is a finding, not a number to tune.** The chassis that steps
 ## nowhere at all — tracked, legless, the thing `PLAN` says brings ramps back — is a real
-## future part, and the day it lands, every roster-less generation is certifying maps against
-## a step height nothing in play actually has.
+## future part, and the day it lands, `roster_report` starts flooding and starts reporting
+## boards that squad cannot cross. That is the designed behaviour, not a regression; what this
+## test protects is that nobody is *surprised* by it.
 func test_no_shipped_part_offers_less_than_the_base_step_height() -> void:
 	var shorter: Array[String] = []
 	for part: Part in DataLibrary.parts_pool():
@@ -392,30 +394,54 @@ func test_the_navigability_flood_uses_the_minimum_and_fails_a_tallest_only_map()
 	assert_eq(at_tallest.size(), 3, "and the tallest unit crosses the identical board")
 
 
-## **The step height genuinely shapes the board**, so passing the wrong one is not a
-## cosmetic mistake. `MapGen` sizes a stair at `ceil(rise / step_height)`, so a body that
-## strides further needs fewer treads and the terraces land differently.
+## **tb65 Pass B's whole point: a seed is the whole address of a board.** Two genuinely
+## different rosters, the same bout seed, and the boards must be bit-for-bit the same terrain.
 ##
-## Asserted first, because the read-back below is only meaningful if this is true — a
-## parameter nothing depends on can be wired wrong forever without a test noticing.
-func test_the_generators_step_height_is_load_bearing() -> void:
-	var at_base: String = _height_signature(MapGen.generate(4242, 32, 24, Unit.BASE_STEP_HEIGHT))
-	var at_longer: String = _height_signature(MapGen.generate(4242, 32, 24, 0.6))
+## **This test is the reversal of `test_the_generators_step_height_is_load_bearing`**, which
+## asserted the opposite — that the same seed must *not* produce the same terraces for two
+## strides — and was correct about the code and wrong about the design. `MapGen` sizes a stair
+## at `ceil(rise / step_height)`, so while the roster's stride was an input, map 4242 really was
+## a different board for a long-legged squad than for a short one. See `SUPERSEDED.md`.
+##
+## **Different presets, not different fixtures**, because this has to run through the real
+## `BoutSetup.build_bout` path — that is where the roster's stride used to be read. The two
+## rosters carry different parts, different weapons and different tiers; if any unit feature
+## still reached generation, this is where it would show.
+func test_the_same_seed_is_the_same_board_for_any_roster() -> void:
+	var laborers: Dictionary = BoutSetup.build_bout(
+		_roster(&"a_brand_laborer", 2), _roster(&"a_brand_laborer", 2), 771
+	)
+	var snipers: Dictionary = BoutSetup.build_bout(
+		_roster(&"combat_tester_sniper_rifle", 2), _roster(&"combat_tester_chaingun", 2), 771
+	)
+	assert_eq(laborers.get("error", ""), "", "seed 771 builds a laborer bout")
+	assert_eq(snipers.get("error", ""), "", "seed 771 builds a combat-tester bout")
+	if laborers.get("error", "") != "" or snipers.get("error", "") != "":
+		return
 
-	assert_ne(
-		at_base, at_longer, "the same seed must not produce the same terraces for two strides"
+	var a: CombatState = laborers["state"]
+	var b: CombatState = snipers["state"]
+	gut.p(
+		(
+			"laborers step %.2f, combat testers step %.2f"
+			% [Unit.lowest_step_height(a.units), Unit.lowest_step_height(b.units)]
+		)
+	)
+	assert_eq(
+		_height_signature(a.grid),
+		_height_signature(b.grid),
+		"the same map seed must produce the same terrain whoever is going to play on it"
 	)
 
 
-## **A bout generates its map against its own roster's step height**, read back off the real
-## `BoutSetup.build_bout` path rather than asserted about the code that calls it.
+## **And the board is the one a roster-less generation produces**, read back off the real
+## `build_bout` path rather than asserted about the code that calls it.
 ##
-## The comparison is against a fresh generation at the roster's *own* resolved height. It
-## passes today for the uninteresting reason as well as the interesting one — every shipped
-## body steps `BASE_STEP_HEIGHT` — and that is exactly why it is written as
-## `Unit.lowest_step_height(state.units)` rather than as the constant: the day a roster
-## disagrees, this test is already asking the right question.
-func test_a_bouts_map_is_generated_against_its_rosters_step_height() -> void:
+## The test above would still pass if generation were shaped by something *both* rosters
+## happen to share. This one pins the board to `MapGen.generate(seed, w, h)` with no roster in
+## existence at all, which is the assertion that goes red the moment anyone threads a unit
+## feature back into the generator.
+func test_a_bouts_map_is_the_one_generated_with_no_roster_at_all() -> void:
 	var built: Dictionary = BoutSetup.build_bout(
 		_roster(&"a_brand_laborer", 2), _roster(&"a_brand_laborer", 2), 771
 	)
@@ -423,22 +449,54 @@ func test_a_bouts_map_is_generated_against_its_rosters_step_height() -> void:
 	if built.get("error", "") != "":
 		return
 	var state: CombatState = built["state"]
-	var lowest: float = Unit.lowest_step_height(state.units)
 
 	# The same derivation `build_bout` uses: the bout seed drives an RNG whose first draw is
-	# the map seed. Re-derived here because nothing else surfaces it, and a re-generation is
-	# the only way to ask "which step height was this board built at".
+	# the map seed. Re-derived here because nothing else surfaces it.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 771
-	var expected: Grid = MapGen.generate(
-		rng.randi(), BoutSetup.GRID_WIDTH, BoutSetup.GRID_HEIGHT, lowest
-	)
+	var expected: Grid = MapGen.generate(rng.randi(), BoutSetup.GRID_WIDTH, BoutSetup.GRID_HEIGHT)
 
-	gut.p("the roster steps %.2f" % lowest)
 	assert_eq(
 		_height_signature(state.grid),
 		_height_signature(expected),
-		"the bout's board must be the one generated at the roster's own step height"
+		"a bout's board must be exactly what the seed alone generates"
+	)
+
+
+## **A roster that cannot cross a generated board is reported, not engineered away.**
+##
+## The generator used to take the roster's stride and author terrain the roster could cross, so
+## *"a unit cannot reach somewhere"* never occurred in a generated bout — while the
+## pace-and-shutdown mitigation, the one-way hop-down awareness and Panic all exist to handle
+## exactly that. This asserts the finding is now produced, and — the half that matters — that
+## producing it leaves the board **untouched**.
+func test_a_roster_that_cannot_cross_is_reported_and_the_board_is_left_alone() -> void:
+	var grid: Grid = MapCorpus.read(4242, 32, 24)
+	var before: String = _height_signature(grid)
+	# One leg resolves to a step height of 0.0 — an absent capability, not a short stride — so
+	# this roster cannot make any rise at all. `_two_legged` is the control.
+	var cannot: Array[Unit] = [_make_unit(Vector2i(0, 0), [0.6] as Array[float])]
+	var can: Array[Unit] = [_two_legged(Vector2i(0, 0))]
+
+	var refused: Dictionary = MapNavigability.roster_report(grid, cannot)
+	var certified: Dictionary = MapNavigability.roster_report(grid, can)
+
+	gut.p("one-legged: %s" % refused["summary"])
+	gut.p("two-legged: %s" % certified["summary"])
+	assert_false(refused["certified"], "a roster that cannot make any rise must not be certified")
+	assert_gt(
+		(refused["stranded"] as Array[Vector2i]).size(),
+		0,
+		"and the report must name the ground it cannot leave, not merely say no"
+	)
+	assert_true(
+		certified["certified"],
+		"while a roster at the design baseline is covered by the board's own guarantee"
+	)
+	assert_eq(
+		_height_signature(grid),
+		before,
+		"reporting must not reshape the board — that is the whole difference from tb62"
 	)
 
 
@@ -464,21 +522,26 @@ func _roster(preset_id: StringName, count: int) -> Array[BoutRosterEntry]:
 	return roster
 
 
-## A generated map passes the asymmetric navigability flood **against the lowest step height
-## present**, which is the acceptance the taskblock states. Run at the base height, which is
-## the lowest a roster can report while `long_leg` (tb62 Pass A) is the only authored
-## modifier and it only ever raises — see
-## `test_no_shipped_part_lowers_the_step_height_below_the_base`, which is what keeps that
-## sentence true.
-func test_generated_maps_are_navigable_at_the_lowest_step_height_in_play() -> void:
-	var lowest: float = Unit.lowest_step_height([] as Array[Unit])
+## A generated map passes the asymmetric navigability flood **at the design baseline**, which
+## is what the generator promises since tb65 Pass B. It used to be run against "the lowest step
+## height in play"; the two are the same number today and they are not the same claim, and the
+## generator is only entitled to the narrower one — see `MapGen.DESIGN_STEP_HEIGHT`.
+##
+## Boards come from `MapCorpus`: read-only, and the corpus already holds seeds 0-49 at this
+## size (tb65 Pass A).
+func test_generated_maps_are_navigable_at_the_design_baseline() -> void:
 	for map_seed: int in [2, 9, 4242, 12345, 339963260]:
-		var grid: Grid = MapGen.generate(map_seed, 32, 24, lowest)
-		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid, lowest)
+		var grid: Grid = MapCorpus.read(map_seed, 32, 24)
+		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(
+			grid, MapGen.DESIGN_STEP_HEIGHT
+		)
 		assert_eq(
 			stranded,
 			[] as Array[Vector2i],
-			"seed %d must have no one-way ground at step height %.2f" % [map_seed, lowest]
+			(
+				"seed %d must have no one-way ground at the design baseline %.2f"
+				% [map_seed, MapGen.DESIGN_STEP_HEIGHT]
+			)
 		)
 
 
@@ -489,7 +552,7 @@ func test_generated_maps_are_navigable_at_the_lowest_step_height_in_play() -> vo
 func test_a_generated_raised_room_is_reachable_by_a_non_climber() -> void:
 	var reached_a_raised_cell := false
 	for map_seed: int in [2, 4242, 6930958]:
-		var grid: Grid = MapGen.generate(map_seed, 32, 24)
+		var grid: Grid = MapCorpus.read(map_seed, 32, 24)
 		var spawn: Array[Vector2i] = MapNavigability.spawn_cells(grid)
 		if spawn.is_empty():
 			continue

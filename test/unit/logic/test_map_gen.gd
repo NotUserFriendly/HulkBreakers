@@ -574,7 +574,7 @@ func test_ensure_spawns_connected_fallback_connects_disconnected_spawns() -> voi
 	var pf := Pathfinder.new(scratch.as_temporary_grid())
 	assert_true(pf.astar(a, b).is_empty(), "sanity: the two spawns start disconnected")
 
-	MapGen._ensure_spawns_connected(grid, scratch, a, b, rng, Unit.BASE_STEP_HEIGHT)
+	MapGen._ensure_spawns_connected(grid, scratch, a, b, rng)
 
 	var pf_after := Pathfinder.new(scratch.as_temporary_grid())
 	assert_false(
@@ -669,7 +669,7 @@ func test_repair_stranded_elevation_reverts_an_unreachable_tread_to_plain_ground
 	scratch.set_terrain(Vector2i(2, 0), MapGenScratch.CellKind.OPEN)
 	scratch.set_level(Vector2i(2, 0), MapGen.RAISED_ROOM_LEVEL - 0.5)
 
-	MapGen._repair_stranded_elevation(grid, scratch, rooms, Unit.BASE_STEP_HEIGHT)
+	MapGen._repair_stranded_elevation(grid, scratch, rooms)
 
 	assert_eq(scratch.get_terrain(Vector2i(2, 0)), MapGenScratch.CellKind.OPEN)
 	assert_almost_eq(scratch.get_level(Vector2i(2, 0)), 0.0, 0.0001)

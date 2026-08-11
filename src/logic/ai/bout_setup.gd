@@ -30,9 +30,12 @@ const GRID_HEIGHT := 24
 ## picked — but `build_bout` itself never trusts its caller to enforce
 ## that), is refused with a named `error` — never a crash, matching every
 ## other assembly path's "never crash, never silently invent" posture.
-## Returns `{"state": CombatState, "mission": MissionState, "error": ""}`
-## on success, or `{"error": "<reason>"}` (no state/mission keys at all)
+## Returns `{"state": CombatState, "mission": MissionState, "error": "",
+## "navigability": Dictionary}` on success, or `{"error": "<reason>"}` (no other keys at all)
 ## on refusal.
+## tb65 Pass B: `navigability` is `MapNavigability.roster_report` — whether **this** roster can
+## get around the board it was given. **A report, not a gate**: a roster it does not certify
+## still builds a bout, which is the failure mode Pass B deliberately restores.
 ## tb64 Pass E: `victory_mode` defaults to `MissionState.VICTORY_EXTRACTION`, so every existing
 ## caller — the completion sampler, every headless fixture — keeps the behaviour it had.
 static func build_bout(
@@ -52,17 +55,20 @@ static func build_bout(
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
 
-	# tb62 Pass A: **the roster is assembled BEFORE the map, because the map's own
-	# navigability invariant is judged against the roster.** `step_height` is a per-unit
-	# stat now, so "is every cell reachable" has no answer until you know who is walking —
-	# a 0.6 rise is a stair to a long-legged body and a wall to a standard one, and the
-	# generator has to certify against whoever steps shortest (`Unit.lowest_step_height`).
+	# tb62 Pass A: the roster is assembled BEFORE the map.
+	#
+	# tb65 Pass B: **the reason changed and the ordering did not.** tb62 put assembly first
+	# because the generator was handed `Unit.lowest_step_height(units)` and authored terraces to
+	# fit it — which made map 4242 a different board for a long-legged squad than for a short
+	# one, and that is the misbuild Pass B removes. `MapGen.generate` takes no stride now. What
+	# still genuinely needs the roster before the board is **seating** (`_placement_cells` walks
+	# the spawn zone as the units that will stand in it) and the **report** below, so the order
+	# stays.
 	#
 	# **Deliberately rng-neutral.** `DeepStrike.assemble_from_preset` draws no randomness at
 	# all, so moving assembly ahead of `MapGen.generate` leaves the `rng.randi()` sequence —
 	# map seed, then combat seed — exactly as it was. Every existing bout seed still builds
-	# the map it built before. Seating is the half that genuinely needs the board, so it
-	# stays below and is applied to units that already exist.
+	# the map it built before.
 	var units: Array[Unit] = []
 	units.append_array(_spawn_squad(roster_a, 0))
 	units.append_array(_spawn_squad(roster_b, 1))
@@ -70,7 +76,12 @@ static func build_bout(
 		return {"error": "neither roster could actually assemble (bad template_id?)"}
 	var step_height: float = Unit.lowest_step_height(units)
 
-	var grid: Grid = MapGen.generate(rng.randi(), GRID_WIDTH, GRID_HEIGHT, step_height)
+	var grid: Grid = MapGen.generate(rng.randi(), GRID_WIDTH, GRID_HEIGHT)
+	# tb65 Pass B: **reported, never acted on.** A roster that cannot cross this board no longer
+	# causes the board to be reshaped around it — the finding is surfaced and the bout is built
+	# anyway, because a squad struggling on a board is a finding and not a defect in the board.
+	# Costs nothing while every shipped body steps the baseline; see `roster_report`.
+	var navigability: Dictionary = MapNavigability.roster_report(grid, units)
 	var spawn_a_cells: Array[Vector2i] = _cells_of_marker(grid, Enums.SpawnMarker.SPAWN_A)
 	var spawn_b_cells: Array[Vector2i] = _cells_of_marker(grid, Enums.SpawnMarker.SPAWN_B)
 
@@ -137,7 +148,7 @@ static func build_bout(
 	# spawn — a stale value `team_extraction_cells` no longer agrees with.
 	mission.extraction_cells = (spawn_b_cells if not spawn_b_cells.is_empty() else [Vector2i.ZERO])
 
-	return {"state": state, "mission": mission, "error": ""}
+	return {"state": state, "mission": mission, "error": "", "navigability": navigability}
 
 
 static func _entry_missing_profile(entry: BoutRosterEntry) -> bool:

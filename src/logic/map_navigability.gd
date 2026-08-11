@@ -33,6 +33,25 @@ extends RefCounted
 ## wearing a stat instead of a capability. Every entry point takes it, defaulting to
 ## `Unit.BASE_STEP_HEIGHT` (the unmodified body) rather than to something permissive;
 ## a caller holding a real roster passes `Unit.lowest_step_height(units)`.
+##
+## ## tb65 Pass B: the question splits in two, by what it is a property of
+##
+## | question | property of | answered by |
+## |---|---|---|
+## | Is the board internally connected? | the **map** | `MapGen.DESIGN_STEP_HEIGHT` |
+## | Can **this squad** get around it? | the **pairing** | `roster_report` — never an input |
+##
+## **Nothing in this file reshapes a board any more.** Until tb65 the generator took the
+## roster's own stride and authored terraces to fit it, so map 4242 was a different board for a
+## long-legged squad than for a short one. That is fixed in `MapGen`; what changes here is only
+## that the per-roster question has somewhere honest to be *asked*, having previously been
+## engineered out of existence.
+##
+## **A squad struggling on a board is a finding, not a defect in the board.** The generator
+## used to guarantee the roster could navigate, so a unit unable to reach somewhere never
+## occurred in a generated bout — while the pace-and-shutdown mitigation, the one-way hop-down
+## awareness and Panic all exist to handle exactly that. Restoring the failure mode is the
+## point, not a side effect.
 
 
 ## An unbounded flood: every cell reachable from `origin` under ordinary movement.
@@ -253,3 +272,53 @@ static func stranding_cells(
 		cells.append(cell)
 	cells.sort()
 	return cells
+
+
+## tb65 Pass B: **can this roster get around this board — reported, never repaired.**
+##
+## Returns `{"step_height": float, "certified": bool, "stranded": Array[Vector2i],
+## "summary": String}`. `stranded` is empty whenever the roster is certified, and `summary` is
+## a line fit for a combat log or a test's own output — the CLAUDE.md rule that a thing the
+## supervisor can only report as a feeling has to become a number somewhere.
+##
+## ## Why a roster at or above the baseline is certified without flooding
+##
+## **This is exact, not an optimisation that rounds.** `MapGen` guarantees the board at
+## `MapGen.DESIGN_STEP_HEIGHT`, and `Pathfinder.move_cost` admits a rise when it is **at or
+## under** the mover's own step height — so a unit that strides at least as far as the baseline
+## can walk every edge a baseline unit can, and cannot be stranded anywhere a baseline unit is
+## not. The flood is skipped because its answer is already known, not because it is expensive.
+##
+## Which means it costs nothing today: no shipped part offers less than the baseline, and
+## `test_step_height.gd` is what keeps that sentence true. **The day a legless chassis lands,
+## this starts flooding and starts reporting** — which is the entire reason it is written as a
+## comparison against the baseline rather than as `if false`.
+static func roster_report(grid: Grid, units: Array[Unit]) -> Dictionary:
+	var step_height: float = Unit.lowest_step_height(units)
+	if step_height >= MapGen.DESIGN_STEP_HEIGHT - Unit.STEP_EPSILON:
+		return {
+			"step_height": step_height,
+			"certified": true,
+			"stranded": [] as Array[Vector2i],
+			"summary":
+			(
+				"roster steps %.2f at or above the design baseline %.2f — the board's own guarantee covers it"
+				% [step_height, MapGen.DESIGN_STEP_HEIGHT]
+			),
+		}
+	var stranded: Array[Vector2i] = stranding_cells(grid, step_height)
+	return {
+		"step_height": step_height,
+		"certified": stranded.is_empty(),
+		"stranded": stranded,
+		"summary":
+		(
+			"roster steps %.2f, under the design baseline %.2f — %d cell(s) this roster cannot leave%s"
+			% [
+				step_height,
+				MapGen.DESIGN_STEP_HEIGHT,
+				stranded.size(),
+				"" if stranded.is_empty() else ", first %s" % stranded[0],
+			]
+		),
+	}

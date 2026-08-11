@@ -91,20 +91,33 @@ const NAVIGABILITY_REPAIR_PASSES: int = 6
 ## would be a repair nobody could reproduce.
 const LIFT_SHARE: float = 0.5
 
-
-## tb60 Pass A: **`step_height` is a parameter, because the invariant this generator owes is
-## owed to the shortest unit that will play on the board.** Defaults to
-## `Unit.BASE_STEP_HEIGHT` — a generated map made before any roster exists assumes the
-## unmodified body — and a caller with real units passes `Unit.lowest_step_height(units)`.
+## tb65 Pass B: **the design baseline every generated board is authored and repaired at.**
 ##
-## It reaches three places and they must all agree: the stair `_author_levels` builds, the
-## reachability floods `_repair_stranded_elevation` and `_ensure_spawns_connected` run, and
-## the `guarantee_navigability` sweep that has the last word. A generator that built stairs
-## for one step height and checked them against another would certify boards nobody can
-## walk.
-static func generate(
-	map_seed: int, width: int, rows: int, step_height: float = Unit.BASE_STEP_HEIGHT
-) -> Grid:
+## It is `Unit.BASE_STEP_HEIGHT` — the unmodified body — and it is a **constant, not an
+## argument**, which is the whole of that pass. tb60 Pass A had made it a parameter on the
+## reasoning that the invariant is owed to the shortest unit that will play on the board, and
+## `BoutSetup` duly passed `Unit.lowest_step_height(units)`. That reasoning was sound and it
+## produced a misbuild: **map 4242 was a different board for a long-legged squad than for a
+## short one.** A seed is the whole address of a board, and no unit or part feature may reach
+## into generation.
+##
+## It still reaches four places and they must all agree — the stair `_author_levels` builds,
+## the reachability floods `_repair_stranded_elevation` and `_ensure_spawns_connected` run,
+## and the `guarantee_navigability` sweep that has the last word. A generator that built
+## stairs for one step height and checked them against another would certify boards nobody
+## can walk. They agree by reading one constant rather than by threading one argument.
+##
+## **What this gives up is recorded in `SUPERSEDED.md`, not hidden here:** the generator
+## stops promising *every* roster can cross and starts promising *a standard chassis* can.
+## Whether a particular squad can get around a particular board is a question about the
+## **pairing**, and it is answered by `MapNavigability.roster_report` — a report, never an
+## input that reshapes the board.
+const DESIGN_STEP_HEIGHT: float = Unit.BASE_STEP_HEIGHT
+
+
+## A generated board, addressed entirely by `map_seed` and its dimensions. **Nothing about
+## who will play there is an input** — see `DESIGN_STEP_HEIGHT`.
+static func generate(map_seed: int, width: int, rows: int) -> Grid:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed
 
@@ -122,7 +135,7 @@ static func generate(
 	# `_repair_stranded_elevation` then flattened the rooms behind them. Carrying the set
 	# explicitly restores exactly the old guarantee without restoring the enum.
 	var stair_cells: Dictionary = {}
-	_author_levels(scratch, rooms, rng, step_height, stair_cells)
+	_author_levels(scratch, rooms, rng, stair_cells)
 
 	_scatter_cover(grid, scratch, rng, stair_cells)
 
@@ -132,10 +145,10 @@ static func generate(
 	# ordinary corridor cell leading into it still can be), sealing off
 	# the whole room with no redundant route. Checking before cover exists
 	# would miss exactly this failure mode.
-	_repair_stranded_elevation(grid, scratch, rooms, step_height)
+	_repair_stranded_elevation(grid, scratch, rooms)
 
 	var spawn_cells: Array = _place_spawn_zones(grid, scratch, rooms)
-	_ensure_spawns_connected(grid, scratch, spawn_cells[0], spawn_cells[1], rng, step_height)
+	_ensure_spawns_connected(grid, scratch, spawn_cells[0], spawn_cells[1], rng)
 	# taskblock-63 Pass D1: **the emergency carve runs after the zones are marked, and it
 	# flattens.** `_set_open` writes level 0 into every cell it carves, so a fallback corridor
 	# crossing a zone that was just marked at level 1 leaves the zone straddling a full ledge
@@ -156,7 +169,7 @@ static func generate(
 	# ladder. **Drawn here, after everything else** — no earlier draw moves, so every seed
 	# still carves the same rooms, raises the same floors and scatters the same cover as it
 	# did before lifts existed. What changes is only which fixture stands in a repaired cell.
-	guarantee_navigability(grid, step_height, rng)
+	guarantee_navigability(grid, rng)
 
 	return grid
 
@@ -185,17 +198,20 @@ static func generate(
 ## deeper shelf inside it that was never reachable to begin with. Bounded rather than
 ## looped-until-stable so a pathological board cannot hang generation; the remaining cells
 ## are left rather than forced, and the sweep test is what would notice a bound set too low.
-static func guarantee_navigability(
-	grid: Grid, step_height: float = Unit.BASE_STEP_HEIGHT, rng: RandomNumberGenerator = null
-) -> void:
+## tb65 Pass B: **repairs at `DESIGN_STEP_HEIGHT`, and takes no stride from its caller.** The
+## editor and every fixture called this with no step height at all and got the baseline; the
+## only caller that ever passed one was `generate`, threading the roster's. The question the
+## parameter used to ask — *can this squad get around here* — is a property of the pairing and
+## is answered by `MapNavigability.roster_report`, which reports rather than reshapes.
+static func guarantee_navigability(grid: Grid, rng: RandomNumberGenerator = null) -> void:
 	for _attempt: int in range(NAVIGABILITY_REPAIR_PASSES):
 		var opened := 0
 		# **taskblock-63 Pass D1 (`BR60.01`): unreachable ground first, then one-way ground.**
 		# Ordered that way because opening a way *into* a region usually settles whether
 		# anything inside it is one-way as well, while repairing a one-way cell inside a
 		# region nobody can enter is work on ground no unit will ever see.
-		opened += _reach_unreachable_ground(grid, step_height)
-		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid, step_height)
+		opened += _reach_unreachable_ground(grid)
+		var stranded: Array[Vector2i] = MapNavigability.stranding_cells(grid, DESIGN_STEP_HEIGHT)
 		for cell: Vector2i in stranded:
 			if _open_a_route_out(grid, cell, rng):
 				opened += 1
@@ -223,14 +239,14 @@ static func guarantee_navigability(
 ## cell of the region. Cheapest because a shorter ladder is fewer segments and a shorter lift
 ## a smaller ride, and because on a terraced board the lowest lip is the one most likely to
 ## be reachable itself.
-static func _reach_unreachable_ground(grid: Grid, step_height: float) -> int:
+static func _reach_unreachable_ground(grid: Grid) -> int:
 	var opened := 0
 	# **The far end has to be ground a spawn can actually walk to.** Without this the repair
 	# happily connected one unreachable region to another — measured on seed 32, where a
 	# 72-cell region's cheapest lip led straight into a 118-cell region that was itself cut
 	# off, so a ladder was stood, `opened` counted it, and nothing became reachable.
-	var reached: Dictionary = MapNavigability.reachable_from_spawns(grid, step_height)
-	for region: Array in MapNavigability.unreachable_regions(grid, step_height):
+	var reached: Dictionary = MapNavigability.reachable_from_spawns(grid, DESIGN_STEP_HEIGHT)
+	for region: Array in MapNavigability.unreachable_regions(grid, DESIGN_STEP_HEIGHT):
 		var cells: Array[Vector2i] = region
 		var best_rise: float = INF
 		var best_from: Variant = null
@@ -536,7 +552,6 @@ static func _author_levels(
 	scratch: MapGenScratch,
 	rooms: Array[Rect2i],
 	rng: RandomNumberGenerator,
-	step_height: float,
 	stair_cells: Dictionary
 ) -> void:
 	for room: Rect2i in rooms:
@@ -555,7 +570,7 @@ static func _author_levels(
 		# which a BSP board rarely has anywhere around a room — so the route up is a ladder
 		# or a lift, stood by `guarantee_navigability`, which is exactly the machinery this
 		# height exists to exercise.
-		_connect_with_a_stair(scratch, room, step_height, stair_cells, level)
+		_connect_with_a_stair(scratch, room, DESIGN_STEP_HEIGHT, stair_cells, level)
 
 
 ## General safety net, not another hand-chased special case: a raised
@@ -596,11 +611,11 @@ static func _author_levels(
 ## `_base_cost` only sees that at all if the temporary grid actually
 ## carries the real blockers.
 static func _repair_stranded_elevation(
-	grid: Grid, scratch: MapGenScratch, rooms: Array[Rect2i], step_height: float
+	grid: Grid, scratch: MapGenScratch, rooms: Array[Rect2i]
 ) -> void:
 	@warning_ignore("integer_division")
 	var anchor: Vector2i = rooms[0].position + rooms[0].size / 2
-	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers), false, step_height)
+	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers), false, DESIGN_STEP_HEIGHT)
 	var reachable: Array[Vector2i] = pf.reachable(anchor, INF)
 	var reachable_set: Dictionary = {}
 	for cell: Vector2i in reachable:
@@ -871,6 +886,12 @@ static func _has_reachable_neighbour(
 ## `_repair_stranded_elevation` instead.** Deriving rather than hardcoding is what makes that
 ## a tunable consequence instead of a wall — raise `step_height` and the stairs shorten.
 ##
+## tb65 Pass B: **this one keeps its parameter where `generate` lost its.** The distinction is
+## the point of that pass — the stride is no longer an *input to generation*, and generation
+## only ever hands in `DESIGN_STEP_HEIGHT`. What survives is the derivation itself, which is a
+## real property of the arithmetic that `test_a_larger_step_height_builds_a_shorter_stair`
+## proves directly. Nothing outside this file can reach it.
+##
 ## Every cell in the run must be `OPEN` and below `RAISED_ROOM_LEVEL` (the same "a neighbour
 ## that is actually part of a DIFFERENT already-raised room still reads as plain OPEN"
 ## reasoning tb37 established). A ring position that cannot support the full depth — a map
@@ -878,7 +899,7 @@ static func _has_reachable_neighbour(
 static func _connect_with_a_stair(
 	scratch: MapGenScratch,
 	room: Rect2i,
-	step_height: float,
+	step_height: float = DESIGN_STEP_HEIGHT,
 	stair_cells: Dictionary = {},
 	level: int = RAISED_ROOM_LEVEL
 ) -> bool:
@@ -1377,14 +1398,9 @@ static func _is_exposed_wall(scratch: MapGenScratch, cell: Vector2i) -> bool:
 ## wrote is structurally untouchable by anything carving does afterward
 ## — the old workaround is simply unnecessary now, not just simplified.
 static func _ensure_spawns_connected(
-	grid: Grid,
-	scratch: MapGenScratch,
-	a: Vector2i,
-	b: Vector2i,
-	rng: RandomNumberGenerator,
-	step_height: float
+	grid: Grid, scratch: MapGenScratch, a: Vector2i, b: Vector2i, rng: RandomNumberGenerator
 ) -> void:
-	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers), false, step_height)
+	var pf := Pathfinder.new(scratch.as_temporary_grid(grid.blockers), false, DESIGN_STEP_HEIGHT)
 	if pf.astar(a, b).is_empty():
 		_carve_corridor(grid, scratch, a, b, rng)
 
