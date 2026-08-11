@@ -10,6 +10,49 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+### BR65.01 — Resolved — owner: `CC`
+**`FIRST_WIN_CAP` was sized for a ~72% completion rate and the real rate is ~22%, so the full
+gate's completion test failed for no reason about one run in nine**
+- **cluster:** `test-suite`
+- **Source:** `CC`, 2026-08-11, tb65 close-out  ·  **CC session:** `4fb205d1-7bfe-4f84-971e-2f3a9b284a14`
+- **Resolved** by taskblock-66 Pass C1. `CC`-owned throughout, so closed here.
+
+**The low completion rate is not the defect.** The supervisor, 2026-08-11: *"as maps become harder
+to navigate, and win conditions more stringent, completions will be rarer. Dropping from 72% to ~40%
+was a game rules update, and ~40% down to 15% was a map update."* The defect was the threshold that
+was never resized to follow it.
+
+**Two numbers in this entry as originally filed were wrong and are corrected here.** It was filed at
+`p = 0.15` from 20 seeds in a window the codebase distrusted. **taskblock-66 Pass A measured
+`p = 0.220` over 100 seeds spanning the real 0–9999 draw space**, 95% CI 0.139–0.301:
+
+| | as filed (p = 0.15) | **measured (p = 0.220)** |
+|---|---:|---:|
+| P(no win in 9) | 0.232 — 1 gate in 4.3 | **0.107 — 1 gate in 9.4** |
+| cap for ~1% flake | 28 | **19** |
+| cap for ~1 in 20 | 18 | **13** |
+
+**The fix is C1's split, and raising the cap was rejected on arithmetic.** Under a sharded gate the
+cap *is* the makespan, so buying a 1% false-red rate at cap 19 makes the worst-case corpus shard
+**1165 turns against today's 552** — and the confidence interval puts the required cap anywhere from
+13 to 31, so the number cannot be picked confidently either. `test_per_tier_probe.gd` asserts
+`FIRST_WIN_CAP == 9` precisely because thresholds here have historically been moved to quiet a
+flapping gate; **it has not moved.**
+
+**What landed instead — one assertion doing two jobs, separated:**
+- **`test_a_known_winning_seed_still_completes`** proves a win is *reachable* on fixed seed `9003`
+  (15 turns, cheapest of Pass A's 22 winners). Deterministic, cannot flake, and a **stronger** proof
+  than a random draw at any `p`.
+- **`test_seeds_to_first_completion_stays_low` stops asserting `won`** and reports instead.
+
+**What is given up, stated rather than glossed:** a genuine collapse no longer turns the *sampled*
+test red on its own. The deterministic guard catches exactly that case, on a fixed seed, which is
+what the old assertion was reaching for and could only reach by luck.
+
+**One coupling worth carrying:** `p` is P(complete **within `TURN_CAP` = 100 turns**) — 30 of Pass
+A's 78 losing seeds were still playing at the cap — so `p` and the losing-bout cost move together if
+that lever is ever turned, and this arithmetic holds it fixed.
+
 ### BR63.04 — Resolved — owner: `SUPERVISOR`  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
 **A chaingun unit has no firing action it can reach**
 - **tb64: fixed, unconfirmed.** `data/utility_actions/burst.tres` is a plain `burst` utility action

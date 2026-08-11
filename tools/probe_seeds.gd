@@ -11,10 +11,29 @@ extends SceneTree
 ##         another
 ##
 ## **The escalation is deliberately NOT run by `run_tests.sh`.** It plays a hundred
-## missions and costs upward of ten minutes, and the suite is the feedback loop
-## everything else depends on; a gate that occasionally triples its own runtime
-## teaches people to stop running it. The suite samples and points here when the
-## sample dips.
+## missions, and the suite is the feedback loop everything else depends on; a gate that
+## occasionally triples its own runtime teaches people to stop running it.
+##
+## ## tb66 Pass C2: it costs ~110 minutes serial, not "upward of ten"
+##
+## **The old figure was stale by an order of magnitude and it dated from a different game.**
+## It was written when the completion rate was ~0.72, so most seeds ended early in a win;
+## measured at taskblock-66 Pass A the rate is **0.220**, a losing bout averages **61.3 turns**
+## with **38% of them running to `TURN_CAP`**, and 20 seeds took **1315.8 s**. A hundred is
+## about **110 minutes** on one process.
+##
+## **Run it as ten parallel windows instead — the same hundred seeds in ~11 minutes.** Each
+## window is an independent process and the machine has 32 cores, so nothing is shared and
+## nothing contends:
+##
+## ```
+## for first in 0 1000 2000 3000 4000 5000 6000 7000 8000 9000; do
+##   godot --headless --path . -s res://tools/probe_seeds.gd -- $first 10 &
+## done; wait
+## ```
+##
+## **Documented here rather than left to be rediscovered**, because the serial form's cost is
+## what makes people quote a stale number instead of re-measuring.
 ##
 ## **A thin entry point over `CompletionSampler`, never its own copy of the
 ## measurement.** It was written as a standalone probe first, and committing it
@@ -24,9 +43,16 @@ extends SceneTree
 ## chooses a seed window and prints.
 ##
 ## Kept because the in-window verb samples ten random seeds and the suite's
-## escalation is fixed at 0..99, while re-baselining wants an arbitrary window —
-## seeds 12-23 against 0-11, say, which is how the pinned window was caught being
-## the pessimistic one.
+## escalation is fixed at 0..99, while re-baselining wants an arbitrary window.
+##
+## **tb66 Pass A: the windows do not differ, and the belief that they do is retired.** This
+## header used to end by citing seeds 12-23 against 0-11 as *"how the pinned window was caught
+## being the pessimistic one."* Fisher exact on that 5/12 vs 8/12 gives **0.414**, and Pass A
+## tested it directly across ten scattered windows: **chi-square 11.42 on 9 df against a 16.92
+## critical value — no evidence the seed space has structure.** taskblock-46's decision to
+## *sample* rather than pin is correct regardless and is untouched; sampling is the right method
+## whether or not that particular spread was real. What is corrected is the claim that the
+## windows are *known* to differ.
 
 
 func _initialize() -> void:

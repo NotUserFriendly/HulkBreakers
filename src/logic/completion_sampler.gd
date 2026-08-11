@@ -9,10 +9,16 @@ extends RefCounted
 ## The harness this replaces asked seeds 0–11, every run, forever. Two problems,
 ## both of which bit:
 ##
-## - **It was the pessimistic window.** Seeds 0–11 measured 41.7% while 12–23
-##   measured 66.7% on the identical build — a 25-point spread the test could not
-##   see, so its number read as *the* completion rate when it was one draw of
-##   twelve.
+## - **It reported one draw of twelve as *the* completion rate.** Seeds 0–11 measured
+##   41.7% against 12–23's 66.7% on the identical build, and that 25-point spread was
+##   recorded here as evidence the seed space has structure.
+##   **tb66 Pass A retires that reading, not the decision.** Fisher exact on 5/12 vs
+##   8/12 gives **0.414**, and Pass A tested it directly — 100 seeds across ten
+##   scattered windows, **chi-square 11.42 on 9 df against a 16.92 critical value.
+##   No evidence the windows differ.** The spread was noise at n = 12.
+##   **Sampling is still right**, and for the reason that survives: a pinned window
+##   of twelve reports a number with a huge interval on it and cannot widen, whether
+##   or not it happens to sit in a bad corner.
 ## - **A threshold between two adjacent integers is a tripwire.** At 5/12 against a
 ##   0.35 floor it sat less than one seed from red, and the recorded response to a
 ##   flapping floor has twice been to lower the constant.

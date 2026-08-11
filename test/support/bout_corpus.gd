@@ -13,10 +13,13 @@ extends RefCounted
 ## ## The draw stays random, and that is the whole constraint
 ##
 ## `test_full_mission` seeds from the clock on purpose. taskblock-46 spent a pass
-## establishing that, because the pinned window it replaced was measuring the
-## pessimistic corner of the seed space and reporting it as *the* completion rate.
-## **Sharing a fixed set of seeds would quietly undo that**, and the test would keep
-## passing while measuring the wrong thing again.
+## establishing that, and **the reason has been corrected without the decision changing**
+## (tb66 Pass A). The pinned window was *not* shown to be a pessimistic corner — Fisher
+## exact on the 5/12 vs 8/12 that claim rests on gives **0.414**, and 100 seeds across ten
+## scattered windows give **chi-square 11.42 on 9 df against 16.92: no evidence the seed
+## space has structure**. What was really wrong with a pinned twelve is that it reports a
+## number with a huge interval and can never widen. **Sharing a fixed set of seeds would
+## quietly undo that**, and the test would keep passing while measuring one draw forever.
 ##
 ## So the draw happens once here, from the clock, and the sample is shared. One random
 ## draw per run, played once, read by everyone: the sampling property survives and the

@@ -80,6 +80,11 @@ const TURN_CAP := 100
 ## and an AI that cannot finish a mission.
 const MIN_COMPLETION_RATE := 0.35
 
+## tb66 Pass C1: **the fixed seed the reachability guard runs.** 15 turns — the cheapest of the 22
+## winners Pass A measured across 100 seeds spanning 0-9999. See
+## `test_a_known_winning_seed_still_completes`.
+const WINNING_SEED := 9003
+
 
 ## taskblock-47 Pass C: this file builds bouts, so the fast gate skips it. The list it
 ## is on is checked against the profile's own bout counter every run — see `SuiteTier`.
@@ -171,15 +176,74 @@ func test_seeds_to_first_completion_stays_low() -> void:
 		)
 	)
 
-	assert_true(
-		bool(sampled["won"]),
+	# tb66 Pass C1: **this no longer asserts `won`, and the reason is arithmetic.**
+	#
+	# The assertion was doing two jobs. *A win is reachable* is a property of the game and is
+	# proven deterministically by `test_a_known_winning_seed_still_completes` below. *How many
+	# seeds it took today* is a measurement, and gating a measurement on a clock-drawn sample
+	# makes the gate a coin toss.
+	#
+	# **At the measured completion rate it fails on nothing being wrong roughly one gate in
+	# nine** — `p = 0.220` over 100 seeds spanning the real draw space (tb66 Pass A), so
+	# `P(no win in 9) = 0.107`. It was filed at one-in-four against `p = 0.15`; the honest
+	# figure is better and still far too flaky for a gate that runs repeatedly during a doc
+	# review. **A gate that fails for a known reason is a gate people learn to re-run**, and
+	# that is how a real failure gets waved through.
+	#
+	# **Raising `FIRST_WIN_CAP` was the obvious fix and it is the wrong one here.** Buying a 1%
+	# false-red rate needs a cap of **19** at the point estimate and **31** at the low end of the
+	# interval — and under a sharded gate the cap *is* the makespan, so cap 19 makes the worst
+	# case 1165 turns against today's 552. The knob that quiets the flake and the knob that sets
+	# the worst case are the same knob. `test_per_tier_probe.gd` asserts `FIRST_WIN_CAP == 9`
+	# precisely because thresholds here have historically been moved to quiet a flapping gate.
+	#
+	# **What is lost is real and is stated rather than glossed:** a genuine collapse — the AI
+	# becoming unable to finish at all — no longer turns this red on its own. The deterministic
+	# guard below catches exactly that, on a fixed seed, which is a *stronger* proof than a
+	# random draw at any `p`. What this keeps is the report, and the report is the signal.
+	print(
 		(
 			(
-				"no mission completed in %d seeds. That is a collapse, not a dip — confirm "
-				+ "with the deterministic %d-seed run before treating it as real:\n"
-				+ "    godot --headless --path . -s res://tools/probe_seeds.gd\n"
-				+ "seeds drawn: %s"
+				"completion sample: %d seed(s), won=%s. Not a gate — see Pass C1 above; "
+				+ "the reachability guard is test_a_known_winning_seed_still_completes."
 			)
-			% [played, CompletionSampler.ESCALATION_SEEDS, str(sampled["seeds"])]
+			% [played, str(bool(sampled["won"]))]
+		)
+	)
+
+
+## **A win is reachable, proven on a fixed seed rather than a drawn one** (tb66 Pass C1).
+##
+## Seed `9003` completes in 15 turns — the cheapest of the 22 winners tb66 Pass A found across 100
+## seeds. **Cheapest on purpose**: this runs every gate and it is the guard, not the measurement.
+##
+## **Why a fixed seed is the better instrument.** The clock-drawn sample above answers *"did a win
+## happen to occur in nine tries today"*, which at `p = 0.220` is a question with a 10.7% chance of
+## the wrong answer. This asks *"can this build finish a mission"*, which is the thing anyone
+## actually wants to know, and it answers deterministically. **Window bias is irrelevant here** —
+## the seed does not have to be representative, only reproducible.
+##
+## **If this goes red, the AI genuinely cannot complete a mission it completed before.** That is the
+## collapse the old assertion was reaching for and could only detect by luck.
+##
+## **Re-pick it if `MapGen` or the roster changes**, since the seed's board and squad both move —
+## `tools/probe_seeds.gd` prints winners, and taskblock-66 Pass A's ten-window form finds a hundred
+## in about eleven minutes.
+func test_a_known_winning_seed_still_completes() -> void:
+	var row: Dictionary = await CompletionSampler.run_seed(WINNING_SEED)
+
+	assert_false(row.is_empty(), "seed %d must build a bout at all" % WINNING_SEED)
+	if row.is_empty():
+		return
+	gut.p("seed %d: %s in %d turns" % [WINNING_SEED, row["outcome_name"], int(row["turns"])])
+	assert_true(
+		bool(row["completed"]),
+		(
+			(
+				"seed %d no longer completes — it extracted in 15 turns when it was picked "
+				+ "(tb66 Pass A). This is the collapse check: the AI can no longer finish a "
+				+ "mission it could finish before, or the board/roster under this seed moved."
+			)
+			% WINNING_SEED
 		)
 	)
