@@ -1,5 +1,176 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 65 — a map is a map, and the suite stops paying twice
+
+**Full gate 1378.3 s → 1255.7 s**, 363 scripts / 3547 tests / 0 failures. Turns 1063 → 786,
+floods 6038 → 5128.
+
+### Pass A — the survey, and the money was not where the table said
+
+**Measured before changing anything**, which is the pass's whole instruction. A generation costs
+**224 ms at 32x24, 337 ms at 40x30, 96 ms at 24x18**, and corpus sharing was verified directly
+rather than assumed — 40 cold reads cost 7.99 s, the same 40 read again cost nothing.
+
+**The taskblock's expectation held directionally and its per-file table did not.** Of the five
+files it named, `test_generation_heights.gd` was worth **40.4 s — 96% of the file**, regenerating
+thirty boards the corpus already held **four times over**; `test_generated_board_sight_sweep.gd`
+and `test_sight_geometry.gd` were worth **under a second between them**, since generation is 3% of
+the sweep file and the rest is LoS work; and `test_map_gen.gd`'s remaining direct calls are the
+**deliberate determinism pairs** the corpus header already documents as correct.
+
+**Two files the table does not name were worth 16 s** — `test_vertical_routes.gd` (40 boards at
+40x30, 89% of the file) and `test_map_navigability.gd`. **Both were found by measuring rather than
+by counting call sites**: a generator call inside a forty-seed loop looks cheaper in a grep than
+one called seven times at top level.
+
+**Total recoverable ~62 s, not the ~100 s predicted.** None of A2's three stop conditions was met,
+so the retrofit proceeded with the correction recorded. The survey lives in `MapCorpus`'s own
+header.
+
+### Pass B — generation stops depending on who plays there
+
+`MapGen.generate(map_seed, width, rows)`. The roster's stride reached `_author_levels`,
+`_repair_stranded_elevation`, `_ensure_spawns_connected`, `guarantee_navigability` and
+`_reach_unreachable_ground`, and sized every stair at `ceil(rise / step_height)` — so **map 4242
+was a different board for a long-legged squad than for a short one**. It is `MapGen.
+DESIGN_STEP_HEIGHT` now, a constant the internals read. **See `SUPERSEDED.md`** for what that
+trade gives up; it is a deliberate reversal of tb62's reasoning, not a tidy-up.
+
+**Verified rather than asserted: 8 seeds across 4 board sizes hashed on both sides of the change,
+all 32 boards bit-identical.** The old parameter's default really was the baseline and nothing
+else was reading it — which is the taskblock's own stop condition, checked.
+
+**`MapNavigability.roster_report` is the reported check.** `BoutSetup` calls it and **never gates
+on it**: a roster it refuses still builds a bout, which restores a failure mode tb62 engineered
+away — the pace-and-shutdown mitigation, one-way hop-down awareness and Panic all exist to handle
+a unit that cannot reach somewhere, and a generated bout could not produce one. It skips its flood
+for any roster at or above the baseline, **exactly rather than approximately**: `move_cost` admits
+a rise at or under the mover's own step height, so a longer-striding unit can walk every edge a
+baseline unit can.
+
+**`_connect_with_a_stair` keeps a defaulted parameter, deliberately.** Generation only ever passes
+the constant, but the derivation is a real property of the arithmetic that
+`test_a_larger_step_height_builds_a_shorter_stair` proves — removing it would have deleted the
+proof rather than the misbuild.
+
+**Two tests reversed rather than repaired**, with the old claim quoted in place.
+`test_the_generators_step_height_is_load_bearing` asserted the same seed must **not** produce the
+same terraces for two strides — a correct test of a design that was wrong.
+
+### Pass C — ten files stop regenerating boards the corpus holds
+
+`test_generation_heights`, `test_vertical_routes`, `test_map_navigability`, `test_mag_lift`,
+`test_sight_geometry`, `test_generated_board_sight_sweep` and the four 4242@32x24 cost probes.
+**No test changed what it asserts.** Every one was checked for mutation first — all read-only, so
+`read()` rather than `copy()`, which is where the saving is.
+
+**Re-measured in isolation: `test_generation_heights` 42.5 → 11.6 s, `test_mag_lift` 4.0 → 2.1 s.**
+The other four barely move in a targeted run and **that is expected rather than disappointing** —
+a targeted run starts with a cold corpus, so `test_vertical_routes` still generates its forty
+boards there. Its ~13.5 s is entirely cross-file. In the full gate: `test_generation_heights`
+42.4 → 11.0 s, `test_vertical_routes` **15.3 → 0.2 s**, `test_mag_lift` 3.7 → 0.4 s.
+
+`test_map_corpus.gd` gains the hazard in the direction that was missing — `copy()` was already
+proved safe, nothing proved `read()` is genuinely not. **What makes it nasty is the distance**: a
+mutation here surfaces as an unrelated sweep failing in another script on a board it never touched.
+
+### Pass D — 279.9 s → 22.8 s, and the turn cap was the smaller half
+
+Capping both drivers at `TURN_CAP = 16` took the file to **214.6 s — only 23%**, well short of
+what 493 turns implied. **The work counters said why: it was still resolving 432 turns.**
+
+**`test_frames_pass_during_the_batch` was playing 400 of them.** Its own tb47 header states the
+handover to a human *"costs a handful of turns instead of hundreds"* — and **that saving was
+written, committed, and never collected**: `battle.load_battle()` emits `battle_loaded`,
+`_on_battle_loaded` **awaits** `advance_ai_turns`, and the test flipped squad 0 to HUMAN on the
+line *after*. The bout had already run to the 400-turn cap. Setting the controller first — what
+`BattleScene.toggle_blue_control` does in production — is the fix.
+
+**The same ordering defect was latent in the fingerprint test**, which set `turn_cap` after
+`load_battle` and so raced an uncapped batch against a capped one. Both fields now precede
+`set_overlay`.
+
+| | before | after |
+|---|---:|---:|
+| wall clock | 279.9 s | **22.4 s** |
+| turns | 493 | **48** |
+| candidates | 412 366 | **87 524** |
+
+**tb48's objection was answered rather than overruled.** It declined to cut on the grounds that
+*"comparing a shorter one would mean seed-shopping for a cheap map"* — the seed, board and AI are
+unchanged; only the stopping point moved, and it moved for **both** drivers. The equality holds at
+the shorter length, `last_pacer.aborted` is still asserted false so the tb58 budget is
+demonstrably not reached, and a new assertion requires the bout to **actually reach the cap** —
+a cap stopping at zero would make the equality vacuous.
+
+`ControlOverlay.turn_cap` is the seam, defaulted to `BoutRunner.DEFAULT_TURN_CAP` and never set in
+production — the same standing `pacer_budget_msec` has held since tb58.
+
+### Pass E — the sweep for a third corpus (a list, not a retrofit)
+
+Four shapes measured; the full list with costs is in `PLAN.md`. **The largest is a mounted
+`BattleScene` + `ControlOverlay` at 1177 ms each**, across 41 files and 512 tests — bigger than
+`BoutCorpus` and `MapCorpus` combined. **It is deliberately not recommended as a corpus**: a
+`Grid` is read-mostly and a bout record is immutable, whereas a mounted overlay **is the thing
+under test**. The promising cut is narrower and different — several of those tests assert
+*declaration* properties by mounting a whole scene.
+
+Also measured: `DataLibrary.reset()` + `load_all()` at **15.4 ms × 904 tests in 97 files = 13.9 s**
+(shareable, same global-mutable-state hazard), and subprocess spawns at **36.7 s across 2 files**
+(**checked and mostly honest** — they differ by target, env and expected exit code; ~7 s is
+mergeable). Recorded so nobody re-derives 36 s as a promising target.
+
+### Pass F — two counters that can see the zero-bout half
+
+`MapGen.maps_generated` and `SuiteRun.processes_spawned` join `GATED`. **308 files and 640 s
+contributed nothing to bouts, turns, floods or ui_builds**, and that half grew 3.3× since
+taskblock-56 with every gate green throughout.
+
+**One of the taskblock's four options was already covered and is recorded as such**: "scenes
+mounted" is `ui_builds`, since `HulkTheme.build()` runs once per `ControlOverlay` root and nothing
+in `src/logic/` calls it. Maps were chosen because they convert straight into seconds via Pass A's
+prices; spawns because it is the only counter that can see `test_suite_run.gd` and
+`test_run_suite.gd`, **36.7 s reporting zero everywhere else**.
+
+**Both found something immediately**: `test_spectator_overlay.gd` — 56.6 s, 0 bouts, 36 maps; and
+`test_replay_wiring.gd` — 22.3 s, 0 bouts, 8 spawns.
+
+**`maps` is not orthogonal to `bouts`** — a bout generates one map — so its test asserts the true
+weaker claim (one for a bout, five for a five-seed sweep) rather than copying `ui_builds`'s shape.
+Asserting orthogonality anyway is how a guard starts lying. **`spawns` is orthogonal**, tested both
+ways, with a `VocabularySweep` guard against direct `OS.execute`: a counter something can bypass
+reads low and looks green.
+
+**Re-measuring exposed a flake the budget did not know it had.** `BoutCorpus.sample()` is
+clock-seeded and plays **until the first win** (`FIRST_WIN_CAP` 9), and the charge lands on
+whichever `CORPUS_READERS` file ran first — so `test_watched_run.gd` measured **2 bouts / 88 turns
+/ 121.9 s** at tb64 and **7 / 246 / 279.2 s** here, with nothing between that touches it.
+
+**Adding the other corpus readers to `TURNS_EXCLUDED` was tried and the suite refused it.**
+`test_the_exclusion_list_stays_small_and_gates_bouts_regardless` asserts fewer than three
+exclusions — a guard written to stop exactly that move, and it was right. So `turns` is baselined
+at the **measured 786** rather than the 540 that excludes the readers, keeping the swing visible
+inside a number instead of exempted out of the total. **That costs tightness on purpose**; the
+real fix (make the corpus record its own work) is queued in `PLAN.md`, worth ~250 turns.
+
+### Close-out — the profile stops going stale by itself
+
+**The staleness was the recurring defect, not the instance.** The artifacts were only ever written
+behind an opt-in flag, so keeping them current depended on someone remembering in exactly the
+situation where forgetting is invisible — eight blocks, five work budgets passing against numbers
+nobody had re-measured.
+
+**The full gate now writes them by default** (`run_tests.sh`), because it is the run you already
+have to make green before pushing. **A red run writes nothing** — its counts describe a suite that
+did not complete as intended, and `--write` means *write the artifacts*, not *write them from a
+broken run*. `HB_NO_WRITE_PROFILE=1` opts out.
+
+**`run_tests.sh` exports `HB_NO_WRITE_PROFILE=1` to everything it spawns.** The suite contains
+tests that launch suites — 25 spawns by the new counter — and every one passes a target today, so
+every one already refuses. **That is a property of their current arguments, not of the design**:
+one `start(&"full")` with no target would have a nested run rewriting the profile mid-run while
+`test_suite_budget.gd` was reading it, which has happened once already.
+
 ## Taskblock 64 — a bout that produces gunfire
 
 ### Pass A — measure the blindness, fix nothing

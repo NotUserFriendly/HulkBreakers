@@ -153,14 +153,50 @@ fi
 # file's data, mid-run, while `test_suite_budget.gd` and `test_suite_tier.gd` were
 # still reading it. The outer run rewrote it correctly at the end, so the damage was
 # invisible in the final tree and showed up only as two unrelated tests failing.
+#
+# ## taskblock-65 close-out: **the full gate writes them by default.**
+#
+# The profile went eight blocks stale between taskblock-56 and taskblock-64, and every
+# suite-cost conversation in between was partly guesswork. When it was finally
+# regenerated it turned the fast gate red on three counts, none of them false — four
+# files building bouts without being registered, and five work budgets that had been
+# passing against numbers nobody had re-measured. **That is the recurring defect, and
+# the instance is not the interesting part**: the artifacts were only ever written
+# behind an opt-in flag, so keeping them current depended on somebody remembering, in
+# exactly the situation where forgetting is invisible.
+#
+# So the full gate — the run you already have to make green before pushing — now
+# produces them. `WRITE_PROFILE=1` is kept for the fast/targeted case only to print the
+# refusal below, since a run that saw part of the suite cannot honestly describe it.
+#
+# **A red run still writes nothing** (`run_suite.gd::_on_end_run`). Its counts describe a
+# suite that did not complete as intended, and committing those as the baseline
+# everything is compared against is worse than having no fresh numbers.
+#
+# **Set HB_NO_WRITE_PROFILE=1 to opt out** — for a full gate you are running to see
+# whether something is red, where an artifact diff is noise you would only discard.
 WRITE_FLAG=""
-if [[ -n "${WRITE_PROFILE:-}" ]]; then
-  if [[ -z "$TARGET" && "$GATE" != "fast" ]]; then
+if [[ -z "$TARGET" && "$GATE" != "fast" ]]; then
+  if [[ -z "${HB_NO_WRITE_PROFILE:-}" ]]; then
     WRITE_FLAG="--write"
   else
-    echo "== WRITE_PROFILE ignored: only the full gate can write a whole-suite profile =="
+    echo "== HB_NO_WRITE_PROFILE set: leaving the committed artifacts alone =="
   fi
+elif [[ -n "${WRITE_PROFILE:-}" ]]; then
+  echo "== WRITE_PROFILE ignored: only the full gate can write a whole-suite profile =="
 fi
+
+# **Nothing this run spawns may write the artifacts.** The suite contains tests that launch
+# suites (`test_suite_run.gd`, `test_run_suite.gd`, `test_replay_wiring.gd` — 25 spawns
+# between them by the tb65 counter). Every one of them passes a target today, so every one
+# is a targeted run and already refuses — but "already refuses" is a property of their
+# current arguments, not of the design, and one `start(&"full")` with no target would have a
+# nested run rewriting the profile MID-RUN while `test_suite_budget.gd` and
+# `test_suite_tier.gd` were reading it. That precise failure has happened once already, when
+# exporting WRITE_PROFILE=1 leaked into a child.
+#
+# Exported AFTER this run's own WRITE_FLAG is decided, so it binds children and not us.
+export HB_NO_WRITE_PROFILE=1
 
 # 5. **The completion guard, and it is not belt-and-braces.**
 #

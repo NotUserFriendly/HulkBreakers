@@ -62,11 +62,22 @@ extends SceneTree
 ## Either choice is defensible. An unstated one is not, because it silently decides which
 ## tests look expensive.
 ##
-## ## Artifacts are opt-in
+## ## Artifacts: the full gate writes them, and a red run never does
 ##
-## `SUITE-PROFILE.md` and `suite_profile.json` are committed, so rewriting them on
-## every run would churn the tree and drop noise into unrelated diffs. They are
-## written only with `--write`; counts print either way.
+## `SUITE-PROFILE.md`, `suite_profile.json` and the audit CSV are committed. They **were**
+## opt-in, on the reasoning that rewriting them every run would churn the tree — and the
+## consequence was that they went **eight blocks stale** between taskblock-56 and
+## taskblock-64, so every suite-cost conversation in that window was partly guesswork and
+## regenerating eventually turned the fast gate red on three counts, none of them false.
+##
+## taskblock-65 close-out: **`run_tests.sh` passes `--write` for the full gate by default.**
+## Churn in a diff is a smaller problem than a baseline nobody trusts, and the full gate is
+## the run you already have to make green before pushing. Fast and targeted runs still
+## refuse — a run that saw part of the suite cannot honestly describe it — and
+## `HB_NO_WRITE_PROFILE=1` opts out for a full run you are making just to see what is red.
+##
+## **A run with failures writes nothing, whatever it was asked to do.** `--write` means
+## *write the artifacts*, not *write them from a suite that did not complete as intended*.
 ##
 ## Usage — normally reached through `run_tests.sh` rather than directly:
 ## ```
@@ -447,7 +458,24 @@ func _on_end_run() -> void:
 	if _ordered_run:
 		SuiteOrder.save_history(SuiteOrder.fold(_history, _script_failures, _run_number))
 	_print_summary(total_usec, failures)
-	if not _write_artifacts:
+	# tb65 close-out: **a red run never writes the artifacts, whatever it was asked to do.**
+	#
+	# The full gate writes them by default now (`run_tests.sh`), which is what stops the profile
+	# going eight blocks stale again — but a run with failures in it measured a suite that did not
+	# finish the way it was meant to, and committing those numbers as the baseline everything else
+	# is compared against is worse than having no fresh numbers at all. `WRITE_PROFILE=1` cannot
+	# override this: it says *write the artifacts*, not *write them from a broken run*.
+	if _write_artifacts and failures > 0:
+		print(
+			(
+				(
+					"artifacts NOT written: %d failure(s). A red run's counts describe a suite that "
+					+ "did not complete as intended."
+				)
+				% failures
+			)
+		)
+	if not _write_artifacts or failures > 0:
 		# **A clean run leaves the committed artifacts alone.** They are in git; a
 		# runner that rewrote them every invocation would put unrelated churn in every
 		# diff and train people to `git checkout` them without reading.
