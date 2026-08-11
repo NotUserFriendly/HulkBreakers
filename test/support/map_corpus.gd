@@ -31,6 +31,62 @@ extends RefCounted
 ## routing them through `read()` would hand them the *same object twice* — the comparison
 ## would pass unconditionally and the suite would have lost its only check that generation
 ## is reproducible. Those two sites are deliberately left calling the generator direct.
+##
+## ## What it costs, and which files hold out (tb65 Pass A)
+##
+## **A generation is not cheap and its price is the board size**, measured on this machine
+## rather than estimated: **224 ms at 32x24, 337 ms at 40x30, 96 ms at 24x18.** A warm
+## `read()` is free — 40 cold reads cost 7.99 s, the same 40 read again cost nothing, and
+## `generated` stayed at the number of distinct keys. **Sharing works across scripts**, since
+## GUT runs the whole suite in one process and `_cache` is `static`.
+##
+## **The keyspace this corpus already holds**, and therefore what a new reader gets for free:
+##
+## | keys | filled by |
+## |---|---|
+## | seeds 0-49 @ **32x24** | `test_map_gen.gd`, `test_map_gen_raised_rooms.gd` (0-39) |
+## | seeds 0-49 @ **40x30** | `test_map_gen_reachability.gd` |
+## | seeds 0-49 @ 12x10 | `test_map_gen.gd` |
+## | seed 11 @ 32x24 | the three aim probes |
+##
+## **Which file pays for a given cold fill depends on run order and the total does not** —
+## `run_tests.sh` reorders scripts by failure history, so a per-file second count moves
+## between runs while the number of distinct boards generated does not. Compare the
+## generation count, not the attribution.
+##
+## ## The holdouts, and the reason each one holds
+##
+## Every remaining direct `MapGen.generate` in the suite was surveyed. Three answers:
+##
+## - **Deliberate, and it must stay.** `test_map_gen.gd`'s two determinism sites, per the
+##   section above. `test_determinism_check.gd` builds its own generator lambda because it is
+##   testing the determinism harness itself.
+## - **A board nobody else wants.** `test_generated_board_sight_sweep.gd` (seed 642296523 @
+##   40x30) and `test_sight_geometry.gd` (seed 4242 @ 24x18) each hold a key no other file
+##   asks for. They still read the corpus — a file asking for one board three times is the
+##   same waste at a smaller scale — but the corpus widens by one key for each, and **the
+##   saving is under a second in both cases: generation is 3% of the sweep file's 33.9 s and
+##   the rest is the LoS work.** Named here so nobody re-derives it as a promising target.
+## - **A board the corpus already holds, regenerated anyway.** This was the whole finding.
+##
+## **The measured saving, per file, at the sizes above:**
+##
+## | file | boards it regenerates | gen | cost | after | saved |
+## |---|---|---:|---:|---:|---:|
+## | `test_generation_heights.gd` | 0-29 @ 40x30, **swept 4x** | 120 | 40.4 s | 0 | **40.4 s** |
+## | `test_vertical_routes.gd` | 0-39 @ 40x30 | 40 | 13.5 s | 0 | **13.5 s** |
+## | `test_mag_lift.gd` | 8 seeds @ 32x24, swept 2x | 16 | 3.6 s | 2 | **3.1 s** |
+## | `test_map_navigability.gd` | `GATE_SEEDS` @ 32x24 | 12 | 2.7 s | 0 | **2.7 s** |
+## | `test_step_height.gd` | 32x24, post-Pass-B | 8 | 1.8 s | 2 | **1.3 s** |
+## | the four cost probes | seed 4242 @ 32x24, one each | 4 | 0.9 s | 1 | **0.7 s** |
+##
+## `test_generation_heights.gd` is the case that makes the point: **generation was 96% of a
+## 42.5 s file**, its thirty boards were already sitting in this cache, and it regenerated all
+## of them four times over.
+##
+## **Two of those files are not `MapGen.generate`'s most-called sites and were found by
+## measurement rather than by counting call sites.** A file calling the generator once inside
+## a forty-seed loop looks cheaper in a grep than one calling it seven times at top level.
 
 ## Cached grids, keyed by `seed:width:rows`. `static` so it survives across scripts within
 ## one process, which is where the saving is — the two consumer files are separate scripts
