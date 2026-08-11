@@ -498,30 +498,26 @@ it is a recorded limit rather than a rediscovery.
 <!-- ------------------------------------------------------------------------ -->
 ## The test suite
 
-### `BoutCorpus`'s own turn count is invisible, and it costs the budget ~250 turns of slack
-**Needs:** nothing. **Unblocks:** a tighter `turns` ratchet, and per-file numbers that mean what
-they say for three files.
+### `BoutCorpus`'s variable draw is subtracted, but its *bouts* still are not
+**Needs:** nothing. **Unblocks:** ratcheting `bouts` and `candidates` the way `turns` now can be.
 
-**`BoutCorpus.sample()` is clock-seeded and plays until the first win** (`CompletionSampler.
-seeds_to_first_win`, capped at `FIRST_WIN_CAP` 9). That was taskblock-50 Pass D's fix for a fixed
-sample making total turns swing 657–1305 (`BR49.01`), and it worked — but the count it plays is
-still a random variable, and **the file it is charged to is whichever `SuiteTier.CORPUS_READERS`
-entry ran first**, which `run_tests.sh`'s failure-history reordering changes between runs.
+**The turns half landed in taskblock-65's close-out.** `BoutCorpus.sample()` is clock-seeded and
+plays until the first win (`CompletionSampler.seeds_to_first_win`, cap 9), so how much work it does
+is a property of the draw — measured at **622 / 786 / 1131 total suite turns across three identical
+full gates in one session**. `CompletionSampler.sampled_turns` now counts it and `SuiteBudget`
+subtracts the quantity, which is strictly better than the file exclusion it replaces: the cost lands
+on whichever `SuiteTier.CORPUS_READERS` file ran first, and failure-history reordering changes which
+one that is, so a filename was only ever a proxy.
 
-**Measured across two green full gates with nothing between them that touches the file:
-`test_watched_run.gd` went 2 bouts / 88 turns / 121.9 s to 7 bouts / 246 turns / 279.2 s.** Read
-as a per-file number that is nonsense; read as "the corpus drew badly this time" it is fine.
+**`bouts` and `candidates` have the same problem and no equivalent.** The same three runs measured
+**80 / 85 / 88 bouts** and **911 200 / 1 292 621 / 1 816 411 candidates**, almost all of it the same
+draw. Both are still gated against a single-sample baseline, and `candidates` is not gated at all.
+The 15% completion rate (`BR65.01`) makes the swing wider than when this was last reasoned about:
+the sampler now routinely plays the full nine.
 
-**The consequence is slack in the budget.** `SuiteBudget`'s `turns` baseline has to be the
-measured 786 rather than the 540 that excludes every corpus reader, because the swing has to fit
-inside the headroom. Adding the readers to `TURNS_EXCLUDED` was tried at taskblock-65 Pass F and
-`test_the_exclusion_list_stays_small_and_gates_bouts_regardless` refused it — correctly, since
-three exemptions is a habit rather than an exception.
-
-**The fix is to make the corpus's own work observable rather than exempt**: have `BoutCorpus`
-record how many bouts and turns it played, and subtract that one number from the total. Then
-`turns` ratchets to the controlled figure, the three reader files stop carrying a cost none of
-them owns, and the swing stays visible as its own line instead of hiding inside someone else's.
+**The work is the same shape as the turns fix** — count them beside `sampled_turns`, subtract in
+`violations()` — and it is small. It is queued rather than done because taskblock-65 fixed the one
+counter that had a live flake and stopped there.
 
 ### The third corpus is a mounted `BattleScene`, and it is bigger than the first two combined
 **Needs:** nothing to *measure* — this is the measurement. **Unblocks:** the largest remaining

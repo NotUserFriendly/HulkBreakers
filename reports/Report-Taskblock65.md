@@ -2,8 +2,8 @@
 
 **All six passes landed in order** — A (survey), B (the stride leaves generation), C (the
 retrofit), D (`test_ai_batch_yield`), E (the sweep) and F (the counters) — each green on the fast
-gate and committed. The full gate is **1255.7 s against tb64's 1378.3 s**, 363 scripts / 3547
-tests / **0 failures**.
+gate and committed, plus a close-out that makes the profile self-maintaining. The full gate is
+**1044 s against tb64's 1378.3 s**, 363 scripts / 3547 tests / **0 failures**.
 
 **The block's two headline findings are both corrections to its own premise.** Pass A's expected
 ~100 s of recoverable map work measured **~62 s**, and three of the five files the taskblock named
@@ -11,6 +11,12 @@ were worth under a second between them while two it did not name were worth 16 s
 turn cap — the thing the taskblock asked for — turned out to be **the smaller half** of a 279.9 s
 file: 400 of its 432 turns were being spent by a test whose own comment said it cost "a handful",
 because a controller was set one line too late and had been since taskblock-47.
+
+**A third correction landed after the passes closed, and it reversed a Pass F decision of mine.**
+Making the full gate write the profile turned a latent budget flake into a reachable one, and
+fixing it properly showed that the exclusion I had defended in Pass F was aimed at the wrong
+thing — see *Decisions*. One bug was filed (`BR65.01`) and one of my own framings of it was wrong
+and was corrected by the supervisor.
 
 <!-- Rewrite this opening whenever a later pass moves it. -->
 
@@ -70,6 +76,20 @@ quantity is worse than none — it splits attention and invites the two to disag
 true — one for a bout, five for a five-seed sweep. **The alternative was copying the established
 test shape**, which would have shipped a guard asserting something untrue.
 
+**I reversed my own Pass F conclusion about the budget exclusion, after the close-out made it
+matter.** Pass F argued that `TURNS_EXCLUDED` should stay a single filename and the corpus swing
+should be absorbed by the `turns` baseline — reasoning I still think was right *given a manually
+regenerated profile*. Making the full gate write it automatically changed that: a green run with an
+unlucky corpus draw would have written 1131 turns against a limit of 904 and failed the **next**
+run. **The fix showed the earlier framing was aimed at the wrong object.** What is uncontrolled is
+not a file — it is the sampler's own turns, clock-drawn and stopped at the first completion — and
+that cost lands on whichever corpus reader happens to run first. `CompletionSampler.sampled_turns`
+counts the quantity and `SuiteBudget` subtracts it; a filename was only ever a proxy for it.
+`TURNS_EXCLUDED` stays at one entry, so the guard that refused me in Pass F is still satisfied and
+is now largely redundant rather than load-bearing. **The alternative was raising the turns baseline
+to ~1300 to cover the worst draw**, which is "raise the constant until it stops" — the exact habit
+`SuiteBudget`'s own header is written against.
+
 **The full gate writes the profile by default now.** The taskblock offered "a line in the
 workflow" or "`run_tests.sh` writing the profile"; both were done, with the script as the
 mechanism and the workflow line as the explanation. **A red run writes nothing** — that constraint
@@ -113,13 +133,96 @@ remain `Pending` from taskblock-64 and are untouched here.
 
 ## Open questions
 
-**`bouts` and `candidates` are not fully controlled quantities, and only `turns` has a mechanism
-for it.** `BoutCorpus.sample()` plays until the first win from a clock seed, so between two green
-full gates with no relevant change the suite reported **76 → 85 bouts and 1 233 514 → 1 292 621
-candidates**, almost all of it one file's corpus draw. The headroom absorbs it today (15% of 85 is
-12; `FIRST_WIN_CAP` is 9). **It is queued as a `PLAN.md` item rather than fixed here** because the
-fix — having the corpus record its own bouts and turns so one number can be subtracted — changes
-what three files' per-file numbers mean, which is a different job from adding two counters.
+### Parallelising the suite: processes yes, threads no — evaluated, not queued
+
+Investigated at the supervisor's request while the final gate ran. **Held here rather than in
+`PLAN.md` deliberately** — it wants more research before it becomes work.
+
+**Threads look unviable, and the corpus argues against them rather than for them.** The prompt for
+this was that the corpus makes per-thread tests more viable; measured, the opposite holds — a
+shared mutable cache is precisely what needs synchronising, and `MapCorpus.read()` hands back *the
+same object with no copy*, which is the entire saving. Five blockers, hardest last:
+
+| blocker | measured |
+|---|---|
+| SceneTree is main-thread-only in Godot | **99 of 363 files** call `get_tree()` / `add_child` / `await process_frame` |
+| `DataLibrary` is global mutable state reset per test | **97 files** do `reset()` + `load_all()` in `before_each` |
+| every work counter is a shared static | the profiler brackets each file by **diffing** them |
+| GUT is one runner with shared state | not thread-safe |
+| the corpora are themselves shared statics | `MapCorpus._cache`, `BoutCorpus._sample` |
+
+The third is the one that would hurt most: **it would destroy the budget mechanism this block just
+extended**, and the per-file attribution that found Pass D's hidden 400-turn bout.
+
+**Processes look genuinely good.** Per-process overhead measured at **1.05 s** — 1.75 s wall for a
+run whose tests take 0.7 s — because `gdlint`, `--import` and the parse guard are once-per-gate,
+not once-per-shard. Bin-packed against the committed profile (1044 s, 363 files):
+
+| shards | makespan | speedup | limited by |
+|---:|---:|---:|---|
+| 4 | 262 s | 4.0x | even split |
+| 8 | 132 s | 7.9x | even split |
+| **16** | **66 s** | **15.7x** | even split |
+| 32 | 64 s | 16.2x | **one file** |
+
+**The wall is a single file** — `test_battle_scene.gd` at 63.4 s. Nothing past 16 shards improves
+until it is split, so 16 is the target and 8 the conservative choice. The machine has 32 cores and
+each run is single-threaded (94-96% CPU), so the parallelism is genuinely available.
+
+**The one design constraint comes straight from Pass C, and naive sharding would undo it.** Each
+process gets its own corpus cache:
+
+- **32x24** — 50 boards, 11.2 s to fill, **11 reader files**. Round-robin across shards costs up to
+  **+112 s of duplicated generation**.
+- **40x30** — 50 boards, 16.9 s to fill, **3 reader files**. Up to **+34 s**.
+
+**Affinity sharding** — corpus readers kept together — pays each fill once, as today. The argument
+is sharper for `BoutCorpus`, whose sample is the most expensive *and* most variable work in the
+suite: two shards each drawing their own means two `seeds_to_first_win` escalations, and at the 15%
+completion rate (`BR65.01`) that is routinely nine bouts each rather than one.
+
+**What is not yet answered, and why this is not a `PLAN.md` item yet:**
+1. **Do the 25 subprocess-spawning tests survive sharding?** They shell out to `run_tests.sh`; log
+   paths are PID-keyed so they should, but that is reasoning rather than measurement.
+2. **Does anything depend on whole-suite run order?** `SuiteOrder` ranks by failure history, and
+   `SuiteTier`/`SuiteBudget` read the committed profile. Read-only, so probably fine — unverified.
+3. **Is the merged profile reproducible?** Counters are additive so summing works, but the shard
+   assignment must be deterministic and committed; dynamic work-stealing would move corpus draws
+   between runs and make the profile unreproducible.
+4. **Does a shard failing report usefully?** One red shard among sixteen must not read as a green
+   gate — the same failure mode `run_tests.sh`'s completion guard already exists for.
+
+**The honest summary:** a ~8-16x wall-clock win looks real and the mechanism is ordinary
+(`run_suite.gd` already accepts repeatable `--test=`), but it needs a merge step, a committed
+affinity-aware shard map, and answers to the four above. **Roughly a taskblock, not a pass.**
+
+
+### How flaky is an acceptable gate? (`BR65.01`)
+
+**The completion rate is 15%, and that is by design** — the supervisor, 2026-08-11: *"as maps
+become harder to navigate, and win conditions more stringent, completions will be rarer. Dropping
+from 72% to ~40% was a game rules update, and ~40% down to 15% was a map update."* **My first
+framing of this as drift was wrong and the entry was rewritten.** Measured deterministically over
+seeds 0–19 and **byte-for-byte identical on a tb64 worktree**, so nothing in this block moved it.
+
+**What was never resized to follow is `FIRST_WIN_CAP`.** At 9 seeds and a 15% rate,
+`test_seeds_to_first_completion_stays_low` goes red on **P = 0.232 — about one full gate in four**,
+with nothing wrong. It fired once during this block's close-out. At the 0.72 the cap was chosen
+against it would have been 1 in 94 000.
+
+**The decision needed is what false-red rate is worth paying for**, because a raised cap costs
+bouts on exactly the unlucky runs: **28 gives ~1 in 100, 18 gives ~1 in 20**. Filed rather than
+picked. Whatever is chosen, the constant should carry the rate it was sized against, so the next
+rules or map change makes it visibly stale instead of quietly flaky.
+
+**A caveat on my own number:** 20 seeds puts 15% at roughly 3–38% with 95% confidence, and
+`ESCALATION_SEEDS` is 100. The full hundred should be run before sizing anything against 15.0%.
+
+**`bouts` and `candidates` still have no mechanism, where `turns` now does.** The same three full
+gates measured **80 / 85 / 88 bouts** and **911 200 / 1 292 621 / 1 816 411 candidates**, almost all
+of it the corpus draw. `sampled_turns` fixed the counter with a live flake and stopped there; the
+other two are gated against a single-sample baseline (`candidates` is not gated at all). The work is
+the same shape and small — queued in `PLAN.md`.
 
 **The mounted-`BattleScene` cost is measured but its true total is bounded, not known.** At one
 mount per test the 41 files pay ~600 s; at one per construction site, ~108 s. **Nothing counts

@@ -10,11 +10,12 @@
       "maps": 0,
       "path": "res://test/baselines/test_armor_and_ricochet_baseline.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 17,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 33952
+      "usec": 32112
     },
     {
       "bouts": 0,
@@ -26,11 +27,12 @@
       "maps": 0,
       "path": "res://test/baselines/test_deep_strike_stress_baseline.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 95487
+      "usec": 93619
     },
     {
       "bouts": 0,
@@ -42,11 +44,12 @@
       "maps": 5,
       "path": "res://test/baselines/test_map_generation_baseline.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 548163
+      "usec": 550270
     },
     {
       "bouts": 0,
@@ -58,11 +61,12 @@
       "maps": 0,
       "path": "res://test/baselines/test_shot_plane_sweep_baseline.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 30638
+      "usec": 32144
     },
     {
       "bouts": 0,
@@ -74,11 +78,12 @@
       "maps": 6,
       "path": "res://test/determinism/test_determinism_check.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 217950
+      "usec": 215917
     },
     {
       "bouts": 0,
@@ -90,11 +95,12 @@
       "maps": 0,
       "path": "res://test/integration/test_full_mission.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 42329
+      "usec": 39777
     },
     {
       "bouts": 0,
@@ -106,11 +112,12 @@
       "maps": 2,
       "path": "res://test/unit/data/test_hulk.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 183065
+      "usec": 184461
     },
     {
       "bouts": 0,
@@ -122,11 +129,12 @@
       "maps": 0,
       "path": "res://test/unit/data/test_material_table.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 71895
+      "usec": 76032
     },
     {
       "bouts": 0,
@@ -138,11 +146,12 @@
       "maps": 0,
       "path": "res://test/unit/data/test_matrix.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 82301
+      "usec": 84588
     },
     {
       "bouts": 0,
@@ -154,11 +163,12 @@
       "maps": 0,
       "path": "res://test/unit/data/test_part.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 96256
+      "usec": 92462
     },
     {
       "bouts": 0,
@@ -170,11 +180,12 @@
       "maps": 0,
       "path": "res://test/unit/data/test_run_state.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 46778
+      "usec": 42834
     },
     {
       "bouts": 0,
@@ -186,11 +197,12 @@
       "maps": 0,
       "path": "res://test/unit/data/test_shell.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 123492
+      "usec": 121889
     },
     {
       "bouts": 0,
@@ -202,11 +214,12 @@
       "maps": 0,
       "path": "res://test/unit/data/test_taskblock21_gun_data.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 2,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 136596
+      "usec": 140107
     },
     {
       "bouts": 0,
@@ -218,11 +231,12 @@
       "maps": 0,
       "path": "res://test/unit/data/test_tool_parts.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 78321
+      "usec": 78266
     },
     {
       "bouts": 0,
@@ -234,11 +248,12 @@
       "maps": 0,
       "path": "res://test/unit/data/test_weapon_def.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 187678
+      "usec": 187971
     },
     {
       "bouts": 0,
@@ -250,11 +265,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_ascii_render.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 86996
+      "usec": 87072
     },
     {
       "bouts": 0,
@@ -266,11 +282,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_bout_injector.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1298561
+      "usec": 1282684
     },
     {
       "bouts": 0,
@@ -282,11 +299,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_bout_injector_determinism.gd",
       "plans": 6,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 83098
+      "usec": 81469
     },
     {
       "bouts": 0,
@@ -298,11 +316,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_bout_injector_force_climb.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 85305
+      "usec": 86261
     },
     {
       "bouts": 0,
@@ -314,11 +333,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_bout_injector_kill.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 5,
       "ui_builds": 0,
-      "usec": 72945
+      "usec": 74106
     },
     {
       "bouts": 0,
@@ -330,11 +350,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_bout_injector_move_object.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 117998
+      "usec": 114782
     },
     {
       "bouts": 0,
@@ -346,11 +367,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_bout_injector_remove_object.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 3,
       "ui_builds": 0,
-      "usec": 108536
+      "usec": 102957
     },
     {
       "bouts": 0,
@@ -362,11 +384,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_bout_injector_set_cell_level.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 84619
+      "usec": 78518
     },
     {
       "bouts": 0,
@@ -378,11 +401,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_bout_injector_spawn_object.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 95534
+      "usec": 91092
     },
     {
       "bouts": 0,
@@ -394,11 +418,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_build_identity.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 72851
+      "usec": 70473
     },
     {
       "bouts": 0,
@@ -410,11 +435,12 @@
       "maps": 0,
       "path": "res://test/unit/debug/test_debug_verbs.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 65491
+      "usec": 63144
     },
     {
       "bouts": 0,
@@ -426,11 +452,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_attack_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 28,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 255481
+      "usec": 248497
     },
     {
       "bouts": 0,
@@ -442,11 +469,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_burst_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 15,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 352960
+      "usec": 341362
     },
     {
       "bouts": 0,
@@ -458,11 +486,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_carry_body_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1,
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 117765
+      "usec": 105553
     },
     {
       "bouts": 0,
@@ -474,11 +503,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_end_turn_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 14,
       "ui_builds": 0,
-      "usec": 216123
+      "usec": 194148
     },
     {
       "bouts": 0,
@@ -490,11 +520,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_extract_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 3,
       "ui_builds": 0,
-      "usec": 147663
+      "usec": 123699
     },
     {
       "bouts": 0,
@@ -506,11 +537,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_face_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 2,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 127744
+      "usec": 115132
     },
     {
       "bouts": 0,
@@ -522,11 +554,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_gather_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91119
+      "usec": 82568
     },
     {
       "bouts": 0,
@@ -538,11 +571,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_grind_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 3,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 72414
+      "usec": 66081
     },
     {
       "bouts": 0,
@@ -554,11 +588,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_hold_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 18,
       "ui_builds": 0,
-      "usec": 122948
+      "usec": 114122
     },
     {
       "bouts": 0,
@@ -570,11 +605,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_modify_assembly_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 65840
+      "usec": 66017
     },
     {
       "bouts": 0,
@@ -586,11 +622,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_move_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 303264
+      "usec": 298311
     },
     {
       "bouts": 0,
@@ -602,11 +639,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_pick_up_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 103814
+      "usec": 96867
     },
     {
       "bouts": 0,
@@ -618,11 +656,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_repair_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 155562
+      "usec": 149343
     },
     {
       "bouts": 0,
@@ -634,11 +673,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_shot_resolution.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 7125
+      "usec": 6728
     },
     {
       "bouts": 0,
@@ -650,11 +690,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_shutdown_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 119795
+      "usec": 114414
     },
     {
       "bouts": 0,
@@ -666,11 +707,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_slash_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 3,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 80274
+      "usec": 74342
     },
     {
       "bouts": 0,
@@ -682,11 +724,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_stab_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 5,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 120505
+      "usec": 115576
     },
     {
       "bouts": 0,
@@ -698,11 +741,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/actions/test_swap_part_action.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 67286
+      "usec": 63643
     },
     {
       "bouts": 0,
@@ -714,11 +758,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_ally_in_line.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 260094
+      "usec": 256782
     },
     {
       "bouts": 0,
@@ -730,11 +775,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_batch_objective.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 12370734
+      "usec": 12585637
     },
     {
       "bouts": 5,
@@ -746,11 +792,12 @@
       "maps": 5,
       "path": "res://test/unit/logic/ai/test_batch_plumbing.gd",
       "plans": 32,
+      "sampled_turns": 0,
       "shot_planes": 144,
       "spawns": 0,
       "turns": 32,
       "ui_builds": 0,
-      "usec": 30434005
+      "usec": 29961077
     },
     {
       "bouts": 0,
@@ -762,11 +809,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_bout_runner.gd",
       "plans": 37,
+      "sampled_turns": 0,
       "shot_planes": 18,
       "spawns": 0,
       "turns": 29,
       "ui_builds": 0,
-      "usec": 1183060
+      "usec": 1121308
     },
     {
       "bouts": 10,
@@ -778,11 +826,12 @@
       "maps": 11,
       "path": "res://test/unit/logic/ai/test_bout_setup.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3477321
+      "usec": 3297161
     },
     {
       "bouts": 0,
@@ -794,11 +843,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_close_range_firing_decision.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4332962
+      "usec": 4196886
     },
     {
       "bouts": 2,
@@ -810,11 +860,12 @@
       "maps": 2,
       "path": "res://test/unit/logic/ai/test_contest_victory_mode.gd",
       "plans": 1,
+      "sampled_turns": 0,
       "shot_planes": 2,
       "spawns": 0,
       "turns": 3,
       "ui_builds": 0,
-      "usec": 1021312
+      "usec": 970455
     },
     {
       "bouts": 0,
@@ -826,11 +877,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_distance_flood_direction.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 202017
+      "usec": 178930
     },
     {
       "bouts": 0,
@@ -842,11 +894,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_engagement_rect_cull.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 969565
+      "usec": 937279
     },
     {
       "bouts": 0,
@@ -858,15 +911,16 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_panic.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 362502
+      "usec": 343100
     },
     {
       "bouts": 2,
-      "candidates": 24122,
+      "candidates": 24106,
       "dups": 109,
       "escaped": 0,
       "floods": 45,
@@ -874,11 +928,12 @@
       "maps": 2,
       "path": "res://test/unit/logic/ai/test_plan_pacer.gd",
       "plans": 17,
+      "sampled_turns": 0,
       "shot_planes": 48,
       "spawns": 0,
       "turns": 12,
       "ui_builds": 0,
-      "usec": 14122403
+      "usec": 13977815
     },
     {
       "bouts": 0,
@@ -890,11 +945,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_preset_weapon_reachability.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 70030
+      "usec": 67259
     },
     {
       "bouts": 0,
@@ -906,11 +962,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_search_behaviour.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 14,
       "ui_builds": 0,
-      "usec": 3458657
+      "usec": 3370818
     },
     {
       "bouts": 0,
@@ -922,11 +979,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_tier_and_profile_table.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 5511988
+      "usec": 5439360
     },
     {
       "bouts": 0,
@@ -938,11 +996,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_utility_lookahead.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2360529
+      "usec": 2296706
     },
     {
       "bouts": 3,
@@ -954,11 +1013,12 @@
       "maps": 3,
       "path": "res://test/unit/logic/ai/test_utility_planner.gd",
       "plans": 18,
+      "sampled_turns": 0,
       "shot_planes": 75,
       "spawns": 0,
       "turns": 19,
       "ui_builds": 0,
-      "usec": 21430804
+      "usec": 21491686
     },
     {
       "bouts": 0,
@@ -970,11 +1030,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_utility_scorer.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 336746
+      "usec": 323514
     },
     {
       "bouts": 0,
@@ -986,11 +1047,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/ai/test_vertical_planning.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 3,
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 490542
+      "usec": 433297
     },
     {
       "bouts": 0,
@@ -1002,11 +1064,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_action_catalog.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 221366
+      "usec": 210731
     },
     {
       "bouts": 0,
@@ -1018,11 +1081,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_action_queue.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 150857
+      "usec": 149827
     },
     {
       "bouts": 0,
@@ -1034,11 +1098,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_aim_as_input.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 306778
+      "usec": 302924
     },
     {
       "bouts": 0,
@@ -1050,11 +1115,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_aim_controller.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 18,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 258889
+      "usec": 256478
     },
     {
       "bouts": 0,
@@ -1066,11 +1132,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_aim_cost_probe.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 40,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3385140
+      "usec": 3370316
     },
     {
       "bouts": 0,
@@ -1082,11 +1149,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_aim_layer.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 54872
+      "usec": 53929
     },
     {
       "bouts": 0,
@@ -1098,11 +1166,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_aim_offset_bias.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 4,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 139089
+      "usec": 136585
     },
     {
       "bouts": 0,
@@ -1114,11 +1183,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_aim_plane_geometry.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 147514
+      "usec": 141574
     },
     {
       "bouts": 0,
@@ -1130,11 +1200,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_aim_point_units.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 103811
+      "usec": 102231
     },
     {
       "bouts": 0,
@@ -1146,11 +1217,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ammo_def.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 138759
+      "usec": 133054
     },
     {
       "bouts": 0,
@@ -1162,11 +1234,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_announcements.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 121780
+      "usec": 117842
     },
     {
       "bouts": 0,
@@ -1178,11 +1251,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ap_mp_pips.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 110155
+      "usec": 105615
     },
     {
       "bouts": 0,
@@ -1194,11 +1268,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_battle_layout.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 163276
+      "usec": 157276
     },
     {
       "bouts": 0,
@@ -1210,11 +1285,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_blocker_placement.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 101337
+      "usec": 99074
     },
     {
       "bouts": 0,
@@ -1226,11 +1302,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_board_picker.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 151226
+      "usec": 149622
     },
     {
       "bouts": 0,
@@ -1242,11 +1319,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_body_assembler.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 175494
+      "usec": 174966
     },
     {
       "bouts": 0,
@@ -1258,11 +1336,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_body_projector.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 2,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 300743
+      "usec": 289069
     },
     {
       "bouts": 0,
@@ -1274,11 +1353,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_body_skeleton.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 3,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 213960
+      "usec": 203101
     },
     {
       "bouts": 0,
@@ -1290,11 +1370,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_bonus_pen.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 67033
+      "usec": 61164
     },
     {
       "bouts": 0,
@@ -1306,11 +1387,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_bot_profiles.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 247574
+      "usec": 235194
     },
     {
       "bouts": 0,
@@ -1322,11 +1404,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_bout_corpus.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 179905
+      "usec": 177388
     },
     {
       "bouts": 0,
@@ -1338,11 +1421,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_builder_controller.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 221425
+      "usec": 212982
     },
     {
       "bouts": 0,
@@ -1354,11 +1438,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_camera_orbit_state.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 219924
+      "usec": 220191
     },
     {
       "bouts": 0,
@@ -1370,11 +1455,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_cell_inspection.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 124032
+      "usec": 129326
     },
     {
       "bouts": 0,
@@ -1386,11 +1472,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_close_range_sight.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 181845
+      "usec": 189836
     },
     {
       "bouts": 0,
@@ -1402,11 +1489,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_combat_action_speed.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 73297
+      "usec": 78042
     },
     {
       "bouts": 0,
@@ -1418,11 +1506,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_combat_log.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 152136
+      "usec": 160377
     },
     {
       "bouts": 0,
@@ -1434,11 +1523,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_combat_state.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 22,
       "ui_builds": 0,
-      "usec": 354191
+      "usec": 360805
     },
     {
       "bouts": 0,
@@ -1450,11 +1540,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_combat_state_initiative.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 21,
       "ui_builds": 0,
-      "usec": 117866
+      "usec": 120835
     },
     {
       "bouts": 0,
@@ -1466,11 +1557,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_combat_tester_presets.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 252896
+      "usec": 266369
     },
     {
       "bouts": 0,
@@ -1482,11 +1574,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_command_log.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 338231
+      "usec": 347613
     },
     {
       "bouts": 3,
@@ -1498,11 +1591,12 @@
       "maps": 3,
       "path": "res://test/unit/logic/test_completion_sampler.gd",
       "plans": 51,
+      "sampled_turns": 51,
       "shot_planes": 28,
       "spawns": 0,
       "turns": 53,
       "ui_builds": 0,
-      "usec": 33263196
+      "usec": 33414093
     },
     {
       "bouts": 0,
@@ -1514,11 +1608,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_containers.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 51681
+      "usec": 53450
     },
     {
       "bouts": 0,
@@ -1530,11 +1625,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_continuous_height_and_escapes.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 113928
+      "usec": 115986
     },
     {
       "bouts": 0,
@@ -1546,11 +1642,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_control_bindings.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 62189
+      "usec": 63508
     },
     {
       "bouts": 0,
@@ -1562,11 +1659,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_csv_line.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 80229
+      "usec": 85752
     },
     {
       "bouts": 0,
@@ -1578,11 +1676,12 @@
       "maps": 1,
       "path": "res://test/unit/logic/test_cutout_gate_over_zoom.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 407677
+      "usec": 413695
     },
     {
       "bouts": 0,
@@ -1594,11 +1693,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_damage_resolver.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 30,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 298516
+      "usec": 314706
     },
     {
       "bouts": 0,
@@ -1610,11 +1710,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_damage_resolver_consequences.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 132780
+      "usec": 134031
     },
     {
       "bouts": 0,
@@ -1626,11 +1727,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_damage_resolver_deflect_modes.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 6,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 55139
+      "usec": 54192
     },
     {
       "bouts": 0,
@@ -1642,11 +1744,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_damage_resolver_spherecast.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 3,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 53168
+      "usec": 54561
     },
     {
       "bouts": 0,
@@ -1658,11 +1761,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_damage_source_of_truth.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 52027
+      "usec": 51814
     },
     {
       "bouts": 0,
@@ -1674,11 +1778,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_dartboard.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 118836
+      "usec": 118437
     },
     {
       "bouts": 0,
@@ -1690,11 +1795,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_dartboard_texture.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 268052
+      "usec": 267382
     },
     {
       "bouts": 0,
@@ -1706,11 +1812,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_data_library.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 204461
+      "usec": 204436
     },
     {
       "bouts": 0,
@@ -1722,11 +1829,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_data_migration_losslessness.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 90619
+      "usec": 91153
     },
     {
       "bouts": 0,
@@ -1738,11 +1846,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_data_validator.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 82433
+      "usec": 81712
     },
     {
       "bouts": 0,
@@ -1754,11 +1863,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_death_mid_turn.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 7,
       "ui_builds": 0,
-      "usec": 473248
+      "usec": 464837
     },
     {
       "bouts": 0,
@@ -1770,11 +1880,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_deep_strike.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 692473
+      "usec": 687699
     },
     {
       "bouts": 0,
@@ -1786,11 +1897,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_deflect_resistance_scales_with_penetration.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 157847
+      "usec": 158060
     },
     {
       "bouts": 0,
@@ -1802,11 +1914,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_description_builder.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 61418
+      "usec": 61735
     },
     {
       "bouts": 0,
@@ -1818,11 +1931,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_detonation_draw.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 143723
+      "usec": 142714
     },
     {
       "bouts": 0,
@@ -1834,11 +1948,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_editor_controller.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 975122
+      "usec": 941307
     },
     {
       "bouts": 0,
@@ -1850,11 +1965,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_editor_tools.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 242256
+      "usec": 217298
     },
     {
       "bouts": 0,
@@ -1866,11 +1982,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_engine_error_tap.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 143638
+      "usec": 135032
     },
     {
       "bouts": 0,
@@ -1882,11 +1999,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_every_firing_path_announces_itself.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 3,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 492126
+      "usec": 485467
     },
     {
       "bouts": 0,
@@ -1898,11 +2016,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_face_placement.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 209201
+      "usec": 216477
     },
     {
       "bouts": 0,
@@ -1914,11 +2033,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_field_objects.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 318749
+      "usec": 324399
     },
     {
       "bouts": 0,
@@ -1930,11 +2050,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_file_sink.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 111512
+      "usec": 112019
     },
     {
       "bouts": 0,
@@ -1946,11 +2067,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_fps_meter.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 101929
+      "usec": 101951
     },
     {
       "bouts": 0,
@@ -1962,11 +2084,12 @@
       "maps": 1,
       "path": "res://test/unit/logic/test_generated_board_sight_sweep.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 31967132
+      "usec": 31833833
     },
     {
       "bouts": 0,
@@ -1978,11 +2101,12 @@
       "maps": 30,
       "path": "res://test/unit/logic/test_generation_heights.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11098165
+      "usec": 10940678
     },
     {
       "bouts": 0,
@@ -1994,11 +2118,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_gizmo.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 327177
+      "usec": 300423
     },
     {
       "bouts": 0,
@@ -2010,11 +2135,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_gizmo_grow.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 136779
+      "usec": 127598
     },
     {
       "bouts": 0,
@@ -2026,11 +2152,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_grid.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 311253
+      "usec": 292442
     },
     {
       "bouts": 0,
@@ -2042,11 +2169,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_grid_placement.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 110148
+      "usec": 101980
     },
     {
       "bouts": 0,
@@ -2058,11 +2186,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_hover_and_turn_end.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 224329
+      "usec": 212411
     },
     {
       "bouts": 0,
@@ -2074,11 +2203,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_inspect_rows.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 68675
+      "usec": 65595
     },
     {
       "bouts": 0,
@@ -2090,11 +2220,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_instant_resolver.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 145756
+      "usec": 119981
     },
     {
       "bouts": 6,
@@ -2106,11 +2237,12 @@
       "maps": 6,
       "path": "res://test/unit/logic/test_intelligence_tiers.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2188563
+      "usec": 2081489
     },
     {
       "bouts": 0,
@@ -2122,11 +2254,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_internal_targeting.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 6,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 165638
+      "usec": 148919
     },
     {
       "bouts": 0,
@@ -2138,11 +2271,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_inventory.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 241479
+      "usec": 235074
     },
     {
       "bouts": 0,
@@ -2154,11 +2288,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_inventory_rows.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 138371
+      "usec": 135490
     },
     {
       "bouts": 0,
@@ -2170,11 +2305,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_joints.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 8,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 199404
+      "usec": 185375
     },
     {
       "bouts": 0,
@@ -2186,11 +2322,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_kit_equipper.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 355100
+      "usec": 326897
     },
     {
       "bouts": 0,
@@ -2202,11 +2339,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_knowledge.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 68048
+      "usec": 58093
     },
     {
       "bouts": 0,
@@ -2218,11 +2356,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ladder.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 276004
+      "usec": 260627
     },
     {
       "bouts": 0,
@@ -2234,11 +2373,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ledge_veneer.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 300785
+      "usec": 281851
     },
     {
       "bouts": 0,
@@ -2250,11 +2390,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_life_support.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 133712
+      "usec": 123985
     },
     {
       "bouts": 0,
@@ -2266,11 +2407,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_line_of_fire.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 13,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 171918
+      "usec": 149781
     },
     {
       "bouts": 0,
@@ -2282,11 +2424,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_load_map_verb.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 378688
+      "usec": 364803
     },
     {
       "bouts": 0,
@@ -2298,11 +2441,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_log_fold.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 151488
+      "usec": 145936
     },
     {
       "bouts": 0,
@@ -2314,11 +2458,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_log_playback.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 135479
+      "usec": 133251
     },
     {
       "bouts": 0,
@@ -2330,11 +2475,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_loot_table.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 121701
+      "usec": 122503
     },
     {
       "bouts": 0,
@@ -2346,11 +2492,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_los.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 296606
+      "usec": 288030
     },
     {
       "bouts": 0,
@@ -2362,11 +2509,12 @@
       "maps": 1,
       "path": "res://test/unit/logic/test_mag_lift.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 414176
+      "usec": 413393
     },
     {
       "bouts": 0,
@@ -2378,11 +2526,12 @@
       "maps": 10,
       "path": "res://test/unit/logic/test_map_corpus.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2677114
+      "usec": 2645436
     },
     {
       "bouts": 0,
@@ -2394,11 +2543,12 @@
       "maps": 204,
       "path": "res://test/unit/logic/test_map_gen.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 34628938
+      "usec": 33865585
     },
     {
       "bouts": 0,
@@ -2410,11 +2560,12 @@
       "maps": 40,
       "path": "res://test/unit/logic/test_map_gen_raised_rooms.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10727777
+      "usec": 10698775
     },
     {
       "bouts": 0,
@@ -2426,11 +2577,12 @@
       "maps": 50,
       "path": "res://test/unit/logic/test_map_gen_reachability.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 20131677
+      "usec": 19536877
     },
     {
       "bouts": 0,
@@ -2442,11 +2594,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_map_navigability.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 757559
+      "usec": 751034
     },
     {
       "bouts": 2,
@@ -2458,11 +2611,12 @@
       "maps": 6,
       "path": "res://test/unit/logic/test_map_serializer.gd",
       "plans": 16,
+      "sampled_turns": 0,
       "shot_planes": 48,
       "spawns": 0,
       "turns": 16,
       "ui_builds": 0,
-      "usec": 11374971
+      "usec": 11316034
     },
     {
       "bouts": 0,
@@ -2474,11 +2628,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_material_entry.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 110063
+      "usec": 105679
     },
     {
       "bouts": 0,
@@ -2490,11 +2645,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_melee_delivery.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 12,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 107023
+      "usec": 102537
     },
     {
       "bouts": 0,
@@ -2506,11 +2662,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_melee_line.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 127184
+      "usec": 121954
     },
     {
       "bouts": 0,
@@ -2522,11 +2679,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_melee_reach.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 224414
+      "usec": 210610
     },
     {
       "bouts": 0,
@@ -2538,11 +2696,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_membership_disagreement.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 81717
+      "usec": 77394
     },
     {
       "bouts": 0,
@@ -2554,11 +2713,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_mission_state.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 5,
       "ui_builds": 0,
-      "usec": 370805
+      "usec": 339394
     },
     {
       "bouts": 0,
@@ -2570,11 +2730,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_multi_level_geometry.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 4,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 105734
+      "usec": 100105
     },
     {
       "bouts": 0,
@@ -2586,11 +2747,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_one_aim_path.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 3,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 191656
+      "usec": 182098
     },
     {
       "bouts": 0,
@@ -2602,11 +2764,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_overwatch.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1398,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5746350
+      "usec": 5441744
     },
     {
       "bouts": 0,
@@ -2618,11 +2781,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_part_graph.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 354964
+      "usec": 347315
     },
     {
       "bouts": 0,
@@ -2634,11 +2798,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_part_picker.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 223995
+      "usec": 213774
     },
     {
       "bouts": 0,
@@ -2650,11 +2815,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_pathfinder.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 475762
+      "usec": 461682
     },
     {
       "bouts": 0,
@@ -2666,11 +2832,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_penetration_traverses_body.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 13,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 309735
+      "usec": 308225
     },
     {
       "bouts": 9,
@@ -2682,11 +2849,12 @@
       "maps": 9,
       "path": "res://test/unit/logic/test_per_tier_probe.gd",
       "plans": 36,
+      "sampled_turns": 36,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 36,
       "ui_builds": 0,
-      "usec": 7953116
+      "usec": 7796717
     },
     {
       "bouts": 0,
@@ -2698,11 +2866,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_perf_stats.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 270817
+      "usec": 258613
     },
     {
       "bouts": 0,
@@ -2714,11 +2883,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_picker_surfaces.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 237998
+      "usec": 224661
     },
     {
       "bouts": 0,
@@ -2730,11 +2900,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_placed_volume.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 382273
+      "usec": 366368
     },
     {
       "bouts": 0,
@@ -2746,11 +2917,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_placement_position.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 396608
+      "usec": 370797
     },
     {
       "bouts": 0,
@@ -2762,11 +2934,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_plate_geometry.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 220633
+      "usec": 194729
     },
     {
       "bouts": 0,
@@ -2778,11 +2951,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_power_drives_ap.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 7,
       "ui_builds": 0,
-      "usec": 673829
+      "usec": 621728
     },
     {
       "bouts": 0,
@@ -2794,11 +2968,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_proving_ground_map.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 262909
+      "usec": 253764
     },
     {
       "bouts": 0,
@@ -2810,11 +2985,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_queue_log.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 809441
+      "usec": 775651
     },
     {
       "bouts": 0,
@@ -2826,11 +3002,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ramp_geometry.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 98487
+      "usec": 90921
     },
     {
       "bouts": 0,
@@ -2842,11 +3019,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_range_gives_internals_meaning.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 3,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 106504
+      "usec": 100708
     },
     {
       "bouts": 0,
@@ -2858,11 +3036,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_range_model.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 161984
+      "usec": 151614
     },
     {
       "bouts": 0,
@@ -2874,11 +3053,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ray_caster.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 356343
+      "usec": 340402
     },
     {
       "bouts": 0,
@@ -2890,11 +3070,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ray_chain.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 854913
+      "usec": 852093
     },
     {
       "bouts": 0,
@@ -2906,11 +3087,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ray_surfaces.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 760016
+      "usec": 745268
     },
     {
       "bouts": 0,
@@ -2922,11 +3104,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ray_tiebreak.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2197566
+      "usec": 2181151
     },
     {
       "bouts": 0,
@@ -2938,11 +3121,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_reaction_window.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 6,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 167507
+      "usec": 161846
     },
     {
       "bouts": 0,
@@ -2954,11 +3138,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_recoil_resolver.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 148727
+      "usec": 143345
     },
     {
       "bouts": 0,
@@ -2970,11 +3155,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_reference_humanoid.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 2,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 448974
+      "usec": 415514
     },
     {
       "bouts": 0,
@@ -2986,11 +3172,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_repair_resolver.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 285437
+      "usec": 267159
     },
     {
       "bouts": 4,
@@ -3002,11 +3189,12 @@
       "maps": 4,
       "path": "res://test/unit/logic/test_replay_handle.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1607831
+      "usec": 1539045
     },
     {
       "bouts": 0,
@@ -3018,11 +3206,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_resolution_speed.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 214766
+      "usec": 202331
     },
     {
       "bouts": 0,
@@ -3034,11 +3223,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_resolve_ray.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 20,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 210803
+      "usec": 201298
     },
     {
       "bouts": 0,
@@ -3050,11 +3240,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_resolve_until.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 607400
+      "usec": 582628
     },
     {
       "bouts": 0,
@@ -3066,11 +3257,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_resolver_parity.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1625,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11242687
+      "usec": 11182882
     },
     {
       "bouts": 0,
@@ -3082,11 +3274,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_resource_edit_stack.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 146480
+      "usec": 137822
     },
     {
       "bouts": 0,
@@ -3098,11 +3291,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_resource_editor_columns.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 308126
+      "usec": 298786
     },
     {
       "bouts": 0,
@@ -3114,11 +3308,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_resource_editor_rows.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 161036
+      "usec": 153367
     },
     {
       "bouts": 0,
@@ -3130,11 +3325,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ricochet_stress.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 2,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 147400
+      "usec": 138969
     },
     {
       "bouts": 8,
@@ -3146,11 +3342,12 @@
       "maps": 8,
       "path": "res://test/unit/logic/test_scripted_corpus.gd",
       "plans": 1,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 25,
       "ui_builds": 0,
-      "usec": 3679424
+      "usec": 3589990
     },
     {
       "bouts": 0,
@@ -3162,11 +3359,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_seam_sweep.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 4259,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11214305
+      "usec": 11189474
     },
     {
       "bouts": 0,
@@ -3178,11 +3376,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_search_filter.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 166650
+      "usec": 151788
     },
     {
       "bouts": 0,
@@ -3194,11 +3393,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_seated_placement.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 288102
+      "usec": 262403
     },
     {
       "bouts": 0,
@@ -3210,11 +3410,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_section_claims.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 404956
+      "usec": 401033
     },
     {
       "bouts": 0,
@@ -3226,11 +3427,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_section_format.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 275766
+      "usec": 274619
     },
     {
       "bouts": 0,
@@ -3242,11 +3444,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_section_join.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 186652
+      "usec": 183041
     },
     {
       "bouts": 0,
@@ -3258,11 +3461,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_section_preview_rolls.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 409150
+      "usec": 399184
     },
     {
       "bouts": 0,
@@ -3274,11 +3478,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_section_stacking.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 194930
+      "usec": 186761
     },
     {
       "bouts": 0,
@@ -3290,11 +3495,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_selection_controller.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 651649
+      "usec": 651204
     },
     {
       "bouts": 0,
@@ -3306,11 +3512,12 @@
       "maps": 4,
       "path": "res://test/unit/logic/test_selection_of_cover.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 4306437
+      "usec": 4062617
     },
     {
       "bouts": 0,
@@ -3322,11 +3529,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_selection_target.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 296547
+      "usec": 244828
     },
     {
       "bouts": 0,
@@ -3338,11 +3546,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_shot_hop_pacing.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 135080
+      "usec": 107340
     },
     {
       "bouts": 0,
@@ -3354,11 +3563,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_shot_plane.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 17,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 585522
+      "usec": 558494
     },
     {
       "bouts": 0,
@@ -3370,11 +3580,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_shot_plane_amortisation.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 31,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 259273
+      "usec": 247408
     },
     {
       "bouts": 0,
@@ -3386,11 +3597,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_shot_scatter.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 107318
+      "usec": 92565
     },
     {
       "bouts": 0,
@@ -3402,11 +3614,12 @@
       "maps": 1,
       "path": "res://test/unit/logic/test_sight_cost_probe.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 386418
+      "usec": 359185
     },
     {
       "bouts": 0,
@@ -3418,11 +3631,12 @@
       "maps": 1,
       "path": "res://test/unit/logic/test_sight_geometry.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1323747
+      "usec": 1250548
     },
     {
       "bouts": 0,
@@ -3434,11 +3648,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_socket.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 68861
+      "usec": 62755
     },
     {
       "bouts": 0,
@@ -3450,11 +3665,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_spread_pattern.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 116369
+      "usec": 107542
     },
     {
       "bouts": 0,
@@ -3466,11 +3682,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_standing_height.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 2,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 306217
+      "usec": 287056
     },
     {
       "bouts": 0,
@@ -3482,11 +3699,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_stat_resolver.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 82902
+      "usec": 75509
     },
     {
       "bouts": 3,
@@ -3498,11 +3716,12 @@
       "maps": 6,
       "path": "res://test/unit/logic/test_step_height.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2422186
+      "usec": 2401081
     },
     {
       "bouts": 0,
@@ -3514,11 +3733,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_step_out_interrupt.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 10,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 124536
+      "usec": 125255
     },
     {
       "bouts": 0,
@@ -3530,11 +3750,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_step_out_planner.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 4,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 365830
+      "usec": 383685
     },
     {
       "bouts": 0,
@@ -3546,11 +3767,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_suite_order.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 176260
+      "usec": 192760
     },
     {
       "bouts": 0,
@@ -3562,11 +3784,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_suite_run.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 8,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19530250
+      "usec": 19604963
     },
     {
       "bouts": 0,
@@ -3578,11 +3801,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_suppression.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 4,
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 89458
+      "usec": 87363
     },
     {
       "bouts": 0,
@@ -3594,11 +3818,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_surrogate.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 212826
+      "usec": 232718
     },
     {
       "bouts": 0,
@@ -3610,11 +3835,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_surrogate_ladder.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 193585
+      "usec": 189869
     },
     {
       "bouts": 0,
@@ -3626,11 +3852,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_tb38_flat_bout_guard.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 24,
       "ui_builds": 0,
-      "usec": 278398
+      "usec": 265781
     },
     {
       "bouts": 0,
@@ -3642,11 +3869,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_the_punch.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 67679
+      "usec": 65251
     },
     {
       "bouts": 0,
@@ -3658,11 +3886,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_tooltip_builder.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 309958
+      "usec": 278538
     },
     {
       "bouts": 0,
@@ -3674,11 +3903,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_tracer_geometry.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 113479
+      "usec": 92163
     },
     {
       "bouts": 0,
@@ -3690,11 +3920,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_transparency_proof.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 31,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91266
+      "usec": 80241
     },
     {
       "bouts": 0,
@@ -3706,11 +3937,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_turn_start_power_walks.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 135152
+      "usec": 116338
     },
     {
       "bouts": 0,
@@ -3722,11 +3954,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_ui_layout.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 168355
+      "usec": 162544
     },
     {
       "bouts": 0,
@@ -3738,11 +3971,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_unit.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 187979
+      "usec": 168998
     },
     {
       "bouts": 0,
@@ -3754,11 +3988,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_unit_geometry.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 443834
+      "usec": 401356
     },
     {
       "bouts": 0,
@@ -3770,11 +4005,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_unit_picker.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 137483
+      "usec": 130750
     },
     {
       "bouts": 0,
@@ -3786,11 +4022,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_variant_generator.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 658401
+      "usec": 615117
     },
     {
       "bouts": 0,
@@ -3802,11 +4039,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_vertical_movement.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 517139
+      "usec": 465618
     },
     {
       "bouts": 0,
@@ -3818,11 +4056,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_vertical_routes.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 217376
+      "usec": 218016
     },
     {
       "bouts": 0,
@@ -3834,11 +4073,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_visibility_field.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 299,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 401815
+      "usec": 412761
     },
     {
       "bouts": 0,
@@ -3850,27 +4090,29 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_wall_legibility.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 420110
+      "usec": 413138
     },
     {
-      "bouts": 2,
-      "candidates": 143326,
-      "dups": 252,
-      "escaped": 16,
-      "floods": 184,
-      "lookahead_fields": 102,
-      "maps": 2,
+      "bouts": 6,
+      "candidates": 506724,
+      "dups": 968,
+      "escaped": 97,
+      "floods": 693,
+      "lookahead_fields": 450,
+      "maps": 6,
       "path": "res://test/unit/logic/test_watched_run.gd",
-      "plans": 74,
-      "shot_planes": 108,
+      "plans": 258,
+      "sampled_turns": 225,
+      "shot_planes": 410,
       "spawns": 0,
-      "turns": 82,
+      "turns": 268,
       "ui_builds": 0,
-      "usec": 63166431
+      "usec": 361186767
     },
     {
       "bouts": 0,
@@ -3882,11 +4124,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_weapon_chambering.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 233783
+      "usec": 202440
     },
     {
       "bouts": 0,
@@ -3898,11 +4141,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_weapon_resolver.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 167569
+      "usec": 152693
     },
     {
       "bouts": 0,
@@ -3914,11 +4158,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_weapon_rows.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 152538
+      "usec": 139457
     },
     {
       "bouts": 0,
@@ -3930,11 +4175,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_weapon_sim_hardening.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 7,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 511397
+      "usec": 495522
     },
     {
       "bouts": 5,
@@ -3946,11 +4192,12 @@
       "maps": 11,
       "path": "res://test/unit/logic/test_work_counters.gd",
       "plans": 25,
+      "sampled_turns": 0,
       "shot_planes": 60,
       "spawns": 0,
       "turns": 26,
       "ui_builds": 3,
-      "usec": 20087978
+      "usec": 19940999
     },
     {
       "bouts": 2,
@@ -3962,11 +4209,12 @@
       "maps": 2,
       "path": "res://test/unit/logic/test_world_view_seam.gd",
       "plans": 16,
+      "sampled_turns": 0,
       "shot_planes": 72,
       "spawns": 0,
       "turns": 16,
       "ui_builds": 0,
-      "usec": 15983408
+      "usec": 15862051
     },
     {
       "bouts": 0,
@@ -3978,11 +4226,12 @@
       "maps": 0,
       "path": "res://test/unit/logic/test_wounds.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 356896
+      "usec": 318995
     },
     {
       "bouts": 0,
@@ -3994,11 +4243,12 @@
       "maps": 0,
       "path": "res://test/unit/test_exit_code_probe.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1927
+      "usec": 1848
     },
     {
       "bouts": 0,
@@ -4010,11 +4260,12 @@
       "maps": 0,
       "path": "res://test/unit/test_hulk_prefix_guard.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 580738
+      "usec": 579676
     },
     {
       "bouts": 0,
@@ -4026,11 +4277,12 @@
       "maps": 0,
       "path": "res://test/unit/test_lint_config.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 40620
+      "usec": 41617
     },
     {
       "bouts": 0,
@@ -4042,11 +4294,12 @@
       "maps": 0,
       "path": "res://test/unit/test_no_orphaned_uids.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4678
+      "usec": 5042
     },
     {
       "bouts": 0,
@@ -4058,11 +4311,12 @@
       "maps": 0,
       "path": "res://test/unit/test_retired_planner_sweep.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 82524
+      "usec": 82810
     },
     {
       "bouts": 0,
@@ -4074,11 +4328,12 @@
       "maps": 0,
       "path": "res://test/unit/test_run_suite.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 8,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 17068004
+      "usec": 16897982
     },
     {
       "bouts": 0,
@@ -4090,11 +4345,12 @@
       "maps": 0,
       "path": "res://test/unit/test_smoke.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 32550
+      "usec": 31721
     },
     {
       "bouts": 0,
@@ -4106,11 +4362,12 @@
       "maps": 0,
       "path": "res://test/unit/test_suite_budget.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 35217
+      "usec": 37319
     },
     {
       "bouts": 0,
@@ -4122,11 +4379,12 @@
       "maps": 0,
       "path": "res://test/unit/test_suite_process.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 369042
+      "usec": 371060
     },
     {
       "bouts": 0,
@@ -4138,11 +4396,12 @@
       "maps": 0,
       "path": "res://test/unit/test_suite_profile_consistency.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 89045
+      "usec": 89813
     },
     {
       "bouts": 0,
@@ -4154,11 +4413,12 @@
       "maps": 0,
       "path": "res://test/unit/test_suite_tier.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 13313
+      "usec": 19803
     },
     {
       "bouts": 0,
@@ -4170,11 +4430,12 @@
       "maps": 0,
       "path": "res://test/unit/test_void_vocabulary_guard.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 327917
+      "usec": 330451
     },
     {
       "bouts": 0,
@@ -4186,11 +4447,12 @@
       "maps": 12,
       "path": "res://test/unit/view/modules/test_aim_mode.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 6,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 36,
-      "usec": 12576241
+      "usec": 12573899
     },
     {
       "bouts": 0,
@@ -4202,11 +4464,12 @@
       "maps": 14,
       "path": "res://test/unit/view/modules/test_battle_placements.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 42,
-      "usec": 17229972
+      "usec": 17071727
     },
     {
       "bouts": 0,
@@ -4218,11 +4481,12 @@
       "maps": 8,
       "path": "res://test/unit/view/modules/test_editor_gizmo_followups.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 24,
-      "usec": 7219634
+      "usec": 7026157
     },
     {
       "bouts": 0,
@@ -4234,11 +4498,12 @@
       "maps": 5,
       "path": "res://test/unit/view/modules/test_editor_isolation.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 15,
-      "usec": 4645468
+      "usec": 4425028
     },
     {
       "bouts": 0,
@@ -4250,11 +4515,12 @@
       "maps": 20,
       "path": "res://test/unit/view/modules/test_editor_mode.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 60,
-      "usec": 17368917
+      "usec": 17452061
     },
     {
       "bouts": 0,
@@ -4266,11 +4532,12 @@
       "maps": 8,
       "path": "res://test/unit/view/modules/test_editor_scale.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 24,
-      "usec": 7319275
+      "usec": 7148561
     },
     {
       "bouts": 0,
@@ -4282,11 +4549,12 @@
       "maps": 7,
       "path": "res://test/unit/view/modules/test_editor_stacks.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 21,
-      "usec": 6309426
+      "usec": 6280411
     },
     {
       "bouts": 0,
@@ -4298,11 +4566,12 @@
       "maps": 12,
       "path": "res://test/unit/view/modules/test_editor_surfaces.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 36,
-      "usec": 10483317
+      "usec": 10495165
     },
     {
       "bouts": 0,
@@ -4314,11 +4583,12 @@
       "maps": 8,
       "path": "res://test/unit/view/modules/test_editor_veneer.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 24,
-      "usec": 7132358
+      "usec": 7230476
     },
     {
       "bouts": 0,
@@ -4330,11 +4600,12 @@
       "maps": 9,
       "path": "res://test/unit/view/modules/test_editor_view_agreement.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 27,
-      "usec": 8061336
+      "usec": 8208764
     },
     {
       "bouts": 0,
@@ -4346,11 +4617,12 @@
       "maps": 16,
       "path": "res://test/unit/view/modules/test_editor_visible_gaps.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 48,
-      "usec": 14819135
+      "usec": 14754513
     },
     {
       "bouts": 0,
@@ -4362,11 +4634,12 @@
       "maps": 6,
       "path": "res://test/unit/view/modules/test_gizmo_drag_fidelity.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 18,
-      "usec": 5399172
+      "usec": 5518640
     },
     {
       "bouts": 0,
@@ -4378,11 +4651,12 @@
       "maps": 11,
       "path": "res://test/unit/view/modules/test_gizmo_module.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 33,
-      "usec": 11041868
+      "usec": 10940042
     },
     {
       "bouts": 0,
@@ -4394,11 +4668,12 @@
       "maps": 25,
       "path": "res://test/unit/view/modules/test_layout_review.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 76,
-      "usec": 26921061
+      "usec": 27001276
     },
     {
       "bouts": 0,
@@ -4410,11 +4685,12 @@
       "maps": 18,
       "path": "res://test/unit/view/modules/test_layout_review_3.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 57,
-      "usec": 20493983
+      "usec": 20446750
     },
     {
       "bouts": 0,
@@ -4426,11 +4702,12 @@
       "maps": 9,
       "path": "res://test/unit/view/modules/test_parts_list.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 27,
-      "usec": 8315334
+      "usec": 8207564
     },
     {
       "bouts": 0,
@@ -4442,11 +4719,12 @@
       "maps": 8,
       "path": "res://test/unit/view/modules/test_pass_c_behaviours.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 2,
       "ui_builds": 24,
-      "usec": 10093127
+      "usec": 10180668
     },
     {
       "bouts": 0,
@@ -4458,11 +4736,12 @@
       "maps": 0,
       "path": "res://test/unit/view/modules/test_slot_properties.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2964
+      "usec": 2924
     },
     {
       "bouts": 0,
@@ -4474,11 +4753,12 @@
       "maps": 5,
       "path": "res://test/unit/view/modules/test_slot_providers.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 15,
-      "usec": 5300976
+      "usec": 5352359
     },
     {
       "bouts": 0,
@@ -4490,11 +4770,12 @@
       "maps": 3,
       "path": "res://test/unit/view/modules/test_surfaces_do_not_overlap.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 9,
-      "usec": 2963889
+      "usec": 2998511
     },
     {
       "bouts": 0,
@@ -4506,11 +4787,12 @@
       "maps": 22,
       "path": "res://test/unit/view/modules/test_three_bars.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 66,
-      "usec": 20399835
+      "usec": 20521762
     },
     {
       "bouts": 0,
@@ -4522,11 +4804,12 @@
       "maps": 4,
       "path": "res://test/unit/view/modules/test_ui_button_sync.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 3514446
+      "usec": 3544830
     },
     {
       "bouts": 0,
@@ -4538,11 +4821,12 @@
       "maps": 0,
       "path": "res://test/unit/view/modules/test_view_gap_modules.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 549226
+      "usec": 554912
     },
     {
       "bouts": 0,
@@ -4554,11 +4838,12 @@
       "maps": 13,
       "path": "res://test/unit/view/modules/test_view_modes.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 38,
-      "usec": 11625308
+      "usec": 11754011
     },
     {
       "bouts": 0,
@@ -4570,15 +4855,16 @@
       "maps": 0,
       "path": "res://test/unit/view/modules/test_view_modules_stand_alone.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 328162
+      "usec": 324401
     },
     {
       "bouts": 3,
-      "candidates": 87572,
+      "candidates": 87428,
       "dups": 182,
       "escaped": 0,
       "floods": 110,
@@ -4586,11 +4872,12 @@
       "maps": 5,
       "path": "res://test/unit/view/overlays/test_ai_batch_yield.gd",
       "plans": 48,
+      "sampled_turns": 0,
       "shot_planes": 67,
       "spawns": 0,
       "turns": 48,
       "ui_builds": 4,
-      "usec": 22252295
+      "usec": 22404828
     },
     {
       "bouts": 2,
@@ -4602,11 +4889,12 @@
       "maps": 19,
       "path": "res://test/unit/view/overlays/test_generate_bout_overlay.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 36,
-      "usec": 14717001
+      "usec": 14858890
     },
     {
       "bouts": 0,
@@ -4618,11 +4906,12 @@
       "maps": 36,
       "path": "res://test/unit/view/overlays/test_spectator_overlay.gd",
       "plans": 21,
+      "sampled_turns": 0,
       "shot_planes": 13,
       "spawns": 0,
       "turns": 13,
       "ui_builds": 108,
-      "usec": 56264441
+      "usec": 56327943
     },
     {
       "bouts": 0,
@@ -4634,11 +4923,12 @@
       "maps": 21,
       "path": "res://test/unit/view/overlays/test_squad_control_overlay.gd",
       "plans": 1,
+      "sampled_turns": 0,
       "shot_planes": 6,
       "spawns": 0,
       "turns": 11,
       "ui_builds": 64,
-      "usec": 20222231
+      "usec": 20170750
     },
     {
       "bouts": 0,
@@ -4650,11 +4940,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_action_bar.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 292528
+      "usec": 303411
     },
     {
       "bouts": 0,
@@ -4666,11 +4957,12 @@
       "maps": 4,
       "path": "res://test/unit/view/test_aim_frame_probe.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 5553333
+      "usec": 5476699
     },
     {
       "bouts": 0,
@@ -4682,11 +4974,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_aim_ray_is_camera_dependent.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 48334
+      "usec": 47776
     },
     {
       "bouts": 0,
@@ -4698,11 +4991,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_aim_view_dartboard_cache.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 177632
+      "usec": 173221
     },
     {
       "bouts": 0,
@@ -4714,11 +5008,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_aim_view_decal_axis.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 50144
+      "usec": 47422
     },
     {
       "bouts": 0,
@@ -4730,11 +5025,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_aim_view_part_label.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 3,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 360577
+      "usec": 348611
     },
     {
       "bouts": 0,
@@ -4746,11 +5042,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_ap_mp_pip_row.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 170937
+      "usec": 160137
     },
     {
       "bouts": 0,
@@ -4762,11 +5059,12 @@
       "maps": 1,
       "path": "res://test/unit/view/test_batch_badge_view.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 1,
-      "usec": 923674
+      "usec": 897761
     },
     {
       "bouts": 6,
@@ -4778,11 +5076,12 @@
       "maps": 82,
       "path": "res://test/unit/view/test_battle_scene.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 3,
       "ui_builds": 45,
-      "usec": 63387248
+      "usec": 63343147
     },
     {
       "bouts": 0,
@@ -4794,11 +5093,12 @@
       "maps": 5,
       "path": "res://test/unit/view/test_battle_scene_input.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 4089164
+      "usec": 4074912
     },
     {
       "bouts": 0,
@@ -4810,11 +5110,12 @@
       "maps": 6,
       "path": "res://test/unit/view/test_battle_scene_occlusion_fade.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 6,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 5319269
+      "usec": 5235751
     },
     {
       "bouts": 0,
@@ -4826,11 +5127,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_board_view.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 121026
+      "usec": 94317
     },
     {
       "bouts": 0,
@@ -4842,11 +5144,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_board_view_occlusion.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 242287
+      "usec": 219453
     },
     {
       "bouts": 0,
@@ -4858,11 +5161,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_board_view_winding.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 65443
+      "usec": 59857
     },
     {
       "bouts": 0,
@@ -4874,11 +5178,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_bout_build_log.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 53074
+      "usec": 52190
     },
     {
       "bouts": 0,
@@ -4890,11 +5195,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_builder_scene.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 135140
+      "usec": 124371
     },
     {
       "bouts": 0,
@@ -4906,11 +5212,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_camera_rig.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 233529
+      "usec": 211107
     },
     {
       "bouts": 0,
@@ -4922,11 +5229,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_camera_rig_aim.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 103188
+      "usec": 91218
     },
     {
       "bouts": 0,
@@ -4938,11 +5246,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_combat_log_panel.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 239274
+      "usec": 232331
     },
     {
       "bouts": 0,
@@ -4954,11 +5263,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_controls_overlay.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 71502
+      "usec": 66714
     },
     {
       "bouts": 0,
@@ -4970,11 +5280,12 @@
       "maps": 1,
       "path": "res://test/unit/view/test_cutout_feed_cost_probe.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 573359
+      "usec": 533199
     },
     {
       "bouts": 0,
@@ -4986,11 +5297,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_cutout_gate_cost_probe.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 145944
+      "usec": 136925
     },
     {
       "bouts": 0,
@@ -5002,11 +5314,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_debug_control_panel.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1156531
+      "usec": 1127061
     },
     {
       "bouts": 0,
@@ -5018,11 +5331,12 @@
       "maps": 10,
       "path": "res://test/unit/view/test_debug_panel_layout.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 24,
-      "usec": 8369833
+      "usec": 8282152
     },
     {
       "bouts": 0,
@@ -5034,11 +5348,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_extracted_unit_leaves_the_board.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 11,
       "ui_builds": 0,
-      "usec": 135456
+      "usec": 126280
     },
     {
       "bouts": 0,
@@ -5050,11 +5365,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_facing_arc.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 54250
+      "usec": 48920
     },
     {
       "bouts": 0,
@@ -5066,11 +5382,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_hierarchical_ui_sink.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 75818
+      "usec": 70527
     },
     {
       "bouts": 0,
@@ -5082,11 +5399,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_hit_volume_view.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 362508
+      "usec": 340003
     },
     {
       "bouts": 0,
@@ -5098,11 +5416,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_hit_volume_view_mesh_scene.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 65203
+      "usec": 62808
     },
     {
       "bouts": 0,
@@ -5114,11 +5433,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_hit_volume_view_refresh.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 153902
+      "usec": 147568
     },
     {
       "bouts": 0,
@@ -5130,11 +5450,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_hit_volume_view_render_primitive.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 100552
+      "usec": 91095
     },
     {
       "bouts": 0,
@@ -5146,11 +5467,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_hit_volume_view_show_assembly.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 87797
+      "usec": 81148
     },
     {
       "bouts": 0,
@@ -5162,11 +5484,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_hit_volume_view_weapon_labels.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 146177
+      "usec": 132344
     },
     {
       "bouts": 0,
@@ -5178,11 +5501,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_hulk_theme.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 87337
+      "usec": 78738
     },
     {
       "bouts": 0,
@@ -5194,11 +5518,12 @@
       "maps": 4,
       "path": "res://test/unit/view/test_inspect_dim.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 3553573
+      "usec": 3440278
     },
     {
       "bouts": 0,
@@ -5210,11 +5535,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_inspect_panel.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 577135
+      "usec": 526677
     },
     {
       "bouts": 0,
@@ -5226,11 +5552,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_inspect_viewer_lighting.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 87623
+      "usec": 86058
     },
     {
       "bouts": 0,
@@ -5242,11 +5569,12 @@
       "maps": 2,
       "path": "res://test/unit/view/test_inspect_world_leak.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 6,
-      "usec": 1740533
+      "usec": 1718812
     },
     {
       "bouts": 0,
@@ -5258,11 +5586,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_no_risers.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 90932
+      "usec": 83147
     },
     {
       "bouts": 0,
@@ -5274,11 +5603,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_part_highlight_bidirectional.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 135464
+      "usec": 128882
     },
     {
       "bouts": 0,
@@ -5290,11 +5620,12 @@
       "maps": 6,
       "path": "res://test/unit/view/test_perf_panel.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 9,
-      "usec": 4414022
+      "usec": 4343588
     },
     {
       "bouts": 0,
@@ -5306,11 +5637,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_phase12_transparency.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 1,
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 88990
+      "usec": 88709
     },
     {
       "bouts": 3,
@@ -5322,11 +5654,12 @@
       "maps": 12,
       "path": "res://test/unit/view/test_replay_wiring.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 8,
       "turns": 0,
       "ui_builds": 27,
-      "usec": 22661254
+      "usec": 22516396
     },
     {
       "bouts": 0,
@@ -5338,11 +5671,12 @@
       "maps": 36,
       "path": "res://test/unit/view/test_resolution_player.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 71,
-      "usec": 37697341
+      "usec": 36820191
     },
     {
       "bouts": 0,
@@ -5354,11 +5688,12 @@
       "maps": 4,
       "path": "res://test/unit/view/test_resolution_player_elevation.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 3473549
+      "usec": 3360017
     },
     {
       "bouts": 0,
@@ -5370,11 +5705,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_resource_editor_column_widths.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 260108
+      "usec": 246911
     },
     {
       "bouts": 0,
@@ -5386,11 +5722,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_resource_editor_dropdown.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 426826
+      "usec": 406502
     },
     {
       "bouts": 0,
@@ -5402,11 +5739,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_resource_editor_layout.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 11,
-      "usec": 586527
+      "usec": 562848
     },
     {
       "bouts": 0,
@@ -5418,11 +5756,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_resource_editor_nested_rows.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 698480
+      "usec": 661610
     },
     {
       "bouts": 0,
@@ -5434,11 +5773,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_resource_editor_scene.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 4,
-      "usec": 264095
+      "usec": 241713
     },
     {
       "bouts": 0,
@@ -5450,11 +5790,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_resource_editor_table.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 733251
+      "usec": 683941
     },
     {
       "bouts": 0,
@@ -5466,11 +5807,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_resource_editor_undo_save.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 10,
-      "usec": 583645
+      "usec": 543294
     },
     {
       "bouts": 0,
@@ -5482,11 +5824,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_stat_block_view.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 83261
+      "usec": 73357
     },
     {
       "bouts": 0,
@@ -5498,11 +5841,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_stat_panel.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 269798
+      "usec": 258709
     },
     {
       "bouts": 0,
@@ -5514,11 +5858,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 105,
       "spawns": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 3904824
+      "usec": 3825519
     },
     {
       "bouts": 0,
@@ -5530,11 +5875,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_aim.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 13,
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 2938679
+      "usec": 2957729
     },
     {
       "bouts": 0,
@@ -5546,11 +5892,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_aim_facing.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 4,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 340458
+      "usec": 321609
     },
     {
       "bouts": 0,
@@ -5562,11 +5909,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_arm.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 658097
+      "usec": 648257
     },
     {
       "bouts": 0,
@@ -5578,11 +5926,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_camera.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 2,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 364068
+      "usec": 369021
     },
     {
       "bouts": 0,
@@ -5594,11 +5943,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_click.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 205615
+      "usec": 195749
     },
     {
       "bouts": 0,
@@ -5610,11 +5960,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_facing.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 5,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1184401
+      "usec": 1206803
     },
     {
       "bouts": 0,
@@ -5626,11 +5977,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_hover.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 200335
+      "usec": 190977
     },
     {
       "bouts": 0,
@@ -5642,11 +5994,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_input_capture.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 112749
+      "usec": 112396
     },
     {
       "bouts": 0,
@@ -5658,11 +6011,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_resolve_to.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 729049
+      "usec": 692787
     },
     {
       "bouts": 0,
@@ -5674,11 +6028,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_reticle.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 10,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1170273
+      "usec": 1107665
     },
     {
       "bouts": 0,
@@ -5690,11 +6045,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tactics_controller_step_out.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 210,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3791539
+      "usec": 3627493
     },
     {
       "bouts": 0,
@@ -5706,11 +6062,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tooltip_controller.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 173364
+      "usec": 189308
     },
     {
       "bouts": 0,
@@ -5722,11 +6079,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_tooltip_view.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 120847
+      "usec": 128060
     },
     {
       "bouts": 0,
@@ -5738,11 +6096,12 @@
       "maps": 3,
       "path": "res://test/unit/view/test_turn_indicator_timing.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 3,
       "ui_builds": 6,
-      "usec": 2726658
+      "usec": 2644335
     },
     {
       "bouts": 0,
@@ -5754,11 +6113,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_ui_log_sink_coalescing.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 156483
+      "usec": 132035
     },
     {
       "bouts": 0,
@@ -5770,11 +6130,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_ui_sink.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 70413
+      "usec": 62756
     },
     {
       "bouts": 0,
@@ -5786,11 +6147,12 @@
       "maps": 0,
       "path": "res://test/unit/view/test_weapon_panel.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 197590
+      "usec": 177404
     },
     {
       "bouts": 0,
@@ -5802,27 +6164,29 @@
       "maps": 0,
       "path": "res://test/unit/view/test_world_palette.gd",
       "plans": 0,
+      "sampled_turns": 0,
       "shot_planes": 0,
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 149285
+      "usec": 128290
     }
   ],
   "totals": {
-    "bouts": 80,
-    "candidates": 911200,
-    "dups": 9560,
-    "escaped": 129,
-    "floods": 4677,
-    "lookahead_fields": 338,
-    "maps": 936,
-    "plans": 400,
-    "shot_planes": 9028,
+    "bouts": 84,
+    "candidates": 1274438,
+    "dups": 10276,
+    "escaped": 210,
+    "floods": 5186,
+    "lookahead_fields": 686,
+    "maps": 940,
+    "plans": 584,
+    "sampled_turns": 312,
+    "shot_planes": 9330,
     "spawns": 25,
-    "turns": 622,
+    "turns": 808,
     "ui_builds": 1267,
-    "usec": 1043956692
+    "usec": 1333484130
   },
-  "wall_clock_usec": 1048647482
+  "wall_clock_usec": 1338121373
 }

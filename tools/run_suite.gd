@@ -223,7 +223,11 @@ func _print_summary(total_usec: int, failures: int) -> void:
 		"ui_builds",
 		"escaped",
 		"maps",
-		"spawns"
+		"spawns",
+		# tb65 close-out: printed as well as collected. `SuiteBudget` subtracts this from `turns`,
+		# so a reader comparing the cost line against the budget without it would be looking at a
+		# number the gate does not use — the same reason `escaped` was added to this list.
+		"sampled_turns"
 	]:
 		parts.append("%s %d" % [key, int(total.get(key, 0))])
 	print("  ".join(parts))
@@ -294,6 +298,11 @@ func _snapshot() -> Dictionary:
 		# between taskblock-56 and taskblock-64 with every budget green throughout.
 		"maps": MapGen.maps_generated,
 		"spawns": SuiteRun.processes_spawned,
+		# tb65 close-out: the sampler's own turns, so `SuiteBudget` can subtract the one quantity
+		# in this table the suite genuinely does not control. Seeds come from the clock and
+		# `seeds_to_first_win` stops at the first completion, so this swings by hundreds between
+		# identical runs.
+		"sampled_turns": CompletionSampler.sampled_turns,
 	}
 
 

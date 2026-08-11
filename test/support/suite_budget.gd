@@ -110,13 +110,17 @@ const HEADROOM := 0.15
 ## 121.9 s to 7 bouts / 246 turns / 279.2 s.** That is a 158-turn swing against 15% headroom on a
 ## 1063 baseline, and it is the same class of defect `TURNS_EXCLUDED` already existed for.
 ##
-## **The fix is not another exclusion.** Adding the other two corpus readers to
-## `TURNS_EXCLUDED` was tried and `test_the_exclusion_list_stays_small_and_gates_bouts_
-## regardless` rejected it, which is the guard doing its job: an exemption is a hole in the gate
-## and three of them is a habit. So `turns` is baselined at the **measured total of 786**, not at
-## the 540 that excludes every corpus reader — the corpus's contribution stays inside the number
-## and the headroom carries its swing. That costs tightness on purpose: the honest ratchet from
-## 1063 is to 786, not to a 540 that would flake the first time the corpus drew badly.
+## **The fix was not another exclusion, and it was not a looser baseline either.** Adding the other
+## two corpus readers to `TURNS_EXCLUDED` was tried and `test_the_exclusion_list_stays_small_and_
+## gates_bouts_regardless` rejected it — the guard doing its job, since three exemptions is a habit.
+## Baselining `turns` at the measured *total* was the next attempt and it was also wrong: making the
+## full gate write the profile turned the swing into a live flake, because a green run with an
+## unlucky draw writes 1131 and the next run then fails a limit of 904.
+##
+## **`CompletionSampler.sampled_turns` is the answer** — the uncontrolled thing is a *quantity*, not
+## a file, and it is now subtracted as one. So `turns` is baselined at the **controlled 496**
+## (808 measured minus 312 sampled), which is tighter than the 1063 it replaces by a factor of two
+## and does not move with the draw.
 ##
 ## **`bouts` is left gated too**: the corpus can add at most `FIRST_WIN_CAP` (9) and 15% of 85 is
 ## 12, so the headroom covers it where a 158-turn swing it plainly could not.
@@ -127,7 +131,7 @@ const HEADROOM := 0.15
 ## Numbers below are the tb65 full gate, 363 scripts / 3547 tests / 0 failures / 1255.7 s.
 const BASELINE: Dictionary = {
 	"bouts": 85,
-	"turns": 786,
+	"turns": 496,
 	"plans": 571,
 	"candidates": 1292621,
 	"shot_planes": 9187,
@@ -155,9 +159,14 @@ const BASELINE: Dictionary = {
 ## tb65 Pass F tried to add the other two `SuiteTier.CORPUS_READERS` here and
 ## `test_the_exclusion_list_stays_small_and_gates_bouts_regardless` refused it — correctly.
 ## **The guard is the better judgement**: an exemption is a hole in the gate, and the answer to
-## "this counter moved for a reason I do not control" is not to widen the hole until nothing
-## trips. The corpus swing is absorbed by the `turns` baseline instead, which keeps it *visible*
-## in a number rather than exempted out of the total. See `BASELINE`.
+## "this counter moved for a reason I do not control" is not to widen the hole until nothing trips.
+##
+## tb65 close-out: **the right exclusion turned out not to be a file at all.** What is
+## uncontrolled is the *sampler's own turns* — clock-drawn seeds, stopped at the first completion
+## — and that cost lands on whichever corpus reader runs first, which failure-history reordering
+## changes between runs. So a filename was only ever a proxy for a quantity, and
+## `CompletionSampler.sampled_turns` is the quantity. This list stays at one entry and is now
+## belt-and-braces: `test_full_mission.gd`'s turns are already inside `sampled_turns`.
 const TURNS_EXCLUDED: Array[String] = ["res://test/integration/test_full_mission.gd"]
 
 ## Which counters are actually gated. **`candidates` and `shot_planes` are measured
@@ -240,6 +249,18 @@ static func violations(profile: Dictionary) -> Array[String]:
 	for counter: String in GATED:
 		var observed: int = int(totals.get(counter, 0))
 		if counter == "turns":
+			# tb65 close-out: **the sampler's own turns come off first, as a quantity.** They are
+			# clock-drawn and stop at the first completion, so they swing by hundreds between
+			# identical runs and are charged to whichever corpus reader ran first.
+			#
+			# **The file exclusion below is now redundant rather than belt-and-braces, and the
+			# distinction matters.** `test_full_mission.gd` reaches its bouts through `BoutCorpus`,
+			# so its turns are already inside `sampled_turns` — subtracting both would double-count
+			# them. It measures **0 turns** in every profile taken since tb64 for exactly that
+			# reason (another corpus reader always plays first), so the double-subtraction is zero
+			# in practice. It is kept because `test_suite_budget.gd`'s own exclusion tests are
+			# written against the list, not because it still carries the rule.
+			observed -= int(totals.get("sampled_turns", 0))
 			observed -= _excluded_turns(profile)
 		var limit: int = limit_for(counter)
 		if limit < 0:

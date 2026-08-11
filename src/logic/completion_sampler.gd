@@ -109,10 +109,27 @@ const MIXED_ROSTER: Array[StringName] = [
 	&"combat_tester_sniper_rifle",
 ]
 
+## tb65 close-out: **the turns this sampler played, so the budget can subtract a quantity it
+## does not control.**
+##
+## Every bout reached through `run_seed` is a *sampled* bout — the seeds come from the clock by
+## design (`BoutCorpus.sample`, `test_full_mission.gd`), and `seeds_to_first_win` stops at the
+## first completion, so **how many it plays is a property of the draw and of the AI's luck, not
+## of the suite.** Measured across three full gates in one session with no relevant change
+## between them: **622, 786 and 1131 total suite turns**, and the spread is almost entirely this.
+##
+## `SuiteBudget` subtracts this from the gated `turns` total. **That is strictly better than the
+## exclusion it replaces**, which exempted a whole *file* — the sampler's cost lands on whichever
+## `SuiteTier.CORPUS_READERS` file touches the corpus first, and `run_tests.sh` reorders scripts
+## by failure history, so the file carrying it changes between runs. A quantity is the honest
+## thing to exclude; a filename was only ever a proxy for one.
+##
+## Diagnostics only, never read by a decision.
+static var sampled_turns: int = 0
+
 ## How many times `sample()` has fallen below its floor since the process started.
 ## Diagnostics only; never read by a decision.
 static var escalations: int = 0
-
 
 ## **The bout a seed names.** Rosters and presets are constants, so the seed alone is
 ## a complete reproduction handle — which is what taskblock-47 Pass D's watched run is
@@ -121,6 +138,12 @@ static var escalations: int = 0
 ## Split out of `run_seed` for exactly that reason: the watched path and the headless
 ## path must build the *same* bout from the same seed, and two call sites assembling
 ## the same roster by hand is how they would stop doing that.
+
+
+static func reset_diagnostics() -> void:
+	sampled_turns = 0
+
+
 static func build_for_seed(map_seed: int) -> Dictionary:
 	return build_roster(MIXED_ROSTER, MIXED_ROSTER, map_seed)
 
@@ -185,6 +208,7 @@ static func run_seed(map_seed: int, cap: int = TURN_CAP, tier: StringName = &"")
 		return {}
 	var runner := BoutRunner.new(built["state"], built["mission"], cap)
 	await runner.run_to_completion()
+	sampled_turns += runner.turns_taken
 	var outcome: int = built["mission"].outcome
 	return {
 		"seed": map_seed,
