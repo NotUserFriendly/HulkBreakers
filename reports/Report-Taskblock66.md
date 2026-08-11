@@ -1,166 +1,182 @@
 # Taskblock 66 Report — Shard the gate, and the makespan is one draw
 
-**Pass A has landed; B through E have not.** All five of its items pass and none of the four
-stop-and-report conditions fired. **`p` is measured at 0.220 across 100 seeds** spanning the real draw
-space, which replaces every pre-pass estimate in the spec and in this report.
+**All six passes landed** — A (measure), B (two free checks), C (`BR65.01`), D (the gated counters),
+E (the packer), F (the runner and the merge) — each green on the fast gate and committed.
 
-**The headline for the block, restated against measured inputs:** the corpus shard is **180–326 s
-typical** and **424–766 s at the cap**, against **1333.5 s today** — roughly **3–5 minutes typical, 7–13
-at worst, against 22**. The cap draw is a **1-in-9.4** event, not the 1-in-4.3 the spec assumed.
+**`./run_tests.sh shard` runs the whole suite across 8 processes.** Three real sharded gates were
+measured, and **the spread between them is the result** — same code, same suite, different draw:
+
+| run | corpus draw | shard 0 | gate wall | vs 1338 s |
+|---|---:|---:|---:|---:|
+| first | N=5 | 227.6 s | **242.1 s** | **5.5×** |
+| second | N=2 | 195 s | **220.5 s** | **6.1×** |
+| third | N=8 | 611.3 s | **626.3 s** | **2.1×** |
+
+**A single headline number for this gate would be a lie, and that is the block's own finding rather
+than a caveat on it.** The model predicted 181–326 s typical and 425–767 s at the cap; the three
+observed runs landed at 242, 220 and 626 s — **every one inside its predicted band**, including the
+N=8 draw that came within one seed of the cap.
+
+| draw | modelled gate | probability |
+|---|---:|---:|
+| lucky (N=1) | 142 s — 9.4× | 0.220 |
+| typical (N=4.06) | 182–327 s — 4.1–7.3× | — |
+| cap (N=9) | 426–768 s — 1.7–3.1× | 0.107 |
+
+**On a lucky draw the non-corpus shards become the wall at ~141 s**, so the gate has a floor of
+about 142 s however well the draw goes — the honest ceiling on this block's win. **At the cap the
+win narrows to about 2×**, which is the honest floor.
 
 <!-- Rewrite this opening whenever a later pass moves it. -->
 
 ## Decisions made without asking
 
-### A defect in the spec's inputs, recorded before Pass A ran — and an estimate from it that did not survive
+### A defect in the spec's inputs, and an estimate from it that did not survive
 
-The spec's pre-pass `p` came from four draws recovered from committed profiles, read as **2, 2, 7, 6**
-corpus seeds off `test_watched_run.gd`'s bout count. **That file builds one bout the corpus did not
-draw** — `test_a_watched_seed_matches_what_the_headless_path_reported` reads `BoutCorpus.rows()` and
-then replays the corpus's first recorded seed through a paced `BoutRunner`, which is the entire point of
-the test. Its bout count is always **corpus draw + 1**.
+Recorded before Pass A ran. The spec's pre-pass `p` read the corpus draw off `test_watched_run.gd`'s
+bout count as **2, 2, 7, 6** seeds. **That file builds one bout the corpus did not draw** — it
+replays the corpus's first recorded seed through a paced `BoutRunner`, which is the whole point of
+the test — so its count is always **draw + 1**. Confirmed where both numbers are visible: the gate
+logged `seeds to first completion: 5` against a profile recording 6 bouts.
 
-Confirmed by direct observation, on one run where both numbers are visible:
+**The accounting defect is real; the correction I derived from it was not an improvement.** I
+restated `p̂` as 0.308 against the spec's 0.235. **Measured over 100 seeds, `p` is 0.220** — nearer
+the spec's figure than mine. Both were four-draw estimates and both were noise. Reporting the
+verified half without the overshoot would make the finding look better than it was.
 
-```
-taskblock-65 fullgate3 log:   seeds to first completion: 5
-profile that run wrote:        test_watched_run.gd bouts = 6
-```
+**What survived is why it mattered:** A4 compares the live draw against `seeds_played`, which
+`seeds_to_first_win` already returns and the gate already prints, rather than against a bout count.
+Inferring the draw from a bout count is the step that produced the error and it would have made
+every confirmation report a false mismatch of exactly one bout.
 
-**The accounting defect is real. The correction I derived from it was not an improvement.** I restated
-`p̂` as 0.308 (4 wins / 13 seeds) against the spec's 0.235 (4/17). **Measured over 100 seeds, `p` is
-0.220** — nearer the spec's figure than mine. Both were four-draw estimates and both were noise; the
-100-seed measurement supersedes them equally. Recorded because reporting the verified half without the
-overshoot would make the finding look better than it was.
+### Eight shards, not sixteen — derived rather than assumed
 
-**The cost inputs moved the way I said, and by more than I said.** I argued `W` was too high and `L` too
-low. Measured: **`W` 45.6 against the spec's 58.3**, **`L` 61.3 against the spec's 34.7** — directionally
-right on both, badly wrong on the magnitude of `L`, which I had put near 39.
+E5 asked for the number to be derived. Non-corpus work is 972 s, so its makespan falls with the
+shard count **only until it drops under the corpus shard**, after which extra shards buy nothing
+because the gate ends when the draw ends: **6 shards → 163.3 s (the knee), 8 → 122.8 s, 16 →
+64.6 s** against a corpus shard of 181–326 s. **Eight is the knee plus one step of headroom**, so an
+unlucky packing or a newly expensive file does not immediately make the non-corpus half the wall,
+and it leaves more of a machine somebody else is using.
 
-**What survives regardless of where `p` landed, and why the finding still mattered:** **A4 compares the
-live draw against `seeds_played`, not against a bout count.** `seeds_to_first_win` already returns it and
-the gate already prints it (`"seeds to first completion: N"`). Inferring the draw from a file's bout
-count is the exact step that produced the error, and it would have made every confirmation run report a
-false mismatch of exactly one bout.
+**Shard 0 deliberately takes no non-corpus work despite apparent slack.** Its cost spans 181–767 s,
+so packing onto it helps on a lucky draw and compounds the damage on an unlucky one.
 
-### Two of the spec's corrections to taskblock-65 are accepted, and verified
+### `maps` and `floods` are gated counters that sharding inflates, and the fix is a quantity
 
-**Fisher exact on the recorded 5/12 vs 8/12 window comparison gives p = 0.414** — reproduced. The
-"pessimistic window" note in `completion_sampler.gd:12` is noise, and taskblock-65 citing it as evidence
-was wrong. **Pass A3 tested it directly rather than assuming either way: chi-square across ten scattered
-windows gives 11.42 on 9 df against a critical value of 16.92 — no evidence the windows differ.** Both
-file headers that carry the belief should be corrected; that is noted for the doc review rather than done
-here.
+Pass A found it: nine of eleven counters summed exactly across shards, but `maps` went 242 → 260 and
+`floods` 667 → 703, traced per shard to `MapCorpus` readers refilling their own caches. **Both are
+gated**, so the shard map's affinity choices move a budget.
 
-Taskblock-65's 15.7× headline was bin-packed against a profile the next commit replaced, and described
-the luckiest available draw. Accepted.
+**The precedent is exact and in the same file.** taskblock-65 Pass F settled the corpus draw
+contaminating `turns` as *"the uncontrolled thing is a quantity, not a file, and it is now
+subtracted as one."* `MapCorpus.fills` records what each fill cost, **keyed rather than counted** —
+two shards each reporting "I filled 50 boards" cannot tell the gate whether that is 50 or 100.
+Verified on real processes: **260 − 18 = 242 and 703 − 36 = 667, both matching unsharded exactly.**
 
-### `maps` and `floods` are gated counters that sharding inflates, and Pass C has to answer for it
+**This also resolves a tension in Pass A's own finding.** Pass A observed that `maps` inflation
+measures how badly a shard map splits corpora — but **a counter cannot be both the gate and the
+diagnostic**. Subtracting gives both: the gated total stays controlled and the subtracted quantity
+*is* the affinity score. On the real sharded gate it reads **zero**.
 
-Pass A1's equality test ran six files unsharded, then one-file-per-shard across six concurrent
-processes. **Nine of eleven counters match exactly**, so the aggregation mechanism — the thing A1
-actually gates on — is sound. Two do not:
+### `BR65.01`: the assertion split rather than the cap moving
 
-| | bouts | turns | plans | candidates | planes | ui_builds | spawns | **floods** | **maps** |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| unsharded | 5 | 16 | 16 | 24940 | 72 | 93 | 8 | **667** | **242** |
-| summed shards | 5 | 16 | 16 | 24940 | 72 | 93 | 8 | **703** | **260** |
+**The alternative was arithmetic, not preference.** Buying a 1% false-red rate needs `FIRST_WIN_CAP`
+at **19** — and under a sharded gate **the cap is the makespan**, so that makes the worst case 1165
+turns against today's 552. The confidence interval puts the required cap anywhere from **13 to 31**,
+so the number cannot be picked confidently either. `test_per_tier_probe.gd` asserts
+`FIRST_WIN_CAP == 9` precisely because thresholds here have historically been moved to quiet a
+flapping gate; it has not moved.
 
-Traced per shard, it is `MapCorpus` duplication and nothing else:
-
-```
-test_map_navigability.gd   unsharded 0 maps / 0 floods    sharded 12 / 24
-test_mag_lift.gd           unsharded 1 map  / 3 floods    sharded  8 / 17
-```
-
-**Both are in `SuiteBudget.GATED`.** A sharded gate therefore reports inflated values against baselines
-measured unsharded, and the shard map's affinity choices move a gated counter. **Stated as a benefit as
-well:** `maps` inflation is now a direct numeric measure of how badly a shard map splits corpora — a
-perfect affinity map inflates it by zero — which makes C3's rule checkable rather than argued.
+**What is given up is stated in the test rather than glossed:** a genuine collapse no longer turns
+the *sampled* test red on its own. The deterministic guard on seed 9003 catches exactly that case,
+which is what the old assertion was reaching for and could only reach by luck.
 
 ### The supervisor's map proposal: I evaluated the wrong version first
 
-Asked why shards regenerate boards rather than being handed them, I evaluated **committed board
-fixtures** and spent most of the answer on staleness. **That was not the proposal.** The supervisor's
-design is *build fresh at gate start, then hand out* — which removes staleness entirely, because the
-boards are as fresh as the generator that made them. Recorded because the correction changed the
-conclusion, not just the emphasis.
-
-**Measured**, with a full signature over heights, blocker `height`/`size`/`facing`, surfaces and spawn
-markers:
-
-| board | generate | load | round-trip | size |
-|---|---:|---:|---:|---:|
-| 32×24 | 389 ms | **62.5 ms** | **5/5 faithful** | 141 KB |
-| 40×30 | 414 ms | **81.6 ms** | **5/5 faithful** | 219 KB |
-
-*(Both under A3's load, so the ratio holds even though the absolute generate figures are inflated
-against taskblock-65's 224/337 ms.)*
-
-**Loading is 5–6× cheaper than generating and `MapSerializer` round-trips faithfully.** What it buys, in
-order: **it deletes C3's affinity constraint** and drives A1's measured inflation to zero, because a
-board that is an *input* costs nothing to share; and ~20 s on an unsharded gate.
-
-**What it does not buy: the makespan.** The corpus shard's cost is `BoutCorpus` *playing missions* — at
-the measured `p`, 4.06 seeds averaging 55 turns — not map generation. Boards-from-disk makes the other
-fifteen shards cheaper and unconstrained; the gate still ends when the draw ends.
-
-**A refinement worth considering over a prologue:** a **lazy shared disk cache wiped at gate start**.
-`MapCorpus.read()` checks a scratch directory, loads if present, generates-and-saves if not. No prologue,
-no need to know in advance which boards the suite wants, the wipe *is* the invalidation, races are benign
-(identical content, atomic rename), and the unsharded path is unchanged because the in-process cache
-short-circuits before touching disk.
-
-**The one risk that survives the correction is `MapSerializer` fidelity.** `BR62.05` is precisely this
-bug having happened once — it dropped blocker `height`/`size`/`offset`/`facing` on *both* ends and
-"round-tripped because both ends discarded the same things". Fixed at tb63 D3, and the fields survive
-today. But a future `Grid` field added without a serializer update silently changes what the whole suite
-sees, where today it is an editor inconvenience. Under this design that is **cheaply guarded in-run**:
-the board is generated and loaded in the same gate, so hashing before save and after load is nearly free.
+Asked why shards regenerate boards rather than being handed them, I assessed **committed fixtures**
+and spent most of the answer on staleness. **That was not the proposal** — *build fresh at gate
+start, then hand out* has no staleness, because the boards are as fresh as the generator that made
+them. Measured: **loading is 5–6× cheaper than generating** (62.5 ms vs 389 ms at 32×24) and
+`MapSerializer` round-trips faithfully 5/5 on a full signature. Recorded in `PLAN.md` with the
+invalidation hole the supervisor then caught in my own refinement — a targeted run does not wipe, so
+the cache would be stale exactly during the edit loop.
 
 ## Tests that failed, then were corrected
 
-*(none yet — Pass A adds no tests; its deliverable is measurement)*
+**Seven, and two of them were caught only by running the sharded gate for real.**
+
+1. **I committed Pass D against a gate that never ran.** `gdlint src test` segfaulted at
+   `run_tests.sh` line 107 and the script aborted — but I piped through `tail -30`, so the pipeline
+   returned `tail`'s exit code of 0, the completion notification said success, and a grep over a
+   two-line log reported no failures. **This is the same masking trap that bit taskblock-65's full
+   gate, repeated after I had written it up.** `gdlint` passed on retry (transient, almost certainly
+   resource pressure from ten parallel probes) and the re-run was green — 3262 tests, 0 failures —
+   so the commit's claim was true, but it was unverified when I made it. Gate output is redirected
+   rather than piped from here on.
+2. **The merged report was silently dropping the completion draw.** It lives in one shard's log and
+   the shard logs are in a temp directory that is cleaned up, so the gate's most useful single number
+   was being discarded by the merge. Found by looking for it in the sharded output rather than by a
+   test. It is surfaced now, **and more than one shard reporting a draw fails the gate** — the
+   runtime backstop for a hand-edited map that splits `CORPUS_READERS`.
+3. **I mislabelled `maps` as a counter the draw does not move.** Every bout generates exactly one, so
+   it tracks the bout count (83 sharded vs 84 unsharded). Caught while comparing sharded against
+   unsharded totals and expecting equality. The genuinely stable counters are `spawns` and
+   `ui_builds`, and both match exactly.
+4. **`tools/pack_shards.gd` could not see `ShardMap`** on first run — a new `class_name` needs an
+   import pass before a `-s` script can reference it. Mechanical, and the same failure `run_tests.sh`
+   documents in its own header for exactly this reason.
+5. **`test_every_test_file_is_assigned_to_exactly_one_shard` failed twice, both times correctly.**
+   Adding this block's own test files made the committed map stale. That is the intended signal: **a
+   file in no shard is never run and a sharded gate goes green having skipped it**, which is
+   indistinguishable from success without the check.
+
+6. **My own test was poisoning the merger's parser, and the sharded gate caught it.**
+   `test_merge_shards.gd` echoed the merged output through `gut.p`, and its fixtures deliberately
+   contain the exact strings `merge_shards.py` scans for — `seeds to first completion`, `[Failed]`.
+   Those landed in that shard's stdout, where the real merge read them back as **a second corpus
+   draw**, and would have injected a phantom failure message into any genuinely red run. The gate
+   reported *"MORE THAN ONE SHARD DREW"* against a perfectly co-located map: **the alarm was right
+   about what it saw and wrong about what it meant.** Fixed by asserting on the text without
+   republishing it, with the incident recorded in the test's own header.
+7. **`spawns` was genuinely over budget — 32 against a limit of 29 — and all seven are mine.**
+   `test_merge_shards.gd` drives the merger as a real subprocess seven times, and spawning is the
+   thing under test, so the cost is irreducible. Re-ratcheted to 32 with the reason named.
+   **This is taskblock-65's write-the-profile mechanism working exactly as designed**: the full gate
+   that *wrote* the new numbers read the old ones and passed, and the very next gate read the new
+   ones and went red. Drift lands, then is reported against the baseline it broke — one run late, by
+   construction.
 
 ## Open questions
 
-### Pass A's measured inputs, and the model re-issued
+### The block's headline is a band, and the tail is the part worth watching
 
-| input | spec | **measured** | source |
-|---|---|---|---|
-| `p` | 0.15–0.25 | **0.220** (95% CI 0.139–0.301) | 100 seeds, windows at 0…9000 |
-| `L` losing bout | 34.7 turns | **61.3 turns** | 78 losers, 30 of them at the 100-turn cap |
-| `W` winning bout | 58.3 turns | **45.6 turns** | 22 winners |
-| per-process floor | 1.05 s | **1.29 s** | 1.21 / 1.29 / 1.36 s |
+At the cap the sharded gate is **426–768 s** — still better than 1338 s, but the win narrows from
+9.4× to under 2× on a 1-in-9.4 draw. **`TURN_CAP` is the lever that would fix the tail** — it sets
+the losing-bout cost `L` at 61.3 turns, and `9L` is the whole cap case — but lowering it also lowers
+measured `p` and changes what the completion number means about the game. Recorded in `PLAN.md` as a
+design question rather than turned.
 
-| | turns | seconds |
-|---|---:|---|
-| E[draw] | 235 | **180–326 s** |
-| cap draw (9 losers) | 552 | **424–766 s** |
-| E[seeds played] | 4.06 | |
-| P(cap, no win) | | **0.107 — 1 gate in 9.4** |
+### `p` is 0.220 with a wide interval, and two downstream numbers inherit it
 
-**A2's floor is 23% above taskblock-65's figure and is not material**: 20.6 s of total floor across 16
-shards against 16.8 s, i.e. ~4 s against a makespan of 180–326 s. It does not move the shard count.
+95% CI **0.139–0.301**, across which P(cap) runs **1-in-3.8 to 1-in-25**. No conclusion in this
+block changes anywhere in that interval, which is the useful thing to say — but the point estimate
+should not be received as a fact by anything downstream, and `BR65.01`'s closing arithmetic quotes
+it. **`p` is also P(complete within `TURN_CAP`)**, not P(complete): 30 of 78 losing seeds were still
+playing at the cap, so `p` and `L` are coupled and arithmetic that moves one while holding the other
+is not quite valid.
 
-**A5 passes in the harder case.** All three subprocess-spawning files ran in *simultaneous* shards — 29
-tests, 0 failures, 8 spawns each for 24 total, matching unsharded exactly. PID-keyed log paths held.
+### The cost model is turns-linear and the evidence says it has a fixed component
 
-**A4's live draw agrees with the model but is a weak check by construction.** One clock-drawn escalation
-won on its first seed (9711, EXTRACTED in 33 turns, 49.8 s). `P(N=1) = 0.22`, so a single observation
-constrains almost nothing — it confirms the live path and the model describe the same thing, which is
-what A4 is for, and it is not evidence about the distribution.
+A4's live draw ran 33 turns in 49.8 s — **1.51 s/turn, outside the 0.77–1.39 band** — which solved
+against the 100-seed run gives roughly **33 s fixed per bout plus 0.52 s/turn**. At current draw
+sizes the two models agree within a few seconds, so the headline holds. **Anyone pricing a *turn*
+reduction against the linear model will over-credit it**, and lowering `TURN_CAP` is exactly that.
 
-### `BR65.01` is less severe than filed, and Pass B's justification should be restated
+### What is not yet done, and would be the natural next step
 
-The entry says `test_seeds_to_first_completion_stays_low` goes red on **P = 0.232, about one gate in
-four**, computed from `p = 0.15`. **At the measured `p = 0.220` it is P = 0.107 — one gate in 9.4.**
-Still a real flake and still worth Pass B, but the "one in four" figure should not survive into the fix,
-and the cap arithmetic in the entry (28 for ~1%, 18 for ~1 in 20) is derived from the old `p` and wants
-re-deriving before anyone sizes anything against it.
-
-### Whether the boards-from-disk refinement lands in this block or its own
-
-It simplifies Pass C materially and it is measured, but it changes how the suite gets its fixtures rather
-than how it is scheduled. **Both C3 as specified and the refinement reach the same place**; the
-refinement removes a constraint rather than satisfying it. Left as the supervisor's call.
+**The sharded gate does not write the profile**, deliberately — E6 keeps `profile_suite.gd` on the
+single-process path, because eight processes competing for cores inflate and scramble the per-file
+wall-clock the packer reads, and a sharded regeneration would degrade the packer's own input a
+little more on every pass. **So the profile still costs an unsharded 22-minute run**, and the shard
+map still needs a manual repack when files are added. Both are stated rather than automated; a
+repack-on-red workflow would be the obvious follow-up.

@@ -15,7 +15,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 32112
+      "usec": 35379
     },
     {
       "bouts": 0,
@@ -32,7 +32,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 93619
+      "usec": 99267
     },
     {
       "bouts": 0,
@@ -49,7 +49,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 550270
+      "usec": 556110
     },
     {
       "bouts": 0,
@@ -66,7 +66,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 32144
+      "usec": 34559
     },
     {
       "bouts": 0,
@@ -83,24 +83,24 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 215917
+      "usec": 223203
     },
     {
-      "bouts": 0,
-      "candidates": 0,
-      "dups": 0,
+      "bouts": 1,
+      "candidates": 36823,
+      "dups": 31,
       "escaped": 0,
-      "floods": 0,
+      "floods": 30,
       "lookahead_fields": 0,
-      "maps": 0,
+      "maps": 1,
       "path": "res://test/integration/test_full_mission.gd",
-      "plans": 0,
-      "sampled_turns": 0,
-      "shot_planes": 0,
+      "plans": 15,
+      "sampled_turns": 15,
+      "shot_planes": 2,
       "spawns": 0,
-      "turns": 0,
+      "turns": 15,
       "ui_builds": 0,
-      "usec": 39777
+      "usec": 2710301
     },
     {
       "bouts": 0,
@@ -117,7 +117,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 184461
+      "usec": 182746
     },
     {
       "bouts": 0,
@@ -134,7 +134,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 76032
+      "usec": 72478
     },
     {
       "bouts": 0,
@@ -151,7 +151,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 84588
+      "usec": 83199
     },
     {
       "bouts": 0,
@@ -168,7 +168,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 92462
+      "usec": 95590
     },
     {
       "bouts": 0,
@@ -185,7 +185,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 42834
+      "usec": 44481
     },
     {
       "bouts": 0,
@@ -202,7 +202,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 121889
+      "usec": 126806
     },
     {
       "bouts": 0,
@@ -219,7 +219,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 140107
+      "usec": 139765
     },
     {
       "bouts": 0,
@@ -236,7 +236,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 78266
+      "usec": 81942
     },
     {
       "bouts": 0,
@@ -253,7 +253,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 187971
+      "usec": 196853
     },
     {
       "bouts": 0,
@@ -270,7 +270,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 87072
+      "usec": 93472
     },
     {
       "bouts": 0,
@@ -287,7 +287,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1282684
+      "usec": 1315907
     },
     {
       "bouts": 0,
@@ -304,7 +304,7 @@
       "spawns": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 81469
+      "usec": 82236
     },
     {
       "bouts": 0,
@@ -321,7 +321,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 86261
+      "usec": 86577
     },
     {
       "bouts": 0,
@@ -338,7 +338,7 @@
       "spawns": 0,
       "turns": 5,
       "ui_builds": 0,
-      "usec": 74106
+      "usec": 75207
     },
     {
       "bouts": 0,
@@ -355,7 +355,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 114782
+      "usec": 117440
     },
     {
       "bouts": 0,
@@ -372,7 +372,7 @@
       "spawns": 0,
       "turns": 3,
       "ui_builds": 0,
-      "usec": 102957
+      "usec": 106139
     },
     {
       "bouts": 0,
@@ -389,7 +389,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 78518
+      "usec": 81407
     },
     {
       "bouts": 0,
@@ -406,7 +406,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91092
+      "usec": 94135
     },
     {
       "bouts": 0,
@@ -423,7 +423,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 70473
+      "usec": 71840
     },
     {
       "bouts": 0,
@@ -440,7 +440,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 63144
+      "usec": 64271
     },
     {
       "bouts": 0,
@@ -457,7 +457,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 248497
+      "usec": 266787
     },
     {
       "bouts": 0,
@@ -474,7 +474,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 341362
+      "usec": 352847
     },
     {
       "bouts": 0,
@@ -491,7 +491,7 @@
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 105553
+      "usec": 122492
     },
     {
       "bouts": 0,
@@ -508,7 +508,7 @@
       "spawns": 0,
       "turns": 14,
       "ui_builds": 0,
-      "usec": 194148
+      "usec": 214865
     },
     {
       "bouts": 0,
@@ -525,7 +525,7 @@
       "spawns": 0,
       "turns": 3,
       "ui_builds": 0,
-      "usec": 123699
+      "usec": 131487
     },
     {
       "bouts": 0,
@@ -542,7 +542,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 115132
+      "usec": 123224
     },
     {
       "bouts": 0,
@@ -559,7 +559,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 82568
+      "usec": 89853
     },
     {
       "bouts": 0,
@@ -576,7 +576,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 66081
+      "usec": 68970
     },
     {
       "bouts": 0,
@@ -593,7 +593,7 @@
       "spawns": 0,
       "turns": 18,
       "ui_builds": 0,
-      "usec": 114122
+      "usec": 124342
     },
     {
       "bouts": 0,
@@ -610,7 +610,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 66017
+      "usec": 67522
     },
     {
       "bouts": 0,
@@ -627,7 +627,7 @@
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 298311
+      "usec": 305739
     },
     {
       "bouts": 0,
@@ -644,7 +644,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 96867
+      "usec": 101433
     },
     {
       "bouts": 0,
@@ -661,7 +661,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 149343
+      "usec": 158313
     },
     {
       "bouts": 0,
@@ -678,7 +678,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 6728
+      "usec": 7130
     },
     {
       "bouts": 0,
@@ -695,7 +695,7 @@
       "spawns": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 114414
+      "usec": 123090
     },
     {
       "bouts": 0,
@@ -712,7 +712,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 74342
+      "usec": 81468
     },
     {
       "bouts": 0,
@@ -729,7 +729,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 115576
+      "usec": 125866
     },
     {
       "bouts": 0,
@@ -746,7 +746,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 63643
+      "usec": 70926
     },
     {
       "bouts": 0,
@@ -763,7 +763,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 256782
+      "usec": 267713
     },
     {
       "bouts": 0,
@@ -780,7 +780,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 12585637
+      "usec": 12495090
     },
     {
       "bouts": 5,
@@ -797,7 +797,7 @@
       "spawns": 0,
       "turns": 32,
       "ui_builds": 0,
-      "usec": 29961077
+      "usec": 30246328
     },
     {
       "bouts": 0,
@@ -814,7 +814,7 @@
       "spawns": 0,
       "turns": 29,
       "ui_builds": 0,
-      "usec": 1121308
+      "usec": 1135859
     },
     {
       "bouts": 10,
@@ -831,7 +831,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3297161
+      "usec": 3323974
     },
     {
       "bouts": 0,
@@ -848,7 +848,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 4196886
+      "usec": 4218945
     },
     {
       "bouts": 2,
@@ -865,7 +865,7 @@
       "spawns": 0,
       "turns": 3,
       "ui_builds": 0,
-      "usec": 970455
+      "usec": 983013
     },
     {
       "bouts": 0,
@@ -882,7 +882,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 178930
+      "usec": 188603
     },
     {
       "bouts": 0,
@@ -899,7 +899,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 937279
+      "usec": 949007
     },
     {
       "bouts": 0,
@@ -916,11 +916,11 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 343100
+      "usec": 346426
     },
     {
       "bouts": 2,
-      "candidates": 24106,
+      "candidates": 24122,
       "dups": 109,
       "escaped": 0,
       "floods": 45,
@@ -933,7 +933,7 @@
       "spawns": 0,
       "turns": 12,
       "ui_builds": 0,
-      "usec": 13977815
+      "usec": 14061466
     },
     {
       "bouts": 0,
@@ -950,7 +950,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 67259
+      "usec": 69334
     },
     {
       "bouts": 0,
@@ -967,7 +967,7 @@
       "spawns": 0,
       "turns": 14,
       "ui_builds": 0,
-      "usec": 3370818
+      "usec": 3445465
     },
     {
       "bouts": 0,
@@ -984,7 +984,7 @@
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 5439360
+      "usec": 5509426
     },
     {
       "bouts": 0,
@@ -1001,7 +1001,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2296706
+      "usec": 2307551
     },
     {
       "bouts": 3,
@@ -1018,7 +1018,7 @@
       "spawns": 0,
       "turns": 19,
       "ui_builds": 0,
-      "usec": 21491686
+      "usec": 22229837
     },
     {
       "bouts": 0,
@@ -1035,7 +1035,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 323514
+      "usec": 333707
     },
     {
       "bouts": 0,
@@ -1052,7 +1052,7 @@
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 433297
+      "usec": 465621
     },
     {
       "bouts": 0,
@@ -1069,7 +1069,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 210731
+      "usec": 223988
     },
     {
       "bouts": 0,
@@ -1086,7 +1086,7 @@
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 149827
+      "usec": 157439
     },
     {
       "bouts": 0,
@@ -1103,7 +1103,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 302924
+      "usec": 305736
     },
     {
       "bouts": 0,
@@ -1120,7 +1120,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 256478
+      "usec": 267317
     },
     {
       "bouts": 0,
@@ -1137,7 +1137,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3370316
+      "usec": 3415816
     },
     {
       "bouts": 0,
@@ -1154,7 +1154,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 53929
+      "usec": 53927
     },
     {
       "bouts": 0,
@@ -1171,7 +1171,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 136585
+      "usec": 143386
     },
     {
       "bouts": 0,
@@ -1188,7 +1188,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 141574
+      "usec": 149432
     },
     {
       "bouts": 0,
@@ -1205,7 +1205,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 102231
+      "usec": 104033
     },
     {
       "bouts": 0,
@@ -1222,7 +1222,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 133054
+      "usec": 145592
     },
     {
       "bouts": 0,
@@ -1239,7 +1239,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 117842
+      "usec": 123115
     },
     {
       "bouts": 0,
@@ -1256,7 +1256,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 105615
+      "usec": 106525
     },
     {
       "bouts": 0,
@@ -1273,7 +1273,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 157276
+      "usec": 161768
     },
     {
       "bouts": 0,
@@ -1290,7 +1290,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 99074
+      "usec": 104130
     },
     {
       "bouts": 0,
@@ -1307,7 +1307,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 149622
+      "usec": 174566
     },
     {
       "bouts": 0,
@@ -1324,7 +1324,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 174966
+      "usec": 185321
     },
     {
       "bouts": 0,
@@ -1341,7 +1341,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 289069
+      "usec": 305730
     },
     {
       "bouts": 0,
@@ -1358,7 +1358,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 203101
+      "usec": 210887
     },
     {
       "bouts": 0,
@@ -1375,7 +1375,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 61164
+      "usec": 62568
     },
     {
       "bouts": 0,
@@ -1392,7 +1392,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 235194
+      "usec": 241045
     },
     {
       "bouts": 0,
@@ -1409,7 +1409,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 177388
+      "usec": 178739
     },
     {
       "bouts": 0,
@@ -1426,7 +1426,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 212982
+      "usec": 225450
     },
     {
       "bouts": 0,
@@ -1443,7 +1443,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 220191
+      "usec": 232868
     },
     {
       "bouts": 0,
@@ -1460,7 +1460,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 129326
+      "usec": 130999
     },
     {
       "bouts": 0,
@@ -1477,7 +1477,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 189836
+      "usec": 192242
     },
     {
       "bouts": 0,
@@ -1494,7 +1494,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 78042
+      "usec": 76890
     },
     {
       "bouts": 0,
@@ -1511,7 +1511,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 160377
+      "usec": 159772
     },
     {
       "bouts": 0,
@@ -1528,7 +1528,7 @@
       "spawns": 0,
       "turns": 22,
       "ui_builds": 0,
-      "usec": 360805
+      "usec": 358188
     },
     {
       "bouts": 0,
@@ -1545,7 +1545,7 @@
       "spawns": 0,
       "turns": 21,
       "ui_builds": 0,
-      "usec": 120835
+      "usec": 123212
     },
     {
       "bouts": 0,
@@ -1562,7 +1562,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 266369
+      "usec": 260689
     },
     {
       "bouts": 0,
@@ -1579,7 +1579,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 347613
+      "usec": 348253
     },
     {
       "bouts": 3,
@@ -1596,7 +1596,7 @@
       "spawns": 0,
       "turns": 53,
       "ui_builds": 0,
-      "usec": 33414093
+      "usec": 33432365
     },
     {
       "bouts": 0,
@@ -1613,7 +1613,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 53450
+      "usec": 52849
     },
     {
       "bouts": 0,
@@ -1630,7 +1630,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 115986
+      "usec": 115649
     },
     {
       "bouts": 0,
@@ -1647,7 +1647,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 63508
+      "usec": 63536
     },
     {
       "bouts": 0,
@@ -1664,7 +1664,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 85752
+      "usec": 82717
     },
     {
       "bouts": 0,
@@ -1681,7 +1681,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 413695
+      "usec": 410101
     },
     {
       "bouts": 0,
@@ -1698,7 +1698,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 314706
+      "usec": 311604
     },
     {
       "bouts": 0,
@@ -1715,7 +1715,7 @@
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 134031
+      "usec": 143284
     },
     {
       "bouts": 0,
@@ -1732,7 +1732,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 54192
+      "usec": 55070
     },
     {
       "bouts": 0,
@@ -1749,7 +1749,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 54561
+      "usec": 56469
     },
     {
       "bouts": 0,
@@ -1766,7 +1766,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 51814
+      "usec": 55402
     },
     {
       "bouts": 0,
@@ -1783,7 +1783,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 118437
+      "usec": 123630
     },
     {
       "bouts": 0,
@@ -1800,7 +1800,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 267382
+      "usec": 271819
     },
     {
       "bouts": 0,
@@ -1817,7 +1817,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 204436
+      "usec": 218925
     },
     {
       "bouts": 0,
@@ -1834,7 +1834,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91153
+      "usec": 109461
     },
     {
       "bouts": 0,
@@ -1851,7 +1851,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 81712
+      "usec": 101295
     },
     {
       "bouts": 0,
@@ -1868,7 +1868,7 @@
       "spawns": 0,
       "turns": 7,
       "ui_builds": 0,
-      "usec": 464837
+      "usec": 508327
     },
     {
       "bouts": 0,
@@ -1885,7 +1885,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 687699
+      "usec": 734823
     },
     {
       "bouts": 0,
@@ -1902,7 +1902,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 158060
+      "usec": 191809
     },
     {
       "bouts": 0,
@@ -1919,7 +1919,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 61735
+      "usec": 77575
     },
     {
       "bouts": 0,
@@ -1936,7 +1936,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 142714
+      "usec": 173649
     },
     {
       "bouts": 0,
@@ -1953,7 +1953,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 941307
+      "usec": 1009024
     },
     {
       "bouts": 0,
@@ -1970,7 +1970,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 217298
+      "usec": 230180
     },
     {
       "bouts": 0,
@@ -1987,7 +1987,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 135032
+      "usec": 147262
     },
     {
       "bouts": 0,
@@ -2004,7 +2004,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 485467
+      "usec": 514094
     },
     {
       "bouts": 0,
@@ -2021,7 +2021,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 216477
+      "usec": 225843
     },
     {
       "bouts": 0,
@@ -2038,7 +2038,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 324399
+      "usec": 340272
     },
     {
       "bouts": 0,
@@ -2055,7 +2055,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 112019
+      "usec": 119304
     },
     {
       "bouts": 0,
@@ -2072,7 +2072,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 101951
+      "usec": 115401
     },
     {
       "bouts": 0,
@@ -2089,7 +2089,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 31833833
+      "usec": 32946329
     },
     {
       "bouts": 0,
@@ -2106,7 +2106,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10940678
+      "usec": 11071067
     },
     {
       "bouts": 0,
@@ -2123,7 +2123,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 300423
+      "usec": 309089
     },
     {
       "bouts": 0,
@@ -2140,7 +2140,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 127598
+      "usec": 133532
     },
     {
       "bouts": 0,
@@ -2157,7 +2157,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 292442
+      "usec": 307721
     },
     {
       "bouts": 0,
@@ -2174,7 +2174,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 101980
+      "usec": 107684
     },
     {
       "bouts": 0,
@@ -2191,7 +2191,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 212411
+      "usec": 220460
     },
     {
       "bouts": 0,
@@ -2208,7 +2208,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 65595
+      "usec": 67050
     },
     {
       "bouts": 0,
@@ -2225,7 +2225,7 @@
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 119981
+      "usec": 121141
     },
     {
       "bouts": 6,
@@ -2242,7 +2242,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2081489
+      "usec": 2092901
     },
     {
       "bouts": 0,
@@ -2259,7 +2259,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 148919
+      "usec": 154188
     },
     {
       "bouts": 0,
@@ -2276,7 +2276,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 235074
+      "usec": 233852
     },
     {
       "bouts": 0,
@@ -2293,7 +2293,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 135490
+      "usec": 135306
     },
     {
       "bouts": 0,
@@ -2310,7 +2310,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 185375
+      "usec": 187424
     },
     {
       "bouts": 0,
@@ -2327,7 +2327,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 326897
+      "usec": 334876
     },
     {
       "bouts": 0,
@@ -2344,7 +2344,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 58093
+      "usec": 57973
     },
     {
       "bouts": 0,
@@ -2361,7 +2361,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 260627
+      "usec": 257671
     },
     {
       "bouts": 0,
@@ -2378,7 +2378,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 281851
+      "usec": 283693
     },
     {
       "bouts": 0,
@@ -2395,7 +2395,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 123985
+      "usec": 124551
     },
     {
       "bouts": 0,
@@ -2412,7 +2412,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 149781
+      "usec": 155967
     },
     {
       "bouts": 0,
@@ -2429,7 +2429,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 364803
+      "usec": 384288
     },
     {
       "bouts": 0,
@@ -2446,7 +2446,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 145936
+      "usec": 149339
     },
     {
       "bouts": 0,
@@ -2463,7 +2463,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 133251
+      "usec": 141406
     },
     {
       "bouts": 0,
@@ -2480,7 +2480,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 122503
+      "usec": 120816
     },
     {
       "bouts": 0,
@@ -2497,7 +2497,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 288030
+      "usec": 301525
     },
     {
       "bouts": 0,
@@ -2514,7 +2514,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 413393
+      "usec": 430918
     },
     {
       "bouts": 0,
@@ -2531,7 +2531,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2645436
+      "usec": 2847444
     },
     {
       "bouts": 0,
@@ -2548,7 +2548,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 33865585
+      "usec": 33961422
     },
     {
       "bouts": 0,
@@ -2565,7 +2565,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 10698775
+      "usec": 10882445
     },
     {
       "bouts": 0,
@@ -2582,7 +2582,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19536877
+      "usec": 19589816
     },
     {
       "bouts": 0,
@@ -2599,7 +2599,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 751034
+      "usec": 759741
     },
     {
       "bouts": 2,
@@ -2616,7 +2616,7 @@
       "spawns": 0,
       "turns": 16,
       "ui_builds": 0,
-      "usec": 11316034
+      "usec": 11115180
     },
     {
       "bouts": 0,
@@ -2633,7 +2633,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 105679
+      "usec": 109779
     },
     {
       "bouts": 0,
@@ -2650,7 +2650,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 102537
+      "usec": 101693
     },
     {
       "bouts": 0,
@@ -2667,7 +2667,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 121954
+      "usec": 130559
     },
     {
       "bouts": 0,
@@ -2684,7 +2684,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 210610
+      "usec": 211332
     },
     {
       "bouts": 0,
@@ -2701,7 +2701,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 77394
+      "usec": 75995
     },
     {
       "bouts": 0,
@@ -2718,7 +2718,7 @@
       "spawns": 0,
       "turns": 5,
       "ui_builds": 0,
-      "usec": 339394
+      "usec": 340785
     },
     {
       "bouts": 0,
@@ -2735,7 +2735,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 100105
+      "usec": 102877
     },
     {
       "bouts": 0,
@@ -2752,7 +2752,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 182098
+      "usec": 189406
     },
     {
       "bouts": 0,
@@ -2769,7 +2769,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5441744
+      "usec": 5385954
     },
     {
       "bouts": 0,
@@ -2786,7 +2786,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 347315
+      "usec": 331133
     },
     {
       "bouts": 0,
@@ -2803,7 +2803,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 213774
+      "usec": 211425
     },
     {
       "bouts": 0,
@@ -2820,7 +2820,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 461682
+      "usec": 469815
     },
     {
       "bouts": 0,
@@ -2837,7 +2837,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 308225
+      "usec": 306029
     },
     {
       "bouts": 9,
@@ -2854,7 +2854,7 @@
       "spawns": 0,
       "turns": 36,
       "ui_builds": 0,
-      "usec": 7796717
+      "usec": 7828949
     },
     {
       "bouts": 0,
@@ -2871,7 +2871,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 258613
+      "usec": 255368
     },
     {
       "bouts": 0,
@@ -2888,7 +2888,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 224661
+      "usec": 225820
     },
     {
       "bouts": 0,
@@ -2905,7 +2905,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 366368
+      "usec": 363701
     },
     {
       "bouts": 0,
@@ -2922,7 +2922,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 370797
+      "usec": 370791
     },
     {
       "bouts": 0,
@@ -2939,7 +2939,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 194729
+      "usec": 194549
     },
     {
       "bouts": 0,
@@ -2956,7 +2956,7 @@
       "spawns": 0,
       "turns": 7,
       "ui_builds": 0,
-      "usec": 621728
+      "usec": 619410
     },
     {
       "bouts": 0,
@@ -2973,7 +2973,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 253764
+      "usec": 247574
     },
     {
       "bouts": 0,
@@ -2990,7 +2990,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 775651
+      "usec": 787253
     },
     {
       "bouts": 0,
@@ -3007,7 +3007,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 90921
+      "usec": 102301
     },
     {
       "bouts": 0,
@@ -3024,7 +3024,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 100708
+      "usec": 106284
     },
     {
       "bouts": 0,
@@ -3041,7 +3041,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 151614
+      "usec": 166038
     },
     {
       "bouts": 0,
@@ -3058,7 +3058,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 340402
+      "usec": 357395
     },
     {
       "bouts": 0,
@@ -3075,7 +3075,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 852093
+      "usec": 843719
     },
     {
       "bouts": 0,
@@ -3092,7 +3092,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 745268
+      "usec": 760231
     },
     {
       "bouts": 0,
@@ -3109,7 +3109,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2181151
+      "usec": 2197808
     },
     {
       "bouts": 0,
@@ -3126,7 +3126,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 161846
+      "usec": 162164
     },
     {
       "bouts": 0,
@@ -3143,7 +3143,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 143345
+      "usec": 141920
     },
     {
       "bouts": 0,
@@ -3160,7 +3160,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 415514
+      "usec": 414731
     },
     {
       "bouts": 0,
@@ -3177,7 +3177,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 267159
+      "usec": 271439
     },
     {
       "bouts": 4,
@@ -3194,7 +3194,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1539045
+      "usec": 1538398
     },
     {
       "bouts": 0,
@@ -3211,7 +3211,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 202331
+      "usec": 221101
     },
     {
       "bouts": 0,
@@ -3228,7 +3228,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 201298
+      "usec": 211377
     },
     {
       "bouts": 0,
@@ -3245,7 +3245,7 @@
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 582628
+      "usec": 606633
     },
     {
       "bouts": 0,
@@ -3262,7 +3262,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11182882
+      "usec": 11368709
     },
     {
       "bouts": 0,
@@ -3279,7 +3279,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 137822
+      "usec": 142353
     },
     {
       "bouts": 0,
@@ -3296,7 +3296,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 298786
+      "usec": 313103
     },
     {
       "bouts": 0,
@@ -3313,7 +3313,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 153367
+      "usec": 161045
     },
     {
       "bouts": 0,
@@ -3330,7 +3330,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 138969
+      "usec": 152252
     },
     {
       "bouts": 8,
@@ -3347,7 +3347,7 @@
       "spawns": 0,
       "turns": 25,
       "ui_builds": 0,
-      "usec": 3589990
+      "usec": 3638598
     },
     {
       "bouts": 0,
@@ -3364,7 +3364,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 11189474
+      "usec": 11007432
     },
     {
       "bouts": 0,
@@ -3381,7 +3381,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 151788
+      "usec": 158332
     },
     {
       "bouts": 0,
@@ -3398,7 +3398,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 262403
+      "usec": 268512
     },
     {
       "bouts": 0,
@@ -3415,7 +3415,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 401033
+      "usec": 404638
     },
     {
       "bouts": 0,
@@ -3432,7 +3432,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 274619
+      "usec": 267229
     },
     {
       "bouts": 0,
@@ -3449,7 +3449,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 183041
+      "usec": 185339
     },
     {
       "bouts": 0,
@@ -3466,7 +3466,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 399184
+      "usec": 419220
     },
     {
       "bouts": 0,
@@ -3483,7 +3483,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 186761
+      "usec": 194448
     },
     {
       "bouts": 0,
@@ -3500,7 +3500,7 @@
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 651204
+      "usec": 663409
     },
     {
       "bouts": 0,
@@ -3517,7 +3517,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 4062617
+      "usec": 4121522
     },
     {
       "bouts": 0,
@@ -3534,7 +3534,41 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 244828
+      "usec": 259989
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "maps": 0,
+      "path": "res://test/unit/logic/test_shard_map.gd",
+      "plans": 0,
+      "sampled_turns": 0,
+      "shot_planes": 0,
+      "spawns": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 122786
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 12,
+      "lookahead_fields": 0,
+      "maps": 6,
+      "path": "res://test/unit/logic/test_shard_merge.gd",
+      "plans": 0,
+      "sampled_turns": 0,
+      "shot_planes": 0,
+      "spawns": 0,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 729584
     },
     {
       "bouts": 0,
@@ -3551,7 +3585,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 107340
+      "usec": 64298
     },
     {
       "bouts": 0,
@@ -3568,7 +3602,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 558494
+      "usec": 330257
     },
     {
       "bouts": 0,
@@ -3585,7 +3619,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 247408
+      "usec": 233928
     },
     {
       "bouts": 0,
@@ -3602,7 +3636,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 92565
+      "usec": 58963
     },
     {
       "bouts": 0,
@@ -3619,7 +3653,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 359185
+      "usec": 354913
     },
     {
       "bouts": 0,
@@ -3636,7 +3670,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1250548
+      "usec": 1212432
     },
     {
       "bouts": 0,
@@ -3653,7 +3687,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 62755
+      "usec": 45775
     },
     {
       "bouts": 0,
@@ -3670,7 +3704,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 107542
+      "usec": 65221
     },
     {
       "bouts": 0,
@@ -3687,7 +3721,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 287056
+      "usec": 244808
     },
     {
       "bouts": 0,
@@ -3704,16 +3738,16 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 75509
+      "usec": 77545
     },
     {
       "bouts": 3,
       "candidates": 0,
       "dups": 0,
       "escaped": 0,
-      "floods": 14,
+      "floods": 18,
       "lookahead_fields": 0,
-      "maps": 6,
+      "maps": 8,
       "path": "res://test/unit/logic/test_step_height.gd",
       "plans": 0,
       "sampled_turns": 0,
@@ -3721,7 +3755,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2401081
+      "usec": 2960095
     },
     {
       "bouts": 0,
@@ -3738,7 +3772,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 125255
+      "usec": 111076
     },
     {
       "bouts": 0,
@@ -3755,7 +3789,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 383685
+      "usec": 291228
     },
     {
       "bouts": 0,
@@ -3772,7 +3806,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 192760
+      "usec": 111210
     },
     {
       "bouts": 0,
@@ -3789,7 +3823,7 @@
       "spawns": 8,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19604963
+      "usec": 19662197
     },
     {
       "bouts": 0,
@@ -3806,7 +3840,7 @@
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 87363
+      "usec": 87538
     },
     {
       "bouts": 0,
@@ -3823,7 +3857,7 @@
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 232718
+      "usec": 131025
     },
     {
       "bouts": 0,
@@ -3840,7 +3874,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 189869
+      "usec": 119263
     },
     {
       "bouts": 0,
@@ -3857,7 +3891,7 @@
       "spawns": 0,
       "turns": 24,
       "ui_builds": 0,
-      "usec": 265781
+      "usec": 246062
     },
     {
       "bouts": 0,
@@ -3874,7 +3908,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 65251
+      "usec": 40612
     },
     {
       "bouts": 0,
@@ -3891,7 +3925,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 278538
+      "usec": 193343
     },
     {
       "bouts": 0,
@@ -3908,7 +3942,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 92163
+      "usec": 62371
     },
     {
       "bouts": 0,
@@ -3925,7 +3959,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 80241
+      "usec": 64509
     },
     {
       "bouts": 0,
@@ -3942,7 +3976,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 116338
+      "usec": 89496
     },
     {
       "bouts": 0,
@@ -3959,7 +3993,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 162544
+      "usec": 162397
     },
     {
       "bouts": 0,
@@ -3976,7 +4010,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 168998
+      "usec": 130808
     },
     {
       "bouts": 0,
@@ -3993,7 +4027,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 401356
+      "usec": 302192
     },
     {
       "bouts": 0,
@@ -4010,7 +4044,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 130750
+      "usec": 82574
     },
     {
       "bouts": 0,
@@ -4027,7 +4061,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 615117
+      "usec": 556149
     },
     {
       "bouts": 0,
@@ -4044,16 +4078,16 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 465618
+      "usec": 312404
     },
     {
       "bouts": 0,
       "candidates": 0,
       "dups": 0,
       "escaped": 0,
-      "floods": 0,
+      "floods": 80,
       "lookahead_fields": 0,
-      "maps": 0,
+      "maps": 40,
       "path": "res://test/unit/logic/test_vertical_routes.gd",
       "plans": 0,
       "sampled_turns": 0,
@@ -4061,7 +4095,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 218016
+      "usec": 13630146
     },
     {
       "bouts": 0,
@@ -4078,7 +4112,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 412761
+      "usec": 362919
     },
     {
       "bouts": 0,
@@ -4095,24 +4129,24 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 413138
+      "usec": 320416
     },
     {
-      "bouts": 6,
-      "candidates": 506724,
-      "dups": 968,
-      "escaped": 97,
-      "floods": 693,
-      "lookahead_fields": 450,
-      "maps": 6,
+      "bouts": 4,
+      "candidates": 611282,
+      "dups": 969,
+      "escaped": 27,
+      "floods": 740,
+      "lookahead_fields": 260,
+      "maps": 4,
       "path": "res://test/unit/logic/test_watched_run.gd",
-      "plans": 258,
-      "sampled_turns": 225,
-      "shot_planes": 410,
+      "plans": 339,
+      "sampled_turns": 239,
+      "shot_planes": 227,
       "spawns": 0,
-      "turns": 268,
+      "turns": 346,
       "ui_builds": 0,
-      "usec": 361186767
+      "usec": 192616429
     },
     {
       "bouts": 0,
@@ -4129,7 +4163,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 202440
+      "usec": 172868
     },
     {
       "bouts": 0,
@@ -4146,7 +4180,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 152693
+      "usec": 127586
     },
     {
       "bouts": 0,
@@ -4163,7 +4197,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 139457
+      "usec": 115414
     },
     {
       "bouts": 0,
@@ -4180,7 +4214,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 495522
+      "usec": 467964
     },
     {
       "bouts": 5,
@@ -4197,7 +4231,7 @@
       "spawns": 0,
       "turns": 26,
       "ui_builds": 3,
-      "usec": 19940999
+      "usec": 19855361
     },
     {
       "bouts": 2,
@@ -4214,7 +4248,7 @@
       "spawns": 0,
       "turns": 16,
       "ui_builds": 0,
-      "usec": 15862051
+      "usec": 15896072
     },
     {
       "bouts": 0,
@@ -4231,7 +4265,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 318995
+      "usec": 342251
     },
     {
       "bouts": 0,
@@ -4248,7 +4282,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1848
+      "usec": 1966
     },
     {
       "bouts": 0,
@@ -4265,7 +4299,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 579676
+      "usec": 582321
     },
     {
       "bouts": 0,
@@ -4282,7 +4316,24 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 41617
+      "usec": 41685
+    },
+    {
+      "bouts": 0,
+      "candidates": 0,
+      "dups": 0,
+      "escaped": 0,
+      "floods": 0,
+      "lookahead_fields": 0,
+      "maps": 0,
+      "path": "res://test/unit/test_merge_shards.gd",
+      "plans": 0,
+      "sampled_turns": 0,
+      "shot_planes": 0,
+      "spawns": 7,
+      "turns": 0,
+      "ui_builds": 0,
+      "usec": 2485603
     },
     {
       "bouts": 0,
@@ -4299,7 +4350,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 5042
+      "usec": 5277
     },
     {
       "bouts": 0,
@@ -4316,7 +4367,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 82810
+      "usec": 88770
     },
     {
       "bouts": 0,
@@ -4333,7 +4384,7 @@
       "spawns": 8,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 16897982
+      "usec": 17287240
     },
     {
       "bouts": 0,
@@ -4350,7 +4401,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 31721
+      "usec": 32342
     },
     {
       "bouts": 0,
@@ -4367,7 +4418,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 37319
+      "usec": 39068
     },
     {
       "bouts": 0,
@@ -4384,7 +4435,7 @@
       "spawns": 1,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 371060
+      "usec": 376680
     },
     {
       "bouts": 0,
@@ -4401,7 +4452,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 89813
+      "usec": 87591
     },
     {
       "bouts": 0,
@@ -4418,7 +4469,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 19803
+      "usec": 14715
     },
     {
       "bouts": 0,
@@ -4435,7 +4486,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 330451
+      "usec": 332875
     },
     {
       "bouts": 0,
@@ -4452,7 +4503,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 36,
-      "usec": 12573899
+      "usec": 12617840
     },
     {
       "bouts": 0,
@@ -4469,7 +4520,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 42,
-      "usec": 17071727
+      "usec": 17310672
     },
     {
       "bouts": 0,
@@ -4486,7 +4537,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 24,
-      "usec": 7026157
+      "usec": 7262101
     },
     {
       "bouts": 0,
@@ -4503,7 +4554,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 15,
-      "usec": 4425028
+      "usec": 4572111
     },
     {
       "bouts": 0,
@@ -4520,7 +4571,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 60,
-      "usec": 17452061
+      "usec": 17618915
     },
     {
       "bouts": 0,
@@ -4537,7 +4588,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 24,
-      "usec": 7148561
+      "usec": 7285374
     },
     {
       "bouts": 0,
@@ -4554,7 +4605,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 21,
-      "usec": 6280411
+      "usec": 6384132
     },
     {
       "bouts": 0,
@@ -4571,7 +4622,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 36,
-      "usec": 10495165
+      "usec": 10513164
     },
     {
       "bouts": 0,
@@ -4588,7 +4639,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 24,
-      "usec": 7230476
+      "usec": 7221102
     },
     {
       "bouts": 0,
@@ -4605,7 +4656,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 27,
-      "usec": 8208764
+      "usec": 8312868
     },
     {
       "bouts": 0,
@@ -4622,7 +4673,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 48,
-      "usec": 14754513
+      "usec": 14861171
     },
     {
       "bouts": 0,
@@ -4639,7 +4690,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 18,
-      "usec": 5518640
+      "usec": 5443260
     },
     {
       "bouts": 0,
@@ -4656,7 +4707,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 33,
-      "usec": 10940042
+      "usec": 11089258
     },
     {
       "bouts": 0,
@@ -4673,7 +4724,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 76,
-      "usec": 27001276
+      "usec": 27169820
     },
     {
       "bouts": 0,
@@ -4690,7 +4741,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 57,
-      "usec": 20446750
+      "usec": 20630199
     },
     {
       "bouts": 0,
@@ -4707,7 +4758,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 27,
-      "usec": 8207564
+      "usec": 8499531
     },
     {
       "bouts": 0,
@@ -4724,7 +4775,7 @@
       "spawns": 0,
       "turns": 2,
       "ui_builds": 24,
-      "usec": 10180668
+      "usec": 10411665
     },
     {
       "bouts": 0,
@@ -4741,7 +4792,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 2924
+      "usec": 3218
     },
     {
       "bouts": 0,
@@ -4758,7 +4809,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 15,
-      "usec": 5352359
+      "usec": 5431449
     },
     {
       "bouts": 0,
@@ -4775,7 +4826,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 9,
-      "usec": 2998511
+      "usec": 3006197
     },
     {
       "bouts": 0,
@@ -4792,7 +4843,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 66,
-      "usec": 20521762
+      "usec": 20662986
     },
     {
       "bouts": 0,
@@ -4809,7 +4860,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 3544830
+      "usec": 3557723
     },
     {
       "bouts": 0,
@@ -4826,7 +4877,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 554912
+      "usec": 549040
     },
     {
       "bouts": 0,
@@ -4843,7 +4894,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 38,
-      "usec": 11754011
+      "usec": 11883175
     },
     {
       "bouts": 0,
@@ -4860,11 +4911,11 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 324401
+      "usec": 336574
     },
     {
       "bouts": 3,
-      "candidates": 87428,
+      "candidates": 87588,
       "dups": 182,
       "escaped": 0,
       "floods": 110,
@@ -4877,7 +4928,7 @@
       "spawns": 0,
       "turns": 48,
       "ui_builds": 4,
-      "usec": 22404828
+      "usec": 22749794
     },
     {
       "bouts": 2,
@@ -4894,7 +4945,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 36,
-      "usec": 14858890
+      "usec": 15319971
     },
     {
       "bouts": 0,
@@ -4911,7 +4962,7 @@
       "spawns": 0,
       "turns": 13,
       "ui_builds": 108,
-      "usec": 56327943
+      "usec": 57051323
     },
     {
       "bouts": 0,
@@ -4928,7 +4979,7 @@
       "spawns": 0,
       "turns": 11,
       "ui_builds": 64,
-      "usec": 20170750
+      "usec": 20331123
     },
     {
       "bouts": 0,
@@ -4945,7 +4996,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 303411
+      "usec": 299955
     },
     {
       "bouts": 0,
@@ -4962,7 +5013,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 5476699
+      "usec": 5508798
     },
     {
       "bouts": 0,
@@ -4979,7 +5030,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 47776
+      "usec": 51673
     },
     {
       "bouts": 0,
@@ -4996,7 +5047,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 173221
+      "usec": 180590
     },
     {
       "bouts": 0,
@@ -5013,7 +5064,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 47422
+      "usec": 50775
     },
     {
       "bouts": 0,
@@ -5030,7 +5081,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 348611
+      "usec": 351982
     },
     {
       "bouts": 0,
@@ -5047,7 +5098,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 160137
+      "usec": 162177
     },
     {
       "bouts": 0,
@@ -5064,7 +5115,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 1,
-      "usec": 897761
+      "usec": 902330
     },
     {
       "bouts": 6,
@@ -5081,7 +5132,7 @@
       "spawns": 0,
       "turns": 3,
       "ui_builds": 45,
-      "usec": 63343147
+      "usec": 63488324
     },
     {
       "bouts": 0,
@@ -5098,7 +5149,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 4074912
+      "usec": 4094585
     },
     {
       "bouts": 0,
@@ -5115,7 +5166,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 5235751
+      "usec": 5310533
     },
     {
       "bouts": 0,
@@ -5132,7 +5183,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 94317
+      "usec": 120197
     },
     {
       "bouts": 0,
@@ -5149,7 +5200,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 219453
+      "usec": 233418
     },
     {
       "bouts": 0,
@@ -5166,7 +5217,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 59857
+      "usec": 61745
     },
     {
       "bouts": 0,
@@ -5183,7 +5234,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 52190
+      "usec": 56137
     },
     {
       "bouts": 0,
@@ -5200,7 +5251,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 124371
+      "usec": 130029
     },
     {
       "bouts": 0,
@@ -5217,7 +5268,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 211107
+      "usec": 223027
     },
     {
       "bouts": 0,
@@ -5234,7 +5285,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91218
+      "usec": 95912
     },
     {
       "bouts": 0,
@@ -5251,7 +5302,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 232331
+      "usec": 233076
     },
     {
       "bouts": 0,
@@ -5268,7 +5319,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 66714
+      "usec": 68819
     },
     {
       "bouts": 0,
@@ -5285,7 +5336,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 533199
+      "usec": 537208
     },
     {
       "bouts": 0,
@@ -5302,7 +5353,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 136925
+      "usec": 141615
     },
     {
       "bouts": 0,
@@ -5319,7 +5370,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1127061
+      "usec": 1137264
     },
     {
       "bouts": 0,
@@ -5336,7 +5387,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 24,
-      "usec": 8282152
+      "usec": 8310061
     },
     {
       "bouts": 0,
@@ -5353,7 +5404,7 @@
       "spawns": 0,
       "turns": 11,
       "ui_builds": 0,
-      "usec": 126280
+      "usec": 128547
     },
     {
       "bouts": 0,
@@ -5370,7 +5421,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 48920
+      "usec": 50058
     },
     {
       "bouts": 0,
@@ -5387,7 +5438,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 70527
+      "usec": 69676
     },
     {
       "bouts": 0,
@@ -5404,7 +5455,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 340003
+      "usec": 339304
     },
     {
       "bouts": 0,
@@ -5421,7 +5472,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 62808
+      "usec": 65404
     },
     {
       "bouts": 0,
@@ -5438,7 +5489,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 147568
+      "usec": 153328
     },
     {
       "bouts": 0,
@@ -5455,7 +5506,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 91095
+      "usec": 97445
     },
     {
       "bouts": 0,
@@ -5472,7 +5523,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 81148
+      "usec": 86585
     },
     {
       "bouts": 0,
@@ -5489,7 +5540,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 132344
+      "usec": 140740
     },
     {
       "bouts": 0,
@@ -5506,7 +5557,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 78738
+      "usec": 83165
     },
     {
       "bouts": 0,
@@ -5523,7 +5574,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 12,
-      "usec": 3440278
+      "usec": 3436876
     },
     {
       "bouts": 0,
@@ -5540,7 +5591,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 526677
+      "usec": 546353
     },
     {
       "bouts": 0,
@@ -5557,7 +5608,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 86058
+      "usec": 83155
     },
     {
       "bouts": 0,
@@ -5574,7 +5625,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 6,
-      "usec": 1718812
+      "usec": 1740178
     },
     {
       "bouts": 0,
@@ -5591,7 +5642,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 83147
+      "usec": 85720
     },
     {
       "bouts": 0,
@@ -5608,7 +5659,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 128882
+      "usec": 130261
     },
     {
       "bouts": 0,
@@ -5625,7 +5676,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 9,
-      "usec": 4343588
+      "usec": 4385445
     },
     {
       "bouts": 0,
@@ -5642,7 +5693,7 @@
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 88709
+      "usec": 90988
     },
     {
       "bouts": 3,
@@ -5659,7 +5710,7 @@
       "spawns": 8,
       "turns": 0,
       "ui_builds": 27,
-      "usec": 22516396
+      "usec": 22414614
     },
     {
       "bouts": 0,
@@ -5676,7 +5727,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 71,
-      "usec": 36820191
+      "usec": 37171703
     },
     {
       "bouts": 0,
@@ -5693,7 +5744,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 3360017
+      "usec": 3486053
     },
     {
       "bouts": 0,
@@ -5710,7 +5761,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 5,
-      "usec": 246911
+      "usec": 268267
     },
     {
       "bouts": 0,
@@ -5727,7 +5778,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 8,
-      "usec": 406502
+      "usec": 443902
     },
     {
       "bouts": 0,
@@ -5744,7 +5795,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 11,
-      "usec": 562848
+      "usec": 595383
     },
     {
       "bouts": 0,
@@ -5761,7 +5812,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 661610
+      "usec": 686128
     },
     {
       "bouts": 0,
@@ -5778,7 +5829,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 4,
-      "usec": 241713
+      "usec": 257740
     },
     {
       "bouts": 0,
@@ -5795,7 +5846,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 13,
-      "usec": 683941
+      "usec": 730171
     },
     {
       "bouts": 0,
@@ -5812,7 +5863,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 10,
-      "usec": 543294
+      "usec": 570174
     },
     {
       "bouts": 0,
@@ -5829,7 +5880,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 73357
+      "usec": 86079
     },
     {
       "bouts": 0,
@@ -5846,7 +5897,7 @@
       "spawns": 0,
       "turns": 1,
       "ui_builds": 0,
-      "usec": 258709
+      "usec": 286357
     },
     {
       "bouts": 0,
@@ -5863,7 +5914,7 @@
       "spawns": 0,
       "turns": 6,
       "ui_builds": 0,
-      "usec": 3825519
+      "usec": 3918197
     },
     {
       "bouts": 0,
@@ -5880,7 +5931,7 @@
       "spawns": 0,
       "turns": 2,
       "ui_builds": 0,
-      "usec": 2957729
+      "usec": 2993991
     },
     {
       "bouts": 0,
@@ -5897,7 +5948,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 321609
+      "usec": 336673
     },
     {
       "bouts": 0,
@@ -5914,7 +5965,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 648257
+      "usec": 723257
     },
     {
       "bouts": 0,
@@ -5931,7 +5982,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 369021
+      "usec": 421551
     },
     {
       "bouts": 0,
@@ -5948,7 +5999,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 195749
+      "usec": 207187
     },
     {
       "bouts": 0,
@@ -5965,7 +6016,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1206803
+      "usec": 1211609
     },
     {
       "bouts": 0,
@@ -5982,7 +6033,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 190977
+      "usec": 204600
     },
     {
       "bouts": 0,
@@ -5999,7 +6050,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 112396
+      "usec": 113681
     },
     {
       "bouts": 0,
@@ -6016,7 +6067,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 692787
+      "usec": 736376
     },
     {
       "bouts": 0,
@@ -6033,7 +6084,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 1107665
+      "usec": 1180622
     },
     {
       "bouts": 0,
@@ -6050,7 +6101,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 3627493
+      "usec": 3771186
     },
     {
       "bouts": 0,
@@ -6067,7 +6118,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 189308
+      "usec": 167499
     },
     {
       "bouts": 0,
@@ -6084,7 +6135,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 128060
+      "usec": 121293
     },
     {
       "bouts": 0,
@@ -6101,7 +6152,7 @@
       "spawns": 0,
       "turns": 3,
       "ui_builds": 6,
-      "usec": 2644335
+      "usec": 2687579
     },
     {
       "bouts": 0,
@@ -6118,7 +6169,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 132035
+      "usec": 149993
     },
     {
       "bouts": 0,
@@ -6135,7 +6186,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 62756
+      "usec": 74956
     },
     {
       "bouts": 0,
@@ -6152,7 +6203,7 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 177404
+      "usec": 198337
     },
     {
       "bouts": 0,
@@ -6169,24 +6220,24 @@
       "spawns": 0,
       "turns": 0,
       "ui_builds": 0,
-      "usec": 128290
+      "usec": 148865
     }
   ],
   "totals": {
-    "bouts": 84,
-    "candidates": 1274438,
-    "dups": 10276,
-    "escaped": 210,
-    "floods": 5186,
-    "lookahead_fields": 686,
-    "maps": 940,
-    "plans": 584,
-    "sampled_turns": 312,
-    "shot_planes": 9330,
-    "spawns": 25,
-    "turns": 808,
+    "bouts": 83,
+    "candidates": 1415995,
+    "dups": 10308,
+    "escaped": 140,
+    "floods": 5359,
+    "lookahead_fields": 496,
+    "maps": 987,
+    "plans": 680,
+    "sampled_turns": 341,
+    "shot_planes": 9149,
+    "spawns": 32,
+    "turns": 901,
     "ui_builds": 1267,
-    "usec": 1333484130
+    "usec": 1194034927
   },
-  "wall_clock_usec": 1338121373
+  "wall_clock_usec": 1198912925
 }

@@ -1,5 +1,111 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 66 — shard the gate, and the makespan is one draw
+
+**`./run_tests.sh shard` runs the whole suite in 242 s against 1338 s — 5.5×**, across 8 processes
+on a 32-core machine. Reported as a band because the cost is a random variable: **142 s on a lucky
+draw (9.4×), 182–327 s typical (4.1–7.3×), 426–768 s at the cap (1.7–3.1×)**.
+
+### Pass A — the numbers the plan rests on
+
+All five items passed, no stop condition fired. **`p` = 0.220** over 100 seeds spanning the real
+0–9999 draw space (95% CI 0.139–0.301), replacing every earlier estimate including `BR65.01`'s 0.15.
+**`L` = 61.3 turns** (78 losers, 30 at the 100-turn cap), **`W` = 45.6** (22 winners), per-process
+floor **1.29 s**.
+
+**The window belief is retired.** Two file headers cited seeds 0–11 at 41.7% against 12–23 at 66.7%
+as evidence the seed space has structure. **Fisher exact on 5/12 vs 8/12 gives 0.414**, and Pass A
+tested it directly: **chi-square 11.42 on 9 df against a 16.92 critical value — no evidence the
+windows differ.** taskblock-46's decision to sample rather than pin is untouched and its real
+justification stated instead.
+
+**Three qualifications recorded on the measured inputs**: `p` is P(complete *within `TURN_CAP`*),
+not P(complete); the CI spans the range decisions turned on; and the cost model is turns-linear
+while the evidence shows a ~33 s fixed component per bout.
+
+**A1 found the block's most consequential thing:** nine of eleven counters sum exactly across
+shards, but `maps` and `floods` do not — `MapCorpus` duplication, and both are gated.
+
+**A5**: the three subprocess-spawning files run in *simultaneous* shards — 29 tests, 0 failures, 24
+spawns matching unsharded exactly.
+
+### Pass B — two free checks against Pass A's own data
+
+**B1: the model over-predicts a real draw by 1.29×, and it is noise.** Checked directly rather than
+modelled, using a gate that printed its seeds. Against the 100-seed reference, `W` observed 46.5 vs
+45.6 (z = +0.10) and `L` observed 41.5 vs 61.3 (z = −1.25) — the draw's four losers happened to
+include none at the cap where the population has 38%. **`L` is not measured on a harder population**
+and the makespan estimate is not systematically conservative.
+
+**B2**: `BR65.01`'s arithmetic re-derived at `p = 0.220` — P(cap) **0.107, one gate in 9.4** against
+the filed 0.232; cap for ~1% is **19**, not 28.
+
+### Pass C — the completion flake is gone and `FIRST_WIN_CAP` has not moved
+
+**One assertion was doing two jobs.** *A win is reachable* is a property of the game and is now
+proven deterministically on **fixed seed 9003** (15 turns, cheapest of Pass A's 22 winners). *How
+many seeds it took today* is a measurement and now reports instead of gating.
+
+**Raising the cap was rejected on arithmetic**: the cap is the makespan, so 19 makes the worst case
+1165 turns against 552, and the CI puts the needed cap anywhere from 13 to 31. **What is given up is
+stated in the test** — a genuine collapse no longer turns the sampled test red on its own, and the
+deterministic guard is a stronger proof of the same thing at any `p`.
+
+**C2**: `probe_seeds.gd` advertised *"upward of ten minutes"* for the 100-seed escalation; measured
+it is **~110 minutes serial**, and the ten-parallel-window form running the same hundred in ~11
+minutes is documented in its header.
+
+**`BR65.01` closed `Resolved`** and moved to `BUGS-ARCHIVE.md`.
+
+### Pass D — duplicated corpus fills become a subtractable quantity
+
+Every process has its own `MapCorpus._cache`, so a split corpus is refilled in each shard. **The
+precedent is exact**: taskblock-65 Pass F settled the same shape as *"the uncontrolled thing is a
+quantity, not a file."* `MapCorpus.fills` records what each fill cost, **keyed rather than counted**
+— a count cannot be deduplicated across processes. `ShardMerge` takes the union.
+
+**Verified on real processes: 260 − 18 = 242 maps and 703 − 36 = 667 floods, both matching
+unsharded exactly**, with distinct keys across shards (102) equal to unsharded fills (102).
+
+**A counter cannot be both the gate and the diagnostic**, which is what Pass F untangled for
+`turns`. Subtracting gives both, and the subtracted quantity is the shard map's affinity score.
+
+### Pass E — the shard map, committed and derived
+
+**Eight shards, derived not assumed.** Non-corpus work is 972 s and its makespan falls with shard
+count only until it drops under the corpus shard: 6 → 163.3 s (the knee), 8 → 122.8 s, 16 → 64.6 s
+against a corpus shard of 181–326 s. Past the knee **extra shards buy nothing**.
+
+**Co-location priced per corpus** rather than applied as policy: `MapCorpus` 32×24's eleven readers
+total 58.4 s and 40×30's three total 30.7 s against a ~140 s bin, so both co-locate and their fills
+are paid once. `BoutCorpus` must co-locate regardless — it is the makespan.
+
+**Shard 0 takes no non-corpus work despite apparent slack**, because its cost spans 181–767 s.
+`SuiteOrder` is untouched and that is stated so it is not "fixed" later: failure-history ranking
+still operates *within* each shard.
+
+The map is byte-identical across three packs. Four properties assert, and the first — every file in
+exactly one shard — earned its place immediately by catching this block's own additions.
+
+### Pass F — a red gate stays readable
+
+`tools/merge_shards.py` turns N shard logs into one verdict, ordered by shard index rather than
+arrival. **A shard that produced no summary line fails the gate** — the same guard the
+single-process path already carries, and the easy bug to ship here, since a merger that sums what it
+finds reports green on a crash.
+
+**Two things found while testing.** The merged report was **dropping the completion draw** (it lives
+in one shard's log and the temp dir is cleaned up); it is surfaced now, and **more than one shard
+reporting a draw fails the gate**. And `maps` was mislabelled as draw-independent — every bout
+generates one, so it tracks the bout count; the stable counters are `spawns` and `ui_builds`, which
+match exactly.
+
+Six tests cover the ways the merge could lie rather than whether it adds up: a named failure
+surviving, a killed shard, a missing log, two draws, and stable ordering.
+
+**The single-process path is untouched** and stays the debugging path.
+
+
 ## Taskblock 65 — a map is a map, and the suite stops paying twice
 
 **Full gate 1378.3 s → 1255.7 s**, 363 scripts / 3547 tests / 0 failures. Turns 1063 → 786,

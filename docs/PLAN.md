@@ -542,7 +542,7 @@ inconvenience. **Under this design it is cheaply guarded in-run**: the board is 
 the same gate, so hashing before save and after load is nearly free. Build that guard with the cache,
 not after it.
 
-### What the completion rate measures, and two headers that say otherwise
+### What the completion rate measures — *the headers landed in taskblock-66 Pass C*
 **Needs:** nothing. **Unblocks:** knowing whether the completion number is a statement about the game
 or about the harness.
 
@@ -551,7 +551,14 @@ space, 95% CI **0.139–0.301**. That supersedes every earlier figure, including
 every four-draw estimate. **It is a wide interval and it should be quoted as one**; P(no win in nine
 seeds) runs 1-in-3.8 to 1-in-25 across it.
 
-**Two file headers state a belief the measurement contradicts.** `completion_sampler.gd:12` and
+**taskblock-66 Pass C corrected both headers; what is left here is the `TURN_CAP` half.**
+`completion_sampler.gd` and `bout_corpus.gd` now state the measured result and keep taskblock-46's
+sampling decision on its real justification — a pinned twelve reports a number with a huge interval
+and can never widen, whether or not it sits in a bad corner. `probe_seeds.gd`'s advertised cost was
+corrected in the same pass (~110 minutes serial, not "upward of ten"), and it now documents the
+ten-parallel-window form that runs the same hundred seeds in ~11 minutes.
+
+**What was wrong, kept for the record.** `completion_sampler.gd:12` and
 `bout_corpus.gd:17` both carry the *"pessimistic window"* finding — seeds 0–11 at 41.7% against 12–23
 at 66.7% on an identical build — as evidence that the seed space has structure. **Fisher exact on 5/12
 against 8/12 gives 0.414**, and Pass A tested it directly: **chi-square across ten scattered windows is
@@ -583,6 +590,26 @@ turn, outside the 0.77–1.39 band), which solved against the 100-seed run gives
 bout plus 0.52 s per turn**. At current draw sizes the two models agree within a few seconds — but **a
 turn reduction bought against the linear model will over-credit itself**, and that is exactly what
 lowering `TURN_CAP` would be.
+
+### The sharded gate still needs a manual repack, and cannot write the profile
+**Needs:** taskblock-66's shard map — **built**. **Unblocks:** a sharded gate nobody has to
+maintain by hand.
+
+**Two things taskblock-66 stated rather than automated**, both deliberate and both now the obvious
+follow-up:
+
+- **Adding a test file makes the committed shard map stale**, and the only thing that says so is
+  `test_shard_map.gd` going red. That is the correct signal — a file in no shard is never run, and
+  a sharded gate would go green having skipped it — but the fix is a manual
+  `godot --headless --path . -s res://tools/pack_shards.gd`. **A repack-on-red step, or a packer run
+  as part of the gate when the map is stale, would close it.**
+- **The sharded gate cannot write the profile** (Pass E6). The packer reads per-file wall-clock and
+  eight processes competing for cores inflate and scramble exactly that, so a sharded regeneration
+  would degrade the packer's own input a little more each time. **So the profile still costs an
+  unsharded 22-minute run**, which is now the most expensive routine thing in the workflow.
+  Worth asking whether the packer could read a counter instead of seconds — `maps`, `turns` and
+  `ui_builds` are machine-independent where wall-clock is not, and the packer only needs *relative*
+  cost.
 
 ### `BoutCorpus`'s variable draw is subtracted, but its *bouts* still are not
 **Needs:** nothing. **Unblocks:** ratcheting `bouts` and `candidates` the way `turns` now can be.

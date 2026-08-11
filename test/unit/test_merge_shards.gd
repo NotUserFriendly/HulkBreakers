@@ -51,11 +51,25 @@ func _run(paths: Array[String]) -> Dictionary:
 	return {"code": code, "text": "\n".join(PackedStringArray(out))}
 
 
+## **Never `gut.p` the merger's raw output, and this is not fastidiousness.**
+##
+## The fixtures below deliberately contain the exact markers `merge_shards.py` scans for —
+## `seeds to first completion`, `[Failed]` — because that is what they are testing. Echoing the
+## merged text into this script's stdout puts those markers in *this shard's* log, where the real
+## merge then reads them back as a second corpus draw and a phantom failure message.
+##
+## **It happened.** The first sharded gate after this file landed reported *"MORE THAN ONE SHARD
+## DREW"* against a perfectly co-located map. A test that prints what a parser looks for is a
+## self-reference hazard, and the fix is to assert on the text without republishing it.
+func _summarise(result: Dictionary) -> String:
+	return "exit %d, %d line(s)" % [result["code"], (result["text"] as String).split("\n").size()]
+
+
 ## The happy path, so the failures below mean something.
 func test_two_clean_shards_merge_to_a_pass() -> void:
 	var result: Dictionary = _run([_log("s0.log", 10, 0), _log("s1.log", 20, 0)])
 
-	gut.p(result["text"])
+	gut.p(_summarise(result))
 	assert_eq(result["code"], 0, "two green shards are a green gate")
 	assert_true("30 test(s), 0 failure(s)" in result["text"], "and the tests are summed")
 
@@ -70,7 +84,7 @@ func test_a_failure_in_one_shard_fails_the_gate_and_is_named() -> void:
 		]
 	)
 
-	gut.p(result["text"])
+	gut.p(_summarise(result))
 	assert_eq(result["code"], 1, "one failing shard fails the whole gate")
 	assert_true("the board moved" in result["text"], "and the message survives the merge")
 	assert_true("shard 1" in result["text"], "attributed to the shard it came from")
@@ -91,7 +105,7 @@ func test_a_shard_that_never_finished_fails_the_gate() -> void:
 
 	var result: Dictionary = _run([_log("s0.log", 10, 0), killed])
 
-	gut.p(result["text"])
+	gut.p(_summarise(result))
 	assert_eq(result["code"], 1, "a dead shard is a failed gate, not a missing section")
 	assert_true("DID NOT FINISH" in result["text"], "and it says so by name")
 
@@ -116,7 +130,7 @@ func test_two_shards_drawing_a_corpus_sample_fails_the_gate() -> void:
 		]
 	)
 
-	gut.p(result["text"])
+	gut.p(_summarise(result))
 	assert_eq(result["code"], 1, "two draws in one gate is a broken shard map")
 	assert_true("MORE THAN ONE SHARD DREW" in result["text"], "and it is named, not inferred")
 

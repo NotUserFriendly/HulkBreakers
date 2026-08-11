@@ -138,7 +138,16 @@ const BASELINE: Dictionary = {
 	"floods": 5128,
 	"ui_builds": 1267,
 	"maps": 941,
-	"spawns": 25,
+	# tb66 Pass F: 25 -> 32. **All seven are this block's own**, and they are named rather than
+	# absorbed: `test_merge_shards.gd` drives `tools/merge_shards.py` as a real subprocess seven
+	# times (six tests, one of which runs it twice) to prove the merge cannot report green on a
+	# killed shard. Spawning is the thing under test there, so the cost is irreducible.
+	#
+	# **The ratchet caught this exactly as designed, one run late, and that is the mechanism
+	# working.** The full gate that *wrote* the new profile read the old one and passed; the very
+	# next gate read the new numbers and went red. Drift lands, then is reported against the
+	# baseline it broke — which is why taskblock-65 made the full gate write the profile at all.
+	"spawns": 32,
 }
 
 ## Files whose **turns** are excluded from the gated suite total.
