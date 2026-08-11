@@ -48,9 +48,7 @@ func _standable_cells(grid: Grid) -> Array[Vector2i]:
 func _blamed(grid: Grid, a: Vector2i, b: Vector2i) -> String:
 	var from: Vector3 = LoS.sight_point(grid, a)
 	var to: Vector3 = LoS.sight_point(grid, b)
-	var excluded: Array[Part] = []
-	for cell: Vector2i in [a, b]:
-		excluded.append_array(grid.parts_at(cell))
+	var excluded: Array[Part] = LoS._endpoints(grid, a, b)
 	var span: Vector3 = to - from
 	var distance: float = span.length()
 	var dir: Vector3 = span / distance
@@ -169,4 +167,70 @@ func test_one_cell_blindness_splits_orthogonal_from_diagonal() -> void:
 		orthogonal[1],
 		0,
 		"the endpoint exemption makes an orthogonal neighbour unblockable — Pass A1's premise"
+	)
+
+
+## **The two loops must agree on the board that exposed the disagreement.** `BR64.01`.
+##
+## `test_sight_geometry.gd` sweeps this on seed 4242, which turned out not to contain the case
+## at all. This seed does: it is the one the 56 divergent pairs were measured on, and it is the
+## only board here carrying `TALL_ROOM_LEVEL` walls, whose `_stand_wall` placement height is the
+## other place the two paths could drift (`_blocker_in_the_way` reads
+## `blocker_height_for_cell`, `_consider_assembly` reads `true_height_for_cell`).
+func test_the_sight_predicate_and_the_ray_march_agree_on_this_board() -> void:
+	var grid: Grid = MapGen.generate(SWEEP_SEED, SWEEP_WIDTH, SWEEP_ROWS)
+	var cells: Array[Vector2i] = _standable_cells(grid)
+	var seen: Dictionary = {}
+	for cell: Vector2i in cells:
+		seen[cell] = true
+
+	var compared := 0
+	var blocked := 0
+	var disagreements: Array[String] = []
+	for a: Vector2i in cells:
+		for dy in range(-SWEEP_RADIUS, SWEEP_RADIUS + 1):
+			for dx in range(-SWEEP_RADIUS, SWEEP_RADIUS + 1):
+				var b: Vector2i = a + Vector2i(dx, dy)
+				if b.y < a.y or (b.y == a.y and b.x <= a.x):
+					continue
+				if not seen.has(b):
+					continue
+				# The real exemption, not a re-derivation of it — see the note in
+				# `test_sight_geometry.gd`.
+				var excluded: Array[Part] = LoS._endpoints(grid, a, b)
+				var from: Vector3 = LoS.sight_point(grid, a)
+				var to: Vector3 = LoS.sight_point(grid, b)
+				var span: Vector3 = to - from
+				var distance: float = span.length()
+				if distance <= 0.0001:
+					continue
+				var any_hit: bool = RayCaster.obstructed(grid, from, to, excluded)
+				var nearest: RayHit = RayCaster.cast_geometry(
+					grid, from, span / distance, excluded, distance - 0.0001
+				)
+				compared += 1
+				if any_hit:
+					blocked += 1
+				if any_hit != (nearest != null) and disagreements.size() < 12:
+					disagreements.append(
+						(
+							"%s->%s obstructed=%s march=%s"
+							% [a, b, any_hit, "null" if nearest == null else str(nearest.part.id)]
+						)
+					)
+
+	gut.p(
+		(
+			"  compared %d pairs, %d blocked, %d disagreements"
+			% [compared, blocked, disagreements.size()]
+		)
+	)
+	for line: String in disagreements:
+		gut.p("    %s" % line)
+
+	assert_gt(blocked, 0, "agreement proves nothing on a board where nothing blocks")
+	assert_eq(
+		disagreements,
+		[] as Array[String],
+		"RayCaster's header: the thing LoS sees and the thing a round meets cannot drift apart"
 	)

@@ -201,7 +201,8 @@ static func obstructed(
 			),
 			from,
 			dir,
-			limit
+			limit,
+			exclude_parts
 		):
 			return true
 
@@ -218,7 +219,8 @@ static func obstructed(
 					UnitGeometry.assembly_placements(item, cell, 0.0, null, item_height),
 					from,
 					dir,
-					limit
+					limit,
+					exclude_parts
 				):
 					return true
 	return false
@@ -273,7 +275,11 @@ static func _blocker_in_the_way(
 	if not PartPicker.near_ray(cell, from, dir, height):
 		return false
 	return _any_box_hit(
-		UnitGeometry.assembly_placements(part, cell, 0.0, null, height), from, dir, limit
+		UnitGeometry.assembly_placements(part, cell, 0.0, null, height),
+		from,
+		dir,
+		limit,
+		exclude_parts
 	)
 
 
@@ -350,15 +356,36 @@ static func blocker_obstructed_among(
 				continue
 			if box_placements.is_empty():
 				box_placements = UnitGeometry.assembly_placements(part, cell, 0.0, null, height)
-			if _any_box_hit(box_placements, from, dirs[i], limits[i]):
+			if _any_box_hit(box_placements, from, dirs[i], limits[i], exclude_parts):
 				return cell
 	return null
 
 
+## **Exclusion is per BOX, not per root.** `BR64.01`, tb64 Pass B.
+##
+## Every caller filters its candidate on the root it enumerated — `surface.part`, the blocker's
+## own `Part`, the field item — and then handed the whole assembly here unfiltered. **A part
+## socketed onto that root is a different `Part` and was never checked against `exclude_parts`
+## at all**, so `obstructed` honoured the endpoint exemption for a floor and ignored it for the
+## ladder standing in that floor's `LEDGE` socket.
+##
+## `_consider` — the nearest-hit march `cast_geometry` runs — has always tested
+## `placement.part`, which is how the two paths came to disagree on **56 of 751 blind pairs**
+## while `RayCaster`'s own header claimed they *"cannot drift apart"*. This is the any-hit loop
+## being brought to the nearest-hit loop's rule, not a new rule.
+##
+## The practical shape: a unit standing on a cell whose neighbour's floor carries a ladder was
+## blinded **by a part the endpoint exemption had already excluded**.
 static func _any_box_hit(
-	placements: Array[BoxPlacement], from: Vector3, dir: Vector3, limit: float
+	placements: Array[BoxPlacement],
+	from: Vector3,
+	dir: Vector3,
+	limit: float,
+	exclude_parts: Array[Part] = []
 ) -> bool:
 	for placement: BoxPlacement in placements:
+		if exclude_parts.has(placement.part):
+			continue
 		var hit: Dictionary = UnitPicker.ray_box_hit(placement, from, dir)
 		if not hit.is_empty() and float(hit["t"]) <= limit:
 			return true
@@ -376,10 +403,11 @@ static func _geometry_into(
 ) -> float:
 	var result: float = best_t
 	for cell: Vector2i in grid.blockers:
-		# taskblock-63 Pass D3: a blocker's own placed height, not only the tile's.
-		if not PartPicker.near_ray(
-			cell, from, dir_n, UnitGeometry.blocker_height_for_cell(cell, grid)
-		):
+		# taskblock-63 Pass D3: a blocker's own placed height, not only the tile's. Computed once
+		# and handed on, so the reject and the boxes it admits cannot read different heights —
+		# which is exactly what `BR64.01` was.
+		var blocker_height: float = UnitGeometry.blocker_height_for_cell(cell, grid)
+		if not PartPicker.near_ray(cell, from, dir_n, blocker_height):
 			continue
 		var part: Part = grid.blocker_part_at(cell)
 		result = _consider_assembly(
@@ -387,7 +415,7 @@ static func _geometry_into(
 			result,
 			part,
 			cell,
-			grid,
+			blocker_height,
 			from,
 			dir_n,
 			exclude_parts,
@@ -417,9 +445,10 @@ static func _geometry_into(
 		)
 
 	for cell: Vector2i in grid.field_items:
-		if not PartPicker.near_ray(
-			cell, from, dir_n, UnitGeometry.true_height_for_cell(cell, grid)
-		):
+		# A loose item rests on the tile itself — it carries no placement record of its own, so
+		# this stays `true_height_for_cell` where the blocker branch above does not.
+		var item_height: float = UnitGeometry.true_height_for_cell(cell, grid)
+		if not PartPicker.near_ray(cell, from, dir_n, item_height):
 			continue
 		for item: Variant in grid.field_items[cell]:
 			# A loose Matrix has no volume to strike — never a candidate, the
@@ -430,7 +459,7 @@ static func _geometry_into(
 					result,
 					item,
 					cell,
-					grid,
+					item_height,
 					from,
 					dir_n,
 					exclude_parts,
@@ -485,26 +514,34 @@ static func _consider_surface(
 	return result
 
 
-## One object's whole assembly tree, at its cell's **real** height.
+## One object's whole assembly tree, at the height its caller says it stands at.
 ##
 ## `BR52.01`: `UnitGeometry.assembly_placements` defaults `height` to 0.0, and
 ## `PartPicker` took that default while `BoardView._spawn_blocker` passes
 ## `true_height_for_cell`. On a raised cell that put the hittable volume
 ## somewhere the mesh is not, contradicting `docs/10`'s "render is hitbox". The
 ## height is passed here, and `PartPicker` now passes it too.
+##
+## **`height` is a parameter rather than a lookup** — `BR64.01`, tb64 Pass B. taskblock-63 Pass D3
+## gave a blocker its own placement record, so a blocker stands at `blocker_height_for_cell`
+## (the tile plus its own placed offset) and a field item still stands at `true_height_for_cell`.
+## D3 moved `obstructed` and this function's `near_ray` reject onto the new reading and **left
+## the box placement itself on the old one**, so the sight predicate and the ray march built the
+## same wall at two different heights. Measured: 12 pairs on seed `642296523`, all of them in
+## the one `TALL_ROOM_LEVEL` room, where `_stand_wall` is the only thing that places a blocker
+## at a nonzero height.
 static func _consider_assembly(
 	best: Array[RayHit],
 	best_t: float,
 	root: Part,
 	cell: Vector2i,
-	grid: Grid,
+	height: float,
 	from: Vector3,
 	dir_n: Vector3,
 	exclude_parts: Array[Part],
 	max_distance: float,
 	kind: StringName
 ) -> float:
-	var height: float = UnitGeometry.true_height_for_cell(cell, grid)
 	var root_origin := Vector3(
 		cell.x * UnitGeometry.CELL_SIZE, height, cell.y * UnitGeometry.CELL_SIZE
 	)

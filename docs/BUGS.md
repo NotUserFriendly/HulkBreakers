@@ -219,26 +219,32 @@ bug and it is chased on its own terms.
 
 ---
 
-### BR64.01 — Active — owner: `CC`
-**`RayCaster.cast_geometry` and `RayCaster.obstructed` disagree about what a ray meets**
-- **cluster:** `projection-and-targeting`
-- **Source:** `CC`, 2026-08-10, tb64 Pass A2  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
-- Sweeping seed `642296523` at 40x30, **56 of 751 blind pairs had `cast_geometry` return `null`
-  while `obstructed` reported the line blocked** — the largest single bucket, and enough to have
-  left the sweep's blame table mostly unexplained had it not been rebuilt on `obstructed`'s own
-  loops.
-- **`RayCaster`'s own header states the invariant this breaks:** *"This is the same march with the
-  unit loop left off, **not a second one** ... so the thing `LoS` sees and the thing a round meets
-  cannot drift apart."* They have drifted. **No-parallel-systems, in the file that documents it.**
-- **Suspected, unverified:** `obstructed`'s `_blocker_in_the_way` builds a blocker's boxes at
-  `UnitGeometry.blocker_height_for_cell`, while `_geometry_into` -> `_consider_assembly` builds
-  them at `UnitGeometry.true_height_for_cell`. tb63 Pass D3 moved the `near_ray` reject to the new
-  height in both paths but left `_consider_assembly`'s actual placement on the old one. Not
-  confirmed against a specific pair — the observed divergences were surface hits, so there may be
-  a second cause on the surface branch.
-- **A shot and a sight line reading different geometry is a correctness defect regardless of the
-  blindness question**, and it is what `test_sight_geometry.gd::test_the_any_hit_loop_agrees_with_
-  the_nearest_hit_march` claims to cover. That test evidently does not reach this case.
+### BR64.03 — Suspected — owner: `CC`
+**An `ELITE` chose `roam` with an enemy two cells away, and it does not reproduce on bare ground**
+- **cluster:** `ai-behaviour`
+- **Source:** `CC`, 2026-08-10, tb64 Pass A3  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
+- **`Suspected`, not `Active`: this is a lead, not yet a described bug.** It is the residue of
+  `BR63.05` (`SUPERVISOR`-owned, still open) once the two `MINDLESS` observations in that entry
+  turned out to be a tier gate rather than sight. **That entry is the report; this is the chase.**
+- `roam`'s `enemy_unknown` precondition is `target == null`, and `target` is
+  `_nearest_known_enemy()`, so the unit genuinely knew of no enemy. The inference in `BR63.05` is
+  sound for **this** observation even though it is wrong for the rest of that entry.
+- **Does not reproduce on a bare board.** `test_close_range_firing_decision.gd` runs the real
+  `combat_tester_sniper_rifle` (`ELITE`) against an enemy at 1, 2 and 3 cells with no geometry
+  present: `enemies_visible = 1` every time, and it plans, backs off past its own `min_range` and
+  fires. So whatever this is, it needs a real board.
+- **Two readings, and nothing separates them yet:**
+  1. **Ordinary geometry.** After tb64 Pass B the sweep still measures **193 blind pairs at
+     Chebyshev 2 (8.72%)** on a generated board. A single observation at two cells is entirely
+     consistent with that, and would make this not-a-bug.
+  2. **A knowledge-layer defect above `LoS`.** `WorldView.units_visible_to` gates on
+     `MEMORY_TIERS`/`restricted` before sight is ever asked, and **nothing has measured that path
+     on a generated board with a real roster** — only on fixtures.
+- **What would separate them:** run a seeded bout to the turn that produced the `roam`, and for
+  that unit dump `units_visible_to` beside a direct `LoS.has_los` to the enemy's cell. If sight
+  says yes and the view says no, it is reading 2; if both say no, it is reading 1 and this closes
+  `Obsolete` against the geometry. **The decision log already records `visible_unit_ids` per
+  decision**, so most of the instrument exists.
 ### BR64.02 — Active — owner: `CC`
 **`kitted_chaingun` assembles with no weapon**
 - **cluster:** `data-authoring`
@@ -336,20 +342,25 @@ bug and it is chased on its own terms.
     observation still unexplained, and it is the only part of this entry that is still about sight.
 - **What the sight sweep did find** (`test_generated_board_sight_sweep.gd`, seed `642296523` at
   40x30, 445 standable cells): blindness inside Chebyshev 3 is real but **ordinary geometry**, not
-  a regression — 25 blind pairs at 1 cell (1.97%), 208 at 2 (9.39%), 518 at 3 (17.84%). At
-  `316edc5` the same seed measured 1.60% / 7.08% / 15.69%, so tb63 made it ~2 points worse rather
-  than newly broken. **Caveat: not the same board** — tb63 Pass D1 changed generation (559
-  standable cells then, 445 now).
+  a regression — **19 blind pairs at 1 cell (1.49%), 193 at 2 (8.72%), 510 at 3 (17.56%)**. At
+  `316edc5` the same seed measured 1.60% / 7.08% / 15.69%. **Caveat: not the same board** — tb63
+  Pass D1 changed generation (559 standable cells then, 445 now).
+  - **Re-taken after Pass B, and the first figures were wrong.** A2 reported 1.97% / 9.39% /
+    17.84% with `BR64.01` still live; fixing it cleared 29 blind pairs that were never real
+    occlusion. The tb63-made-it-worse gap narrows from ~2 points to well under 1 at close range,
+    which weakens the regression reading further rather than strengthening it.
 - **Orthogonal adjacency is unblockable and that half of the narrowing below holds** — 667 pairs,
-  0 blind. **The diagonals are not**: 605 pairs, 25 blind. `_nearest_known_enemy` measures
+  0 blind. **The diagonals are not**: 605 pairs, 19 blind. `_nearest_known_enemy` measures
   `Grid.distance_chebyshev`, so *"one cell away"* includes the four diagonals, where two
   non-exempt cells sit between the pair. tb64 Pass A1's fixture only ever tested `(2,2)->(3,2)`.
 - **`_stand_wall` is a minor contributor, not the cause.** Reverted to a bare `place_blocker` on an
-  identical board layout: 751 blind pairs -> 709, so tb63 Pass D2 accounts for **5.6%**.
+  identical board layout: 751 blind pairs -> 709, so tb63 Pass D2 accounts for **5.6%**. Measured
+  before Pass B; the isolation's *direction* is unaffected, but the two figures are pre-`BR64.01`
+  and should not be compared against the 722 above.
 - **What blinds is decided by height, not by being a wall** — the blame table, by the occluding
-  box's own part: `ship_floor` 177, `wall` 168, `pillar` 157, `forklift` 85, `ladder` 130 (82 of
-  them socketed into a floor's `LEDGE` socket), `scrap_pile` 14, `goo_barrel` 10, `barrel_pallet`
-  8, `crate` 2. **Cover blames 276 against the walls' 168.** A prior CC session recorded the
+  box's own part (post-Pass-B): `ship_floor` 177, `wall` 168, `pillar` 157, `forklift` 85,
+  `ladder` 101 (57 of them socketed into a floor's `LEDGE` socket), `scrap_pile` 14, `goo_barrel`
+  10, `barrel_pallet` 8, `crate` 2. **Cover blames 276 against the walls' 168.** A prior CC session recorded the
   opposite — *"cover does not block sight, only walls blind"* — generalising from `crate` (0.70)
   to a class that contains `pillar` (1.80) against a `SIGHT_HEIGHT` of 1.25. That reading is what
   steered this entry at the walls tb63 made taller.

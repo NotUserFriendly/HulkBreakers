@@ -234,3 +234,146 @@ func test_the_any_hit_loop_agrees_with_the_nearest_hit_march() -> void:
 	gut.p("  compared %d rays, %d of them blocked" % [compared, blocked])
 	assert_gt(compared, 40, "the sweep actually ran")
 	assert_gt(blocked, 0, "and it included blocked rays, or agreement proves nothing")
+
+
+## **The same sweep with the endpoint exemption actually applied** — `BR64.01`, tb64 Pass B.
+##
+## The sweep above passes `[] as Array[Part]`, and **the entire defect lived in how
+## `exclude_parts` is applied**, so with nothing excluded the two loops agreed trivially and the
+## disagreement went unseen through every run of it. `LoS.has_los` never calls either loop with
+## an empty exclusion — it always passes `_endpoints` — so the configuration the sweep tested is
+## the one production does not use.
+##
+## What it was hiding: `obstructed` filtered each candidate on the **root** it enumerated
+## (`surface.part`) and then handed the whole assembly to `_any_box_hit`, which checked nothing
+## per box. **A ladder socketed into a floor's `LEDGE` socket is a different `Part`**, so an
+## excluded ladder still blinded — 56 of 751 blind pairs on seed `642296523`, and a unit blinded
+## by a part its own endpoint exemption had already taken off the board.
+##
+## Sweeps cell PAIRS rather than angles, because the exemption is a property of the two endpoint
+## cells and an angle sweep from one origin varies only one of them.
+##
+## **This is a breadth check and it is NOT what pins `BR64.01`** — stated plainly because the
+## honest version of "add a test" is knowing which test carries the weight. Seed 4242 at 24x18
+## has no socketed ledge ladder on any swept pair, so this passed both before and after the fix.
+## `test_an_excluded_part_socketed_onto_a_neighbours_floor_does_not_blind` below is the guard;
+## this one catches whatever else the two loops might disagree about later.
+func test_the_two_loops_agree_when_the_endpoint_exemption_is_applied() -> void:
+	var grid: Grid = MapGen.generate(4242, 24, 18)
+	var pathfinder := Pathfinder.new(grid)
+	var cells: Array[Vector2i] = []
+	for y in range(grid.rows):
+		for x in range(grid.width):
+			var cell := Vector2i(x, y)
+			if pathfinder.is_walkable(cell):
+				cells.append(cell)
+
+	var compared := 0
+	var blocked := 0
+	var disagreements: Array[String] = []
+	for a: Vector2i in cells:
+		for offset: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)]:
+			var b: Vector2i = a + offset
+			if not grid.in_bounds(b):
+				continue
+			# **The real exemption, not a re-derivation of it.** `LoS._endpoints` walks the
+			# socket tree; rebuilding it from `grid.parts_at` here would test a second copy of
+			# the rule and agree with nothing (`BR64.01` lived in exactly that gap).
+			var excluded: Array[Part] = LoS._endpoints(grid, a, b)
+			var from: Vector3 = LoS.sight_point(grid, a)
+			var to: Vector3 = LoS.sight_point(grid, b)
+			var span: Vector3 = to - from
+			var distance: float = span.length()
+			if distance <= 0.0001:
+				continue
+			var any_hit: bool = RayCaster.obstructed(grid, from, to, excluded)
+			var nearest: RayHit = RayCaster.cast_geometry(
+				grid, from, span / distance, excluded, distance - 0.0001
+			)
+			compared += 1
+			if any_hit:
+				blocked += 1
+			if any_hit != (nearest != null):
+				disagreements.append(
+					(
+						"%s->%s obstructed=%s cast_geometry=%s"
+						% [a, b, any_hit, "null" if nearest == null else str(nearest.part.id)]
+					)
+				)
+
+	gut.p(
+		(
+			"  compared %d pairs, %d blocked, %d disagreements"
+			% [compared, blocked, disagreements.size()]
+		)
+	)
+	for line: String in disagreements:
+		gut.p("    %s" % line)
+
+	assert_gt(compared, 200, "the sweep actually ran")
+	assert_gt(blocked, 0, "and it included blocked pairs, or agreement proves nothing")
+	assert_eq(
+		disagreements,
+		[] as Array[String],
+		(
+			"the sight predicate and the shot march must meet the same geometry — RayCaster's own "
+			+ "header: 'the thing LoS sees and the thing a round meets cannot drift apart'"
+		)
+	)
+
+
+## **`BR64.01`'s guard** — the exact geometry, hand-built, tb64 Pass B.
+##
+## `GridPlacement.place` gives a side-attaching ladder two homes: it becomes a `Surface` at its
+## own cell **and** an occupant of a neighbouring floor's `LEDGE` socket. So the same `Part` is
+## reachable through two different roots, and the endpoint exemption only ever knew about one
+## of them.
+##
+## Here the ladder is placed at `(2,2)` and takes `(1,2)`'s `LEDGE_E`. A sight line from `(1,3)`
+## to `(2,2)` has the ladder **at an endpoint cell**, so `LoS._endpoints` excludes it — and
+## `obstructed` reached it anyway through `(1,2)`'s `ship_floor` assembly, where nothing checked
+## the exclusion per box. **A unit was blinded by the ladder it is standing next to.**
+##
+## `(2,1) -> (2,3)` is the control and must stay blocked: neither endpoint owns the ladder, so
+## nothing exempts it and a 2.0-tall panel across the line is a real occluder.
+func test_an_excluded_part_socketed_onto_a_neighbours_floor_does_not_blind() -> void:
+	var grid: Grid = GridFixture.flat(6, 5, 0.0)
+	# A height difference is what gives the ladder something to side-attach to.
+	GridFixture.place_floor(grid, Vector2i(3, 2), 1.0)
+	var placed: Surface = GridPlacement.place(
+		grid, Vector2i(2, 2), DataLibrary.get_part(&"ladder"), 0.0
+	)
+	assert_not_null(placed, "the fixture needs the ladder to actually place")
+
+	var ladder: Part = null
+	for socket: Socket in Surface.first_walkable(grid.surfaces_at(Vector2i(1, 2))).part.sockets:
+		if socket.occupant != null:
+			ladder = socket.occupant
+	assert_not_null(ladder, "the ladder must have taken the neighbouring floor's LEDGE socket")
+	assert_true(
+		grid.parts_at(Vector2i(2, 2)).has(ladder),
+		"and must also be registered at its own cell, or the exemption never covers it"
+	)
+
+	gut.p(
+		(
+			"  (1,3) -> (2,2), ladder at an endpoint: %s"
+			% LoS.has_los(grid, Vector2i(1, 3), Vector2i(2, 2))
+		)
+	)
+	gut.p(
+		(
+			"  (2,1) -> (2,3), ladder at neither:     %s"
+			% LoS.has_los(grid, Vector2i(2, 1), Vector2i(2, 3))
+		)
+	)
+
+	assert_true(
+		LoS.has_los(grid, Vector2i(1, 3), Vector2i(2, 2)),
+		"a part the endpoint exemption excluded must not blind, whichever root reaches it"
+	)
+	assert_true(LoS.has_los(grid, Vector2i(2, 2), Vector2i(1, 3)), "and symmetrically")
+	assert_false(
+		LoS.has_los(grid, Vector2i(2, 1), Vector2i(2, 3)),
+		"the control: exempt from nothing, a 2.0 ladder across the line still blocks"
+	)

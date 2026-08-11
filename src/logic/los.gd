@@ -74,10 +74,19 @@ static func sight_point(grid: Grid, cell: Vector2i) -> Vector3:
 ## Blockers, placed surfaces and loose field items alike: a unit on a catwalk is standing *on* a
 ## surface whose box its own sight line begins inside, and a floor that blinded whoever stood on
 ## it would be a spectacular way to fail this pass.
+##
+## **Socketed children count, and leaving them out was half of `BR64.01`** (tb64 Pass B).
+## `Grid.parts_at` answers with the roots it stores, so a ladder bolted into an endpoint floor's
+## `LEDGE` socket was **standing at that endpoint cell and not on this list**. The two ray loops
+## then papered over it in opposite directions — `obstructed` skipped the whole assembly because
+## its *root* was excluded, while the march kept the ladder because the *box* was not — and the
+## two answers differed on real boards. Walking the socket tree states the rule the doc comment
+## above already claims: *every* part standing there, not every part stored there.
 static func _endpoints(grid: Grid, a: Vector2i, b: Vector2i) -> Array[Part]:
 	var parts: Array[Part] = []
 	for cell: Vector2i in [a, b]:
-		parts.append_array(grid.parts_at(cell))
+		for root: Part in grid.parts_at(cell):
+			parts.append_array(PartGraph.walk(root))
 	return parts
 
 

@@ -40,6 +40,41 @@ planner, **bare flat board with no geometry on it at all** — `enemies_visible 
 **Sight explains none of the reported silence.** Three separate silencers instead, none of them
 geometric, all recorded under `BR63.04`/`BR63.05`.
 
+### Pass B — the sight predicate and the ray march meet the same geometry
+
+**`BR64.01`, and the taskblock's better outcome: the fix is in `RayCaster`, not in `MapGen`.**
+Nothing was reverted, no wall was made short again. **Three causes, and the one filed from A2 was
+only the second of them** — divergent pairs on seed `642296523` go **56 -> 0**:
+
+- **Exclusion was applied per root, not per box.** Every caller filtered the candidate it
+  enumerated and handed the whole assembly to `_any_box_hit`, which checked nothing. **A ladder in
+  a floor's `LEDGE` socket is a different `Part`**, so a part the endpoint exemption had already
+  excluded still blinded the unit standing beside it.
+- **`_consider_assembly` built blockers at `true_height_for_cell`** while `obstructed` used
+  `blocker_height_for_cell`. taskblock-63 Pass D3 moved the `near_ray` reject onto the new reading
+  and **left the box placement on the old one**, so the sight predicate and the shot march stood
+  the same wall at two different heights. 12 pairs, all inside the one `TALL_ROOM_LEVEL` room.
+- **`LoS._endpoints` listed roots rather than the parts standing there.** The two loops papered
+  over that in **opposite directions** — `obstructed` skipping an assembly whose root was excluded,
+  the march keeping a box whose root was. It now walks the socket tree, which is what its own doc
+  comment already claimed.
+
+**The test that should have caught it could not**, and that is the reusable finding.
+`test_the_any_hit_loop_agrees_with_the_nearest_hit_march` passes `[] as Array[Part]` — and the
+entire defect lived in how `exclude_parts` is applied, so with nothing excluded the two loops
+agreed trivially. `LoS.has_los` never calls either loop with an empty exclusion. **Both new sweeps
+build their exclusion from `LoS._endpoints` itself rather than re-deriving it**, since re-deriving
+the rule is precisely the gap this sat in.
+
+**Guarded by a hand-built fixture, verified to fail without the fix.** The seed-4242 breadth sweep
+does not contain the case and passed before and after; that is recorded in its own doc comment so
+the next reader does not mistake it for the guard.
+
+**Measured side effect on the blindness numbers:** blind pairs inside Chebyshev 3 on the sweep seed
+go **751 -> 722**, Chebyshev 1 **25 -> 19**, and `ladder (surface on ship_floor)` **82 -> 57**.
+**A2's reported figures are superseded by these** — the earlier ones were taken with the defect
+live and are no longer the tree's numbers.
+
 ### Pass C — a chaingun unit can fire
 
 **`burst` levels with `shoot`** — `data/utility_actions/burst.tres`, tier-gated

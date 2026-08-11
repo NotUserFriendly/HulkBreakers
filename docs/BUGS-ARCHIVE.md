@@ -10,6 +10,56 @@ those are exactly what a future session needs when a bug turns out not to be as 
 
 ---
 
+### BR64.01 — Resolved — owner: `CC`
+**`RayCaster.cast_geometry` and `RayCaster.obstructed` disagree about what a ray meets**
+- **cluster:** `projection-and-targeting`
+- **Source:** `CC`, 2026-08-10, tb64 Pass A2  ·  **CC session:** `4d8755ca-841c-4dc7-aa67-432a6b560498`
+- Sweeping seed `642296523` at 40x30, **56 of 751 blind pairs had `cast_geometry` return `null`
+  while `obstructed` reported the line blocked** — the largest single bucket, and enough to have
+  left the sweep's blame table mostly unexplained had it not been rebuilt on `obstructed`'s own
+  loops.
+- **`RayCaster`'s own header states the invariant this breaks:** *"This is the same march with the
+  unit loop left off, **not a second one** ... so the thing `LoS` sees and the thing a round meets
+  cannot drift apart."* They have drifted. **No-parallel-systems, in the file that documents it.**
+- **Suspected, unverified:** `obstructed`'s `_blocker_in_the_way` builds a blocker's boxes at
+  `UnitGeometry.blocker_height_for_cell`, while `_geometry_into` -> `_consider_assembly` builds
+  them at `UnitGeometry.true_height_for_cell`. tb63 Pass D3 moved the `near_ray` reject to the new
+  height in both paths but left `_consider_assembly`'s actual placement on the old one. Not
+  confirmed against a specific pair — the observed divergences were surface hits, so there may be
+  a second cause on the surface branch.
+- **A shot and a sight line reading different geometry is a correctness defect regardless of the
+  blindness question**, and it is what `test_sight_geometry.gd::test_the_any_hit_loop_agrees_with_
+  the_nearest_hit_march` claims to cover. That test evidently does not reach this case.
+- **Resolved 2026-08-10, tb64 Pass B. Three causes, not one — and the filed suspicion was only
+  the second of them.** Divergent pairs on seed `642296523` at 40x30: **56 -> 0**.
+  1. **Exclusion was applied per ROOT, not per BOX.** Every caller filtered the candidate it
+     enumerated (`surface.part`, the blocker, the field item) and handed the whole assembly to
+     `_any_box_hit`, which checked nothing. A ladder in a floor's `LEDGE` socket is a different
+     `Part`, so an **excluded** ladder still blinded. `_any_box_hit` now takes `exclude_parts`.
+  2. **`_consider_assembly` built blockers at `true_height_for_cell`** while `obstructed` used
+     `blocker_height_for_cell`. taskblock-63 Pass D3 moved the `near_ray` reject onto the new
+     reading and left the box placement on the old one, so the same wall stood at two heights.
+     Height is now a parameter, computed once per cell and handed on. 12 pairs, all inside the
+     one `TALL_ROOM_LEVEL` room — the only place `_stand_wall` gives a blocker a nonzero height.
+  3. **`LoS._endpoints` listed roots, not the parts standing there.** `Grid.parts_at` answers
+     with what it stores, so a ladder socketed into an endpoint floor was exempt from neither
+     loop's point of view — and the two papered over it in **opposite** directions, `obstructed`
+     skipping the assembly because its root was excluded and the march keeping the box because
+     it was not. `_endpoints` now walks the socket tree via `PartGraph.walk`, which is what its
+     own doc comment already claimed it did.
+- **The test that should have caught this could not.**
+  `test_sight_geometry.gd::test_the_any_hit_loop_agrees_with_the_nearest_hit_march` passes
+  `[] as Array[Part]`, and **the whole defect lived in how `exclude_parts` is applied**, so with
+  nothing excluded the loops agreed trivially. `LoS.has_los` never calls either loop with an
+  empty exclusion. Both new sweeps build their exclusion from `LoS._endpoints` itself rather
+  than re-deriving it, since re-deriving the rule is the gap this sat in.
+- **Guarded by `test_an_excluded_part_socketed_onto_a_neighbours_floor_does_not_blind`**, a
+  hand-built fixture — verified to fail without the fix. The seed-4242 breadth sweep does **not**
+  contain the case and passed before and after; that is recorded in its own doc comment so the
+  next reader does not mistake it for the guard.
+- **Side effect on the blindness numbers, measured:** blind pairs inside Chebyshev 3 on the sweep
+  seed go **751 -> 722**, and Chebyshev 1 goes **25 -> 19**.
+
 
 ### BR60.01 — Resolved — owner: `CC`
 **Generated maps can contain a large raised region that is unreachable from either spawn, and the navigability invariant cannot see it**
