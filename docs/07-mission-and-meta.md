@@ -16,6 +16,19 @@ player chooses, or can't continue — three outcomes, `Enums.MissionOutcome`:
 | `TERMINATED` | The player's own choice (kill your own surrogates). Never the "lose" button — it's the tourniquet. | Come home; loot lost. |
 | `STRANDED` | Involuntary — no player matrix can act (`MissionState.is_stranded()`). | Come home regardless — **not a loss**; the roguelike rule is absolute. |
 
+**`DEBUG_ENDED` is a fourth enum value and is deliberately not in that table** (tb64 Pass E), because
+it is not a mission outcome. It fires only when `MissionState.victory_mode` is `&"contest"` — a
+harness setting the bout builder offers and nothing in play can reach — and means *a team can no
+longer contest*: no living units, none left on the board, or **none holding a weapon its own tier
+has an action for**. `MissionState.debug_winner_squad_id` names the one team still standing, or `-1`
+for a tie. It discards and returns matrices exactly as `TERMINATED`/`STRANDED` do, so a harness bout
+leaves the run state in the shape a real mission would.
+
+**Why it exists:** the three outcomes above are all written in terms of the *player* squad, and
+bouts are frequently run AI-vs-AI for speed of testing, so an AI-only bout could not end at all and
+ran to its turn cap. **The mode is also an instrument** — under it, a roster that cannot fire loses
+immediately instead of producing 31 turns of silence that read as a slow bout (`BR63.04`).
+
 Turn in → credits → buy/refine/upgrade → next hulk.
 
 ## Hulk persistence

@@ -1036,6 +1036,68 @@ static func weapon_id_of(unit: Unit) -> StringName:
 	return _find_weapon_id(unit)
 
 
+## Executor ids that build a firing action **out of a weapon**. Read off `ActionCatalog`'s own
+## vocabularies rather than restated, so a melee verb authored later is covered the day it lands.
+##
+## `move`, `gather` and the rest are excluded deliberately: they are things a unit can do while
+## holding a gun, not things the gun does, and counting them would make every weapon look
+## reachable through `roam`.
+static func weapon_executor_ids() -> Array[StringName]:
+	var ids: Array[StringName] = [&"burst"]
+	ids.append_array(ActionCatalog.ATTACK_ACTION_IDS)
+	ids.append_array(ActionCatalog.MELEE_ACTION_IDS)
+	ids.append_array(ActionCatalog.SLASH_ACTION_IDS)
+	ids.append_array(ActionCatalog.GRIND_ACTION_IDS)
+	return ids
+
+
+## **The utility actions `tier` may select that `weapon` can actually execute.** tb64 Pass D/E.
+##
+## Two gates, and `BR63.04` fell between them: the action's own `tiers` list (empty means every
+## tier), and whether the weapon `provides_actions` the executor the action names. A chaingun
+## provides `burst` only, so before this block a `GRUNT` chaingun's answer here was empty — the
+## unit was armed and could select nothing.
+##
+## **Lives here rather than in a test** because two callers need the same answer: the Pass D
+## cross-product over the library, and `MissionState.team_can_contest`. Two copies of "can this
+## unit do anything with that gun" is the no-parallel-systems rule broken quietly.
+static func reachable_firing_actions(weapon: Part, tier: StringName) -> Array[StringName]:
+	if weapon == null:
+		return []
+	var executors: Array[StringName] = weapon_executor_ids()
+	var reachable: Array[StringName] = []
+	for action: UtilityActionDef in DataLibrary.utility_actions_pool():
+		if not action.tiers.is_empty() and tier not in action.tiers:
+			continue
+		if action.executor_id not in executors:
+			continue
+		if action.executor_id not in weapon.provides_actions:
+			continue
+		reachable.append(action.id)
+	return reachable
+
+
+## **Can this unit still bring fire on anything at all?** tb64 Pass E.
+##
+## Alive, and carrying at least one operable weapon its own tier has an action for. Deliberately
+## *not* "has a functional weapon" (`_has_functional_weapon`): a `GRUNT` holding a chaingun had a
+## perfectly functional weapon and no way to pull the trigger, which is the exact state that ran
+## `BR63.04`'s bout silently to the turn cap. **A unit that cannot be offered a shot is not
+## contesting anything, whatever is bolted to its arm.**
+##
+## Says nothing about range, ammunition or line of fire — those change turn to turn and this is a
+## question about whether a unit is in the fight at all.
+static func can_contest(unit: Unit) -> bool:
+	if unit == null or not unit.alive:
+		return false
+	for part: Part in unit.shell.operable_parts():
+		if part.damage <= 0.0:
+			continue
+		if not reachable_firing_actions(part, unit.intelligence_tier).is_empty():
+			return true
+	return false
+
+
 ## **Whether the weapon this context picked offers any of `ids`.** The one place the planner
 ## asks what a weapon can actually do, so `shoot` and `burst` cannot drift apart from what
 ## `ActionCatalog.build_firing_action` will accept.

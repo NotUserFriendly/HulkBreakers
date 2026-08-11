@@ -46,6 +46,14 @@ Combat does not end because the enemy is dead — a mission ends only when the p
 or can't continue. Three outcomes (`Enums.MissionOutcome`, `07`): `EXTRACTED`, `TERMINATED`,
 `STRANDED`.
 
+**The pillar above is unchanged, and `DEBUG_ENDED` is not a fourth way to finish a mission**
+(tb64 Pass E). It is a harness ending, reachable only from a bout the test harness or the bout
+builder explicitly configured for `victory_mode = &"contest"`, and never from play. It exists
+because bouts are frequently run AI-vs-AI for speed of testing and the three real outcomes are
+all written in terms of the *player* squad, so an AI-only bout had no way to say it was over —
+it ran to the turn cap instead. **A squad that never fires can still complete a mission**, which
+is exactly why `BR63.04`'s 31 silent turns read as a slow bout rather than a broken one.
+
 - **Credits** are currency. Credits *can* buy resources, but harvesting from hulks is far
   more efficient — the loop should always pull you back into a hulk.
 - **Terminate mission** is a real option, not a failure state: you lose the bodies and the

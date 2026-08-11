@@ -115,6 +115,58 @@ pass exists to catch.
 invariant stated in `RayCaster`'s own header) and `BR64.02` (`kitted_chaingun` assembles with no
 weapon at all).
 
+### Pass D — the cross-product nothing asserted
+
+**`test_preset_weapon_reachability.gd`: every preset, every weapon it carries, against its own
+tier.** Both pools come from `DataLibrary`, never a list in the file — a hand-written list goes
+stale the day a preset is added, and that is precisely how the gap survived, since every AI fixture
+in the suite hand-authors its own weapon with `provides_actions = [&"shoot"]`.
+
+**Verified against the defect, not only against a control.** With `burst.tres` removed — the tb63
+state — it reports `combat_tester_chaingun/chaingun @GRUNT` and fails. It would have caught
+`BR63.04`. It also carries the negative control the block asks for: a weapon providing an action no
+utility action names is unreachable at every tier, and a `shoot`-capable weapon **is** reachable at
+`GRUNT` and **is not** at `MINDLESS`, which is `docs/11`'s gate working rather than a defect.
+
+**The rule lives in `UtilityContext.reachable_firing_actions`, not in the test.** Pass E's win
+condition needs the same answer, and two implementations of *"can this unit do anything with that
+gun"* is the no-parallel-systems rule broken quietly — in a file that exists because of a gap
+exactly that shape.
+
+**One stated coverage limit:** `KitEquipper.equip` is not called, because the only kitted preset
+emits `BR64.02`'s `push_error` and GUT scores that as a failure. It costs nothing today
+(`kitted_chaingun` assembles weaponless either way) and the line to delete is named in the doc
+comment.
+
+### Pass E — a bout can be won by fighting
+
+**`MissionState.victory_mode`**, an open `StringName`: `&"extraction"` (the default, and every
+campaign mission — unchanged) or `&"contest"`, under which **a team that can no longer contest has
+lost**. Not "deathmatch"; the name overstates it. Selectable from the bout builder as one dropdown
+and nothing more, because that surface is marked for removal.
+
+**Three terminating conditions that collapse to one predicate**, since `extract_unit` already sets
+`alive = false`: no living units, none left on the board, or **no unit with a usable weapon**. The
+third is the diagnostic, and it is the one a "has a functional weapon" test would miss — a `GRUNT`
+holding a chaingun had a perfectly working gun and nothing to select with it. Under this mode
+`BR63.04` **ends the bout immediately as a loss** instead of running 31 silent turns to the turn
+cap. The win condition is itself the instrument.
+
+**`Enums.MissionOutcome` gains a fourth value, `DEBUG_ENDED`**, on the supervisor's call — see
+`SUPERSEDED.md`. `docs/00`'s pillar is unchanged and is annotated rather than rewritten: all three
+existing outcomes are written in terms of the *player* squad, so an **AI-vs-AI** bout — how bouts
+are frequently run for speed of testing — could not end at all. Named for the harness deliberately,
+so campaign code is never tempted to branch on it.
+
+**The modes must not leak, and that is asserted in both directions**: a team that extracts entirely
+loses under `contest` and still produces a clean `EXTRACTED` under `extraction`, from the identical
+move on the identical board.
+
+**A fixture that was nearly a unit hung the suite rather than failing it.** The first draft socketed
+a weapon straight onto a torso with no manipulator and no docked matrix; the bout blocked for nine
+minutes against one second of CPU. Rebuilt on `test_bout_runner.gd`'s known-good shape, and recorded
+because "nearly a unit" is a cheaper fixture only until it isn't.
+
 ## Taskblock 63 — finish what taskblock 62 exposed
 
 ### Pass A — the file-size cap is the project's number, not gdlint's

@@ -27,17 +27,6 @@ extends GutTest
 ## the cross-product; that one is the proof it resolves.
 
 
-## Executors that build a firing action from a weapon. Read off `ActionCatalog`'s own vocabularies
-## rather than restated, so a new melee verb is covered the day it is authored.
-func _weapon_executors() -> Array[StringName]:
-	var ids: Array[StringName] = [&"burst"]
-	ids.append_array(ActionCatalog.ATTACK_ACTION_IDS)
-	ids.append_array(ActionCatalog.MELEE_ACTION_IDS)
-	ids.append_array(ActionCatalog.SLASH_ACTION_IDS)
-	ids.append_array(ActionCatalog.GRIND_ACTION_IDS)
-	return ids
-
-
 ## Every damaging part a preset's assembled unit actually carries.
 func _weapons_of(unit: Unit) -> Array[Part]:
 	var weapons: Array[Part] = []
@@ -47,23 +36,16 @@ func _weapons_of(unit: Unit) -> Array[Part]:
 	return weapons
 
 
-## The utility actions `tier` may select that this `weapon` can actually execute.
-##
-## Two gates, and they are the two that `BR63.04` fell between: the action's own `tiers` list
-## (empty means every tier), and whether the weapon `provides_actions` the executor named. An
-## action whose executor is not weapon-shaped at all — `move`, `gather` — is not a firing option
-## and is excluded, or every weapon would look reachable through `roam`.
+## **The production answer, not a second copy of it.** `UtilityContext.reachable_firing_actions`
+## is what `MissionState.team_can_contest` reads too, so this test and the contest win condition
+## cannot disagree about whether a unit can do anything with its gun. An earlier draft of this
+## file carried its own copy of the rule; two implementations of *"is this weapon usable"* is the
+## no-parallel-systems rule broken quietly, and this file exists because of a gap exactly that
+## shape.
 func _reachable_for(weapon: Part, tier: StringName) -> Array[String]:
-	var executors: Array[StringName] = _weapon_executors()
 	var reachable: Array[String] = []
-	for action: UtilityActionDef in DataLibrary.utility_actions_pool():
-		if not action.tiers.is_empty() and tier not in action.tiers:
-			continue
-		if action.executor_id not in executors:
-			continue
-		if action.executor_id not in weapon.provides_actions:
-			continue
-		reachable.append(str(action.id))
+	for id: StringName in UtilityContext.reachable_firing_actions(weapon, tier):
+		reachable.append(str(id))
 	reachable.sort()
 	return reachable
 

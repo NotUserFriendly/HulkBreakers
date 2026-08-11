@@ -1,10 +1,13 @@
 # Taskblock 64 Report — a bout that produces gunfire
 
-Passes **A** (measure), **B** (the ray-march divergence) and **C** (a chaingun unit can fire) have
-landed, in that order, each green on the fast gate. **D, E, F and G are not yet done.** The block's
-headline finding is that its own premise was wrong: `BR63.05` is titled *"units do not see enemies
-at one to two cells"*, and at the decision level, on a bare board, **every preset saw its enemy in
-all 18 cases**. The silence was three unrelated things, none of them sight.
+Passes **A** (measure), **B** (the ray-march divergence), **C** (a chaingun unit can fire), **D**
+(the library cross-product) and **E** (a bout can be won by fighting) have landed, in that order,
+each green on the fast gate. **F and G are not yet done.** The block's headline finding is that its
+own premise was wrong: `BR63.05` is titled *"units do not see enemies at one to two cells"*, and at
+the decision level, on a bare board, **every preset saw its enemy in all 18 cases**. The silence was
+three unrelated things, none of them sight — a tier gate, a missing `burst` action, and a preset
+armed with a gun its own tier could never fire. All three combat presets now produce a firing action
+at one, two and three cells.
 
 <!-- Rewrite this opening whenever a later pass moves it. -->
 
@@ -37,6 +40,19 @@ rule the function's own doc comment already claimed (*"every part standing at ei
 cell"*), but it **is** a semantic change and it moves real blindness numbers, so it is called out
 rather than buried in a refactor.
 
+**Pass E needed a fourth `MissionOutcome`, and that was escalated rather than decided.** `docs/00`
+states as a pillar that combat never ends because the enemy is dead, and all three existing outcomes
+are written in terms of the *player* squad — so a contest mode had nowhere to record "the other team
+is finished". Taken to the supervisor, who added the constraint that bouts are frequently run
+AI-vs-AI and asked for a **generalised** `DEBUG_ENDED` rather than a contest-specific value, so later
+harness endings can reuse it. `docs/00` and `docs/07` are annotated rather than rewritten: the pillar
+still governs every campaign mission.
+
+**`MissionState.team_can_contest` asks reachability, not "is the gun working".** A `GRUNT` holding a
+chaingun had a perfectly operable weapon, so a functional-weapon test would have left `BR63.04`'s
+bout running to the turn cap — the exact thing the mode exists to stop. The alternative was the
+cheaper predicate; it would have made the instrument useless for the case it was built for.
+
 **`burst.tres` copies `shoot`'s weights rather than choosing its own.** `base_weight = 1.5` and the
 same five considerations, because *"aligned with shoot"* was the instruction and a different number
 would be an invented balance decision. **`auto_shotgun` provides both**, so they tie and the
@@ -44,7 +60,7 @@ considerations decide — untested, and queued in `PLAN.md` rather than guessed 
 
 ## Tests that failed, then were corrected
 
-**Four, three of them my own instruments reporting the wrong thing.**
+**Six, four of them my own instruments reporting the wrong thing.**
 
 1. **`test_close_range_firing_decision.gd` read a working burst as silence.** It detected a shot
    with `action is AttackAction`; `BurstAction` extends `CombatAction` **beside** `AttackAction`,
@@ -64,6 +80,14 @@ considerations decide — untested, and queued in `PLAN.md` rather than guessed 
 4. **A1's `test_a_wall_between_two_units_blocks_but_cover_does_not`** asserted a mechanism that is
    false. Not a broken fixture — a correct test of a wrong claim, reversed in `SUPERSEDED.md` and
    rewritten to enumerate `MapGen.COVER_IDS` and assert the real rule.
+5. **Pass E's first fixture hung the suite instead of failing it** — nine minutes elapsed against
+   one second of CPU. A weapon socketed straight onto a torso with no manipulator and no docked
+   matrix is *nearly* a unit, and a bout built on it blocked on an await rather than refusing. Fixed
+   by copying `test_bout_runner.gd`'s known-good shape wholesale. **A hang is a worse failure than a
+   red test** and it cost more time than everything else in the pass combined.
+6. **Two Pass E fixtures were wrong about the board and the API** — units placed at `(6,6)` on a
+   12x5 grid (`set_occupant_id` out of bounds), and `BoutRosterEntry.profile_id`, which is actually
+   `ai_profile`. Both mechanical, both caught on the first real run.
 
 ## `SUPERVISOR`-owned entries moved to `Pending`
 

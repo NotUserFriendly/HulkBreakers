@@ -6,6 +6,11 @@ extends RefCounted
 ## terminate() (the mission's own haul is lost — matrices are never lost
 ## on any path, so every one of them still comes home).
 
+## The authored victory modes. Open vocabulary — a new mode is a new value here and a new branch
+## in `BoutRunner`, never a new enum.
+const VICTORY_EXTRACTION := &"extraction"
+const VICTORY_CONTEST := &"contest"
+
 var run_state: RunState
 var combat_state: CombatState
 var objectives: Array[StringName] = []  # open ids, e.g. &"gather_minerals"
@@ -35,6 +40,25 @@ var team_extraction_cells: Dictionary = {}  # int squad_id -> Array[Vector2i]
 ## by "the enemy squad is dead" — that was never an ending. UNDECIDED
 ## (still in progress) until extract()/terminate()/strand() sets it.
 var outcome: Enums.MissionOutcome = Enums.MissionOutcome.UNDECIDED
+
+## **How this bout is allowed to end.** tb64 Pass E. An open `StringName`, not an enum, because
+## it is harness configuration rather than an engine state — a later mode is a new value and no
+## code edit (CLAUDE.md).
+##
+## - `&"extraction"` (the default, and every campaign mission) — unchanged: a mission ends when
+##   the player extracts, terminates, or is stranded. `docs/00`'s pillar.
+## - `&"contest"` — **a team that can no longer contest has lost**, and the bout ends
+##   `DEBUG_ENDED`. Not "deathmatch": the name overstates it.
+##
+## **The mode is the instrument.** Under `contest`, `BR63.04`'s all-chaingun roster would have
+## ended immediately as a loss rather than running 31 silent turns to the turn cap, because a
+## unit that can be offered no shot is not contesting. Every AI measurement before this ran in a
+## mode where *leaving* wins, which is why 31 turns of silence read as a slow bout.
+var victory_mode: StringName = VICTORY_EXTRACTION
+
+## Which squad won, when `outcome` is `DEBUG_ENDED` and exactly one team could still contest.
+## `-1` when nobody did (every team out at once — a real tie, not an error).
+var debug_winner_squad_id: int = -1
 ## Which squad_id is the player's — `is_stranded()`'s own definition of
 ## "no player matrix can act." Convention throughout the codebase (deep
 ## strike, BattleScene) is squad 0; a flagged default, not hardcoded logic.
@@ -132,6 +156,59 @@ func terminate() -> void:
 ## screen would actually show the player.
 func strand() -> void:
 	_discard_and_return(Enums.MissionOutcome.STRANDED)
+
+
+## **Can this squad still bring fire on anything?** tb64 Pass E — the three terminating
+## conditions the block names, and they collapse to one predicate rather than three checks:
+##
+## - **no living units** — every unit `alive == false`;
+## - **no units on the board** (the whole team fled or extracted) — `extract_unit` sets
+##   `alive = false`, so an extracted unit is already excluded by the same test;
+## - **no unit with a usable weapon** — `UtilityContext.can_contest`, which asks whether the
+##   unit's own tier has an action its weapon can execute, not merely whether a weapon works.
+##
+## **The third is the diagnostic**, and it is the one a "has a functional weapon" test would
+## miss: a `GRUNT` holding a chaingun had a perfectly working gun and nothing to select with it.
+func team_can_contest(squad_id: int) -> bool:
+	for unit: Unit in combat_state.units:
+		if unit.squad_id == squad_id:
+			if UtilityContext.can_contest(unit):
+				return true
+	return false
+
+
+## Every squad_id with at least one unit on this board, in ascending order.
+func squad_ids() -> Array[int]:
+	var ids: Array[int] = []
+	for unit: Unit in combat_state.units:
+		if not ids.has(unit.squad_id):
+			ids.append(unit.squad_id)
+	ids.sort()
+	return ids
+
+
+## Ends a `contest`-mode bout. `winner` is the one squad still able to contest, or `-1` for none.
+##
+## **Discards and returns exactly as the other endings do**, so a harness bout leaves the run
+## state in the same shape a real mission would — a mode that ended differently *and* cleaned up
+## differently would be two behaviours to keep in step.
+func debug_end(winner: int) -> void:
+	debug_winner_squad_id = winner
+	combat_state.combat_log.emit(
+		LogEvent.new(
+			combat_state.round_number,
+			Enums.Phase.RESOLUTION,
+			-1,
+			&"debug_end",
+			{"mode": victory_mode, "winner_squad_id": winner},
+			(
+				"bout ended (contest): squad %d is the only team that can still contest" % winner
+				if winner >= 0
+				else "bout ended (contest): no team can still contest"
+			)
+		)
+	)
+	_discard_and_return(Enums.MissionOutcome.DEBUG_ENDED)
 
 
 func _discard_and_return(ending: Enums.MissionOutcome) -> void:

@@ -38,6 +38,13 @@ const DEFAULT_ROSTER: Array[Array] = [
 ## Real entries plus the trailing Add row plus blank spacers, never fewer than this many rows tall.
 const MIN_VISIBLE_ROWS := 5
 const ADD_LABEL := "+ Add"
+## The victory modes the dropdown offers, in order. Index 0 is the default, so an untouched menu
+## builds exactly the bout it built before this existed.
+const VICTORY_MODES: Array[StringName] = [
+	MissionState.VICTORY_EXTRACTION, MissionState.VICTORY_CONTEST
+]
+## What each mode is called on screen. Parallel to `VICTORY_MODES` by index.
+const VICTORY_LABELS: Array[String] = ["Extraction (default)", "Contest — no team can fight on"]
 const ROW_MIN_HEIGHT := 32.0
 
 ## Exposed as real references (never re-found by node path) so both the centering logic and the
@@ -46,6 +53,9 @@ var layout: VBoxContainer = null
 var seed_field: LineEdit = null
 var error_label: Label = null
 var assume_control_checkbox: CheckBox = null
+## tb64 Pass E. **Deliberately minimal — a dropdown, nothing more.** This surface is marked for
+## removal, so a mode the supervisor can select must not deepen the investment in it.
+var victory_option: OptionButton = null
 
 var _profiles_by_family: Dictionary = {}
 var _ordered_presets: Array[BotPreset] = []
@@ -82,6 +92,18 @@ func set_roster(squad_id: int, entries: Array[BoutRosterEntry]) -> void:
 		_roster_b = entries
 
 
+## The victory mode the dropdown is currently showing. Out of range — an unmounted module, a
+## dropdown with nothing selected — answers the default rather than failing, since every caller
+## wants a bout it can actually build.
+func selected_victory_mode() -> StringName:
+	if victory_option == null:
+		return MissionState.VICTORY_EXTRACTION
+	var index: int = victory_option.selected
+	if index < 0 or index >= VICTORY_MODES.size():
+		return MissionState.VICTORY_EXTRACTION
+	return VICTORY_MODES[index]
+
+
 ## Builds the bout and loads it, or writes the refusal into the error label and does nothing else.
 ##
 ## **`load_battle()` first, then the swap.** This module is still the active surface and does not
@@ -89,7 +111,9 @@ func set_roster(squad_id: int, entries: Array[BoutRosterEntry]) -> void:
 ## `combat_state`/`mission` fresh, with no stale reference possible.
 func start_bout() -> void:
 	var map_seed: int = int(seed_field.text) if seed_field.text.is_valid_int() else 0
-	var result: Dictionary = BoutSetup.build_bout(_roster_a, _roster_b, map_seed)
+	var result: Dictionary = BoutSetup.build_bout(
+		_roster_a, _roster_b, map_seed, selected_victory_mode()
+	)
 	if result.error != "":
 		error_label.text = result.error
 		return
@@ -163,6 +187,17 @@ func _build_ui() -> void:
 	seed_field = LineEdit.new()
 	seed_field.text = str(Time.get_ticks_usec())
 	seed_row.add_child(seed_field)
+
+	var victory_row := HBoxContainer.new()
+	layout.add_child(victory_row)
+	var victory_label := Label.new()
+	victory_label.text = "ends on:"
+	victory_row.add_child(victory_label)
+	victory_option = OptionButton.new()
+	for label: String in VICTORY_LABELS:
+		victory_option.add_item(label)
+	victory_option.selected = 0
+	victory_row.add_child(victory_option)
 
 	# Squad A is "blue" — see `BattleScene.toggle_blue_control` for the convention.
 	assume_control_checkbox = CheckBox.new()

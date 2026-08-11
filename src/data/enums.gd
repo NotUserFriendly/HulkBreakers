@@ -75,11 +75,25 @@ enum Outcome {
 ## How a mission actually ended (docs/00/07 taskblock02 Pass E) — never
 ## "one squad is down"; that's not an ending at all. A closed, small set.
 ## UNDECIDED is the default: still in progress.
+##
+## tb64 Pass E: `DEBUG_ENDED` joins them, and the three above are unchanged.
+## `docs/00`'s pillar — *"combat does not end because the enemy is dead"* —
+## still governs every campaign mission; `DEBUG_ENDED` is only ever reachable
+## from a bout the harness configured for it, never from play. The supervisor's
+## call, 2026-08-10: bouts are frequently run AI-vs-AI for speed of testing, and
+## `STRANDED`/`TERMINATED` are both written in terms of the PLAYER squad, so an
+## AI-only bout had no way to say "this one is over" at all.
+##
+## **Deliberately named for the harness rather than for the rule.** A
+## `CONTEST_LOST` would read as a game outcome and invite campaign code to
+## branch on it; `DEBUG_ENDED` says what it is, and is reusable by whatever the
+## next harness-driven ending turns out to need.
 enum MissionOutcome {
 	UNDECIDED,
 	EXTRACTED,  # reached extraction, kept the haul
 	TERMINATED,  # the player's own choice: cut losses, matrices blink back, loot lost
 	STRANDED,  # involuntary — no player matrix can act. NOT a loss; matrices persist regardless
+	DEBUG_ENDED,  # a harness-configured terminating condition fired. Never reachable from play.
 }
 
 ## Who drives a squad's turns (docs/10 taskblock02 F1; tb31 Pass B) — a

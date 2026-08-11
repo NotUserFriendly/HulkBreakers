@@ -33,8 +33,13 @@ const GRID_HEIGHT := 24
 ## Returns `{"state": CombatState, "mission": MissionState, "error": ""}`
 ## on success, or `{"error": "<reason>"}` (no state/mission keys at all)
 ## on refusal.
+## tb64 Pass E: `victory_mode` defaults to `MissionState.VICTORY_EXTRACTION`, so every existing
+## caller — the completion sampler, every headless fixture — keeps the behaviour it had.
 static func build_bout(
-	roster_a: Array[BoutRosterEntry], roster_b: Array[BoutRosterEntry], map_seed: int
+	roster_a: Array[BoutRosterEntry],
+	roster_b: Array[BoutRosterEntry],
+	map_seed: int,
+	victory_mode: StringName = MissionState.VICTORY_EXTRACTION
 ) -> Dictionary:
 	if roster_a.is_empty() or roster_b.is_empty():
 		return {"error": "both squads need at least one unit"}
@@ -112,6 +117,7 @@ static func build_bout(
 	state.set_squad_controller(1, Enums.SquadController.AI)
 
 	var mission := MissionState.new(RunState.new(), state)
+	mission.victory_mode = victory_mode
 	mission.objectives = []
 	# taskblock-23 Pass E1: "in bout setup, place each team's extraction
 	# near the OPPOSING team's spawn — this pulls the teams through each

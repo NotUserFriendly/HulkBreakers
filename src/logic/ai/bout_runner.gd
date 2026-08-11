@@ -48,6 +48,10 @@ extends RefCounted
 ## dead' — that was never an ending"):
 ## - STRANDED: `mission.is_stranded()` (no living unit on
 ##   `player_squad_id`) — involuntary, real.
+## - DEBUG_ENDED: `contest` mode only — one or zero teams can still bring
+##   fire. **Checked first**, because a bout configured to end this way
+##   should say so rather than reporting the stranding that also happened.
+##   tb64 Pass E; never reachable in `extraction` mode.
 ## - EXTRACTED: the surviving squad's own AI naturally reaches this once
 ##   no enemy remains (the planner's gather/extract actions) IF the
 ##   bout was configured with a real objective/extraction zone.
@@ -128,6 +132,19 @@ func step() -> bool:
 	if finished:
 		return true
 
+	# tb64 Pass E: **the contest mode, checked before stranding.** Ordering matters — a wiped
+	# player squad satisfies both, and `contest` is the more specific answer for a bout that was
+	# configured to end this way. `extraction` mode skips this entirely, so nothing about a
+	# campaign mission changes.
+	if mission.victory_mode == MissionState.VICTORY_CONTEST:
+		var contesting: Array[int] = []
+		for squad_id: int in mission.squad_ids():
+			if mission.team_can_contest(squad_id):
+				contesting.append(squad_id)
+		if contesting.size() <= 1:
+			mission.debug_end(contesting[0] if contesting.size() == 1 else -1)
+			finished = true
+			return true
 	if mission.is_stranded():
 		mission.strand()
 		finished = true
