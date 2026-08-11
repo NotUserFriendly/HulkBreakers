@@ -116,6 +116,34 @@ static var _cache: Dictionary = {}
 ## against `CombatState.bouts_built`.
 static var generated: int = 0
 
+## tb66 Pass D1: **what each fill cost, keyed** — so a sharded gate can subtract its
+## own duplication.
+##
+## Every process gets its own `_cache`, so a corpus split across shards is refilled in each of
+## them. Measured at tb66 Pass A on six files: splitting three 32x24 readers cost **+18 maps and
+## +36 floods**, and **both counters are gated** — so without this, a sharded gate reports
+## inflation that is not drift, or the budget is baselined under one shard map and silently moves
+## when the map changes.
+##
+## **The precedent is exact and it is in `SuiteBudget` already.** taskblock-65 Pass F hit this
+## shape with the corpus draw contaminating `turns` and settled it as *"the uncontrolled thing is
+## a quantity, not a file, and it is now subtracted as one."* A duplicated fill is a quantity too.
+##
+## **Keyed rather than counted, because a count cannot be deduplicated.** Two shards each
+## reporting "I filled 50 boards" cannot tell the gate whether that is 50 boards or 100; two
+## shards reporting *which* keys they filled can. `ShardMerge.duplication` takes the union.
+##
+## **`floods` is recorded per fill rather than derived**, because generation runs floods
+## internally (`_repair_stranded_elevation`, `guarantee_navigability`) and the number per board
+## is not constant — it depends on how much repair a seed needs.
+##
+## **This also resolves a tension in Pass A's own finding.** Pass A observed, correctly, that
+## `maps` inflation measures how badly a shard map splits corpora — a perfect affinity map
+## inflates by zero. But **a counter cannot be both the gate and the diagnostic**, which is what
+## Pass F untangled for `turns`. Subtracting gives both: the gated total stays controlled, and the
+## subtracted quantity *is* the affinity score.
+static var fills: Dictionary = {}
+
 
 static func _key(map_seed: int, width: int, rows: int) -> String:
 	return "%d:%d:%d" % [map_seed, width, rows]
@@ -125,8 +153,13 @@ static func _key(map_seed: int, width: int, rows: int) -> String:
 static func read(map_seed: int, width: int, rows: int) -> Grid:
 	var key: String = _key(map_seed, width, rows)
 	if not _cache.has(key):
+		# tb66 Pass D1: the fill's own cost, bracketed. `floods` is sampled rather than assumed
+		# because generation runs its own repair floods and the number varies by how much repair
+		# a seed needs.
+		var floods_before: int = Pathfinder.floods
 		_cache[key] = MapGen.generate(map_seed, width, rows)
 		generated += 1
+		fills[key] = {"maps": 1, "floods": Pathfinder.floods - floods_before}
 	return _cache[key]
 
 
@@ -142,4 +175,5 @@ static func copy(map_seed: int, width: int, rows: int) -> Grid:
 ## compare against, and the counter alone cannot distinguish a cold cache from a warm one.
 static func forget() -> void:
 	_cache.clear()
+	fills.clear()
 	generated = 0

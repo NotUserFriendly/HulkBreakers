@@ -231,6 +231,11 @@ func _print_summary(total_usec: int, failures: int) -> void:
 	]:
 		parts.append("%s %d" % [key, int(total.get(key, 0))])
 	print("  ".join(parts))
+	# tb66 Pass D1: **which corpus keys this process filled, so a sharded gate can subtract its own
+	# duplication.** Emitted as one machine-readable line rather than folded into the counters,
+	# because a *count* of fills cannot be deduplicated across shards and a key set can — see
+	# `ShardMerge`. Printed on every run; in an unsharded run the merge is a no-op over one shard.
+	print("--- corpus fills --- %s" % JSON.stringify(MapCorpus.fills))
 	if _script_rows.size() == 1:
 		_print_delta(_script_rows[0])
 
