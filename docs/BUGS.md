@@ -2576,3 +2576,33 @@ is_disabled` for the same part. The disappearance here is that disagreement made
   ledger is a record of what this process *did*, and a test choosing to re-generate does not unmake
   the maps already generated. A separate `forget_ledger()` for `test_shard_merge.gd`'s deliberate
   process-boundary simulation keeps that test honest.
+
+### BR66.02 — Active — owner: `CC`
+**41 commit-hash citations in `BUGS-ARCHIVE.md` and `SUPERSEDED.md` dangle after the tb66 history rewrite**
+- **cluster:** `accounting`
+- **Source:** `CC`, taskblock-66 doc review, 2026-08-12. **Confirmed, not suspected** — measured
+  against the rewritten history before and after.
+- **What happened.** Pass D stripped `Co-Authored-By` trailers from 515 of 806 commits with
+  `git-filter-repo`, which changes every hash in the repository. The block's D3 listed **five hashes
+  across six sites** to remap. A sweep for every hex string in the tree that actually resolves to a
+  commit found **56**: 15 live citations across 7 files, all remapped in the Pass D commit, and
+  **41 more inside the two files the block explicitly exempts from editing.**
+- **The exposure, measured:** `docs/BUGS-ARCHIVE.md` **40 occurrences / 29 distinct commits**;
+  `docs/SUPERSEDED.md` **1 / 1**. Every one resolved before the rewrite and none resolves after.
+- **Why it was not fixed with the rest.** Both files are history — the archive is *"moved verbatim
+  on closure and never edited again"*, and `SUPERSEDED.md` is append-only. The block names both as
+  out of scope. **The supervisor's call was to push and file this rather than edit them**
+  (2026-08-12), so the exemption is intact and the consequence is recorded rather than discovered
+  later.
+- **What it costs.** A closure in the archive names its fixing commit so the closure is verifiable.
+  Those 29 names no longer resolve, so the verification they were carrying is now only reachable by
+  matching commit *subjects* against the rewritten log. Nothing is lost — every commit still exists
+  under a new hash — but the pointer no longer walks.
+- **Fix shape, if it is ever wanted:** it is a mechanical substitution, and the old→new map for all
+  806 commits was **captured before the clone that produced it was discarded** — it is
+  `~/workingdir/HulkBreakers-tb66-commit-map.txt`, 807 lines, `old new` per line, deliberately
+  outside the repo since it is a one-time artifact rather than a tracked one. **Without that file
+  the mapping is only re-derivable by matching commit subjects and dates**, which is why it was
+  saved rather than left in a temp directory. Back it up if this entry is going to sit open.
+- **Not a recurrence risk.** `CLAUDE.md` Workflow item 1 already forbids the trailers, so there is no
+  second rewrite queued that would invalidate a repaired set of hashes.

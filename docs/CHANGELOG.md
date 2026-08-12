@@ -80,6 +80,33 @@ number; the layout table was missing `src/resource_editor/`; and `docs/` was des
 omitting the unqueued backlog `99`. `docs/00-pillars-and-loop.md` and all four `run_tests.sh` rungs
 verified correct as supplied.
 
+### Pass D — the trailers are gone, and every hash with them
+
+**515 of 806 commits carried a `Co-Authored-By` trailer naming a Claude model**, in the three forms
+the block listed and no fourth. Stripped with `git-filter-repo` on a fresh clone, matched on the
+trailer line rather than on each literal string. **Author and committer were already
+`NotUserFriendly` on every commit**, so the trailers were the only thing producing a second
+contributor and no author rewrite was needed. **D1 required no work** — `CLAUDE.md`'s Workflow item 1
+already forbids them.
+
+**History was rewritten and force-pushed. Every commit hash changed; any other clone must be
+re-cloned rather than pulled.** The working tree did not change: `HEAD^{tree}` is
+`d724b32…` before and after.
+
+**D3's count was wrong and the sweep is why it matters.** The block named five hashes across six
+sites. Every hex string in the tree that resolves to a commit gives **56** — 15 live citations
+across 7 files, **including `6032367` in this block's own Pass B entry above**, written hours before
+the rewrite invalidated it. All 15 are remapped and all 15 resolve. **The remaining 41 are in
+`BUGS-ARCHIVE.md` (40) and `SUPERSEDED.md` (1)**, which this block is forbidden to edit; they dangle
+by decision, filed as `BR66.02` with a `PLAN` item, and the map that would repair them is saved
+outside the repo because it existed only in a temp clone.
+
+**Two full gates, both green, both from a redirect rather than a pipe:** 3563 tests, 0 failures, at
+**1115.4 s** and **1187.4 s**. **The unsharded gate turns out to carry the same corpus-draw band
+this block measured for the sharded one** — 72 s apart with no relevant code change — so the
+`1198.9 s` figure quoted in taskblock-66's own report is not a constant either. `SUITE-PROFILE.md`
+holds the value; nothing should restate it.
+
 ## Taskblock 66 — shard the gate, and the makespan is one draw
 
 **`./run_tests.sh shard` runs the whole suite in 242 s against 1338 s — 5.5×**, across 8 processes
