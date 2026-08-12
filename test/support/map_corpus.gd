@@ -173,7 +173,25 @@ static func copy(map_seed: int, width: int, rows: int) -> Grid:
 ## against it. `BoutCorpus` omits its equivalent entirely for that reason; this one needs
 ## it because "a second read generates nothing" is not assertable without a first read to
 ## compare against, and the counter alone cannot distinguish a cold cache from a warm one.
+##
+## **`fills` deliberately survives this** (`BR66.01`). The ledger records what this *process*
+## generated; a test choosing to re-generate does not unmake the maps already made, and
+## `MapGen.maps_generated` — which the budget gates on — is not reset here either. Clearing both
+## together is what let a shard accrue maps it never ledgered: the gated counter kept them and
+## `ShardMerge.duplication`, a union of per-shard `fills`, never saw them, so the merge subtracted
+## less than the real duplication and reported zero where there was some. Use `forget_ledger()`
+## when a test genuinely means "pretend this process never ran".
 static func forget() -> void:
 	_cache.clear()
-	fills.clear()
 	generated = 0
+
+
+## Drops the cache **and the ledger** — a full process reset.
+##
+## **Only for tests simulating a process boundary**, which in practice is `test_shard_merge.gd`:
+## it builds several shards' worth of fills in one process and needs each one to start empty, so
+## for it an accumulating ledger is the bug rather than the fix. Every other caller wants
+## `forget()`, because erasing the record of work this process really did is what `BR66.01` was.
+static func forget_ledger() -> void:
+	forget()
+	fills.clear()

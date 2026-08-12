@@ -11,7 +11,7 @@ extends GutTest
 
 
 func after_each() -> void:
-	MapCorpus.forget()
+	MapCorpus.forget_ledger()
 
 
 ## The shape of a shard's report: which keys it filled, and what each cost.
@@ -87,16 +87,18 @@ func test_only_the_two_counters_a_duplicated_generation_moves_are_adjusted() -> 
 ## exactly what two processes have — asked for an overlapping keyspace. The recorded fills must
 ## account for the difference between what the two of them generated and what one would have.
 ##
-## `forget()` between them is the honest simulation of a process boundary: a fresh cache, and a
-## fresh `fills` record to report.
+## `forget_ledger()` between them is the honest simulation of a process boundary: a fresh cache, and
+## a fresh `fills` record to report. **Plain `forget()` is deliberately not enough here** — since
+## `BR66.01` it keeps the ledger, which is right for every other caller and wrong for this one,
+## whose whole subject is what two *separate* processes each reported.
 func test_two_caches_over_an_overlapping_keyspace_report_their_own_duplication() -> void:
-	MapCorpus.forget()
+	MapCorpus.forget_ledger()
 	for map_seed: int in [1, 2, 3]:
 		MapCorpus.read(map_seed, 12, 10)
 	var shard_a: Dictionary = MapCorpus.fills.duplicate(true)
 	var generated_a: int = MapCorpus.generated
 
-	MapCorpus.forget()
+	MapCorpus.forget_ledger()
 	for map_seed: int in [2, 3, 4]:
 		MapCorpus.read(map_seed, 12, 10)
 	var shard_b: Dictionary = MapCorpus.fills.duplicate(true)

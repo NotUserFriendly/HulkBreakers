@@ -115,3 +115,46 @@ func test_the_cached_map_is_a_real_generated_map() -> void:
 	assert_eq(grid.rows, ROWS)
 	assert_gt(grid.placements().size(), 0, "it has floor")
 	assert_gt(grid.blockers.size(), 0, "and walls")
+
+
+## **`BR66.01`: `forget()` drops the cache but keeps the ledger.**
+##
+## The defect this pins: `forget()` used to clear `fills` as well, while `MapGen.maps_generated`
+## — the counter the budget actually gates on — was never reset. So a process could generate a map,
+## count it, then erase the only record that it had been a *corpus* fill. `ShardMerge.duplication`
+## unions per-shard `fills`, so an erased key cannot be deduplicated and the merge subtracts less
+## than the real duplication, reporting zero where there was some.
+##
+## Asserted against `MapGen.maps_generated` rather than `MapCorpus.generated`, because the gated
+## counter is the one that must not disagree with the ledger — the two staying in step is the whole
+## property. `MapCorpus.generated` is reset by `forget()` by design and would hide the bug.
+func test_forget_keeps_the_ledger_of_what_this_process_already_generated() -> void:
+	MapCorpus.forget_ledger()
+	var maps_before: int = MapGen.maps_generated
+
+	MapCorpus.read(11, WIDTH, ROWS)
+	MapCorpus.forget()
+	MapCorpus.read(12, WIDTH, ROWS)
+
+	var ledgered: int = 0
+	for entry: Dictionary in MapCorpus.fills.values():
+		ledgered += int(entry.get("maps", 0))
+
+	assert_eq(
+		MapGen.maps_generated - maps_before,
+		2,
+		"both reads really generated, because forget() dropped the cache between them"
+	)
+	assert_eq(ledgered, 2, "and the ledger accounts for both, including the one before forget()")
+
+
+## The other half of the pair: `forget_ledger()` still wipes everything, because
+## `test_shard_merge.gd` simulates separate processes in one and needs each to start blank.
+func test_forget_ledger_wipes_the_record_as_well() -> void:
+	MapCorpus.read(13, WIDTH, ROWS)
+	assert_false(MapCorpus.fills.is_empty(), "a read ledgers")
+
+	MapCorpus.forget_ledger()
+
+	assert_true(MapCorpus.fills.is_empty(), "and a full process reset clears it")
+	assert_eq(MapCorpus.generated, 0, "along with the corpus's own counter")

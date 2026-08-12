@@ -1,5 +1,37 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 66 addendum follow-up — `BR66.01` fixed, and the duplication number is real
+
+**`MapCorpus.forget()` keeps the ledger now.** It clears `_cache` and `generated`; a new
+`forget_ledger()` clears all three and has exactly one caller, `test_shard_merge.gd`, whose subject
+genuinely is two separate processes. The bug was that `forget()` erased `fills` while
+`MapGen.maps_generated` — the counter the budget gates on — kept counting, so a shard accrued maps it
+never ledgered and `ShardMerge.duplication`, a union of per-shard `fills`, subtracted less than the
+real duplication.
+
+**Two new tests in `test_map_corpus.gd`**, pinning both halves: the ledger survives `forget()`, and
+`forget_ledger()` still wipes it. The first asserts against `MapGen.maps_generated` rather than
+`MapCorpus.generated`, because the gated counter is the one that must not disagree with the ledger
+and `MapCorpus.generated` is reset by design — asserting on it would hide the very bug.
+
+**The gate now prints a duplication line where it printed none:** *"duplicated corpus fills
+subtracted: maps 1, floods 2 (155 distinct keys)"*. `merge_shards.py` omits that line only when
+duplication is zero, and pre-fix it was omitted.
+
+**The defect was real and its size is small, and both are worth recording.** True duplication is
+**1 map and 2 floods** across eight processes — `maps` 883 controlled against 884 raw. **Both halves
+of the original ambiguity held at once:** the ledger really was being wiped, *and* the packer's
+co-location really is good. The reported zero was a wiped ledger sitting on a near-zero true value.
+**The fix is insurance against a future repack rather than a correction to today's totals**, and it
+removes the blocker on `PLAN`'s sharded-budget item without requiring the baseline re-derivation that
+looked likely before the number was taken.
+
+**Gates:** sharded 366 scripts / 3565 tests / 0 failures; full gate 366 / 3565 / 0 at 1607.2 s. **That
+wall-clock is draw, not regression** — the run drew `sampled_turns` 496 against 137 and 149 on the
+two previous full gates, and `bouts`/`turns`/`maps` move with it. The fix changes exactly two things
+in the report: the duplication line appearing, and the test count going 3563 → 3565.
+
+
 ## Taskblock 66 addendum — one defect confirmed, one decision measured
 
 **Nothing built.** Two measurements and two filings.

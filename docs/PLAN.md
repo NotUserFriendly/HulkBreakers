@@ -528,8 +528,23 @@ step runs `violations()` over — the second keeps one implementation of the rul
 `violations()`'s per-file naming having nothing to name. **Decide which, then wire it**; the argument
 for gating at all is already settled by everything `SuiteBudget`'s header says.
 
-**Related and worth doing in the same pass:** `BR66.01` is a defect in the subtraction this item
-would gate on. Wiring the gate over an under-counting ledger reports green on inflation.
+**The subtraction this would gate on is now trustworthy — `BR66.01` is fixed and archived.** It was
+under-counting because `MapCorpus.forget()` erased the ledger the merge subtracts from, so wiring a
+gate over it would have reported green on inflation. That blocker is gone.
+
+**What the fix revealed changes the argument for this item, and makes it stronger rather than
+weaker.** Measured on a sharded gate immediately after: **duplication is 1 map and 2 floods across
+eight processes** — `maps` 883 controlled against 884 raw. So **the totals were already very nearly
+right, and still nothing checks them.** The case for this item is not "the numbers are wrong"; it is
+that a budget nobody enforces is not a budget, and the correction it depends on is now small enough
+that **no baseline re-derivation is needed to wire it** — a real risk before the measurement, and one
+that did not materialise.
+
+**One consequence for whoever takes it:** with duplication this small, a gate on `controlled` totals
+will behave almost identically to a gate on raw ones *today*. The subtraction earns its keep the
+moment the shard map is repacked and co-location changes, which is exactly the event that would
+otherwise move a budget silently. **Do not read the small number as a reason to skip the
+subtraction** — it is the reason the gate is safe to wire now.
 
 ### Cache the `Theme` — `HulkTheme.build()` rebuilds it from scratch on every overlay
 **Needs:** nothing. **Unblocks:** the zero-bout half of the suite getting cheaper without touching a

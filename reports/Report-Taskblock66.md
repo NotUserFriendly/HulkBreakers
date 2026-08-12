@@ -476,3 +476,37 @@ suite.
 without anything noticing. It agreed with the real gate on every figure the merged report also prints
 (366 scripts, 3563 tests, 0 failures), which is the only cross-check available. **If the shard block
 in `run_tests.sh` changes, this measurement is not reproducible by re-running the copy.**
+
+### Addendum II follow-up — `BR66.01` fixed, and what the number turned out to be
+
+**Fixed on the supervisor's go-ahead after the census landed.** `forget()` clears `_cache` and
+`generated` and keeps `fills`; `forget_ledger()` clears all three and has one caller,
+`test_shard_merge.gd`. The ripple recorded when the entry was confirmed held exactly — nothing else
+asserts on `fills`, and the four `generated` assertions never moved, because `forget()` still resets
+that counter.
+
+**The finding worth carrying is that the defect was real and its size is small.** Duplication across
+eight processes is **1 map and 2 floods** — `maps` 883 controlled against 884 raw. **Both halves of
+the original ambiguity were true simultaneously:** the ledger genuinely was wiped, *and* the packer's
+co-location genuinely is good. A wiped ledger sitting on a near-zero true value is why the reported
+zero was unreadable, which is precisely the property the entry said made it worth one measurement
+rather than an argument.
+
+**This is stated plainly rather than framed as a big catch.** The fix is insurance against a future
+repack, not a correction to today's totals. Reporting "duplication was being under-counted" without
+"by one map" would be true and misleading.
+
+**A risk I flagged before measuring did not materialise**, and it was a real one rather than a
+hedge: fixing the ledger changes the totals a budget gate would be calibrated against, so I expected
+`PLAN`'s sharded-budget item might need its baseline re-derived first. At a one-map correction it does
+not. The ordering argument was sound; the consequence just turned out to be nil, and the item is
+updated to say so.
+
+**Deliberately not attributed to the fix.** The post-fix full gate ran **1607.2 s** against 1112–1187
+s earlier in the block. That is the draw — `sampled_turns` 496 against 137 and 149 — not a
+regression. **The only two things the fix changes in any report are the duplication line appearing
+and the test count going 3563 → 3565.**
+
+**`PLAN`'s sharded-budget item is unblocked but not taken.** It carries an unmade design fork (merge
+checks `BASELINE` itself, or a totals-only artifact runs `violations()` over it) and that choice is
+better made with the measurement in hand, which it now is.
