@@ -1,4 +1,4 @@
-# 02 — Body Space, the Shot Plane & Targeting
+# 02 — Body Space, Projection & Targeting
 
 **The exposure table is dead.** Weighted random body-part selection is deleted, not
 refactored. **Facings are also dead** — there is no FRONT/BACK/LEFT/RIGHT snap. Geometry is
@@ -57,6 +57,11 @@ physics.
 | Carried body as a bullet catcher | its boxes project into the carrier's silhouette |
 
 ## The shot plane
+**The plane is the aim model, not the resolver.** Read *Two models, and the boundary between
+them* below before treating anything in this section as describing what happens to a round —
+**`RayChain` has resolved shots since taskblock-52 Pass F** (`CombatState.shot_resolver`
+defaults to `&"ray"`), and this section describes the structure the player points at.
+
 Do **not** project one target. Project **everything along the line of fire** — every unit,
 cover object, and obstacle — into a single plane, depth-sorted.
 
@@ -72,13 +77,21 @@ resolve_projectile(plane, point) -> Region | null:
     return null                          # clean through — nothing was there
 ```
 
-This is the entire hit-resolution system.
+**That lookup is what the plane is *for*: given a point, which region is frontmost.** It is
+`ShotPlane.resolve_ray`'s internal step and it is what the aim view reads. It answers *where is
+the player pointing*. It is **not** the hit-resolution system, and this doc said it was for
+forty-odd taskblocks after it stopped being true.
+
+**The plane still resolves when a bout asks it to.** `CombatState.shot_resolver` is per-bout and
+takes `RESOLVER_PLANE`, which is how `ResolverDifferential` puts one board through both models.
+That is the plane's remaining resolution role: a comparison arm, not the default path.
 
 **Layered targets, for free:** the dartboard lands on the nearest target, but the plane holds
 the ones behind it. A sniper threading a round past a big guy into a smaller, higher-value
-target behind is *just a gap hit that continued* — same code path. The UI must therefore be
-able to show stats for **partially obscured** targets deeper in the plane, not only the
-nearest one. That's a requirement on the view, not a new mechanic.
+target behind is *just a gap hit that continued* — and under the chain it is literally the same
+march continuing, not a second lookup. The UI must therefore be able to show stats for
+**partially obscured** targets deeper in the plane, not only the nearest one. That's a
+requirement on the view, not a new mechanic.
 
 Cover is a region in the plane like anything else — a Part with hp, destroyed leaves the plane.
 **A wall is just high-DT destructible cover on an otherwise-passable tile** (tb31 Pass C,
@@ -263,6 +276,12 @@ built to satisfy, since a ray in a closed room cannot fail to hit.
 
 ## Testing without rendering
 CC must build an **ASCII plane dump** (Phase 0): print the shot plane as a text grid — a
-letter per part, `.` for gaps, `*` for impacts, with a depth-ordered legend. Every rule above
-becomes eyeball-verifiable in a test log, and diffable across commits. This is CC's only way
-to see spatial bugs. Use it in every phase.
+letter per part, `.` for gaps, `*` for impacts, with a depth-ordered legend. This is CC's only
+way to see spatial bugs. Use it in every phase.
+
+**The dump shows what the shooter faces; it does not show what the round did.** Since the chain
+became the resolver, a round slopes muzzle-to-aim-point and continues past what it penetrates —
+neither of which a single flattened plane can display. **The impact sequence is the combat log's
+job** (`docs/09`): what was struck, in what order, at what angle, with what left. A rule about
+*aiming* is verifiable from the dump; a rule about *resolution* is verifiable from the log, and
+asserting one from the other is how the level-shot approximation survived as long as it did.

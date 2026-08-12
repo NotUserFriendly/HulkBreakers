@@ -8,14 +8,21 @@ disposable modular shells. Matrices persist. Bodies are ammunition.
 
 ## What makes it different
 
-**Armour is geometry, not a hit-point pool.** A shot resolves against a depth-sorted *shot plane* —
-the shooter's actual view of the target's body-space boxes, projected from where the shooter really
-stands. There is no exposure table, no FRONT/BACK/LEFT/RIGHT snapping, and no weighted body-part
-roll. If a wall is in the way, the wall is in the way.
+**Armour is geometry, not a hit-point pool.** A shot is a real ray marched from the muzzle. It
+meets whatever is in its way — a limb, a crate, a wall, the deck — and solves the angle of
+incidence against the surface it actually struck. There is no exposure table, no
+FRONT/BACK/LEFT/RIGHT snapping, and no weighted body-part roll. If a wall is in the way, the wall
+is in the way.
 
 **Penetration never rolls.** Damage carries through a part or it stops, decided by material and
-angle. A deflection spawns a real ricochet that travels the world and can hit anything, bounded by
-a depth cap and a damage floor so the simulation provably terminates.
+angle. A round keeps going while it still has damage to spend, so a burst that punches through a
+target goes on to strike the floor behind it. A deflection starts a new ray from the impact —
+the same call, a different direction — bounded by a depth cap and a damage floor so the
+simulation provably terminates.
+
+**You aim at a point, not at a body part.** The reticle picks a spot on a depth-sorted projection
+of everything along the line of fire; scatter rings offset it; then the round is fired at where
+that lands. There is no "aim for the neck" checkbox — you pick a spot and live with the spread.
 
 **Parts attach by tag, not by slot.** Anything shoulder-shaped fits any shoulder. Weapons, limbs,
 armour and infrastructure are all `Part`s carrying open `StringName` vocabularies, so content is
