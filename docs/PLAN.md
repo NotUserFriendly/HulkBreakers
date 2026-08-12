@@ -531,6 +531,30 @@ for gating at all is already settled by everything `SuiteBudget`'s header says.
 **Related and worth doing in the same pass:** `BR66.01` is a defect in the subtraction this item
 would gate on. Wiring the gate over an under-counting ledger reports green on inflation.
 
+### Cache the `Theme` — `HulkTheme.build()` rebuilds it from scratch on every overlay
+**Needs:** nothing. **Unblocks:** the zero-bout half of the suite getting cheaper without touching a
+test's meaning.
+
+**This is taskblock-51 Pass B1, which was reported as landed and never was.** Filed here because its
+last record in the tree is gone: `Report-Taskblock51.md` rolled out of `reports/`' five-block window,
+so the claim now exists nowhere else. Settled rather than suspected — `git log --follow --
+src/view/hulk_theme.gd` shows **no taskblock-51 commit ever touched that file**, and a pickaxe for
+cache-shaped statics finds nothing in its history. **It never landed, rather than landing and being
+reverted**, which is the better of the two branches: there is no reversal to understand first.
+
+- **What it is.** `HulkTheme.build()` (`src/view/hulk_theme.gd:66`) constructs a fresh `Theme`,
+  `StyleBoxFlat`s and all, on every call. `ui_builds` counts them: **1267 on a full gate**, and the
+  counter does not move with the corpus draw, so that figure is stable rather than a band.
+- **The assertion a cache must change** is `test_work_counters.gd:203` —
+  `assert_gt(HulkTheme.ui_builds, after_bout, "building an overlay moves it")`. It asserts the
+  counter *rises* when an overlay is built, so a cache that returns the same `Theme` will turn it
+  red. **That test is the design question, not an obstacle to route around:** decide whether
+  `ui_builds` counts *builds* (and a cache must therefore keep the count honest by not incrementing)
+  or *requests*. Pick one and say which in the test.
+- **Not obviously worth doing yet.** The gate now shards, so wall-clock saved on the zero-bout half
+  may not move the makespan at all — under a sharded gate the corpus shard is the wall. **Measure
+  against the sharded makespan before spending the change**, not against the unsharded total.
+
 ### Boards become an input, not a product — generate once, serialise, hand out
 **Needs:** nothing. **Unblocks:** a shard map with no corpus-affinity constraint, and a `Grid`
 fixture whose cost does not scale with however many processes want one.

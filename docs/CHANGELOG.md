@@ -1,5 +1,34 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 66 addendum — one defect confirmed, one decision measured
+
+**Nothing built.** Two measurements and two filings.
+
+**`BR66.01` moves `Suspected` → `Active`, reproduced rather than argued.**
+`test_generated_board_sight_sweep.gd` run alone generates 1 map and ledgers it; run in one process
+with `test_work_counters.gd` it generates 12 and ledgers **none**. `MapCorpus.forget()` clears
+`fills` while `MapGen.maps_generated` keeps counting, so `ShardMerge.duplication` — a union of
+per-shard `fills` — subtracts less than the real duplication. **A sharded gate agrees**: 366 scripts,
+3563 tests, 0 failures, N=1 draw, 169 s makespan, and duplication printed as **zero** while shard 2
+carries twelve `MapCorpus` files and shard 7 ledgers nothing at all.
+
+**Not fixed, and the ripple is why.** `forget()` also zeroes `generated`, which four assertions
+depend on (`test_map_corpus.gd:28,37,84`, `test_shard_merge.gd:97,103`), so the split needs a
+`forget_ledger()` for the process-boundary simulation rather than a one-line deletion. Recorded in
+the entry.
+
+**The staleness census: eight instances, median gap 14 blocks, worst 50.** Four already known, four
+new — `docs/01`'s `FieldObjects.wreckage_pool()` (50 blocks; it is `CombatState.wreckage_pool`),
+`TOOLING.md`'s `profile_suite.gd` row (18), its *"~126 s"* fast gate against a measured **666.4 s**,
+and its *"### Three rungs"* heading, stale the same block `shard` was added. **Nothing fixed and no
+mechanism proposed**, both per the item. The count is a floor: five mechanical axes were swept, and
+the shot-plane rule that prompted this would not have been caught by any of them.
+
+**taskblock-51 Pass B1 is filed in `PLAN` as never having landed.** `git log --follow` on
+`src/view/hulk_theme.gd` shows no tb51 commit ever touched it, so the theme cache was reported and
+not built rather than built and reverted. Its last record had rolled out of `reports/`.
+
+
 ## Taskblock 66 doc review — the repo stops pointing at things that are gone
 
 **Not a build block: no test added or cut, no rule changed meaning.** Every item is a correction, an
