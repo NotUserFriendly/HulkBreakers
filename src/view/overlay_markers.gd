@@ -4,7 +4,8 @@ extends RefCounted
 ## **Ground-overlay marker geometry, built without a `BoardView` to hang it on.** taskblock-61
 ## Pass D.
 ##
-## Extracted because `board_view.gd` has now hit `gdlint`'s 1000-line file cap twice in one
+## Extracted because `board_view.gd` hit `gdlint`'s file-size cap (`gdlintrc`'s `max-file-lines`,
+## then at a lower value) twice in one
 ## taskblock — once for the cutout logger (`src/debug/cutout_log.gd`), once for this. Marker
 ## construction is a self-contained "make me a mesh at a cell" concern with no board state in it,
 ## which makes it the honest thing to lift out rather than a comment to shorten.

@@ -3,7 +3,8 @@ extends PanelContainer
 
 ## **The editor's section-details panel — every widget, and nothing that decides anything.**
 ##
-## taskblock-59 Pass A: **the third time `editor_module.gd` hit the 1000-line gate, and the first
+## taskblock-59 Pass A: **the third time `editor_module.gd` hit the file-size gate (`gdlintrc`'s
+## `max-file-lines`, then at a lower value), and the first
 ## time the split was chosen rather than forced into the nearest gap.** taskblock-58 Pass D moved
 ## the tool vocabulary to `EditorTools` and Pass E moved `target_from` to `FacePlacement`; that
 ## block's own report flagged the pattern — *"both moves were triggered by a lint gate rather than

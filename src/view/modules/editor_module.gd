@@ -72,8 +72,9 @@ extends ViewModule
 signal tool_changed(tool: StringName)
 
 ## taskblock-58 Pass D: **the tool vocabulary moved to `EditorTools`.** Which tools exist and what
-## kind each authors are questions with no widget in them, and this file was over its 1000-line
-## limit — the same split `InspectPanel` took when `BotViewer` came out of it. Referenced as
+## kind each authors are questions with no widget in them, and this file was over the file-size
+## cap (`gdlintrc`'s `max-file-lines`, then at a lower value) — the same split `InspectPanel` took
+## when `BotViewer` came out of it. Referenced as
 ## `EditorTools.TOOLS` everywhere, never re-listed here, so there is one vocabulary.
 
 ## The placement kinds the part dropdown can author. `MapPlacement`'s own three, read from its

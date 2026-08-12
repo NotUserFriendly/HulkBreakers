@@ -18,7 +18,8 @@ extends RefCounted
 ## ## Why it is its own file
 ##
 ## It was written on `BoutInjector` first, which is where the vocabulary belongs, and that file was
-## already at **998 of `gdlint`'s 1000-line cap** — the addition put it at 1026. The alternative
+## already at **998 against a cap of 1000** — the addition put it at 1026. (Both figures are as
+## they stood then; the live cap is `gdlintrc`'s `max-file-lines`.) The alternative
 ## was paying for it by shortening comments, which taskblock-61 has already done once to
 ## `board_view.gd` and recorded as the worst of the available trades: recorded reasoning deleted to
 ## satisfy a line count. **Splitting a genuinely separable question out is the honest way to pay**,

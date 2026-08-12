@@ -2,7 +2,8 @@ class_name CutoutLog
 extends RefCounted
 
 ## **"cutout drawn to (x, y)", and since taskblock-61 Pass C1, why.** Lifted out of `BoardView`,
-## which had reached `gdlint`'s own 1000-line file cap with no room for the `BR32.05` diagnostic
+## which had reached `gdlint`'s file-size cap (`gdlintrc`'s `max-file-lines`, then at a lower
+## value) with no room for the `BR32.05` diagnostic
 ## this class exists to add. Emission policy is a combat-log concern rather than a board-geometry
 ## one, so it reads better here anyway.
 ##

@@ -139,6 +139,13 @@ than from a reproduction; where an entry's own cluster is uncertain, its body sa
 
 **Knowing which entries will eat a day is worth more before starting than an hour during.**
 
+**Five of the ten named below have since closed** (taskblock-66 doc review, checked rather than
+assumed): `BR32.04`, `BR32.05`, `BR32.08`, `BR51.01` and `BR52.07` are all in
+`docs/BUGS-ARCHIVE.md`. Their paragraphs are kept because the *reasoning* in them still applies to
+the entries beside them — but **nothing here sends you after a closed entry**, and the wall-cutout
+bullet in particular describes a cluster that is now empty. Statuses were not changed by this
+review; only this line was added.
+
 - **`BR51.01` / `BR54.01` / `BR52.07` — shot geometry.** taskblock-60 Pass B made these readable:
   every firing path now emits a `weapon_used` event carrying origin, direction, the shooter's own
   facing, and the angle between the last two. **Read the new log before forming a theory.** They are

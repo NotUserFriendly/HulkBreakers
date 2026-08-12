@@ -16,7 +16,8 @@ extends RefCounted
 ##
 ## ## Why it is its own class
 ##
-## `BoardView` went over the repo's 1000-line gate when this landed in it — the fourth time a lint
+## `BoardView` went over the repo's file-size gate (`gdlintrc`'s `max-file-lines`, which held a
+## lower value then) when this landed in it — the fourth time a lint
 ## gate has picked the seam here (`EditorTools`, `FacePlacement`, `EditorPanel`, and now this).
 ## **The seam is a real one even so**: "which mesh is at which cell" is a fact `BoardView` produces
 ## and never consumes, and the ghosting is the only thing that has ever wanted it. Nothing here

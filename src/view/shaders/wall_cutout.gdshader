@@ -39,10 +39,11 @@ shader_type spatial;
 // the unit AND within its screen radius" — with no real ray test
 // against the camera-to-unit line, so a wall merely NEAR a unit
 // satisfies both conditions by geometric coincidence. Tracked as
-// `BR32.05`, which was closed UNADDRESSED rather than fixed (tb61 Pass
-// C, on the owner's instruction) and is in `docs/BUGS-ARCHIVE.md` with
-// the elevation analysis and two candidate fixes. If it resurfaces it
-// is a new report, not that one reopening.
+// `BR32.05`, marked `Resolved` on the owner's word at tb61 Pass C and
+// now in `docs/BUGS-ARCHIVE.md` with the elevation analysis and two
+// candidate fixes — but THIS per-fragment half was closed unaddressed
+// rather than fixed. If it resurfaces it is a new report, not that one
+// reopening.
 
 uniform vec4 albedo : source_color = vec4(0.5, 0.5, 0.5, 1.0);
 

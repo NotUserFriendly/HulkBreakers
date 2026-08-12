@@ -3,7 +3,8 @@ extends GutTest
 ## `BR57.02` — **the inspect viewer's isolate camera and the board's directional light.**
 ##
 ## Its own file rather than more of `test_inspect_panel.gd`, which stands at 927 of `gdlint`'s
-## 1000-line cap and went over when these were appended to it. **The third file in taskblock-61 to
+## file-size cap (`gdlintrc`'s `max-file-lines`, then at a lower value) and went over when these
+## were appended to it. **The third file in taskblock-61 to
 ## hit that cap**, after `board_view.gd` and `bout_injector.gd`, and paid the same way: extract the
 ## separable thing rather than shorten comments to fit. What is separable here is a real seam —
 ## these ask about render layers and lighting, where the rest of that file asks about a panel's

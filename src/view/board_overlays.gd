@@ -17,9 +17,10 @@ extends RefCounted
 ##
 ## ## Why this is its own file
 ##
-## `board_view.gd` sat at **exactly** `gdlint`'s 1000-line cap, and this is the third
-## extraction that file has needed — the cutout logger (`src/debug/cutout_log.gd`) and marker
-## construction (`OverlayMarkers`) preceded it. It is not filed under `OverlayMarkers`
+## `board_view.gd` sat at **exactly** the file-size cap — 1000 lines as it stood then; the live
+## value is `gdlintrc`'s `max-file-lines` — and this is the third extraction that file has
+## needed. The cutout logger (`src/debug/cutout_log.gd`) and marker construction
+## (`OverlayMarkers`) preceded it. It is not filed under `OverlayMarkers`
 ## because that class states outright that it *"deliberately knows nothing about grids"*, and
 ## these do: a pad's position and its **height** both come from the placement store, so
 ## reading the grid is the whole job.
@@ -108,8 +109,6 @@ static func pad(cell: Vector2i, world_y: float) -> Node3D:
 	fill.a = FILL_ALPHA
 	holder.add_child(OverlayMarkers.flat_box(cell, fill, world_y + FILL_HEIGHT, PAD_SIZE))
 	holder.add_child(
-		OverlayMarkers.hollow_box(
-			cell, COLOR, world_y + BORDER_HEIGHT, PAD_SIZE, BORDER_THICKNESS
-		)
+		OverlayMarkers.hollow_box(cell, COLOR, world_y + BORDER_HEIGHT, PAD_SIZE, BORDER_THICKNESS)
 	)
 	return holder

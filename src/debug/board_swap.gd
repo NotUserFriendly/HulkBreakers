@@ -14,7 +14,8 @@ extends RefCounted
 ## happen.
 ##
 ## taskblock-56 Pass F3: **the file resolution moved here for the reason this class exists.** Adding
-## `load_map_file` put `BoutInjector` back over its 1000-line gate, which is the same pressure that
+## `load_map_file` put `BoutInjector` back over the file-size gate (`gdlintrc`'s `max-file-lines`,
+## then at a lower value), which is the same pressure that
 ## created this file — and "a catalog name or a `res://` path" is no more debug policy than "where
 ## does this unit stand now" was. What stayed behind is exactly the injector's own protocol: the
 ## guard, the refusal reason and the `inject` log line.

@@ -15,8 +15,9 @@ extends SubViewportContainer
 ## 1. Pass C's placement table gives the **Inspect viewer** its own row — *"top-left, ~2/3 tall,
 ##    half as wide — the 3D view, split out so the centre stays clear"* — while Inspect itself is
 ##    top-right. A subview cannot be in a different corner from the panel that owns its nodes.
-## 2. `inspect_panel.gd` was **992 lines against a 1000-line limit**, and the block's own first
-##    edits to it pushed it over. That is pressure this relieves on its own terms.
+## 2. `inspect_panel.gd` was **992 lines against a limit of 1000**, and the block's own first
+##    edits to it pushed it over. That is pressure this relieves on its own terms. (The 1000 is
+##    the cap as it stood then; the live value is `gdlintrc`'s `max-file-lines` and has risen.)
 ##
 ## ## Two rendering paths, and the difference is which World3D
 ##

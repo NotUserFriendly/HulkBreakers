@@ -5,8 +5,9 @@ extends RefCounted
 ##
 ## The vocabulary lived on `EditorModule` while it was a list of verbs the bar read back. It is
 ## logic: which tools exist, and what `MapPlacement` kind each one produces for a given part, are
-## questions with no widget in them — and `EditorModule` was over its 1000-line limit, the same
-## split `InspectPanel` took when `BotViewer` came out of it.
+## questions with no widget in them — and `EditorModule` was over the file-size cap (`gdlintrc`'s
+## `max-file-lines`, then at a lower value), the same split `InspectPanel` took when `BotViewer`
+## came out of it.
 ##
 ## ## Ten became seven, grouped by what a click MEANS
 ##
