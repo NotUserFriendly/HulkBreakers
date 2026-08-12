@@ -433,3 +433,46 @@ written as history** (*"the reason they existed is the reason they no longer do"
 exists"*). Counting either would inflate the finding.
 
 **No mechanism is proposed, per B2.**
+
+### Close-out — taskblock-51 Pass B1, filed before its last record went
+
+**It never landed.** `git log --follow -- src/view/hulk_theme.gd` returns **no taskblock-51 commit**,
+and a pickaxe for cache-shaped statics finds nothing in that file's history — so the theme cache was
+*reported and not built*, rather than built and reverted. That is the better of the two branches:
+there is no reversal to understand first. Verified here rather than taken from the addendum, since
+the whole reason it needed filing is that a report once claimed it landed.
+
+**Filed as a `PLAN` item** carrying the original prize — `HulkTheme.build()` constructs a fresh
+`Theme` per call, **1267 `ui_builds` a full gate**, a figure that does not move with the corpus draw
+— and naming `test_work_counters.gd:203`'s `assert_gt(HulkTheme.ui_builds, after_bout)` as the
+assertion a cache must change.
+
+**That assertion is recorded as the design question, not as an obstacle.** It asserts the counter
+*rises* when an overlay is built, so a working cache turns it red; whoever takes the item has to
+decide whether `ui_builds` counts builds or requests and say which in the test. The item also flags
+that the prize may no longer be worth claiming: under a sharded gate the corpus shard is the wall, so
+wall-clock saved on the zero-bout half may not move the makespan at all. **Measure against the
+sharded makespan, not the unsharded total.**
+
+**The line number had drifted.** The addendum cites `test_work_counters.gd:201`; the assertion is at
+**:203**, and the file is at `test/unit/logic/`, not `test/unit/`. Both corrected in the filing —
+this is item 8's own failure mode arriving inside the fix for it.
+
+### Decided without asking — the shard logs had to be captured outside the harness
+
+**Item A's measurement does not exist in the merged report.** `merge_shards.py` prints duplication
+and per-shard summaries, but the per-shard `fills` ledger — the thing the item asks for — lives only
+in the individual shard logs, and `run_tests.sh` writes those to `mktemp -d` under
+`trap 'rm -rf "$SHARD_DIR"' EXIT`. **The evidence is deleted by the time the gate reports.**
+
+**I mirrored the shard block into a durable log directory rather than change the harness**, since
+*"any suite or shard-map change"* is explicitly not this block's job. Same binary, same flags, same
+`shard_map.json`, same `merge_shards.py`, same `HB_NO_WRITE_PROFILE=1` and per-shard
+`GODOT_DISABLE_LEAK_CHECKS=1` — only `SHARD_DIR` differs. **The alternative considered and rejected**
+was editing `run_tests.sh` to keep its logs, which would have been a suite change made to observe the
+suite.
+
+**The risk this carries is divergence**, and it is real: a mirrored block can drift from the original
+without anything noticing. It agreed with the real gate on every figure the merged report also prints
+(366 scripts, 3563 tests, 0 failures), which is the only cross-check available. **If the shard block
+in `run_tests.sh` changes, this measurement is not reproducible by re-running the copy.**
