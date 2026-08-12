@@ -506,3 +506,29 @@ its button, which `is_showing`'s own note already acknowledged for the *border* 
 this every frame rather than remembering what it did"*). The press was still remembering. Reported
 as *"it takes two clicks of the PL UI button to actually dismiss the pick-a-thing pop up"*, and it
 was also reachable from a fresh mount, where the first press closed an already-closed list.
+
+## `./run_tests.sh shard` is not a rung (tb66 F → tb67 C)
+**Was:** four rungs, with `shard` the opt-in sharded full gate — *"the single-process path is
+untouched and stays the debugging path... this is a fourth rung, not a replacement."* `fast` and the
+bare gate both ran in one process.
+**Now:** `fast` and the bare gate **are** the sharded rungs, over two committed maps. The
+single-process run is `./run_tests.sh profile`. **Typing `shard` is a usage error that names its
+replacements**, rather than resolving to anything.
+**Why:** the rungs were inverted and reading them would not have shown it — the rung run before
+every pass commit cost **684 s** against a sharded full gate's 177–733 s, and covered less. Once
+both shard, `shard` was a synonym for the default. taskblock-67 C1 asked for it to be kept as an
+alias so taskblock-66's sharded-versus-single-process comparison stayed possible; **the supervisor
+removed it**, and that reason does not survive the pass regardless: the bare gate is the sharded
+side and `profile` is the single-process side, so the comparison is still available.
+**Watch for:** old instructions and commit messages saying `./run_tests.sh shard`. `docs/CHANGELOG.md`
+and `docs/BUGS.md` entries written before tb67 C use it as dated history and are correct as written.
+
+## The full gate writes the profile (tb65 close-out → tb67 C)
+**Was:** *"the full gate — the run you already have to make green before pushing — now produces
+them"*, the artifacts keyed off `GATE != fast` and no target.
+**Now:** keyed off `GATE == profile`. The full gate shards, and a sharded run cannot honestly write
+per-file wall-clock.
+**Why:** unchanged reasoning, moved rung. tb65's argument was that keeping the profile current must
+not depend on somebody remembering an opt-in flag; that still holds, and the cadence it now depends
+on is written into `CLAUDE.md` — before a bug-hunt block, before a doc review, never less often than
+every five taskblocks.

@@ -177,6 +177,63 @@ func test_an_unknown_target_is_a_usage_error() -> void:
 
 	assert_eq(int(result["code"]), 2, "not 1 — this is not a test failure")
 	assert_true(String(result["out"]).contains("usage:"), "and it says how to call it")
+	# tb67 Pass C: the usage line has to name the rung that exists, or the only place a
+	# newcomer is told about `profile` is a doc they are not reading at the moment they need it.
+	assert_true(String(result["out"]).contains("profile"), "and names the bookkeeping rung")
+
+
+# --- tb67 Pass C: the four rungs ----------------------------------------------------
+
+
+## **`shard` is refused by name, not by the filename resolver.**
+##
+## It named the sharded full gate while that was an opt-in fourth rung; the bare gate is that now,
+## so the word became a synonym for the default and was retired. Left to fall through, it would
+## have produced *"no test file or directory named 'shard'"* — true, useless, and exactly how a
+## stale instruction survives: the taskblock-66 census found eight claims in this repo's own docs
+## that were wrong for a median of fourteen blocks, and every one of them read plausibly.
+##
+## **Really invoked rather than read**, because the cost is one immediate exit and because what is
+## being asserted is that the script refuses it, not that a string appears somewhere in the file.
+func test_the_retired_shard_rung_says_it_is_retired_and_what_replaced_it() -> void:
+	var result: Dictionary = _run(["shard"] as Array[String])
+
+	assert_eq(int(result["code"]), 2, "a retired rung is a usage error")
+	var out: String = String(result["out"])
+	assert_true(out.contains("retired"), "and it says so in that word")
+	assert_true(out.contains("./run_tests.sh "), "and points at what to run instead")
+	assert_true(out.contains("profile"), "including the rung that took over the profiling job")
+
+
+## **Which map each sharded rung reads, and which rung may write the artifacts.**
+##
+## Read from the shell rather than run, and the limit of that is worth stating: this asserts the
+## script's *intent*, not its behaviour. Running the two sharded rungs for real costs 113 s and
+## 200 s+ and spawns sixteen engines between them, which is not a unit test — the real proof that
+## both work is the gate this file is running inside. The same instrument is already used on this
+## same file by `test_hulk_prefix_guard.gd`.
+##
+## What it genuinely catches is the two maps being swapped or one rung quietly losing its map,
+## which is a plausible edit and would otherwise show up as a fast gate that plays every bout.
+func test_each_sharded_rung_reads_its_own_map_and_only_profile_writes() -> void:
+	var shell: String = FileAccess.get_file_as_string("res://run_tests.sh")
+	assert_gt(shell.length(), 0, "the script is readable, or this proves nothing")
+
+	assert_true(
+		shell.contains('run_sharded "test/shard_map_fast.json" "fast"'),
+		"the fast rung reads the fast map",
+	)
+	assert_true(
+		shell.contains('run_sharded "test/shard_map.json" ""'),
+		"and the bare gate reads the full map",
+	)
+	assert_true(
+		shell.contains('"$GATE" == "profile"'),
+		"only the profile rung reaches the --write flag",
+	)
+	# The maps it names have to exist, or the rung fails at the point of use rather than here.
+	assert_true(FileAccess.file_exists(ShardMap.MAP_PATH), "the full map is committed")
+	assert_true(FileAccess.file_exists(ShardMap.FAST_MAP_PATH), "and so is the fast one")
 
 
 ## **A partial run must never write a whole-suite artifact**, whatever the environment

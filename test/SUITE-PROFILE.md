@@ -9,17 +9,17 @@ Work counts are exact and machine-independent; **wall-clock is the softer number
 | measure | value |
 |---|---|
 | scripts | 367 |
-| tests | 3571 |
-| wall-clock | 1340.8 s |
-| bouts | 82 |
-| turns | 832 |
-| plans | 602 |
-| candidates | 1309072 |
-| shot_planes | 9182 |
-| floods | 5440 |
+| tests | 3576 |
+| wall-clock | 1687.7 s |
+| bouts | 89 |
+| turns | 1130 |
+| plans | 896 |
+| candidates | 1665307 |
+| shot_planes | 9676 |
+| floods | 6182 |
 | ui_builds | 1267 |
-| maps | 989 |
-| spawns | 34 |
+| maps | 996 |
+| spawns | 35 |
 
 **20 of 367 files build a bout, and 49 resolve a turn by any route.** The gap between those two is the retargeting surface: a file that resolves turns without building a bout is already driving the board directly, which is what taskblock-47 Pass E moves work toward.
 
@@ -29,74 +29,74 @@ Work counts are exact and machine-independent; **wall-clock is the softer number
 
 | | seconds | bouts | turns | plans | candidates | planes | floods |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `unit/logic/test_watched_run.gd` | 326.26 | 3 | 277 | 261 | 504359 | 260 | 815 |
-| `unit/view/test_battle_scene.gd` | 64.44 | 6 | 3 | 0 | 540 | 0 | 249 |
-| `unit/view/overlays/test_spectator_overlay.gd` | 57.11 | 0 | 13 | 21 | 1447 | 13 | 140 |
-| `unit/view/test_resolution_player.gd` | 38.35 | 0 | 0 | 0 | 0 | 0 | 108 |
-| `unit/logic/test_map_gen.gd` | 34.11 | 0 | 0 | 0 | 0 | 0 | 512 |
-| `unit/logic/test_completion_sampler.gd` | 33.65 | 3 | 53 | 51 | 132795 | 28 | 138 |
-| `unit/logic/test_generated_board_sight_sweep.gd` | 32.00 | 0 | 0 | 0 | 0 | 0 | 2 |
-| `unit/logic/ai/test_batch_plumbing.gd` | 30.47 | 5 | 32 | 32 | 48680 | 144 | 82 |
-| `unit/view/modules/test_layout_review.gd` | 27.21 | 0 | 0 | 0 | 0 | 0 | 90 |
-| `unit/view/test_replay_wiring.gd` | 22.68 | 3 | 0 | 0 | 600 | 0 | 36 |
-| `unit/view/overlays/test_ai_batch_yield.gd` | 22.51 | 3 | 48 | 48 | 87572 | 67 | 110 |
-| `unit/logic/ai/test_utility_planner.gd` | 21.80 | 3 | 19 | 18 | 56245 | 75 | 102 |
-| `unit/view/modules/test_three_bars.gd` | 20.90 | 0 | 0 | 0 | 0 | 0 | 71 |
-| `unit/view/overlays/test_squad_control_overlay.gd` | 20.72 | 0 | 11 | 1 | 677 | 6 | 89 |
-| `unit/view/modules/test_layout_review_3.gd` | 20.69 | 0 | 0 | 0 | 0 | 0 | 68 |
-| `unit/logic/test_map_gen_reachability.gd` | 19.78 | 0 | 0 | 0 | 0 | 0 | 100 |
-| `unit/logic/test_work_counters.gd` | 19.73 | 5 | 26 | 25 | 54260 | 60 | 77 |
-| `unit/logic/test_suite_run.gd` | 19.57 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `unit/view/modules/test_editor_mode.gd` | 17.72 | 0 | 0 | 0 | 0 | 0 | 60 |
-| `unit/view/modules/test_battle_placements.gd` | 17.32 | 0 | 0 | 0 | 0 | 0 | 56 |
+| `unit/logic/test_watched_run.gd` | 684.35 | 10 | 575 | 555 | 860658 | 754 | 1557 |
+| `unit/view/test_battle_scene.gd` | 63.63 | 6 | 3 | 0 | 540 | 0 | 249 |
+| `unit/view/overlays/test_spectator_overlay.gd` | 57.35 | 0 | 13 | 21 | 1447 | 13 | 140 |
+| `unit/view/test_resolution_player.gd` | 37.03 | 0 | 0 | 0 | 0 | 0 | 108 |
+| `unit/logic/test_map_gen.gd` | 33.88 | 0 | 0 | 0 | 0 | 0 | 512 |
+| `unit/logic/test_completion_sampler.gd` | 33.26 | 3 | 53 | 51 | 132795 | 28 | 138 |
+| `unit/logic/test_generated_board_sight_sweep.gd` | 31.98 | 0 | 0 | 0 | 0 | 0 | 2 |
+| `unit/logic/ai/test_batch_plumbing.gd` | 29.95 | 5 | 32 | 32 | 48680 | 144 | 82 |
+| `unit/view/modules/test_layout_review.gd` | 27.43 | 0 | 0 | 0 | 0 | 0 | 90 |
+| `unit/view/overlays/test_ai_batch_yield.gd` | 22.47 | 3 | 48 | 48 | 87524 | 67 | 110 |
+| `unit/view/test_replay_wiring.gd` | 22.35 | 3 | 0 | 0 | 600 | 0 | 36 |
+| `unit/logic/ai/test_utility_planner.gd` | 21.66 | 3 | 19 | 18 | 56245 | 75 | 102 |
+| `unit/view/modules/test_layout_review_3.gd` | 20.66 | 0 | 0 | 0 | 0 | 0 | 68 |
+| `unit/view/modules/test_three_bars.gd` | 20.59 | 0 | 0 | 0 | 0 | 0 | 71 |
+| `unit/view/overlays/test_squad_control_overlay.gd` | 20.23 | 0 | 11 | 1 | 677 | 6 | 89 |
+| `unit/logic/test_work_counters.gd` | 19.56 | 5 | 26 | 25 | 54260 | 60 | 77 |
+| `unit/logic/test_map_gen_reachability.gd` | 19.55 | 0 | 0 | 0 | 0 | 0 | 100 |
+| `unit/logic/test_suite_run.gd` | 19.53 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `unit/view/modules/test_editor_mode.gd` | 17.63 | 0 | 0 | 0 | 0 | 0 | 60 |
+| `unit/view/modules/test_battle_placements.gd` | 17.07 | 0 | 0 | 0 | 0 | 0 | 56 |
 
 ## Top 20 files by turns resolved
 
 | | seconds | bouts | turns | plans | candidates | planes | floods |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `unit/logic/test_watched_run.gd` | 326.26 | 3 | 277 | 261 | 504359 | 260 | 815 |
-| `unit/logic/test_completion_sampler.gd` | 33.65 | 3 | 53 | 51 | 132795 | 28 | 138 |
-| `unit/view/overlays/test_ai_batch_yield.gd` | 22.51 | 3 | 48 | 48 | 87572 | 67 | 110 |
-| `unit/logic/test_per_tier_probe.gd` | 8.08 | 9 | 36 | 36 | 82082 | 0 | 90 |
-| `unit/logic/ai/test_batch_plumbing.gd` | 30.47 | 5 | 32 | 32 | 48680 | 144 | 82 |
-| `unit/logic/ai/test_bout_runner.gd` | 1.17 | 0 | 29 | 37 | 30506 | 18 | 73 |
-| `unit/logic/test_work_counters.gd` | 19.73 | 5 | 26 | 25 | 54260 | 60 | 77 |
-| `unit/logic/test_scripted_corpus.gd` | 3.65 | 8 | 25 | 1 | 1246 | 0 | 42 |
-| `unit/logic/test_tb38_flat_bout_guard.gd` | 0.25 | 0 | 24 | 0 | 0 | 0 | 24 |
-| `unit/logic/test_combat_state.gd` | 0.39 | 0 | 22 | 0 | 0 | 0 | 0 |
-| `unit/logic/test_combat_state_initiative.gd` | 0.13 | 0 | 21 | 0 | 0 | 0 | 0 |
-| `unit/logic/ai/test_utility_planner.gd` | 21.80 | 3 | 19 | 18 | 56245 | 75 | 102 |
+| `unit/logic/test_watched_run.gd` | 684.35 | 10 | 575 | 555 | 860658 | 754 | 1557 |
+| `unit/logic/test_completion_sampler.gd` | 33.26 | 3 | 53 | 51 | 132795 | 28 | 138 |
+| `unit/view/overlays/test_ai_batch_yield.gd` | 22.47 | 3 | 48 | 48 | 87524 | 67 | 110 |
+| `unit/logic/test_per_tier_probe.gd` | 7.76 | 9 | 36 | 36 | 82082 | 0 | 90 |
+| `unit/logic/ai/test_batch_plumbing.gd` | 29.95 | 5 | 32 | 32 | 48680 | 144 | 82 |
+| `unit/logic/ai/test_bout_runner.gd` | 1.14 | 0 | 29 | 37 | 30506 | 18 | 73 |
+| `unit/logic/test_work_counters.gd` | 19.56 | 5 | 26 | 25 | 54260 | 60 | 77 |
+| `unit/logic/test_scripted_corpus.gd` | 3.58 | 8 | 25 | 1 | 1246 | 0 | 42 |
+| `unit/logic/test_tb38_flat_bout_guard.gd` | 0.23 | 0 | 24 | 0 | 0 | 0 | 24 |
+| `unit/logic/test_combat_state.gd` | 0.36 | 0 | 22 | 0 | 0 | 0 | 0 |
+| `unit/logic/test_combat_state_initiative.gd` | 0.12 | 0 | 21 | 0 | 0 | 0 | 0 |
+| `unit/logic/ai/test_utility_planner.gd` | 21.66 | 3 | 19 | 18 | 56245 | 75 | 102 |
 | `unit/logic/actions/test_hold_action.gd` | 0.12 | 0 | 18 | 0 | 0 | 0 | 0 |
-| `unit/logic/test_map_serializer.gd` | 11.31 | 2 | 16 | 16 | 26776 | 48 | 44 |
-| `unit/logic/test_world_view_seam.gd` | 15.98 | 2 | 16 | 16 | 24340 | 72 | 43 |
-| `integration/test_full_mission.gd` | 2.77 | 1 | 15 | 15 | 36823 | 2 | 30 |
-| `unit/logic/actions/test_end_turn_action.gd` | 0.21 | 0 | 14 | 0 | 0 | 0 | 0 |
-| `unit/logic/ai/test_search_behaviour.gd` | 3.47 | 0 | 14 | 0 | 93532 | 0 | 81 |
-| `unit/view/overlays/test_spectator_overlay.gd` | 57.11 | 0 | 13 | 21 | 1447 | 13 | 140 |
-| `unit/logic/ai/test_plan_pacer.gd` | 14.08 | 2 | 12 | 17 | 24138 | 48 | 45 |
+| `unit/logic/test_map_serializer.gd` | 11.23 | 2 | 16 | 16 | 26776 | 48 | 44 |
+| `unit/logic/test_world_view_seam.gd` | 15.89 | 2 | 16 | 16 | 24340 | 72 | 43 |
+| `integration/test_full_mission.gd` | 2.74 | 1 | 15 | 15 | 36823 | 2 | 30 |
+| `unit/logic/actions/test_end_turn_action.gd` | 0.20 | 0 | 14 | 0 | 0 | 0 | 0 |
+| `unit/logic/ai/test_search_behaviour.gd` | 3.41 | 0 | 14 | 0 | 93532 | 0 | 81 |
+| `unit/view/overlays/test_spectator_overlay.gd` | 57.35 | 0 | 13 | 21 | 1447 | 13 | 140 |
+| `unit/logic/ai/test_plan_pacer.gd` | 13.92 | 2 | 12 | 17 | 24122 | 48 | 45 |
 
 ## Top 20 tests by wall-clock
 
 | | seconds | bouts | turns | plans | candidates | planes | floods |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `test_watched_run.gd::test_a_watched_seed_matches_what_the_headless_path_reported` | 326.03 | 3 | 277 | 261 | 504359 | 260 | 815 |
-| `test_completion_sampler.gd::test_the_in_window_verb_reports_the_same_sample_and_changes_nothing` | 22.54 | 1 | 29 | 27 | 61759 | 20 | 78 |
-| `test_battle_scene.gd::test_seeded_units_always_land_on_navigable_terrain_across_many_seeds` | 21.58 | 0 | 0 | 0 | 0 | 0 | 90 |
-| `test_map_gen.gd::test_barrel_pallet_barrel_count_is_deterministic_and_in_range` | 20.33 | 0 | 0 | 0 | 0 | 0 | 200 |
-| `test_generated_board_sight_sweep.gd::test_the_sight_predicate_and_the_ray_march_agree_on_this_board` | 19.00 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `test_map_gen_reachability.gd::test_no_walkable_ground_is_unreachable_from_every_spawn_at_the_bout_board_size` | 18.10 | 0 | 0 | 0 | 0 | 0 | 100 |
-| `test_ai_batch_yield.gd::test_a_yielding_batch_produces_the_identical_bout` | 16.71 | 2 | 32 | 32 | 62182 | 60 | 73 |
-| `test_world_view_seam.gd::test_the_unrestricted_view_is_byte_identical_across_a_seeded_bout` | 15.70 | 2 | 16 | 16 | 24340 | 72 | 40 |
-| `test_batch_plumbing.gd::test_assigning_a_batch_leaves_a_mission_only_bout_untouched` | 15.01 | 2 | 16 | 16 | 24340 | 72 | 40 |
-| `test_batch_plumbing.gd::test_default_zero_units_produce_an_unchanged_action_sequence` | 14.92 | 2 | 16 | 16 | 24340 | 72 | 40 |
-| `test_utility_planner.gd::test_a_seeded_bout_is_reproducible` | 14.88 | 2 | 16 | 16 | 24340 | 72 | 40 |
-| `test_vertical_routes.gd::test_no_generated_cell_holds_both_a_ladder_and_a_lift_pad` | 13.54 | 0 | 0 | 0 | 0 | 0 | 80 |
-| `test_plan_pacer.gd::test_a_seeded_bout_is_identical_with_and_without_slicing` | 10.85 | 2 | 12 | 12 | 19200 | 48 | 32 |
-| `test_generated_board_sight_sweep.gd::test_close_range_sight_on_a_generated_board` | 10.82 | 0 | 0 | 0 | 0 | 0 | 2 |
-| `test_completion_sampler.gd::test_a_fixed_seed_list_yields_identical_results_twice` | 10.78 | 2 | 24 | 24 | 71036 | 8 | 60 |
-| `test_seam_sweep.gd::test_a_room_large_enough_to_hold_every_offset_produces_no_empties` | 10.64 | 0 | 0 | 0 | 0 | 3690 | 0 |
-| `test_map_gen.gd::test_every_raised_area_is_reachable_except_the_one_br60_01_names` | 10.18 | 0 | 0 | 0 | 0 | 0 | 148 |
-| `test_generation_heights.gd::test_a_tall_shelf_is_generated_somewhere_in_a_seed_sweep` | 10.15 | 0 | 0 | 0 | 0 | 0 | 60 |
-| `test_map_serializer.gd::test_a_bout_on_a_round_tripped_map_is_identical_to_one_on_the_generated_map` | 9.52 | 2 | 16 | 16 | 26776 | 48 | 36 |
-| `test_suite_run.gd::test_kill_terminates_the_whole_process_group_not_just_the_shell` | 9.40 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `test_watched_run.gd::test_a_watched_seed_matches_what_the_headless_path_reported` | 684.12 | 10 | 575 | 555 | 860658 | 754 | 1557 |
+| `test_completion_sampler.gd::test_the_in_window_verb_reports_the_same_sample_and_changes_nothing` | 22.29 | 1 | 29 | 27 | 61759 | 20 | 78 |
+| `test_battle_scene.gd::test_seeded_units_always_land_on_navigable_terrain_across_many_seeds` | 21.30 | 0 | 0 | 0 | 0 | 0 | 90 |
+| `test_map_gen.gd::test_barrel_pallet_barrel_count_is_deterministic_and_in_range` | 20.22 | 0 | 0 | 0 | 0 | 0 | 200 |
+| `test_generated_board_sight_sweep.gd::test_the_sight_predicate_and_the_ray_march_agree_on_this_board` | 18.80 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `test_map_gen_reachability.gd::test_no_walkable_ground_is_unreachable_from_every_spawn_at_the_bout_board_size` | 17.92 | 0 | 0 | 0 | 0 | 0 | 100 |
+| `test_ai_batch_yield.gd::test_a_yielding_batch_produces_the_identical_bout` | 16.70 | 2 | 32 | 32 | 62182 | 60 | 73 |
+| `test_world_view_seam.gd::test_the_unrestricted_view_is_byte_identical_across_a_seeded_bout` | 15.63 | 2 | 16 | 16 | 24340 | 72 | 40 |
+| `test_utility_planner.gd::test_a_seeded_bout_is_reproducible` | 14.82 | 2 | 16 | 16 | 24340 | 72 | 40 |
+| `test_batch_plumbing.gd::test_default_zero_units_produce_an_unchanged_action_sequence` | 14.73 | 2 | 16 | 16 | 24340 | 72 | 40 |
+| `test_batch_plumbing.gd::test_assigning_a_batch_leaves_a_mission_only_bout_untouched` | 14.69 | 2 | 16 | 16 | 24340 | 72 | 40 |
+| `test_vertical_routes.gd::test_no_generated_cell_holds_both_a_ladder_and_a_lift_pad` | 13.12 | 0 | 0 | 0 | 0 | 0 | 80 |
+| `test_generated_board_sight_sweep.gd::test_close_range_sight_on_a_generated_board` | 10.97 | 0 | 0 | 0 | 0 | 0 | 2 |
+| `test_plan_pacer.gd::test_a_seeded_bout_is_identical_with_and_without_slicing` | 10.71 | 2 | 12 | 12 | 19200 | 48 | 32 |
+| `test_completion_sampler.gd::test_a_fixed_seed_list_yields_identical_results_twice` | 10.63 | 2 | 24 | 24 | 71036 | 8 | 60 |
+| `test_seam_sweep.gd::test_a_room_large_enough_to_hold_every_offset_produces_no_empties` | 10.49 | 0 | 0 | 0 | 0 | 3690 | 0 |
+| `test_map_gen.gd::test_every_raised_area_is_reachable_except_the_one_br60_01_names` | 10.08 | 0 | 0 | 0 | 0 | 0 | 148 |
+| `test_generation_heights.gd::test_a_tall_shelf_is_generated_somewhere_in_a_seed_sweep` | 9.90 | 0 | 0 | 0 | 0 | 0 | 60 |
+| `test_map_serializer.gd::test_a_bout_on_a_round_tripped_map_is_identical_to_one_on_the_generated_map` | 9.50 | 2 | 16 | 16 | 26776 | 48 | 36 |
+| `test_suite_run.gd::test_kill_terminates_the_whole_process_group_not_just_the_shell` | 9.42 | 0 | 0 | 0 | 0 | 0 | 0 |
 

@@ -1,5 +1,58 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 67 Pass C — sharded is what `fast` and the bare gate mean; `shard` is retired
+
+**The two rungs people type now shard, and their names did not move.** `CLAUDE.md` documents those
+names and they are what gets typed, so renaming them would have left every existing instruction
+pointing at the wrong thing.
+
+| rung | before | after |
+|---|---:|---:|
+| `./run_tests.sh fast` | 684.4 s, one process | **108.2 s**, 8 shards over `shard_map_fast.json` |
+| `./run_tests.sh` | 1115–1607 s, one process | **183.7 s**, 8 shards over `shard_map.json` |
+| `./run_tests.sh profile` | — | the single-process run, and the only one that writes the artifacts |
+| `./run_tests.sh shard` | the sharded full gate | **retired** |
+
+**`shard` is refused by name rather than left to the filename resolver.** It meant *the sharded full
+gate* while that was an opt-in fourth rung; the bare gate is that now, so the word became a synonym
+for the default. Falling through would have printed *"no test file or directory named 'shard'"* —
+true, useless, and exactly how a stale instruction survives. It now prints what replaced it.
+
+**Deviation from the spec, recorded because it is one.** taskblock-67 C1 keeps `shard` as an
+explicit alias, and the acceptance list requires it to still resolve. **Removed on the supervisor's
+instruction.** The spec's stated reason does not survive the pass anyway: it keeps the alias so
+taskblock-66's sharded-versus-single-process equivalence check remains possible, and after this pass
+the bare gate *is* the sharded full gate and `profile` *is* the single-process one, so both sides of
+that comparison are still reachable without the name.
+
+**`profile` is named for the job only it can do, not for being slower.** Per-file wall-clock is the
+packer's input and eight competing processes scramble exactly that (tb66 E6), so the artifacts moved
+to the single-process rung rather than staying attached to the word "full". Cadence, recorded in the
+script and in `CLAUDE.md`: before a bug-hunt block, before a doc review, and never less often than
+every five taskblocks — five because `reports/` keeps a rolling five, so drift found at a review can
+still be attributed to the reports covering it. After Pass A the work budget rides on merged shard
+totals, so `SuiteBudget` no longer depends on this rung at all; what still does is wall-clock growth
+in work no counter sees.
+
+**The fast gate does not run the budget check, and says so where the verdict would be.** It skips 21
+bout-building files, so its totals are a fraction of the suite's and every gated counter reads low
+against a whole-suite baseline. **A check that cannot fail is worse than no check** — it prints a
+reassuring line nobody should trust — so it prints *"not checked: a fast gate measures part of the
+suite"* instead.
+
+**`gdlint src test` and the checkpoint parse guard run on the sharded path and are named there so
+nobody removes them believing the shards cover them** (C2). They do not: gdlint never enters an
+engine, and the parse guard loads checkpoint *scenarios*, which are not test files and are therefore
+in neither map.
+
+**Tests.** `shard`'s retirement is really invoked, not read — one immediate exit, and what is being
+asserted is that the script refuses it. Which map each sharded rung reads, and that only `profile`
+reaches `--write`, are read from the shell: running both rungs for real costs 108 s and 184 s and
+spawns sixteen engines, which is not a unit test, and the real proof is the gate the file runs
+inside. **The limit of that instrument is stated in the test** — it asserts intent, not behaviour —
+and it is the same one `test_hulk_prefix_guard.gd` already uses on this same file. The usage line
+now names `profile`.
+
 ## Taskblock 67 Pass B — a sharded fast gate is 6× faster, and it is a number rather than a band
 
 **Measured before adoption, and not wired into any rung** — Pass C does that. What landed is
