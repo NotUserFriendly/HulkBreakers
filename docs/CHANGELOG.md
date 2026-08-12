@@ -95,11 +95,32 @@ re-cloned rather than pulled.** The working tree did not change: `HEAD^{tree}` i
 
 **D3's count was wrong and the sweep is why it matters.** The block named five hashes across six
 sites. Every hex string in the tree that resolves to a commit gives **56** — 15 live citations
-across 7 files, **including `6032367` in this block's own Pass B entry above**, written hours before
-the rewrite invalidated it. All 15 are remapped and all 15 resolve. **The remaining 41 are in
+across 7 files, **including the one in this block's own Pass B entry above** — written as `6032367`
+hours before the rewrite invalidated it, and reading `17af2f6` there now. All 15 are remapped and all 15 resolve. **The remaining 41 are in
 `BUGS-ARCHIVE.md` (40) and `SUPERSEDED.md` (1)**, which this block is forbidden to edit; they dangle
 by decision, filed as `BR66.02` with a `PLAN` item, and the map that would repair them is saved
 outside the repo because it existed only in a temp clone.
+
+### Close-out addendum — the archive hashes were repaired after all
+
+**The push-and-file call was reversed by the supervisor** (*"fix those dangling commit hashes"*), so
+`BUGS-ARCHIVE.md` and `SUPERSEDED.md` were repointed. **43 citations**: the 41 filed under `BR66.02`,
+plus two the filing had itself created — the `6032367` quoted in Pass D's entry above and in
+`Report-Taskblock66.md` while describing the defect. Both now name the written value *and* the
+current one, since remapping alone would have made those sentences false.
+
+**The pre-rewrite objects were gone by then**, repacked away by `git-filter-repo`, so nothing could
+resolve an old hash any more. Each token was instead prefix-matched against the old column of the
+saved map — **zero ambiguous matches across 806 commits**. The repair is verified by sweep rather
+than by spot-check: **no token in any tracked file that was a commit before the rewrite fails to
+resolve after it — 49 resolve, 0 dangle** — and corroborated by subject, since the archive quotes
+`7f52388` as *"Resolve to Here now actually enables"*, which is that commit's real subject.
+
+**`BUGS-ARCHIVE.md` was edited, which its own header forbids, and `SUPERSEDED.md` with it.** Logged
+rather than glossed: an owner instruction, and a hash-for-hash substitution changing no prose, no
+claim and no status. *"Never edited again"* is weaker for it; the alternative was 29 closure pointers
+that walk nowhere. **`BR66.02` is `Resolved` and archived**, and the `PLAN` item queued for this work
+is removed rather than left describing something that landed.
 
 **Two full gates, both green, both from a redirect rather than a pipe:** 3563 tests, 0 failures, at
 **1115.4 s** and **1187.4 s**. **The unsharded gate turns out to carry the same corpus-draw band

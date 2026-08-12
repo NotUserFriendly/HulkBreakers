@@ -299,7 +299,7 @@ deeper cost was structural: answering "can I shoot from here" per candidate cell
 `ShotPlane` build per candidate, which taskblock-43 measured at ~70% of a planning turn.
 
 **Measured before/after**, both planners over the same 24 seeds from one standalone probe, the old
-one run from a worktree at `107af1e` (2026-07-28):
+one run from a worktree at `6987145` (2026-07-28):
 
 | | old | new |
 |---|---|---|

@@ -1129,25 +1129,6 @@ Cheap, mechanical, and it converts "someone will notice the fifth one" into a re
 <!-- ------------------------------------------------------------------------ -->
 ## Everything else
 
-### Repoint the 41 archive commit hashes the tb66 rewrite invalidated
-**Needs:** the old→new commit map, which is **not in the repo** —
-`~/workingdir/HulkBreakers-tb66-commit-map.txt`, saved out of the temp clone that produced it.
-**Unblocks:** a closure in `BUGS-ARCHIVE.md` being verifiable from the hash it names, as the ledger
-intends.
-
-**`BR66.02` is the entry; this is the acting-on.** The taskblock-66 doc review stripped
-`Co-Authored-By` trailers from 515 commits, which changed every hash in the repository. Its 15 live
-citations were remapped in the same push. **41 more sit in `BUGS-ARCHIVE.md` (40) and
-`SUPERSEDED.md` (1)** — both files the review was told not to edit, both correct as history, and
-now both pointing at objects that do not exist.
-
-- **The work is a mechanical substitution** and the map makes it exact. There is no judgement in it.
-- **The reason it is queued rather than done** is that "never edited again" is the property that
-  makes an archive worth trusting, and a hash-for-hash sweep is still an edit to two files whose
-  value is that nobody edits them. **That is the call this item is waiting on, not the mechanics.**
-- **It decays.** Lose the map file and the repair is only possible by matching commit subjects and
-  dates against 807 rewritten commits. **Back the file up or accept that this item expires.**
-
 ### Rename the terrain parts to sort together, and mark them as placeholders
 
 **Needs:** nothing. **Unblocks:** an author finding a floor in the part list; the tag work below

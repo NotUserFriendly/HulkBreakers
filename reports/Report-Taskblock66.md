@@ -11,10 +11,10 @@ replacement is offered on purpose** — the doc review ran two green full gates 
 corpus-draw band this block spent its length establishing for the *sharded* gate, showing up in the
 unsharded one. `test/SUITE-PROFILE.md` holds whatever the last green gate measured; that file is the
 value, not any number restated here. Second, `SUITE-PROFILE.md`'s own header had been naming a
-generator
-(`tools/profile_suite.gd`) that was deleted eighteen taskblocks ago — **including in E6's note in
-this report's last section**, which is left as written because reports are appended to rather than
-revised. The doc review also **rewrote every commit hash in the repository**; see the appendix.
+generator (`tools/profile_suite.gd`) that was deleted eighteen taskblocks ago — **including in E6's
+note in this report's last section**, which is left as written because reports are appended to rather
+than revised. The doc review also **rewrote every commit hash in the repository** — see the appendix,
+and the addendum after it for the repair of the citations that rewrite invalidated.
 
 **`./run_tests.sh shard` runs the whole suite across 8 processes.** Three real sharded gates were
 measured, and **the spread between them is the result** — same code, same suite, different draw:
@@ -219,9 +219,10 @@ Three of the block's items are "sweep for X". In each case the sweep returned mo
 own count, and I acted on the whole finding rather than the enumeration:
 
 - **D3 named five hashes across six sites. There are 56.** Fifteen live citations across seven files
-  — including `6032367` in this block's *own* Pass B changelog entry, written hours before the
-  rewrite that invalidated it — plus 41 inside `BUGS-ARCHIVE.md`/`SUPERSEDED.md`. Had I trusted the
-  list, ten live pointers would have broken silently, one of them mine.
+  — including one in this block's *own* Pass B changelog entry, written as `6032367` hours before the
+  rewrite that invalidated it and reading `17af2f6` now — plus 41 inside
+  `BUGS-ARCHIVE.md`/`SUPERSEDED.md`. Had I trusted the list, ten live pointers would have broken
+  silently, one of them mine.
 - **A2 found three dangling path references**, and one of them was pointing at a question that had
   been *closed*: `wall_cutout.gdshader` described the same-side over-cutting as "still open" and sent
   the reader to a deleted report, when `BR32.05`'s per-fragment residual was closed unaddressed at
@@ -307,3 +308,47 @@ anchored form is the one that means what D4 wanted.
 pre-existing doc commit, passes A–C), giving 806 into the rewrite, which preserved all of them, plus
 the Pass D remap commit itself. **The rewrite added and dropped nothing** — the check that actually
 proves it is the tree: `HEAD~1^{tree}` is `d724b32…`, identical to the pre-rewrite `HEAD^{tree}`.
+
+---
+
+## Appendix addendum — the archive hashes, repaired
+
+*Work done after the appendix above was written, on the supervisor's instruction. The appendix's
+"Open questions" entry on `BR66.02` is answered by this section and should be read through it.*
+
+**The push-and-file decision was reversed** (*"fix those dangling commit hashes"*), so the two files
+the block exempted were repointed after all. **43 citations, not the 41 filed** — the filing had
+created two more itself, quoting `6032367` in Pass D's changelog entry and in this report while
+describing the very defect. Those two are the only ones not fixed by substitution: remapping them
+would have made a true sentence false, since `17af2f6` was never the hash that got invalidated, so
+both now name the written value and the current one.
+
+**The method had to change, and that is the part worth recording.** By the time the instruction came,
+`git-filter-repo` had repacked the pre-rewrite objects away — **no old hash could be resolved by git
+any more**, so the approach used during Pass D (resolve, then look up) was no longer available. Each
+token was instead prefix-matched against the *old* column of the saved map, which needs no objects at
+all. **Zero ambiguous matches across 806 commits.** This is exactly the decay `BR66.02` warned about,
+arriving one step earlier than expected: the entry said losing the map file would force
+subject-matching, and losing the *objects* had already removed the easier route.
+
+**Verified by sweep, not spot-check:** every hex token in every tracked file that was a commit before
+the rewrite now resolves after it — **49 resolving, 0 dangling**. Corroborated independently by
+subject, since `BUGS-ARCHIVE.md`'s own parenthetical for `7f52388` — *"Resolve to Here now actually
+enables"* — is that commit's real subject line, which a wrong mapping would not have produced.
+
+### Decided without asking
+
+**The root `taskblock*.md` specs were left alone**, though the sweep found nine stale hashes in them
+(one in `taskblock64.md`, two in `taskblock66.md`, six in `taskblock66-docreview.md`). They are the
+supervisor's working notes, and Pass A untracked them precisely because they are not repo content.
+Editing files this block had just removed from git would have been the wrong direction. **They will
+still show stale hashes to anyone reading them.**
+
+**`BUGS-ARCHIVE.md` and `SUPERSEDED.md` were edited, which both headers forbid.** The instruction was
+explicit so this was not a judgement call, but it is not silent either: the archive's value is that
+nobody edits it, and that property is now weaker. The edit changes no prose, no claim and no status —
+only hashes — and the alternative was 29 closure pointers walking nowhere.
+
+**`BR66.02` was closed and archived rather than left open.** It is `CC`-owned, so this is within the
+gate; a `SUPERVISOR`-owned entry would have got `Pending` instead. The `PLAN` item queued for the
+repair is deleted rather than left describing landed work.

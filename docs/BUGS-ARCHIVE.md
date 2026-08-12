@@ -239,7 +239,7 @@ anchor theory has numbers. Still `Active`: nothing is repaired.** CC session
   run of lower cells in a straight line it may not have). **Which of those three is wanted is the
   supervisor's, and it is why this stays open.**
 
-**taskblock-63 Pass D1 — `Resolved` (commit `cb472e8`).** CC session `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`.
+**taskblock-63 Pass D1 — `Resolved` (commit `be24421`).** CC session `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`.
 **Unreachable regions at 40x30 over 50 seeds: 12 -> 0.**
 
 - **Of the three shapes, standing a route is the one built, and the decision is argued rather than
@@ -287,7 +287,7 @@ anchor theory has numbers. Still `Active`: nothing is repaired.** CC session
 - **The cap is right and the response is the problem.** A file parked one line under a hard limit
   turns "add a feature" into "refactor first, at a moment nobody chose". Worth a deliberate pass
   over whichever files are within ~50 lines of the cap, rather than paying it per accident.
-- **`Resolved` (taskblock-63 Pass A, commit `6032367`) — and the entry's own conclusion was wrong.**
+- **`Resolved` (taskblock-63 Pass A, commit `17af2f6`) — and the entry's own conclusion was wrong.**
   [CC `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`] *"The cap is right"* does not survive being looked at: **1000 is gdlint's default**, and
   this project overrides `max-returns` and `max-public-methods` with stated reasons while the one
   rule nobody had argued for was the one doing damage. A line count cannot tell code from comments,
@@ -319,7 +319,7 @@ anchor theory has numbers. Still `Active`: nothing is repaired.** CC session
   reads it.
 - **Invisible today** because nothing authors a non-zero blocker height. **A third generation height
   (+4) is exactly what surfaces it**, which is why it was found rather than played into.
-- **`Resolved` (taskblock-63 Pass D3, commit `ee359dd`).** [CC `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`] `src/logic/blocker.gd` is the
+- **`Resolved` (taskblock-63 Pass D3, commit `b7c5e94`).** [CC `c9dc8440-2fca-4fd7-8078-aa2b2faa0c44`] `src/logic/blocker.gd` is the
   record — the runtime half of `MapPlacement`, the same four field names, mirroring `Surface`. Load
   and save carry all four; `Grid.blockers` holds it; `board_view.gd` reads it. 192 read/write sites
   migrated across 72 files, keys unchanged.
@@ -1043,7 +1043,7 @@ passes in**
 - **Fix:** both call sites now read `tactics.selection.previewed_unit()` instead — the same source
   `SelectionController.reachable_cells()` already uses for the identical reason (it replays the
   current queue and returns what's actually left).
-- **RESOLVED** 2026-07-21 — supervisor confirms: "I just cleared it visually." Commit `1c13ae5`. New
+- **RESOLVED** 2026-07-21 — supervisor confirms: "I just cleared it visually." Commit `006d842`. New
   regression test queues a move that burns AP via 0 MP, confirmed it fails without the fix and passes
   with it (`test_action_bar.gd::test_an_action_already_queued_this_turn_counts_against_a_later_
   affordability_check`). 1861/1861 green.
@@ -1094,7 +1094,7 @@ passes in**
   after a queued move — the exact gap that let this ship unnoticed.
 - **Fix:** swapped to `selection.previewed_unit()` — the same source `reachable_cells()` already
   reads for the identical reason.
-- **RESOLVED** 2026-07-21 — supervisor confirms: "step-out is occurring." Commit `d42f744`. New
+- **RESOLVED** 2026-07-21 — supervisor confirms: "step-out is occurring." Commit `31aded3`. New
   regression test queues a move from an uncovered cell into the same covered cell every other test in
   the file starts at, then arms+clicks: confirmed it fails without the fix (falls into ordinary aim
   mode) and passes with it. 1862/1862 green.
@@ -1130,8 +1130,8 @@ passes in**
   designed," separate from a generalized `remove_object` ("fully vanishing it," BR30.02's own report
   covers the move/spawn/remove-object round). This fix's own behavior is unchanged, just renamed
   `BoutInjector.kill` — `remove_object` (new) is debug-only cleanup with no matrix ejection at all.
-- **RESOLVED** 2026-07-21 — supervisor confirms: "looks fixed." Commit `c930930` (original fix),
-  renamed in `6f42a4f`, 1860/1860 green.
+- **RESOLVED** 2026-07-21 — supervisor confirms: "looks fixed." Commit `5bb2a43` (original fix),
+  renamed in `742e7bb`, 1860/1860 green.
 
 ### BR31.01 — Resolved — owner: `SUPERVISOR`
 **Bottom-right turn controls and tooltip popups fight over clicks**
@@ -1188,7 +1188,7 @@ passes in**
   end-to-end now — button (`squad_control_overlay.gd:445-449`) → `QueuePanel._on_resolve_pressed`
   (`queue_panel.gd:104-107`) → `tactics.resolve_to_marker(_marker_index)`
   (`tactics_controller.gd:1006-1041`), which does slice the queue to a checkpoint index and resolve
-  through it. Git history shows commit `888a25f` ("Resolve to Here now actually enables") already
+  through it. Git history shows commit `7f52388` ("Resolve to Here now actually enables") already
   fixed the historical "button never enables" defect, with passing coverage in `test_queue_panel.gd`.
   **This ledger entry looks stale, not live — worth a quick supervisor re-check before spending
   further investigation on it.**
@@ -1197,7 +1197,7 @@ passes in**
   test_resolve_to_marker_applies_only_the_prefix_through_the_marker` is a real queue-then-resolve
   test (queues two move legs, resolves to the first marker, asserts the unit's own `.cell` actually
   only advanced one leg) — not a UI-state check that could pass while the real resolve silently
-  no-ops. Nothing changed; this looks like it was already fixed by `888a25f` and the ledger simply
+  no-ops. Nothing changed; this looks like it was already fixed by `7f52388` and the ledger simply
   never caught up. Marked pending, not `RESOLVED` outright, per the provenance gate (SUPERVISOR-sourced) —
   needs the supervisor to actually click the button and confirm.
 - **2026-07-22 (supervisor correction): still active — the prior "already fixed" call was wrong.**
@@ -1376,14 +1376,14 @@ passes in**
   confirmed.** Fix: path from the queue's own preview instead, matching
   `_append_step_out_return_leg()`'s already-correct sibling pattern. Verified failing without the fix
   (silent cancel; queue only ever got 1 of the expected 2 entries) and passing with it.
-  **RESOLVED** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `8457ff0`, 1864/1864 green.
+  **RESOLVED** [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `64901c5`, 1864/1864 green.
 - **BR30.08 — `TooltipController.refresh()` showed LOS from the stale cell:** passed the raw
   `selected_unit` into `TileInspection.inspect()`, whose `visible_from_selected` field runs a real LOS
   check from `selected.cell` directly. A move queued toward a cell with different sightlines left the
   tooltip stuck showing visibility from the turn-start position. **State read, confirmed.** Fix:
   `previewed_unit()` instead. Verified failing without the fix and passing with it (an opaque cell
   blocks LOS from the start cell but not the queued destination). **RESOLVED**
-  [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `8457ff0`, 1864/1864 green.
+  [CC a90c45b3-a806-42f8-b1d3-ea8bdc511a9a] — commit `64901c5`, 1864/1864 green.
 - **Checked, not a bug:** `TacticsController.step_out_exposure()`/`_refresh_overlay()`'s
   `Overwatch.would_trigger_at()`/`all_threatened_cells()` calls also read `selected_unit` directly, but
   tracing `would_trigger_at()`'s own general-case branch shows it always re-resolves the mover by `id`
@@ -1460,7 +1460,7 @@ passes in**
   untouched layout first, then apply every mutation in a second pass. Re-dumped the same seed: clean
   single-tile wall rings with real void space.
 - **Verified:** re-confirmed via the same real ASCII dump technique, not just re-reading the code.
-  Commit `9909d73`.
+  Commit `4c69e6c`.
 ### BR31.03 — Obsolete — owner: `SUPERVISOR`
 **Wall fading never visibly occluded anything**
 - **Source:** `SUPERVISOR`  ·  **CC session:** `a90c45b3-a806-42f8-b1d3-ea8bdc511a9a`
@@ -1483,7 +1483,7 @@ passes in**
   `WallLegibility.occludes()` → `occludes_on_screen()`: project both the wall and the focal unit
   through the real camera (`Camera3D.unproject_position()`), compare 2D screen distance, require the
   wall nearer in depth — the question a player would actually answer by eye, independent of camera
-  angle. Commit `662e8d2`.
+  angle. Commit `85f1354`.
 - **Second root cause, found when the supervisor reported it still wasn't working:** traced the whole
   pipeline end to end through the real production path (real `BattleScene`/`SquadControlOverlay`, real
   click-to-select, real `CameraRig` framing) and confirmed every intermediate value was already correct
@@ -1492,7 +1492,7 @@ passes in**
   effect against an otherwise-opaque, `SHADING_MODE_PER_PIXEL` (lit) material — it doesn't. Switched to
   real alpha blending (`BaseMaterial3D.TRANSPARENCY_ALPHA` + `albedo_color.a`), the same mechanism
   `show_unit_ghost()` already proves renders correctly in this project, just kept lit (docs/10: real
-  geometry stays lit). New `BoardView._set_wall_alpha()`, `WALL_FADE_ALPHA := 0.25`. Commit `dda90d4`.
+  geometry stays lit). New `BoardView._set_wall_alpha()`, `WALL_FADE_ALPHA := 0.25`. Commit `050fd1c`.
 - **Verified:** confirmed working in player view after the second fix. Moot in practice either way —
   this whole alpha-blend mechanism is itself superseded by tb32 A's per-fragment discard shader
   (`docs/SUPERSEDED.md`).
@@ -1647,7 +1647,7 @@ same relative order this ledger has always kept them in, oldest work first. All 
   of that same assumption.
 - **Chain reactions are the thing to decide before writing it:** a barrel that detonates a neighbouring
   barrel needs a recursion bound, and that is a design call, not an implementation detail.
-- **RESOLVED** — commit `bd17685` (*"detonations reach cover, chain in waves, and centre on the
+- **RESOLVED** — commit `1567e2d` (*"detonations reach cover, chain in waves, and centre on the
   exploding part"*), with its own `CHANGELOG.md` entry. `Detonation` was split out of `DamageResolver`
   when chaining pushed that file past its line cap; it resolves in **waves**, to the supervisor's
   stated shape — *"chain react simultaneously, then in order, they should never re-explode"* — and
@@ -1655,7 +1655,7 @@ same relative order this ledger has always kept them in, oldest work first. All 
 - **Archived 2026-08-04 by a review audit [CC `e5393c3a-bd26-4668-8905-c50cf31e04cb`].** The fix
   landed but the entry was **deleted from `BUGS.md` rather than moved here**, so a genuinely closed
   bug left no closure marker anywhere — exactly what this ledger exists to prevent. Text above
-  restored verbatim from `a65f66d`; the two notes are new.
+  restored verbatim from `c9f2594`; the two notes are new.
 
 ### BR51.23 — Resolved — owner: `CC`
 **A detonation is centred on the owning unit's cell, not on the exploding part**
@@ -1669,13 +1669,13 @@ same relative order this ledger has always kept them in, oldest work first. All 
 - **A barrel is the case that hides it**, because a blocker's cell genuinely is its position.
 - **The part's real world position already exists** — `UnitGeometry.assembly_placements` composes exactly
   this for rendering and for `PartPicker`, so the fix is to ask it rather than to derive a second answer.
-- **RESOLVED** — commit `bd17685`, same commit as `BR51.22`. `Detonation._origin` asks
+- **RESOLVED** — commit `1567e2d`, same commit as `BR51.22`. `Detonation._origin` asks
   `UnitGeometry.assembly_placements` for the exploding part's own composed world position rather than
   deriving a second answer, and `detonation.gd:108` cites this entry by id — so the fix names the bug
   it closes even though the entry had gone.
 - **Archived 2026-08-04 by a review audit [CC `e5393c3a-bd26-4668-8905-c50cf31e04cb`]**, for the same
   reason as `BR51.22`: fixed, then deleted from `BUGS.md` instead of moved here. Text above restored
-  verbatim from `a65f66d`; the two notes are new.
+  verbatim from `c9f2594`; the two notes are new.
 
 ### BR27.16 — Resolved — owner: `SUPERVISOR`
 **Step out: MP charged for the automated legs**
@@ -1756,7 +1756,7 @@ same relative order this ledger has always kept them in, oldest work first. All 
   **BR27.06 — Step Out no longer occurs at all**, a regression from this very restructure). Until
   BR27.06 is fixed, BR27.01 can't be confirmed. **Verification deferred**; still pending, and now
   gated behind BR27.06.
-- **2026-07-21:** BR27.06 now has a fix pending its own confirmation (commit `d42f744`). Worth
+- **2026-07-21:** BR27.06 now has a fix pending its own confirmation (commit `31aded3`). Worth
   re-attempting BR27.01's own verification alongside BR27.06's — same play session either way.
 - **2026-07-21 (broken down by the supervisor, same session as BR27.06's confirmation):** parts (2)
   and (3) confirmed **RESOLVED** — no more MP charged for the automated legs, ghost no longer snaps
@@ -1802,9 +1802,9 @@ same relative order this ledger has always kept them in, oldest work first. All 
   handles in the Tree header; (3) header bar changed height/width while interacting; (4) 3D preview
   z-fought the ground disc (needed zoom-in + upward offset).
 - **RESOLVED** 2026-07-18, ~101 commits before the last stale re-report, in three commits:
-  - `713f411` — layout never resized, columns wouldn't drag, preview mis-framed
-  - `1bff29b` — garbage edits, silent save loss, header jitter
-  - `944d019` — preview: drop the dummy-matrix carrier, add `show_assembly`
+  - `3966147` — layout never resized, columns wouldn't drag, preview mis-framed
+  - `67d3393` — garbage edits, silent save loss, header jitter
+  - `128ab0b` — preview: drop the dummy-matrix carrier, add `show_assembly`
 - **Verified** both in code and by direct supervisor observation of the corrected tool — so this
   `SUPERVISOR`-sourced bug is legitimately `RESOLVED` (the gate was satisfied: the supervisor
   confirmed it).
@@ -1960,7 +1960,7 @@ same relative order this ledger has always kept them in, oldest work first. All 
 - **Reported:** taskblock-26 (bout review): "the resolver produces DEFLECT outcomes (a review bout
   logged 25), but resolution_player.gd references DEFLECT zero times — the bounced secondary ray is
   computed, logged, never drawn."
-- **Fix:** `taskblock-26 Pass A1` (commit `7c07445`) — every DEFLECT-outcome impact event now
+- **Fix:** `taskblock-26 Pass A1` (commit `841f77d`) — every DEFLECT-outcome impact event now
   carries its own `deflect_end_x/y/height`, drawn as a second, visually distinct tracer segment.
 - **RESOLVED** — confirmed by the supervisor.
 
@@ -1969,7 +1969,7 @@ same relative order this ledger has always kept them in, oldest work first. All 
 - **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26: tb24/tb25 added playstyles (overwatch-capable set, PSYCHOTIC, TURTLE)
   but the bout setup menu's own AI dropdown was a hardcoded, independently-maintained list.
-- **Fix:** `taskblock-26 Pass C1` (commit `67c7ca8`) — `GenerateBoutOverlay.PLAYSTYLES` is now a
+- **Fix:** `taskblock-26 Pass C1` (commit `03019cd`) — `GenerateBoutOverlay.PLAYSTYLES` is now a
   direct reference to `UnitAI.PLAYSTYLES`, not a hardcoded copy.
 - **RESOLVED** — confirmed by the supervisor.
 
@@ -1978,7 +1978,7 @@ same relative order this ledger has always kept them in, oldest work first. All 
 - **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26: adding/duplicating a roster entry reflows jarringly; the menu reads as
   intended-centered but isn't.
-- **Fix:** `taskblock-26 Pass C2` (commit `67c7ca8`) — anchors pinned to 0.5 with
+- **Fix:** `taskblock-26 Pass C2` (commit `03019cd`) — anchors pinned to 0.5 with
   `GROW_DIRECTION_BOTH` (no baked offset); every row reserves the same `ROW_MIN_HEIGHT`.
 - **RESOLVED** — confirmed by the supervisor.
 
@@ -1987,7 +1987,7 @@ same relative order this ledger has always kept them in, oldest work first. All 
 - **Source:** `SUPERVISOR`
 - **Reported:** taskblock-26: the inspect panel showed the bot's variant but not which unit/squad
   this actually was in the current bout — two units built from the same variant read identically.
-- **Fix:** `taskblock-26 Pass C3` (commit `67c7ca8`) — the title bar now reads "INSPECT — Unit N
+- **Fix:** `taskblock-26 Pass C3` (commit `03019cd`) — the title bar now reads "INSPECT — Unit N
   (Squad M) — <variant>" once a unit is open.
 - **RESOLVED** — confirmed by the supervisor.
 
@@ -3920,7 +3920,7 @@ evidently not what was reported.
     `BattleScene._occluding_friendlies` reads logical positions for the friendly-fade ghost. Left
     alone deliberately so this entry can be verified on its own.
 - **2026-08-09 — `Resolved` on the supervisor's own instruction** (*"all the 32. entries can be
-  marked as resolved"*), after seeing the fix in a live session. Fixed by `1a1476c` (taskblock-61
+  marked as resolved"*), after seeing the fix in a live session. Fixed by `1fbadfd` (taskblock-61
   Pass C2): the cutout reads each body's **rendered** `HitVolumeView` transform instead of its
   already-resolved logical cell. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
 
@@ -4136,8 +4136,8 @@ evidently not what was reported.
     the filter removes candidates, it does not add work.
 - **2026-08-09 — `Resolved` on the supervisor's own instruction** (*"all the 32. entries can be
   marked as resolved"*), after seeing it in a live session (*"looks much better"*). Fixed across
-  `5416d2b` (the per-unit sight gate, the supervisor's own fix shape), `b362954` (the framerate
-  regression that gate shipped with), `608424e` (the `blocked_by` diagnostic) and `48a9e39` (the
+  `9c44820` (the per-unit sight gate, the supervisor's own fix shape), `f22c454` (the framerate
+  regression that gate shipped with), `c3fbfd1` (the `blocked_by` diagnostic) and `44827c3` (the
   `cutout` tag, so cover stops counting as occluding). **The residual per-fragment half named in
   this entry — a second wall nearer the camera taking a bite while a first genuinely occludes — was
   never fixed and is closed with it.** [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
@@ -4188,7 +4188,7 @@ evidently not what was reported.
     No hole should follow the corpse. Then check a downed (not dead) crew member still gets one.
 - **2026-08-09 — `Resolved` on the supervisor's own instruction** (*"all the 32. entries can be
   marked as resolved"*), confirmed live: *"dead units are no longer cutting out, that looks good."*
-  Fixed by `5416d2b` (taskblock-61 Pass C1) — the cutout feed reads `CombatState.can_take_a_turn`,
+  Fixed by `9c44820` (taskblock-61 Pass C1) — the cutout feed reads `CombatState.can_take_a_turn`,
   so a corpse stops cutting and a downed unit keeps doing so. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
 
 ### BR33.01 — Obsolete — owner: `SUPERVISOR`
@@ -4362,7 +4362,7 @@ evidently not what was reported.
 - **2026-08-09 — `Resolved` on the supervisor's instruction** (*"32.07 and 30.04 you can mark
   resolved on my behest"*), after two rounds of live correction: the hollow box was being covered by
   the next leg's trail marker, and then style had to follow the LEG rather than the waypoint. Fixed
-  across `9b33357` and `32ade29`. **The per-leg colour cycle is gone entirely**, so the reported
+  across `45831ea` and `fe7c679`. **The per-leg colour cycle is gone entirely**, so the reported
   shuffle cannot recur by construction rather than by a wider palette. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
 
 ### BR32.07 — Resolved — owner: `SUPERVISOR`
@@ -4505,8 +4505,8 @@ evidently not what was reported.
     regression** — and it will now say `shot refused` in the log if it does.
 - **2026-08-09 — `Resolved` on the supervisor's instruction** (*"32.07 and 30.04 you can mark
   resolved on my behest"*), after confirming in play that obstructed shots fire. Root-caused from a
-  single instrumented reproduction and fixed across `f9a8b5e` (the `board_click` instrument that
-  found it), `f155c6e` (the silent-refusal fix) and `659a4dd` (the `LoS.has_los` gate removed from
+  single instrumented reproduction and fixed across `beb4ca7` (the `board_click` instrument that
+  found it), `68b1bfe` (the silent-refusal fix) and `1157980` (the `LoS.has_los` gate removed from
   `AttackAction`/`BurstAction`). **The supervisor's own verification burst is on record**: a
   chaingun chewed through a forklift in four rounds and put the remaining eight on the wall behind
   it. [CC `74ebb574-245b-48e8-aed2-e1d09ea25527`]
@@ -4676,11 +4676,11 @@ CC session `906e0f07-5b0a-47bd-8444-fb42ed468da2`.
   explains the paired symptom: the destroyed barrel stayed drawn because the board was never rebuilt.
 
 **Restored 2026-08-04 by a review audit [CC `e5393c3a-bd26-4668-8905-c50cf31e04cb`].** This entry was
-filed in commit `a65f66d` and **deleted from this file in `bd17685` without being archived** — that
+filed in commit `c9f2594` and **deleted from this file in `1567e2d` without being archived** — that
 commit fixed `BR51.22` and `BR51.23`, which were filed in the same batch, and removed all three
 headings together. `BR51.21` was not fixed by it, and `BR35.08`'s own closing note says so in as many
 words: *"What this does not close: `BR51.21` (no injection ever animates) is untouched."* Text above
-restored verbatim from `a65f66d`; only this note is new.
+restored verbatim from `c9f2594`; only this note is new.
 
 - **Re-verified still live, 2026-08-04, read from source.** **Both** overlays now carry the handler and
   **neither plays anything**: `spectator_overlay.gd:624` and `squad_control_overlay.gd:817` each do
@@ -5219,3 +5219,47 @@ the defect returning.
   the floor's placeholder green was a **design change**, not a defect — a colour nobody had chosen yet
   rather than a wrong one. Closed as obsolete rather than resolved because **there was no defect to
   verify**, and `CHANGELOG.md` carries the colour decision.
+
+### BR66.02 — Resolved — owner: `CC`
+**41 commit-hash citations in `BUGS-ARCHIVE.md` and `SUPERSEDED.md` dangle after the tb66 history rewrite**
+- **cluster:** `accounting`
+- **2026-08-12 — RESOLVED.** Fixed on the supervisor's later instruction (*"fix those dangling
+  commit hashes"*), which reversed the earlier push-and-file call. **All 41 repointed**, plus two
+  more this entry had created: the `6032367` quoted in the Pass D changelog entry and in
+  `Report-Taskblock66.md` while describing this very defect. Done by prefix-matching each token
+  against the saved map's old column rather than against git, since the pre-rewrite objects were
+  repacked away and could no longer be resolved. **Zero ambiguous matches** across 806 commits.
+  **Verification is that no token in any tracked file that was a commit before the rewrite fails to
+  resolve after it: 49 citations resolve, 0 dangle.** Corroborated independently by subject —
+  `BUGS-ARCHIVE.md` quotes `7f52388` as *"Resolve to Here now actually enables"*, which is that
+  commit's actual subject line.
+- **The archive was edited, which its own header forbids.** Recorded plainly rather than glossed:
+  this was an owner instruction, and the edit is a hash-for-hash substitution that changes no prose,
+  no claim and no status. The property *"never edited again"* is weaker for it; the alternative was
+  29 closure pointers that walk nowhere.
+- **Source:** `CC`, taskblock-66 doc review, 2026-08-12. **Confirmed, not suspected** — measured
+  against the rewritten history before and after.
+- **What happened.** Pass D stripped `Co-Authored-By` trailers from 515 of 806 commits with
+  `git-filter-repo`, which changes every hash in the repository. The block's D3 listed **five hashes
+  across six sites** to remap. A sweep for every hex string in the tree that actually resolves to a
+  commit found **56**: 15 live citations across 7 files, all remapped in the Pass D commit, and
+  **41 more inside the two files the block explicitly exempts from editing.**
+- **The exposure, measured:** `docs/BUGS-ARCHIVE.md` **40 occurrences / 29 distinct commits**;
+  `docs/SUPERSEDED.md` **1 / 1**. Every one resolved before the rewrite and none resolves after.
+- **Why it was not fixed with the rest.** Both files are history — the archive is *"moved verbatim
+  on closure and never edited again"*, and `SUPERSEDED.md` is append-only. The block names both as
+  out of scope. **The supervisor's call was to push and file this rather than edit them**
+  (2026-08-12), so the exemption is intact and the consequence is recorded rather than discovered
+  later.
+- **What it costs.** A closure in the archive names its fixing commit so the closure is verifiable.
+  Those 29 names no longer resolve, so the verification they were carrying is now only reachable by
+  matching commit *subjects* against the rewritten log. Nothing is lost — every commit still exists
+  under a new hash — but the pointer no longer walks.
+- **Fix shape, if it is ever wanted:** it is a mechanical substitution, and the old→new map for all
+  806 commits was **captured before the clone that produced it was discarded** — it is
+  `~/workingdir/HulkBreakers-tb66-commit-map.txt`, 807 lines, `old new` per line, deliberately
+  outside the repo since it is a one-time artifact rather than a tracked one. **Without that file
+  the mapping is only re-derivable by matching commit subjects and dates**, which is why it was
+  saved rather than left in a temp directory. Back it up if this entry is going to sit open.
+- **Not a recurrence risk.** `CLAUDE.md` Workflow item 1 already forbids the trailers, so there is no
+  second rewrite queued that would invalidate a repaired set of hashes.
