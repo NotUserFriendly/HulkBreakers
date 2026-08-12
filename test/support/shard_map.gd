@@ -54,6 +54,18 @@ extends RefCounted
 ## The committed assignment. Regenerate with `tools/pack_shards.gd`.
 const MAP_PATH := "res://test/shard_map.json"
 
+## tb67 Pass B3: **the fast gate's own assignment, from the same packer run.**
+##
+## The full map reserves shard 0 for the corpus and every `CORPUS_READERS` file is a bout file, so
+## running the fast gate over the full map leaves shard 0 empty and seven shards carrying work that
+## eight could share. Measured at **139.5 s against an 89.0 s ideal** — 57% over, purely from
+## packing for the wrong gate.
+##
+## **Both maps come from one `pack_shards.gd` run** so they cannot be generated from different
+## profiles, and `test_shard_map.gd` guards both — a second artifact with no guard is one that goes
+## stale invisibly, which is the failure the first guard exists to prevent.
+const FAST_MAP_PATH := "res://test/shard_map_fast.json"
+
 ## Shard 0 holds every `SuiteTier.CORPUS_READERS` file and starts first.
 const CORPUS_SHARD := 0
 
@@ -67,10 +79,14 @@ const UNKNOWN_FILE_COST := 5.0
 
 
 ## The committed map as `{shard_index: [paths]}`, or empty if it has not been generated.
-static func load_map() -> Dictionary:
-	if not FileAccess.file_exists(MAP_PATH):
+##
+## `path` selects which committed map — `MAP_PATH` for the full gate, `FAST_MAP_PATH` for the fast
+## one. Defaulted rather than split into two functions so every caller below keeps working and the
+## two maps cannot acquire separate loading rules.
+static func load_map(path: String = MAP_PATH) -> Dictionary:
+	if not FileAccess.file_exists(path):
 		return {}
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(MAP_PATH))
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if not parsed is Dictionary:
 		return {}
 	return (parsed as Dictionary).get("shards", {})

@@ -24,6 +24,7 @@ extends SceneTree
 
 const PROFILE_PATH := "res://test/suite_profile.json"
 const OUT_PATH := "res://test/shard_map.json"
+const FAST_OUT_PATH := "res://test/shard_map_fast.json"
 const SHARD_COUNT := 8
 
 
@@ -40,17 +41,51 @@ func _initialize() -> void:
 	var discovered: Array[String] = _discover("res://test")
 	discovered.sort()
 
-	# Shard 0 takes every corpus reader, whatever it costs — it is the makespan and the draw must
-	# be paid exactly once. Everything else is packed to finish under it.
+	print("== full gate ==")
+	if not _emit(discovered, cost, OUT_PATH, true):
+		return
+
+	# tb67 Pass B3: **the fast map, from the same profile in the same run.**
+	#
+	# Two maps that could be generated separately would eventually be generated separately, and a
+	# fast map packed from an older profile than the full one is a difference nobody would see.
+	# One run, one input, both outputs — so they cannot disagree about what a file costs.
+	#
+	# **Bout files are removed rather than costed at zero.** Zero-costing leaves them in the map,
+	# where a fast shard still loads and parses each of the 21 and runs its `should_skip_script()`.
+	# Removing them is what makes the fast map's shards contain only work the fast gate does, and
+	# `test_shard_map.gd` asserts the absence rather than the cost.
+	#
+	# **No corpus shard, and that is the whole reason this map is worth having.** Every
+	# `CORPUS_READERS` file is a bout file, so the reservation that makes shard 0 the makespan of a
+	# full gate protects nothing here — shard 0 becomes an ordinary bin and all eight do work,
+	# where the full map leaves seven to carry the fast set.
+	var fast: Array[String] = []
+	for path: String in discovered:
+		if not path in SuiteTier.BOUT_FILES:
+			fast.append(path)
+	print("== fast gate ==")
+	if not _emit(fast, cost, FAST_OUT_PATH, false):
+		return
+	quit()
+
+
+## Packs `files` and writes the map. `reserve_corpus` puts every `CORPUS_READERS` file on shard 0
+## and packs nothing else there; without it shard 0 is an ordinary bin.
+##
+## Returns false if the file could not be written, having already raised the error.
+func _emit(files: Array[String], cost: Dictionary, out_path: String, reserve_corpus: bool) -> bool:
 	var shards: Array[Array] = []
 	var load_s: Array[float] = []
 	for i: int in range(SHARD_COUNT):
 		shards.append([] as Array)
 		load_s.append(0.0)
 
+	# Shard 0 takes every corpus reader, whatever it costs — it is the makespan and the draw must
+	# be paid exactly once. Everything else is packed to finish under it.
 	var rest: Array[String] = []
-	for path: String in discovered:
-		if path in SuiteTier.CORPUS_READERS:
+	for path: String in files:
+		if reserve_corpus and path in SuiteTier.CORPUS_READERS:
 			shards[ShardMap.CORPUS_SHARD].append(path)
 			load_s[ShardMap.CORPUS_SHARD] += float(cost.get(path, ShardMap.UNKNOWN_FILE_COST))
 		else:
@@ -76,10 +111,11 @@ func _initialize() -> void:
 
 	units.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
 
+	# Never shard 0 when it carries the draw — packing more onto it lengthens the gate directly.
+	var first_bin: int = ShardMap.CORPUS_SHARD + 1 if reserve_corpus else 0
 	for unit: Array in units:
-		# Never shard 0 — it carries the draw and packing more onto it lengthens the gate directly.
-		var best: int = 1
-		for i: int in range(1, SHARD_COUNT):
+		var best: int = first_bin
+		for i: int in range(first_bin, SHARD_COUNT):
 			if load_s[i] < load_s[best]:
 				best = i
 		load_s[best] += float(unit[0])
@@ -91,22 +127,20 @@ func _initialize() -> void:
 		var listed: Array = shards[i]
 		listed.sort()
 		out["shards"][str(i)] = listed
-		print(
-			(
-				"shard %d: %5.1f s, %3d files%s"
-				% [i, load_s[i], listed.size(), "  (corpus)" if i == ShardMap.CORPUS_SHARD else ""]
-			)
-		)
+		var tag: String = ""
+		if reserve_corpus and i == ShardMap.CORPUS_SHARD:
+			tag = "  (corpus)"
+		print("shard %d: %5.1f s, %3d files%s" % [i, load_s[i], listed.size(), tag])
 
-	var file := FileAccess.open(OUT_PATH, FileAccess.WRITE)
+	var file := FileAccess.open(out_path, FileAccess.WRITE)
 	if file == null:
-		push_error("could not write %s" % OUT_PATH)
+		push_error("could not write %s" % out_path)
 		quit(1)
-		return
+		return false
 	file.store_line(JSON.stringify(out, "  "))
 	file.close()
-	print("wrote %s — %d files across %d shards" % [OUT_PATH, discovered.size(), SHARD_COUNT])
-	quit()
+	print("wrote %s — %d files across %d shards" % [out_path, files.size(), SHARD_COUNT])
+	return true
 
 
 ## The reader sets that must not be split, per Pass E3. Named here rather than derived, because

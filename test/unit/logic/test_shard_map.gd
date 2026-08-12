@@ -147,6 +147,101 @@ func test_an_unmeasured_file_is_charged_the_conservative_default() -> void:
 	assert_true(true, "reported rather than gated — see the note above")
 
 
+# --- tb67 Pass B3: the fast map, guarded the same way -----------------------------------
+
+
+## **Every non-bout file lands in exactly one fast shard.** Identical stakes to the full map: a file
+## in no shard is never run and the gate goes green having skipped it. A second committed artifact
+## with no guard is the thing B3 exists to prevent, so this is the same check, not a lighter one.
+func test_every_non_bout_file_is_assigned_to_exactly_one_fast_shard() -> void:
+	var shards: Dictionary = ShardMap.load_map(ShardMap.FAST_MAP_PATH)
+	assert_false(shards.is_empty(), "the fast shard map must be generated and committed")
+	if shards.is_empty():
+		return
+
+	var assigned: Array[String] = ShardMap.assigned_files(shards)
+	var counts: Dictionary = {}
+	for path: String in assigned:
+		counts[path] = int(counts.get(path, 0)) + 1
+
+	var missing: Array[String] = []
+	for path: String in _all_test_files():
+		if path in SuiteTier.BOUT_FILES:
+			continue
+		if not counts.has(path):
+			missing.append(path)
+	var doubled: Array[String] = []
+	for path: String in counts:
+		if int(counts[path]) > 1:
+			doubled.append(path)
+
+	gut.p("%d non-bout files assigned across %d fast shards" % [assigned.size(), shards.size()])
+	assert_eq(
+		missing,
+		[] as Array[String],
+		(
+			"unassigned files would be silently skipped by a sharded fast gate — regenerate with "
+			+ "tools/pack_shards.gd:\n%s" % "\n".join(missing)
+		)
+	)
+	assert_eq(doubled, [] as Array[String], "a file in two shards is run twice and counted twice")
+
+
+## **No bout file is in the fast map.** They are removed rather than costed at zero, because a
+## zero-costed file is still loaded and parsed by whichever shard holds it. This is also what makes
+## the fast map's shard 0 an ordinary bin: every corpus reader is a bout file, so there is no draw
+## to reserve a shard for.
+func test_no_bout_file_is_in_the_fast_map() -> void:
+	var shards: Dictionary = ShardMap.load_map(ShardMap.FAST_MAP_PATH)
+	if shards.is_empty():
+		return
+
+	var strays: Array[String] = []
+	for path: String in SuiteTier.BOUT_FILES:
+		var shard: int = ShardMap.shard_for(path, shards)
+		if shard >= 0:
+			strays.append("%s is in fast shard %d" % [path, shard])
+
+	assert_eq(
+		strays,
+		[] as Array[String],
+		"a bout file in the fast map is work the fast gate does not do:\n%s" % "\n".join(strays)
+	)
+
+
+## **The two maps agree about the suite**, which is the property that makes one packer run worth
+## insisting on. Their union is every test file and neither invents one — so a fast map packed from
+## a staler profile than the full map cannot go unnoticed, which is the way two artifacts drift.
+func test_the_two_maps_describe_the_same_suite() -> void:
+	var full: Array[String] = ShardMap.assigned_files(ShardMap.load_map())
+	var fast: Array[String] = ShardMap.assigned_files(ShardMap.load_map(ShardMap.FAST_MAP_PATH))
+	if full.is_empty() or fast.is_empty():
+		return
+
+	var in_full: Dictionary = {}
+	for path: String in full:
+		in_full[path] = true
+
+	var unknown: Array[String] = []
+	for path: String in fast:
+		if not in_full.has(path):
+			unknown.append(path)
+
+	assert_eq(
+		unknown,
+		[] as Array[String],
+		"the fast map names files the full map does not — they were packed from different inputs"
+	)
+	assert_eq(
+		full.size() - fast.size(),
+		SuiteTier.BOUT_FILES.size(),
+		(
+			"the maps differ by exactly the bout files (%d full, %d fast, %d bout files)"
+			% [full.size(), fast.size(), SuiteTier.BOUT_FILES.size()]
+		)
+	)
+
+
 func _profile_costs() -> Dictionary:
 	var parsed: Variant = JSON.parse_string(
 		FileAccess.get_file_as_string("res://test/suite_profile.json")

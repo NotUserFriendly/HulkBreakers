@@ -1,5 +1,73 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 67 Pass B — a sharded fast gate is 6× faster, and it is a number rather than a band
+
+**Measured before adoption, and not wired into any rung** — Pass C does that. What landed is
+`test/shard_map_fast.json`, emitted by the same `pack_shards.gd` run as the full map, plus the
+guards over it.
+
+**B1's arithmetic re-derived, because the profile it was written against no longer exists.** Pass A
+regenerated it, so the spec's figures were re-taken rather than quoted:
+
+| | spec's profile | re-derived |
+|---|---:|---:|
+| profile total | 1602.5 s | 1335.9 s |
+| bout-file cost the fast gate skips | 902.9 s | 623.6 s |
+| **the fast gate's real work** | **699.6 s** | **712.3 s** |
+| ideal 8-shard makespan | 87.4 s | 89.0 s |
+| makespan under the full map, skipping in place | 138.7 s (shard 2) | 139.5 s (shard 2) |
+
+**The bout-file half moved 31% between the two profiles; the fast gate's own work moved 1.8%.**
+That is B1's claim — a fast gate builds no bouts, so it has no corpus draw — corroborated across two
+independently measured profiles rather than argued.
+
+**B2, six runs, strictly sequential on an otherwise idle machine:**
+
+| configuration | run 1 | run 2 | spread | shard makespan | vs serial |
+|---|---:|---:|---:|---:|---:|
+| serial `./run_tests.sh fast` | 684.7 s | 684.1 s | 0.1% | — | — |
+| sharded over the full map, skipping in place | 140.4 s | 139.4 s | 0.7% | 124.5 s | **4.9×** |
+| sharded over the fast map | 113.3 s | 113.8 s | 0.4% | 99.0 s | **6.0×** |
+
+**The stability is the result, not the seconds.** Every spread is under 1%. Against the sharded
+*full* gate's four runs on this same tree — **177.1, 357.5, 499.2, 733.2 s, a 4.1× spread** — the
+contrast is the whole argument for making this the per-pass rung: one is a number, the other is a
+draw. Coverage cross-checked at **341 scripts in all six runs**, which is also what says the
+measurement proto did not drift from `run_tests.sh`'s shard block.
+
+**The serial figure is a re-take, and it confirms rather than corrects.** 684.4 s mean against the
+taskblock-66 addendum's 666.4 s — 2.7% apart, same machine class, so the addendum's number stands.
+
+**The profile predicts the wrong makespan in both directions, by the same 11%, and the reason is
+worth carrying.** Full map: predicted 139.5 s, measured 124.5 s. Fast map: predicted 89.0 s,
+measured 99.0 s. Per-file `usec` is measured single-process, and the full map leaves shard 0 empty
+with uneven loads, so its wall shard finishes among fewer competitors than the profile assumed —
+while the fast map keeps all eight busy end to end, which is *maximum* contention. **Perfect balance
+maximises contention**, so the packer's own ideal is not reachable: the fast map's shards were
+predicted at 89.0 s each and measured 70.6–99.0 s. The fixed floor came out at **~14.9 s** in both
+sharded configurations (wall minus makespan), consistent across four runs.
+
+**The second map is justified on the number: 18.4% and 25.6 s per run, against B3's 10% bar.**
+Eight shards rather than seven, derived not assumed — every `CORPUS_READERS` file is a bout file, so
+removing bout files removes the reason to reserve shard 0, and all eight bins do work (shard 0 goes
+from 0.5 s to 92.3 s). Seven would raise the ideal from 89.0 s to 101.8 s.
+
+**Bout files are removed from the fast map, not costed at zero.** A zero-costed file is still loaded
+and parsed by whichever shard holds it; `test_shard_map.gd` asserts the absence. Both maps come from
+one packer run so they cannot be generated from different profiles, and the guard covers both — a
+second artifact with no guard goes stale invisibly, which is what the first guard exists to prevent.
+Three new tests: every non-bout file in exactly one fast shard, no bout file in the fast map, and
+the two maps differing by exactly `BOUT_FILES.size()`.
+
+**`shard_map.json` is repacked against Pass A's new profile, and the diff is large: 274 of 367 files
+changed shard.** LPT packing is sensitive to its input costs, so a repack is a big diff by nature —
+worth knowing before Pass D decides whether a gate may rewrite that artifact itself.
+
+**A methodology error, reported rather than smoothed over.** I edited `test_shard_map.gd` — adding
+three tests — while serial run 1 was still in flight. That run reports 3280 tests and the other five
+report 3283, and the difference is exactly those three. The two serial runs agree to 0.65 s, so no
+conclusion here depends on it, but the six runs were not all over an identical suite.
+
 ## Taskblock 67 Pass A — the sharded gate enforces the work budget, and `floods` was never drift
 
 **`./run_tests.sh shard` can now fail on work-budget drift.** `tools/merge_shards.py` gained
