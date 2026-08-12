@@ -111,7 +111,7 @@ Retaken, four draws per tree:
 
 | tree | draws |
 |---|---|
-| pre-block (`ada3c83`) | 1, 1, 2, 3, 3 |
+| pre-block (`39b7aac`) | 1, 1, 2, 3, 3 |
 | `can_return` at 0.15 | 1, 2, 3 — plus the original 7 |
 | `can_return` at 0.85 (shipped) | 1, 1, 2, 2, 3, 4 |
 

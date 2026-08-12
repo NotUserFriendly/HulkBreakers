@@ -38,7 +38,7 @@ const TURN_CAP := 100
 ##
 ## Re-measured taskblock-46 Pass B, both planners, same probe, same 24 seeds, on
 ## the map generator AFTER Pass A stopped raised rooms sinking objects to level 0.
-## The old planner was run from a worktree at `107af1e` carrying the same map fix,
+## The old planner was run from a worktree at `6987145` carrying the same map fix,
 ## so the only difference between the columns is the planner:
 ##
 ## | | old | new |

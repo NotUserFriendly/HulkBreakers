@@ -76,7 +76,7 @@ crit** → bypass armor *and* bonus damage.
    rear plate or bare parts — automatic from the projection (`02`), not a bonus.
 3. **Crits beat armor.**
 
-**Open gap, found via `b68a1db` (taskblock-08 note): these three rules all assume the angle
+**Open gap, found via `5dfc078` (taskblock-08 note): these three rules all assume the angle
 keeps moving.** DEFLECT never damages the plate it hits (rule 1's own "so angle matters both
 ways" — the flip side is that a rifle round with `damage < DT`, hitting a plate at a fixed
 oblique angle, deflects it **every single time**, forever). Rule 1 only actually bites once

@@ -57,7 +57,7 @@ const HEADROOM := 0.15
 ## ## taskblock-56 Pass F: `ui_builds` 344 -> 627, and most of that is not this pass
 ##
 ## The ratchet says raise the number and say why in the same commit, so: **the committed
-## profile was last regenerated at taskblock-52** (commit `303e1db`), and the per-taskblock
+## profile was last regenerated at taskblock-52** (commit `de676fe`), and the per-taskblock
 ## regeneration was skipped for 53, 54, 55 and 56 A-E. Regenerating it here surfaced four
 ## taskblocks of growth at once, which is exactly the drift the budget exists to catch and
 ## exactly what a stale profile hides — the guard reads the committed file, not the live run.

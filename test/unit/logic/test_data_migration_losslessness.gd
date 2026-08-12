@@ -15,7 +15,7 @@ extends GutTest
 ## catch a value mis-transcribed into both — it proves internal
 ## consistency, not a faithful port. Closed by actually re-running the
 ## real deleted generators — restored verbatim from git commit
-## eb939471637d79b868b73fe93cd12c58ad4b0a69 (the parent of 5ed60b8, which
+## bea40dbc76bca3e84c8a488460b2dd9082e9b763 (the parent of ab76832, which
 ## deleted them) — and diffing their live output against every dict below,
 ## field by field, socket by socket, box by box: zero mismatches. This
 ## fixture is confirmed to BE that generators' real output, not a

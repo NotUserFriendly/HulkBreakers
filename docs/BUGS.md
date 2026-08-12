@@ -398,7 +398,7 @@ bug and it is chased on its own terms.
 - **What the sight sweep did find** (`test_generated_board_sight_sweep.gd`, seed `642296523` at
   40x30, 445 standable cells): blindness inside Chebyshev 3 is real but **ordinary geometry**, not
   a regression — **19 blind pairs at 1 cell (1.49%), 193 at 2 (8.72%), 510 at 3 (17.56%)**. At
-  `316edc5` the same seed measured 1.60% / 7.08% / 15.69%. **Caveat: not the same board** — tb63
+  `c3b665d` the same seed measured 1.60% / 7.08% / 15.69%. **Caveat: not the same board** — tb63
   Pass D1 changed generation (559 standable cells then, 445 now).
   - **Re-taken after Pass B, and the first figures were wrong.** A2 reported 1.97% / 9.39% /
     17.84% with `BR64.01` still live; fixing it cleared 29 blind pairs that were never real
@@ -1419,7 +1419,7 @@ every fire**
 - **Source:** `CC`  ·  **CC session:** `a56eac1a-eddb-4d30-946a-4c8e594ef198`
 - **Raised 2026-07-27 by the supervisor noticing the warning volume in `run_tests.sh`.** The warning
   is not new and nothing in taskblock-44 caused it — `SurrogateLadder.demote` has emitted it since
-  taskblock-03 Pass A2 (`e82d35c`). What changed is that taskblock-44 added tests that run real
+  taskblock-03 Pass A2 (`fc1d9b7`). What changed is that taskblock-44 added tests that run real
   seeded bouts, so more combat resolves, more surrogates take damage, and the existing warning simply
   fires more often. **It became audible rather than becoming a defect.**
 - **The actual gap.** `docs/04` makes the surrogate ladder a DAG, not a line. Demotion walks *upstream*

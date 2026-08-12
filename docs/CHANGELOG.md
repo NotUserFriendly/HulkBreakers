@@ -38,7 +38,7 @@ correctly. Three places, one of them disagreeing.
 
 **B2: the `board_view.gd` file-size item is removed from PLAN as obsolete**, on the supervisor's
 pick. It asserted a **1000-line cap and a tax three taskblock-61 changes paid to get back under it**.
-`gdlintrc:35` has said `max-file-lines: 2500` since `6032367` (tb63 Pass A, `BR62.02`), and nothing in
+`gdlintrc:35` has said `max-file-lines: 2500` since `17af2f6` (tb63 Pass A, `BR62.02`), and nothing in
 `src/` is near it — the largest, `tactics_controller.gd`, is 1802, and that file carries
 `gdlint:disable=max-file-lines` on line 1 anyway. **The tax stopped being charged three blocks ago.**
 `SUPERSEDED.md` carries the `1000 → 2500` reversal, so the history is intact without the item.
@@ -385,7 +385,7 @@ Blamed by the occluding box's own part — `ship_floor` 177, `wall` 168, `pillar
 `ladder` 130, `scrap_pile` 14, `goo_barrel` 10, `barrel_pallet` 8, `crate` 2. **Cover blames 276
 against the walls' 168.**
 
-**Not a tb63 regression.** The same seed at `316edc5` measures 1.60% / 7.08% / 15.69% — about two
+**Not a tb63 regression.** The same seed at `c3b665d` measures 1.60% / 7.08% / 15.69% — about two
 points better, not newly broken. **Stated as a caveat rather than a result: it is not the same
 board** (tb63 Pass D1 changed generation; 559 standable cells then, 445 now). The clean isolation
 is `_stand_wall` reverted to a bare `place_blocker` on an identical layout: **751 blind pairs ->
@@ -3397,7 +3397,7 @@ up. That cost is also the clearest measure of what the mode table bought.
 ### taskblock-56 Pass F — the suite profile was four taskblocks stale
 
 **Not editor work, and recorded separately because it is not.** `test/suite_profile.json` was last
-regenerated at taskblock-52 (`303e1db`); the per-taskblock regeneration was skipped for 53, 54, 55
+regenerated at taskblock-52 (`de676fe`); the per-taskblock regeneration was skipped for 53, 54, 55
 and 56 A–E. Regenerating it surfaced four blocks of drift at once. **Both guards that read it are
 structurally incapable of reporting sooner** — they read the committed file rather than the live
 run, which `test_suite_budget.gd`'s own header states as a deliberate trade.
@@ -6115,7 +6115,7 @@ PLAN.md's own follow-up note.
 override, user wins); `DataValidator` (named errors, shared editor-save + game-load). Resource
 Editor: standalone-scene tuning tool, survives reboots, writes user://, tree-table with
 sort/filter/dropdowns/undo/rotating preview. (Layout/resize/column/preview bugs fixed
-2026-07-18 in 713f411/1bff29b/944d019 — see BUGS.md; landed outside the taskblock cadence, logged
+2026-07-18 in 3966147/67d3393/128ab0b — see BUGS.md; landed outside the taskblock cadence, logged
 here retroactively.)
 
 **Test suite** (tb12) — audited for over-granularity (1,026 funcs, 38% single-assert) by measuring
@@ -6651,7 +6651,7 @@ census, and a `--profile` breakdown of one turn. Every number here comes from it
 ~1672ms/~1498ms figures in this bug came from a bench nobody kept and are not part of this series** —
 this one starts at ~745ms for the same work, and only differences within it mean anything.
 
-**Pass A — exact early-out in the scorer** (landed in a prior session, `8ebca0e`). Every term in
+**Pass A — exact early-out in the scorer** (landed in a prior session, `2ea917c`). Every term in
 `_engagement_score` is a non-negative penalty except `cover_bonus`, which is bounded by
 `COVER_SCORE_BONUS`, so a cell whose cheap terms already put its ceiling at or below the best
 complete score cannot win and skips both line walks whole. `<=` rather than `<` because selection is
