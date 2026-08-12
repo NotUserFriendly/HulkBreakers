@@ -498,6 +498,44 @@ it is a recorded limit rather than a rediscovery.
 <!-- ------------------------------------------------------------------------ -->
 ## The test suite
 
+### The work counters do not span the suite's runtime
+**Needs:** nothing to investigate; a counter per uninstrumented system to fix. **Unblocks:** a drift
+guard that can see work it currently cannot, and — as a second consequence — a packer that does not
+need wall-clock.
+
+**Measured 2026-08-12 against the committed profile.** Fitting per-file `usec` against all twelve
+recorded counters across the 363 files gives R² **0.836**, which is worse than it sounds because the
+misses are concentrated in exactly the wrong places:
+
+| file | actual | predicted from counters | its entire recorded work |
+|---|---:|---:|---|
+| `test_generated_board_sight_sweep.gd` | **31.8 s** | 0.3 s | `{floods: 2, maps: 1}` |
+| `test_bout_runner.gd` | 1.2 s | 14.2 s | 30 506 candidates, 37 plans, 18 shot planes |
+
+**One file spends 3% of the non-corpus suite's runtime and moves almost nothing counted.** Another
+posts thirty thousand candidates and costs a second. **The counters are not a proxy for work; they
+are a proxy for the work somebody instrumented**, and sight/LoS sweeping is outside that set.
+
+**The consequence that matters is the drift guard, not the packer.** `SuiteBudget` gates on these
+counters precisely because seconds are unreliable on this machine. **So work can grow in
+sight-sweep-shaped code and every gated counter stays flat** — the suite gets slower and nothing goes
+red. That is the same class as the profile going eight blocks stale, pointed at the mechanism meant
+to catch it.
+
+**The packer is the second consequence and it is already answered.** Packing the seven non-corpus
+shards on a counter-derived cost and scoring against real wall-clock gives a **202.6 s makespan
+against 141.5 s** packed on `usec` — 43% worse, and enough to push the non-corpus half past the
+corpus shard's 181–326 s band, which is the thing eight shards was chosen to avoid. **So the
+single-process profiling rung cannot be retired by re-costing alone, and taskblock-67 records that
+as settled rather than open.**
+
+**The work is a counter per uninstrumented system, not a better fit.** Start with whatever
+`test_generated_board_sight_sweep.gd` burns 31.8 s doing — `RayCaster.obstructed` marches, `LoS`
+queries, `SightSpans` — since that file is the largest single instance and it is the one that proves
+the gap exists. **Re-run the fit afterwards: R² rising and that residual collapsing is the
+acceptance**, and if it reaches the point where a counter-packed makespan matches a `usec`-packed
+one, the packer question reopens for free.
+
 ### The sharded gate does not enforce the work budget
 **Needs:** nothing — taskblock-66 built the machinery and stopped one wire short. **Unblocks:** a
 drift guard that watches the gate people actually run.
