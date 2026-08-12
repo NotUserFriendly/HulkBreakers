@@ -2,6 +2,17 @@
 .godot/
 .import/
 
+# Godot imports `audit/suite_audit.csv` with the `csv_translation` importer — it sees a .csv
+# and assumes a translation table — so it emits one binary `.translation` per COLUMN beside the
+# source. Nothing loads them: `run_suite.gd` writes the CSV and `test_suite_audit_csv.gd` reads
+# it, both through plain FileAccess. They were tracked, so every regenerated audit put nine
+# binaries in the diff. A tenth, `suite_audit.description.translation`, was tracked from a
+# retired column set: deleting all ten and re-importing brought back exactly the nine the
+# .import lists, which is how the orphan was identified rather than assumed.
+# Deleting them is not the fix — the importer would just remake them; changing the CSV's
+# import type to "keep" would, and that is a project.godot/.import decision, not an ignore one.
+audit/*.translation
+
 # Checkpoint artifacts (taskblock-41 Pass E) are LOCAL ONLY. Real sizes: ~72K
 # and ~180K for the two stills checkpoints, 484K for the one carrying a video,
 # 43-58K per 1920x1080 PNG. Thousands are affordable on local disk and none of
