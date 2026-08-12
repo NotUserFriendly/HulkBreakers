@@ -133,6 +133,34 @@ const MIXED_ROSTER: Array[StringName] = [
 ## Diagnostics only, never read by a decision.
 static var sampled_turns: int = 0
 
+## tb67 Pass A: **the same quantity, for the two other counters the draw moves.**
+##
+## `turns` was fixed first because it had a live flake. `floods` and `maps` have exactly the same
+## coupling and it went unmeasured until a sharded gate and the committed profile were compared
+## against each other on essentially the same suite — 3568 tests against 3565, two different draws:
+##
+## | | profile (draw 496) | sharded run (draw 131) |
+## |---|---:|---:|
+## | `floods` | 5972 | 4567 |
+## | `maps` | 994 | 871 |
+##
+## **A 1405-flood swing, 24%, against 15% headroom.** That red was read as drift when it was the
+## draw — the precise error `SuiteBudget`'s header names for `turns`: *comparing two different
+## quantities and calling the difference drift*. The baseline had been measured at a third draw
+## again, so all three numbers described different suites.
+##
+## **Bracketed around the whole of `run_seed` rather than counted at a call site.** A sampled bout
+## floods while its board is generated *and* again every time the planner asks a reachability
+## question, so there is no one place to increment; the honest measure is everything those two
+## counters moved while a sampled bout was being built and played. `tools/run_suite.gd` only ever
+## diffs these statics and never resets them, so the delta is safe to take across a bout.
+static var sampled_floods: int = 0
+
+## The maps a sampled bout generated. Every bout generates exactly one board (tb66 Pass F), so this
+## tracks the draw almost exactly — which is why `maps` moved 994 to 871 above with nothing else
+## changing. See `sampled_floods` for why both are bracketed rather than incremented.
+static var sampled_maps: int = 0
+
 ## How many times `sample()` has fallen below its floor since the process started.
 ## Diagnostics only; never read by a decision.
 static var escalations: int = 0
@@ -148,6 +176,8 @@ static var escalations: int = 0
 
 static func reset_diagnostics() -> void:
 	sampled_turns = 0
+	sampled_floods = 0
+	sampled_maps = 0
 
 
 static func build_for_seed(map_seed: int) -> Dictionary:
@@ -207,14 +237,25 @@ static func _roster(names: Array[StringName], tier: StringName) -> Array[BoutRos
 ## breakdown is how the mixed figure and the per-tier figures would start disagreeing about what a
 ## completion is.
 static func run_seed(map_seed: int, cap: int = TURN_CAP, tier: StringName = &"") -> Dictionary:
+	# **Marked before the board is built, not before the bout is played.** Generating the map is
+	# where most of a sampled bout's floods happen, and it is inside `build_*` below — a mark taken
+	# after it would attribute the expensive half to the suite instead of to the draw.
+	var floods_mark: int = Pathfinder.floods
+	var maps_mark: int = MapGen.maps_generated
 	var built: Dictionary = (
 		build_at_tier(tier, map_seed) if tier != &"" else build_for_seed(map_seed)
 	)
 	if built.get("error", "") != "":
+		# The only way here is a preset that would not load, which happens before any board is
+		# generated — so there is nothing to attribute and the marks are dropped rather than
+		# banked. If that ever stops being true this under-counts, in the direction that makes the
+		# budget stricter rather than looser.
 		return {}
 	var runner := BoutRunner.new(built["state"], built["mission"], cap)
 	await runner.run_to_completion()
 	sampled_turns += runner.turns_taken
+	sampled_floods += Pathfinder.floods - floods_mark
+	sampled_maps += MapGen.maps_generated - maps_mark
 	var outcome: int = built["mission"].outcome
 	return {
 		"seed": map_seed,

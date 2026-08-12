@@ -43,8 +43,10 @@ func _log(name: String, tests: int, failures: int, extra: String = "") -> String
 	return path
 
 
-func _run(paths: Array[String]) -> Dictionary:
+func _run(paths: Array[String], flag: String = "") -> Dictionary:
 	var args: Array[String] = [MERGER]
+	if flag != "":
+		args.append(flag)
 	args.append_array(paths)
 	var out: Array = []
 	var code: int = SuiteProcess.execute("python3", args, out, true)
@@ -133,6 +135,41 @@ func test_two_shards_drawing_a_corpus_sample_fails_the_gate() -> void:
 	gut.p(_summarise(result))
 	assert_eq(result["code"], 1, "two draws in one gate is a broken shard map")
 	assert_true("MORE THAN ONE SHARD DREW" in result["text"], "and it is named, not inferred")
+
+
+## tb67 Pass A — **the merge hands its controlled totals on in the budget's own input shape.**
+##
+## Until this landed the merge computed those totals and gated on nothing but shard health, so
+## `SuiteBudget` was inert on the path people actually run. What is asserted here is the handoff:
+## the numbers written are the *controlled* ones (duplication out), and `files` is empty, which is
+## the honest statement that a sharded run has no trustworthy per-file half to offer.
+func test_the_merge_writes_the_controlled_totals_for_the_budget() -> void:
+	var fills: String = '--- corpus fills --- {"642296523:40:30": {"maps": 1, "floods": 2}}'
+	var totals_path: String = "%s/totals.json" % _dir
+
+	var result: Dictionary = _run(
+		[_log("s0.log", 10, 0, fills), _log("s1.log", 10, 0, fills)],
+		"--totals-json=%s" % totals_path
+	)
+
+	gut.p(_summarise(result))
+	assert_eq(result["code"], 0, "writing the totals does not change the verdict")
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(totals_path))
+	assert_true(parsed is Dictionary, "the merge wrote a JSON object")
+	if not parsed is Dictionary:
+		return
+	var profile: Dictionary = parsed
+	assert_true(profile.has("totals"), "shaped as SuiteBudget.violations() takes it")
+	assert_eq(
+		(profile.get("files", []) as Array).size(),
+		0,
+		"and with no per-file half, because eight competing processes cannot measure one"
+	)
+	var totals: Dictionary = profile.get("totals", {})
+	# Both shards fill the same key, so the second fill is duplication and comes off.
+	assert_eq(int(totals.get("maps", 0)), 5, "3 + 3 raw, minus the duplicated fill's 1")
+	assert_eq(int(totals.get("floods", 0)), 12, "7 + 7 raw, minus the duplicated fill's 2")
+	assert_eq(int(totals.get("bouts", 0)), 2, "a counter duplication cannot touch is the plain sum")
 
 
 ## **Output order follows the shard index, never arrival.** Shards finish in whatever order the

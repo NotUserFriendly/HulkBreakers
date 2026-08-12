@@ -536,54 +536,6 @@ the gap exists. **Re-run the fit afterwards: R² rising and that residual collap
 acceptance**, and if it reaches the point where a counter-packed makespan matches a `usec`-packed
 one, the packer question reopens for free.
 
-### The sharded gate does not enforce the work budget
-**Needs:** nothing — taskblock-66 built the machinery and stopped one wire short. **Unblocks:** a
-drift guard that watches the gate people actually run.
-
-**`./run_tests.sh shard` is now the default path at 4 minutes against 22, and it is the path where
-`SuiteBudget` is inert.** Two independent reasons, both verifiable:
-
-- **`tools/merge_shards.py` computes the controlled totals and never gates on them.** Duplication is
-  subtracted at `:109-111` and printed at `:125`; the exit code at `:145-151` comes only from more
-  than one draw, a shard that did not finish, and test failures. `shard_merge.gd:59` describes its own
-  output as *"ready for `SuiteBudget.violations`"* — accurate, and nothing consumes it.
-- **`test_suite_budget.gd:21` reads the committed `suite_profile.json`, not live counters.** Under
-  sharding it re-asserts a snapshot from the last unsharded run, so it passes regardless of what this
-  run cost.
-
-**Drift therefore lands silently until somebody spends 22 minutes on an unsharded gate**, which is
-the run this block was built to stop needing.
-
-**taskblock-66 Pass E6's reasoning is right and was applied to the whole artifact instead of half of
-it.** Per-file wall-clock genuinely is unreliable under eight competing processes, so the packer must
-keep reading an unsharded profile. **The totals are a different matter and this block proved it:**
-Pass D measured `260 − 18 = 242` and `703 − 36 = 667` against unsharded, exactly. **Counts are
-process-count-invariant once duplication is subtracted** — that was the pass's whole finding.
-
-**So the totals half can gate and the per-file half cannot.** Either the merge checks `controlled`
-against `SuiteBudget.BASELINE` itself, or it writes a totals-only artifact that a small post-merge
-step runs `violations()` over — the second keeps one implementation of the rule, at the cost of
-`violations()`'s per-file naming having nothing to name. **Decide which, then wire it**; the argument
-for gating at all is already settled by everything `SuiteBudget`'s header says.
-
-**The subtraction this would gate on is now trustworthy — `BR66.01` is fixed and archived.** It was
-under-counting because `MapCorpus.forget()` erased the ledger the merge subtracts from, so wiring a
-gate over it would have reported green on inflation. That blocker is gone.
-
-**What the fix revealed changes the argument for this item, and makes it stronger rather than
-weaker.** Measured on a sharded gate immediately after: **duplication is 1 map and 2 floods across
-eight processes** — `maps` 883 controlled against 884 raw. So **the totals were already very nearly
-right, and still nothing checks them.** The case for this item is not "the numbers are wrong"; it is
-that a budget nobody enforces is not a budget, and the correction it depends on is now small enough
-that **no baseline re-derivation is needed to wire it** — a real risk before the measurement, and one
-that did not materialise.
-
-**One consequence for whoever takes it:** with duplication this small, a gate on `controlled` totals
-will behave almost identically to a gate on raw ones *today*. The subtraction earns its keep the
-moment the shard map is repacked and co-location changes, which is exactly the event that would
-otherwise move a budget silently. **Do not read the small number as a reason to skip the
-subtraction** — it is the reason the gate is safe to wire now.
-
 ### Cache the `Theme` — `HulkTheme.build()` rebuilds it from scratch on every overlay
 **Needs:** nothing. **Unblocks:** the zero-bout half of the suite getting cheaper without touching a
 test's meaning.
@@ -721,8 +673,22 @@ follow-up:
   `ui_builds` are machine-independent where wall-clock is not, and the packer only needs *relative*
   cost.
 
-### `BoutCorpus`'s variable draw is subtracted, but its *bouts* still are not
-**Needs:** nothing. **Unblocks:** ratcheting `bouts` and `candidates` the way `turns` now can be.
+### `BoutCorpus`'s variable draw is subtracted for three counters; `bouts` and `candidates` remain
+**Needs:** nothing. **Unblocks:** ratcheting `bouts` and `candidates` the way `turns`, `floods` and
+`maps` now are.
+
+**Two of the four landed at taskblock-67 Pass A, and not by choice.** `floods` turned the gate red
+with nobody's change behind it, and the red was the draw: the committed profile measured 5972 at a
+draw of 496 sampled turns, the baseline had been taken at a draw of 312, and a sharded gate over
+essentially the same suite at a draw of 131 measured 4567. **A 1405 swing, 24%, against 15%
+headroom.** `CompletionSampler.sampled_floods` and `sampled_maps` now bracket `run_seed` the way
+`sampled_turns` counts inside it, and `SuiteBudget.SAMPLED_BY_COUNTER` subtracts both.
+
+**What that leaves for whoever takes this item is smaller and better specified.** The mechanism
+exists, the subtraction table is one dictionary, and `SuiteBudget.unevaluable()` already solves the
+bootstrap — a counter added here would otherwise turn the gate red and thereby prevent the green
+full gate that writes the profile which would make it green. **Adding `bouts` is two lines plus a
+measurement.**
 
 **The turns half landed in taskblock-65's close-out.** `BoutCorpus.sample()` is clock-seeded and
 plays until the first win (`CompletionSampler.seeds_to_first_win`, cap 9), so how much work it does
@@ -732,10 +698,11 @@ subtracts the quantity, which is strictly better than the file exclusion it repl
 on whichever `SuiteTier.CORPUS_READERS` file ran first, and failure-history reordering changes which
 one that is, so a filename was only ever a proxy.
 
-**`bouts`, `candidates` and `maps` have the same problem and no equivalent.** taskblock-66 Pass F
-recorded the third: **every bout generates exactly one map**, so `maps` tracks the draw as well —
-measured at 83 sharded against 84 unsharded, differing only because the draws differed. Pass D
-controlled `maps`'s *other* uncontrolled source, shard duplication; the draw half is this item.
+**`maps`'s draw half is done.** taskblock-66 Pass F recorded it — **every bout generates exactly one
+map**, measured at 83 sharded against 84 unsharded, differing only because the draws differed — and
+taskblock-66 Pass D controlled the *other* uncontrolled source, shard duplication. Both halves are
+now subtracted, and they are independent: duplication is a scheduling artefact, the draw is a clock
+artefact, and a sharded gate has both.
 
 **On `bouts` and `candidates` specifically:** The same three runs measured
 **80 / 85 / 88 bouts** and **911 200 / 1 292 621 / 1 816 411 candidates**, almost all of it the same
@@ -745,10 +712,10 @@ and reaches the cap about one gate in nine, so the swing is real but narrower th
 implied. **The earlier reading, that the sampler routinely plays the full nine, was wrong.**
 
 **The work is the same shape as the turns fix** — count them beside `sampled_turns`, subtract in
-`violations()` — and it is small. **taskblock-66 builds the same machinery for `maps` and `floods`**,
-which sharding inflates by duplicating corpus fills; if that lands first, this becomes two more
-callers of a mechanism that already exists. It is queued rather than done because taskblock-65 fixed the one
-counter that had a live flake and stopped there.
+`violations()` — and it is now smaller than that, because taskblock-67 Pass A built the table and
+the bootstrap. It stayed queued this long because each fix was made only for the counter that had a
+live flake at the time; `floods` was the second such flake and `bouts` will be the third if the draw
+ever runs long enough to clear its headroom.
 
 ### The third corpus is a mounted `BattleScene`, and it is bigger than the first two combined
 **Needs:** nothing to *measure* — this is the measurement. **Unblocks:** the largest remaining

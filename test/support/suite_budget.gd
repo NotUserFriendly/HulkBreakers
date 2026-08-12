@@ -135,9 +135,44 @@ const BASELINE: Dictionary = {
 	"plans": 571,
 	"candidates": 1292621,
 	"shot_planes": 9187,
-	"floods": 5128,
+	# tb67 Pass A: **5128 -> 4273 and 941 -> 857, and both are a change of *meaning*, not a
+	# ratchet.** These two now baseline the *controlled* half — the total minus
+	# `CompletionSampler.sampled_floods` / `sampled_maps` — so the old figures are not comparable
+	# with the new ones and reading the drop as work removed would be wrong.
+	#
+	# **What forced it:** `floods` went red at tb67 with nobody's change behind it. The committed
+	# profile measured 5972 against a 5898 limit — but the profile was taken at a draw of 496
+	# sampled turns and the 5128 baseline at a draw of 312, and a sharded gate over essentially
+	# the same suite at a draw of 131 measured 4567. **A 1405 swing, 24%, against 15% headroom.**
+	# Three numbers, three draws, three different quantities.
+	#
+	# Corroborated per file — `test_completion_sampler.gd` alone reports `floods 138 /
+	# sampled_floods 138` and `maps 3 / sampled_maps 3`: every flood and every map in that file is
+	# the draw's.
+	#
+	# **Taken from the committed profile, and the first attempt took them from a sharded gate
+	# instead, which was wrong.** 4273 and 857 were provisionally set from a sharded run before
+	# the profile could be regenerated; the full gate then measured **4687 and 974** controlled,
+	# 9.7% and 13.7% higher. Both figures are real — the difference is between the two gates, not
+	# between two draws.
+	#
+	# **So taskblock-66 Pass D's "counts are process-count-invariant once duplication is
+	# subtracted" does not generalise to these two.** It was verified on one case and holds there;
+	# at whole-suite scale `maps` and `floods` differ structurally between the paths, because
+	# `MapCorpus.forget()` has process-local scope. Two files call it — `test_work_counters.gd`
+	# and `test_map_corpus.gd`, in shards 1 and 6 — and in one process each wipe forces every
+	# later reader of all 155 keys to refill, where sharded a wipe only reaches its own shard.
+	# That is the leading explanation and it matches the direction and the rough size; it has not
+	# been isolated experimentally.
+	#
+	# **Baselining on the unsharded profile is the deliberate choice.** The profile is the
+	# artifact this file is regenerated from, and it is the *higher* of the two, so a sharded gate
+	# measures under budget rather than red. The price is stated rather than hidden: **a sharded
+	# gate carries about 10-14% more slack on these two counters than an unsharded one**, so it
+	# sees systemic growth and would miss a small drift an unsharded gate catches.
+	"floods": 4687,
 	"ui_builds": 1267,
-	"maps": 941,
+	"maps": 974,
 	# tb66 Pass F: 25 -> 32. **All seven are this block's own**, and they are named rather than
 	# absorbed: `test_merge_shards.gd` drives `tools/merge_shards.py` as a real subprocess seven
 	# times (six tests, one of which runs it twice) to prove the merge cannot report green on a
@@ -194,6 +229,31 @@ const TURNS_EXCLUDED: Array[String] = ["res://test/integration/test_full_mission
 ## maps) and `test_replay_wiring.gd` (22.3 s, 0 bouts, 8 spawns) were both invisible to every
 ## gated counter except `ui_builds`, which cannot tell an expensive surface from a cheap one.
 const GATED: Array[String] = ["bouts", "turns", "floods", "ui_builds", "maps", "spawns"]
+
+## tb67 Pass A: **which gated counter has a draw-caused half, and what that half is called.**
+##
+## `turns` got this treatment at tb65 because it had a live flake; `floods` and `maps` were left
+## coupled and it was never measured. It became measurable when a sharded gate and the committed
+## profile were compared over essentially the same suite — 3568 tests against 3565 — at two
+## different corpus draws:
+##
+## | counter | draw of 496 sampled turns | draw of 131 | swing |
+## |---|---:|---:|---:|
+## | `floods` | 5972 | 4567 | **1405, 24%** |
+## | `maps` | 994 | 871 | 123, 12% |
+##
+## **Against 15% headroom, so `floods` cannot be budgeted raw and `maps` only looks safe.** The
+## baseline had itself been taken at a third draw, so the red that surfaced this was comparing
+## three different quantities — the exact error this file's `turns` note describes.
+##
+## `bouts` and `candidates` are coupled too and are deliberately **not** here: `bouts` is covered
+## by headroom on the argument already recorded above (the draw adds at most `FIRST_WIN_CAP`, and
+## 15% of 85 is 12), and `candidates` is not gated at all. Adding a counter to this table without
+## a measurement behind it would be inventing the number this whole file exists to refuse.
+const SAMPLED_BY_COUNTER: Dictionary = {
+	"floods": "sampled_floods",
+	"maps": "sampled_maps",
+}
 
 ## Per-file caps for the files that dominate. **The suite total alone is not enough**:
 ## a file could double while another halved and the total would sit still, which is
@@ -271,6 +331,19 @@ static func violations(profile: Dictionary) -> Array[String]:
 			# written against the list, not because it still carries the rule.
 			observed -= int(totals.get("sampled_turns", 0))
 			observed -= _excluded_turns(profile)
+		# tb67 Pass A: **`floods` and `maps` get the same treatment, for the same reason.** They
+		# were left coupled to the draw when `turns` was fixed, on the grounds that `turns` was
+		# the one with a live flake — and `floods` duly went red at tb67 with nobody's change
+		# behind it. See `SAMPLED_BY_COUNTER` for the measurement.
+		elif SAMPLED_BY_COUNTER.has(counter):
+			# **A profile that predates the counter cannot be judged against it, and judging it
+			# anyway is the bug.** Comparing a raw total against a controlled baseline is exactly
+			# the mismatch that made `floods` read as drift; doing it because the artifact is one
+			# gate old would reproduce that on purpose. `unevaluable()` names it instead, and the
+			# window is a single gate — the next green full gate writes the keys.
+			if not totals.has(SAMPLED_BY_COUNTER[counter]):
+				continue
+			observed -= int(totals.get(SAMPLED_BY_COUNTER[counter], 0))
 		var limit: int = limit_for(counter)
 		if limit < 0:
 			found.append(
@@ -324,6 +397,44 @@ static func violations(profile: Dictionary) -> Array[String]:
 						]
 					)
 				)
+	return found
+
+
+## Gated counters this profile cannot answer for, as messages ready to print.
+##
+## tb67 Pass A. **Not violations — the absence of a verdict, which is a different thing and has to
+## read as one.** A counter in `SAMPLED_BY_COUNTER` is budgeted on its controlled half, so a
+## profile taken before that counter existed carries no honest comparison: its total includes the
+## draw's share and the baseline does not.
+##
+## **Silently skipping would be a hole; failing would be a deadlock.** The profile is written by a
+## green full gate and only by one, so a counter whose arrival turns the gate red can never
+## produce the artifact that would make it green again. Every future entry in
+## `SAMPLED_BY_COUNTER` — `PLAN` queues `bouts` and `candidates` — meets the same wall, which is
+## why this is a mechanism and not a one-off.
+##
+## **What stops it becoming permanent** is `test_suite_budget.gd`'s sweep over `tools/run_suite.gd`
+## for these key names. That reads the runner rather than the artifact, so a counter someone stops
+## recording fails a test instead of quietly emptying the gate.
+static func unevaluable(profile: Dictionary) -> Array[String]:
+	var found: Array[String] = []
+	var totals: Dictionary = profile.get("totals", {})
+	if totals.is_empty():
+		return found
+	for counter: String in GATED:
+		if not SAMPLED_BY_COUNTER.has(counter):
+			continue
+		if totals.has(SAMPLED_BY_COUNTER[counter]):
+			continue
+		found.append(
+			(
+				(
+					"%s NOT CHECKED: this profile records no '%s', so its total and its baseline "
+					+ "are different quantities. Regenerate with a full gate."
+				)
+				% [counter, SAMPLED_BY_COUNTER[counter]]
+			)
+		)
 	return found
 
 

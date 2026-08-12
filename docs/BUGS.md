@@ -2547,3 +2547,26 @@ is_disabled` for the same part. The disappearance here is that disagreement made
   OTS camera *swings behind* the unit; this is the transition into OTS at all.
 - **Both are likely retired by the aiming and camera rebuild**, so measure and record rather than
   tuning the current rig.
+
+### BR67.01 — Active — owner: `CC`
+**A sharded gate's shard 0 died with no summary, and the evidence was deleted before it could be read**
+- **cluster:** `suite`
+- **Source:** `CC`, 2026-08-12, taskblock-67 Pass A.  ·  **CC session:** `71e5192b-9e3e-4ccd-9a58-48616be7dca8`
+- **What happened.** A `./run_tests.sh shard` reported `shard 0: DID NOT FINISH — no '--- suite cost
+  ---' summary`. The other seven shards were green with **0 failures across 3552 tests**, and the
+  merge correctly refused to call that a pass. Wall 499.2 s.
+- **Not reproducible so far.** Shard 0's three files (`test_full_mission.gd`, `test_bout_corpus.gd`,
+  `test_watched_run.gd`) run green in isolation — 19 tests, 0 failures, 288.9 s — and the very next
+  sharded gate was green end to end on a **near-cap N=8 draw** at 717.9 s for the same shard. No OOM
+  record; the machine has 61 GB and 32 cores, so memory was not the constraint.
+- **The reportable part is that nobody can say why, and that is structural rather than bad luck.**
+  `run_tests.sh` writes the shard logs to `mktemp -d` under `trap 'rm -rf "$SHARD_DIR"' EXIT`, so
+  **the one artifact that would name the cause is deleted at the moment the gate reports the
+  failure.** The taskblock-66 addendum hit the same wall from the other side and had to mirror the
+  shard block by hand to observe anything.
+- **Fix direction, not yet taken:** keep a failed shard's log — or all of them — somewhere durable,
+  so a shard death is diagnosable rather than re-runnable-and-hopefully-different. This is
+  taskblock-67 Pass D's territory (`D2`'s durable record), and this entry is a live instance of
+  exactly what that pass is for: the gate degraded, said so correctly, and left nothing to read.
+- **Frequency so far: 1 in 4 sharded gates this session** (499 s red, then 733 s, 177 s and 357 s
+  green). One occurrence is noise; the entry exists so a second one is not.

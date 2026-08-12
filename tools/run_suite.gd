@@ -227,7 +227,11 @@ func _print_summary(total_usec: int, failures: int) -> void:
 		# tb65 close-out: printed as well as collected. `SuiteBudget` subtracts this from `turns`,
 		# so a reader comparing the cost line against the budget without it would be looking at a
 		# number the gate does not use — the same reason `escaped` was added to this list.
-		"sampled_turns"
+		"sampled_turns",
+		# tb67 Pass A: the same, for the two other counters the corpus draw moves. Measured at a
+		# 1405-flood swing between two draws over essentially the same suite, against 15% headroom.
+		"sampled_floods",
+		"sampled_maps"
 	]:
 		parts.append("%s %d" % [key, int(total.get(key, 0))])
 	print("  ".join(parts))
@@ -308,6 +312,12 @@ func _snapshot() -> Dictionary:
 		# `seeds_to_first_win` stops at the first completion, so this swings by hundreds between
 		# identical runs.
 		"sampled_turns": CompletionSampler.sampled_turns,
+		# tb67 Pass A: `floods` and `maps` have the same coupling and it was invisible until a
+		# sharded gate and the committed profile were compared on essentially the same suite at
+		# two different draws — `floods` 5972 against 4567, `maps` 994 against 871. The `floods`
+		# gap was read as drift and turned the gate red; it was the draw.
+		"sampled_floods": CompletionSampler.sampled_floods,
+		"sampled_maps": CompletionSampler.sampled_maps,
 	}
 
 

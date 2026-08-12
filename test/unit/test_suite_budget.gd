@@ -37,7 +37,13 @@ func _profile() -> Dictionary:
 
 ## **The gate.** Everything else in this file exists to make this one trustworthy.
 func test_the_suite_is_within_its_work_budget() -> void:
-	var violations: Array[String] = SuiteBudget.violations(_profile())
+	var profile: Dictionary = _profile()
+	# tb67 Pass A: printed, never asserted on. A counter this profile predates is not a failure —
+	# it is a gate's worth of blindness that the next full gate closes by writing the artifact.
+	# Reading the log and seeing nothing about it is the outcome worth preventing.
+	for note: String in SuiteBudget.unevaluable(profile):
+		gut.p(note)
+	var violations: Array[String] = SuiteBudget.violations(profile)
 
 	for message: String in violations:
 		gut.p("OVER BUDGET: %s" % message)
@@ -78,7 +84,17 @@ func test_the_recorded_baseline_still_resembles_the_measured_suite() -> void:
 		# measured side has to be too — comparing the raw total against it would be
 		# comparing two different quantities and calling the difference drift.
 		if counter == "turns":
+			# tb67 Pass A: `sampled_turns` comes off here too. It always should have — the
+			# printed line below claims to compare a baseline against its measurement, and
+			# without this it compared the controlled baseline against the raw total. The
+			# assertion is loose enough that it never failed, which is why it survived.
+			observed -= int(totals.get("sampled_turns", 0))
 			observed -= SuiteBudget._excluded_turns(profile)
+		# tb67 Pass A: **the same correction for the same reason.** `floods` and `maps` are
+		# baselined on their controlled halves now, so comparing the raw measured total against
+		# them here would be the very mismatch that made `floods` look like drift.
+		if SuiteBudget.SAMPLED_BY_COUNTER.has(counter):
+			observed -= int(totals.get(SuiteBudget.SAMPLED_BY_COUNTER[counter], 0))
 		gut.p("%-8s baseline %d, measured %d" % [counter, baseline, observed])
 		assert_gt(observed, 0, "%s should be non-zero in a real profile" % counter)
 		# Below budget is the passing direction; this catches the *other* drift —
@@ -100,7 +116,25 @@ func test_the_recorded_baseline_still_resembles_the_measured_suite() -> void:
 # --- the checker's own behaviour, pinned on synthetic input ----------------------
 
 
+## A synthetic profile from a *current* runner.
+##
+## tb67 Pass A: **the `sampled_*` keys default to zero rather than being absent**, because absent
+## has a distinct meaning now — `violations()` declines to judge a counter whose draw-caused half
+## the profile does not record. Without this default every fixture below would silently exercise
+## that skip instead of the budget, and three of them did before the default was added.
+## `_synthetic_predating()` is how a test asks for the old shape on purpose.
 func _synthetic(totals: Dictionary, files: Array = []) -> Dictionary:
+	var recorded: Dictionary = totals.duplicate()
+	for counter: String in SuiteBudget.SAMPLED_BY_COUNTER:
+		var key: String = SuiteBudget.SAMPLED_BY_COUNTER[counter]
+		if not recorded.has(key):
+			recorded[key] = 0
+	return {"totals": recorded, "files": files}
+
+
+## A profile from before a `sampled_*` counter existed — the shape the committed artifact has for
+## exactly one gate after one is added.
+func _synthetic_predating(totals: Dictionary, files: Array = []) -> Dictionary:
 	return {"totals": totals, "files": files}
 
 
@@ -237,6 +271,102 @@ func test_the_randomly_sampled_file_is_excluded_from_the_turns_budget() -> void:
 		SuiteBudget.violations(elsewhere).size(),
 		0,
 		"turns growing outside the excluded file is still a regression",
+	)
+
+
+## tb67 Pass A — **`floods` and `maps` are budgeted on their controlled halves, not their totals.**
+##
+## The draw plays bouts on generated boards, so it floods and it generates maps, and how many is a
+## property of the clock rather than of the suite. Measured over essentially the same suite at two
+## draws: `floods` 5972 against 4567. **That gap turned the gate red with nobody's change behind
+## it**, which is what the subtraction exists to stop — the same move `sampled_turns` already makes.
+func test_the_draws_own_floods_and_maps_come_off_before_the_budget() -> void:
+	var drawn: Dictionary = SuiteBudget.BASELINE.duplicate()
+	drawn["floods"] = int(SuiteBudget.BASELINE["floods"]) + 1400
+	drawn["maps"] = int(SuiteBudget.BASELINE["maps"]) + 120
+
+	# A swing this size is over budget on its own...
+	assert_gt(
+		SuiteBudget.violations(_synthetic(drawn)).size(),
+		0,
+		"a 1400-flood rise with nothing accounting for it is a regression",
+	)
+
+	# ...and is not, once the draw says it was the draw.
+	drawn["sampled_floods"] = 1400
+	drawn["sampled_maps"] = 120
+	assert_eq(
+		SuiteBudget.violations(_synthetic(drawn)).size(),
+		0,
+		"the same rise, attributed to the sampler, is not the suite growing",
+	)
+
+	# But the sampler is not a laundry: work above what it accounts for still trips.
+	drawn["floods"] = int(SuiteBudget.BASELINE["floods"]) + 1400 + SuiteBudget.limit_for("floods")
+	var messages: Array[String] = SuiteBudget.violations(_synthetic(drawn))
+	assert_gt(messages.size(), 0, "growth on top of the draw is still growth")
+	assert_true("floods" in messages[0], "and it names the counter")
+
+
+## **The runner still records every counter this table subtracts.**
+##
+## `violations()` skips a counter whose `sampled_*` key is missing from the profile, so a newly
+## added counter cannot deadlock the gate that would regenerate the artifact. That skip is a hole
+## if nothing watches it: delete `sampled_floods` from the runner and the `floods` budget would
+## quietly stop existing one green gate later, with no test to say so.
+##
+## **So this reads the runner, not the artifact.** A source sweep is the same instrument the
+## retired-identifier guards use, and it is the only one that can tell *this counter was removed*
+## from *this profile is one gate old* — which look identical from inside the profile.
+func test_the_runner_still_records_every_counter_the_budget_subtracts() -> void:
+	var source: String = FileAccess.get_file_as_string("res://tools/run_suite.gd")
+	assert_gt(source.length(), 0, "the runner's source is readable, or this guard proves nothing")
+
+	for counter: String in SuiteBudget.SAMPLED_BY_COUNTER:
+		var key: String = SuiteBudget.SAMPLED_BY_COUNTER[counter]
+		assert_true(
+			SuiteBudget.GATED.has(counter), "%s is subtracted from, so it is gated" % counter
+		)
+		assert_true(
+			source.contains(key),
+			(
+				(
+					"tools/run_suite.gd no longer records '%s' — the %s budget would silently become "
+					+ "a comparison between two different quantities"
+				)
+				% [key, counter]
+			)
+		)
+
+
+## **An un-evaluable counter is announced, never quietly skipped.** The gap between *within budget*
+## and *not checked* is the whole reason `unevaluable()` is separate from `violations()`.
+func test_a_profile_predating_a_sampled_counter_says_so_rather_than_passing() -> void:
+	var stale: Dictionary = SuiteBudget.BASELINE.duplicate()
+	stale["floods"] = SuiteBudget.limit_for("floods") * 3
+	# Only `floods` predates this profile; `maps` is recorded, so exactly one counter is in doubt.
+	stale["sampled_maps"] = 0
+
+	# With no `sampled_floods` key the profile cannot answer for `floods` at all...
+	assert_eq(
+		SuiteBudget.violations(_synthetic_predating(stale)).size(), 0, "and it does not guess"
+	)
+	var notes: Array[String] = SuiteBudget.unevaluable(_synthetic_predating(stale))
+	assert_eq(notes.size(), 1, "one counter cannot be evaluated")
+	assert_true("floods" in notes[0], "named")
+	assert_true("NOT CHECKED" in notes[0], "and not mistakable for a pass")
+
+	# ...and the moment the key is there, it is judged like anything else.
+	stale["sampled_floods"] = 0
+	assert_eq(
+		SuiteBudget.unevaluable(_synthetic_predating(stale)).size(),
+		0,
+		"nothing left unevaluable",
+	)
+	assert_gt(
+		SuiteBudget.violations(_synthetic_predating(stale)).size(),
+		0,
+		"and the budget applies again",
 	)
 
 

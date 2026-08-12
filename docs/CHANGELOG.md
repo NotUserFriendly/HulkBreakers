@@ -1,5 +1,92 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 67 Pass A — the sharded gate enforces the work budget, and `floods` was never drift
+
+**`./run_tests.sh shard` can now fail on work-budget drift.** `tools/merge_shards.py` gained
+`--totals-json=`, writing the controlled totals in `SuiteBudget.violations()`'s own input shape;
+`tools/check_budget.gd` runs `violations()` over them and its exit code is the gate's.
+
+**The shape was chosen against the alternative, not by default.** The merge could have checked
+`BASELINE` itself, in Python. It does not: `HEADROOM`, `GATED` and the sampled subtractions are one
+rule argued across four taskblocks, and a second copy fails in the silent direction — a stale
+Python baseline **passes** a run the real rule fails. Cost is one engine start (~2 s) per gate.
+**`files` is written empty on purpose**: per-file `usec` is scrambled by eight competing processes,
+so a sharded run has no honest per-file half, and `check_budget.gd` prints that beside its verdict
+rather than letting a clean line imply a check nobody ran. The budget step is skipped when the
+merge already failed — a red gate has a cause.
+
+**The first sharded gate with the wire connected was red, and it was red before the block started.**
+Verified by stashing: `test_suite_budget.gd` failed at clean `HEAD` on `floods` 5972 over 5898.
+**It was not drift — it was the corpus draw.** The committed profile measured 5972 at a draw of 496
+sampled turns, the 5128 baseline had been taken at a draw of 312, and a sharded gate over
+essentially the same suite at a draw of 131 measured 4567. **A 1405 swing, 24%, against 15%
+headroom** — three numbers describing three different quantities, which is precisely the error
+`suite_budget.gd`'s own `turns` note names.
+
+**So `floods` and `maps` get what `turns` got at taskblock-65.** `CompletionSampler.sampled_floods`
+and `sampled_maps` bracket the whole of `run_seed` — a sampled bout floods while its board is
+generated *and* every time the planner asks a reachability question, so there is no single call site
+to increment. `SuiteBudget.SAMPLED_BY_COUNTER` subtracts them. Corroborated per file:
+`test_completion_sampler.gd` alone reports `floods 138 / sampled_floods 138` and `maps 3 /
+sampled_maps 3`.
+
+**Adding a counter to the budget deadlocks the gate, and that needed a mechanism rather than a
+workaround.** The committed profile cannot carry `sampled_floods` until a green full gate writes it,
+and the gate cannot go green while `floods` is judged against a baseline the profile cannot support.
+`SuiteBudget.unevaluable()` reports such a counter as **`NOT CHECKED`** — not a violation, not
+silence — and `test_suite_budget.gd` sweeps `tools/run_suite.gd`'s source for the key names so the
+skip cannot become permanent. That reads the runner rather than the artifact, which is the only way
+to tell *this counter was removed* from *this profile is one gate old*. `PLAN` queues `bouts` and
+`candidates` for the same treatment and each would have hit the identical wall.
+
+**`test_suite_run.gd` was not shard-safe and is now.** It counted every Godot on the machine and
+compared before against during — a relative measure over a number it does not own. Under the first
+sharded gate it read `before 8, during 8`: a sibling shard exited inside its six-second wait and
+masked the new engine exactly. It now counts engines in the run's **own process group**, so the
+assertions are absolute — some, then none — and the question asked is the one the docstring always
+claimed. Alone it had read `before 1, during 2, after 1` and passed, so the flake was invisible
+until sharding, and Pass C would have put it in the default gate.
+
+**Baselines: `floods` 5128 → 4687, `maps` 941 → 974. A change of meaning, not a ratchet** — both now
+baseline the controlled half, so the old and new figures are not comparable and the `floods` drop is
+not work removed.
+
+**A correction, because it informed a decision.** These were first set to **4273 and 857** from a
+sharded gate, on taskblock-66 Pass D's finding that *counts are process-count-invariant once
+duplication is subtracted*. The regenerated profile then measured **4687 and 974** — 9.7% and 13.7%
+higher. **That finding was verified on one case and does not generalise to these two at whole-suite
+scale.** The leading explanation is that `MapCorpus.forget()` has process-local scope: two files
+call it (`test_work_counters.gd`, `test_map_corpus.gd`, in shards 1 and 6), and in one process each
+wipe forces every later reader of all 155 keys to refill, where sharded a wipe reaches only its own
+shard. Direction and rough size match; it is not experimentally isolated. **The baselines are taken
+from the unsharded profile deliberately**, being the higher of the two, so a sharded gate measures
+under budget rather than red — at the stated price that **a sharded gate carries 10–14% more slack
+on these two counters.**
+
+**The subtraction is demonstrated rather than asserted, across three gates on one tree:**
+
+| gate | draw | `floods` raw | `sampled_floods` | controlled | `maps` raw | controlled |
+|---|---:|---:|---:|---:|---:|---:|
+| sharded | small | 4361 | 228 | **4133** | 868 | **856** |
+| sharded | **N=8**, one off the cap | 6018 | 1787 | **4231** | 878 | **857** |
+| full (unsharded) | mid | 5440 | 753 | **4687** | 989 | **974** |
+
+**Raw `floods` spans 4361–6018, a 38% spread. Controlled, the two sharded runs are 2.4% apart and
+the two `maps` figures are 856 and 857.** The draw is what was moving, and it is now subtracted.
+The remaining gap is the sharded/unsharded one described above, not the draw.
+
+**Gates:** full gate 367 scripts / 3571 tests / 0 failures / **1340.8 s**, profile written and
+committed; sharded gate 367 / 3571 / 0 at **733.2 s** on an N=8 draw, with the budget step reached
+and reporting *within budget* — the wire this pass exists to connect. `spawns` 32 → 34 in the
+profile, reconciling exactly: +1 for the merge's totals test, +2 for the checker's two, −1 because
+the process-group fix dropped a `pgrep` call.
+
+**One sharded gate in four went red this session on `shard 0: DID NOT FINISH`, unexplained.** Filed
+as `BR67.01`: the shard was green in isolation and on the next gate, and **the log that would name
+the cause is deleted by `run_tests.sh`'s own cleanup trap at the moment the failure is reported.**
+The merge behaved correctly — it refused to sum seven surviving shards into a pass. Recorded rather
+than absorbed, because Pass D's durable record is aimed at exactly this.
+
 ## Taskblock 66 addendum follow-up — `BR66.01` fixed, and the duplication number is real
 
 **`MapCorpus.forget()` keeps the ledger now.** It clears `_cache` and `generated`; a new

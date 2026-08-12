@@ -91,7 +91,33 @@ for p in json.load(open('$MAP'))['shards']['$i']:
   done
   wait
 
-  python3 tools/merge_shards.py "${LOGS[@]}"
+  # ## tb67 Pass A: **the sharded gate enforces the work budget.**
+  #
+  # Until this landed, `SuiteBudget` was inert on the path people actually run.
+  # `merge_shards.py` computed the controlled totals and gated on nothing but shard health;
+  # `test_suite_budget.gd` reads the *committed* profile, so under sharding it re-asserted a
+  # snapshot the last single-process gate wrote and passed regardless of what this run cost.
+  # Drift landed silently until somebody spent 22 minutes on an unsharded gate — the run
+  # sharding exists to stop needing.
+  #
+  # **Totals, never per-file.** tb66 Pass D measured `260 - 18 = 242` and `703 - 36 = 667`
+  # against unsharded exactly: counts are process-count-invariant once duplication is
+  # subtracted. Per-file wall-clock is not, and never becomes so — see `check_budget.gd`.
+  #
+  # **The budget check is skipped when the merge already failed, and that is deliberate.** A
+  # red gate has a cause; a second verdict about how much work an incomplete suite did adds
+  # noise to an investigation that already has somewhere to start. Same reasoning as
+  # `run_suite.gd::_on_end_run` declining to write artifacts from a red run.
+  TOTALS="$SHARD_DIR/totals.json"
+  set +e
+  python3 tools/merge_shards.py "--totals-json=$TOTALS" "${LOGS[@]}"
+  MERGE_STATUS=$?
+  set -e
+  if [[ "$MERGE_STATUS" -ne 0 ]]; then
+    exit "$MERGE_STATUS"
+  fi
+
+  "$GODOT" --headless --path . -s res://tools/check_budget.gd -- "--totals=$TOTALS"
   exit $?
 fi
 

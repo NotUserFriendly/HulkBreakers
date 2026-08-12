@@ -24,6 +24,20 @@ what it finds reports green. Silent partial success is the worst outcome availab
 **Duplication is subtracted, not ignored.** `maps` and `floods` are gated counters and
 every shard has its own `MapCorpus._cache`; see `ShardMerge` for why the fills are keyed
 rather than counted.
+
+## tb67 Pass A: `--totals-json=<path>` hands the controlled totals to the budget
+
+This file computes the totals a drift guard needs and **does not judge them**. The judging
+lives in `SuiteBudget.violations()`, in GDScript, and `tools/check_budget.gd` runs it over
+what is written here. Re-implementing the budget rule in Python was the other shape and it
+was rejected: `HEADROOM`, `BASELINE`, `GATED` and the `sampled_turns` subtraction are one
+rule with a long argued history, and a second copy of it drifts silently in the direction
+that matters — a stale Python baseline passing a run GDScript would have failed.
+
+The artifact is written in `violations()`'s own input shape, `{"totals": ..., "files": []}`,
+so nothing has to translate between them. **`files` is empty on purpose and it is not an
+oversight**: per-file `usec` is untrustworthy under eight competing processes, so a sharded
+run has no honest per-file half to offer. `check_budget.gd` says so where it prints.
 """
 
 import json
@@ -33,6 +47,10 @@ import sys
 COUNTERS = [
     "bouts", "turns", "plans", "candidates", "shot_planes",
     "floods", "ui_builds", "escaped", "maps", "spawns", "sampled_turns",
+    # tb67 Pass A: the draw's own floods and maps, so `SuiteBudget` can subtract them from a
+    # sharded gate's totals exactly as it does for an unsharded profile. They sum across shards
+    # like any other counter — only one shard draws, so only one shard contributes.
+    "sampled_floods", "sampled_maps",
 ]
 COST_RE = re.compile(
     r"(\d+) script\(s\), (\d+) test\(s\), (\d+) failure\(s\), ([\d.]+) s"
@@ -97,7 +115,26 @@ def duplication(all_fills):
     return dup, len(seen)
 
 
-def main(paths):
+def write_totals(path, controlled):
+    """The controlled totals in `SuiteBudget.violations()`'s input shape.
+
+    **A temp file for the caller, never a committed artifact.** `suite_profile.json` is the
+    baseline everything is compared against and a run that saw part of the suite must not
+    write it; this is a handoff between two steps of one gate, and `run_tests.sh` deletes it
+    with the shard logs.
+    """
+    with open(path, "w") as handle:
+        json.dump({"totals": controlled, "files": []}, handle, indent=2, sort_keys=True)
+
+
+def main(argv):
+    paths, totals_path = [], ""
+    for arg in argv:
+        if arg.startswith("--totals-json="):
+            totals_path = arg.split("=", 1)[1]
+        else:
+            paths.append(arg)
+
     shards = [read_shard(i, p) for i, p in enumerate(paths)]
     shards.sort(key=lambda s: s["index"])  # stable output, never arrival order
 
@@ -109,6 +146,12 @@ def main(paths):
     controlled = dict(totals)
     for key in ("maps", "floods"):
         controlled[key] = totals[key] - dup[key]
+
+    # **Written whatever the verdict below turns out to be, and the caller decides.** The
+    # numbers are what this run cost either way; whether it is worth judging the work of a
+    # suite that did not finish is `run_tests.sh`'s call, and it declines.
+    if totals_path:
+        write_totals(totals_path, controlled)
 
     print("--- sharded gate ---")
     for s in shards:

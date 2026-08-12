@@ -137,8 +137,21 @@ func test_an_unfinished_run_never_reads_as_passed() -> void:
 ## only the wrapper, and a full-gate run started by this very test left **79 orphaned
 ## Godot processes** running suites nobody was watching. The weakened assertion is
 ## what let that ship, so this counts real processes instead.
+##
+## ## tb67 Pass A: scoped to this run's process group, because the global count is not ours
+##
+## It counted **every** Godot on the machine and compared before against during. That is a
+## relative measure over a number the test does not own, and a sharded gate runs eight engines
+## that start and stop underneath it: measured on the first sharded gate of tb67 as `before 8,
+## during 8` — a sibling shard exited inside the six-second wait and masked the new engine exactly.
+## Alone it read `before 1, during 2, after 1` and passed, so the flake was invisible until
+## sharding, and it will be in the default gate once `fast` and the bare gate shard.
+##
+## **The scoped question is also the stronger one.** `run.process_group()` is the group `kill()`
+## signals, so counting engines *in that group* asks precisely what the docstring above claims:
+## did the shell start an engine, and did killing the shell take it with it. The assertions become
+## absolute — some, then none — instead of a comparison against whatever else is running.
 func test_kill_terminates_the_whole_process_group_not_just_the_shell() -> void:
-	var before: int = _godot_processes()
 	var run := SuiteRun.new()
 	# A slow file rather than a gate — see the recursion note in this file's header.
 	# `test_map_gen.gd` takes ~22 s and contains nothing that starts a run.
@@ -147,25 +160,37 @@ func test_kill_terminates_the_whole_process_group_not_just_the_shell() -> void:
 	# the test proves nothing.
 	await get_tree().create_timer(6.0).timeout
 	run.poll()
-	var during: int = _godot_processes()
+	# Captured before the kill: the group is read out of a file the run owns, and the handle has
+	# to outlive the thing it identifies for the "after" count to mean anything.
+	var group: int = run.process_group()
+	var during: int = _godot_processes_in_group(group)
 
 	run.kill()
 	await get_tree().create_timer(3.0).timeout
 
-	var after: int = _godot_processes()
-	gut.p("godot processes — before %d, during %d, after %d" % [before, during, after])
-	assert_gt(during, before, "sanity: the run actually started an engine to kill")
-	assert_lte(after, before, "the grandchild died with the shell")
+	var after: int = _godot_processes_in_group(group)
+	gut.p("group %d — engines during %d, after %d" % [group, during, after])
+	assert_gt(group, 0, "the shell reported its process group, or there is nothing to scope to")
+	assert_gt(during, 0, "sanity: the run actually started an engine to kill")
+	assert_eq(after, 0, "the grandchild died with the shell")
 	assert_true(run.finished, "and the run reports itself over")
 	assert_false(run.passed(), "a killed run is not a passed run")
 	assert_true(run.status_line().begins_with("killed"), "the header says it was killed")
 
 
-## Counts live Godot processes. Shelled out because the engine cannot see its own
-## siblings, and the whole question here is about processes it did not create.
-func _godot_processes() -> int:
+## Live Godot processes **in one process group**. Shelled out because the engine cannot see its
+## own siblings, and the whole question here is about processes it did not create.
+##
+## Scoped rather than global: see the note on the test above. A group of -1 counts nothing, which
+## turns a run that never reported its group into a failed sanity assertion rather than into a
+## count of unrelated engines.
+func _godot_processes_in_group(group: int) -> int:
+	if group <= 0:
+		return 0
 	var output: Array = []
-	SuiteProcess.execute("bash", ["-c", "pgrep -c godot || true"] as Array[String], output, true)
+	SuiteProcess.execute(
+		"bash", ["-c", "pgrep -c -g %d godot || true" % group] as Array[String], output, true
+	)
 	var text: String = "\n".join(output).strip_edges()
 	return text.to_int() if text.is_valid_int() else 0
 
