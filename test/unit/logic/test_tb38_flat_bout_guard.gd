@@ -1,6 +1,7 @@
 extends GutTest
 
-## taskblock-38 (docs/taskblock38.md): "capture a seeded FLAT bout (all
+## taskblock-38's own charter, carried here because the spec is gone:
+## "capture a seeded FLAT bout (all
 ## level 0, no ramps) and diff its event stream after every pass. It must
 ## stay byte-identical throughout — nothing here changes flat play.
 ## Divergence is the finding; do not re-seed to make it green."

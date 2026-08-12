@@ -19,7 +19,9 @@ export_presets.cfg
 # Local build/workflow notes — not published
 /CLAUDE.md
 
-# Completed taskblock specs — local working notes, not published
+# Taskblock specs are working notes, not records. reports/ is the record.
+# A spec with passes that were never executed reads as work that did not happen.
+/taskblock*.md
 /taskblock_done/
 
 # Per-pass completion times, a scratch record for the session that is running the block.

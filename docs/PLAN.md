@@ -948,8 +948,10 @@ observer wants its own destination, and none of those should need a code edit.
 
 Every session now leaves a file in `out/logs/`. Nothing removes them, so the directory grows once per
 run forever. **The supervisor's own framing is the answer: "it'll probably be the same as the finished
-taskblocks."** That is the `reports/` rolling-window rule and the `taskblock_done/` archive — keep a
-fixed number of the most recent, delete the rest in the same commit that adds a new one.
+taskblocks."** That is the `reports/` rolling-window rule — keep a fixed number of the most recent,
+delete the rest in the same commit that adds a new one. (The taskblock specs themselves are no longer
+a second precedent: they are untracked and gitignored outright as of taskblock-66's doc review, so
+`reports/` is the only rolling window left in the repo.)
 
 - **The obvious shape:** `FileSink` prunes `out/logs/` to the N most recent on rotation, N being a
   flagged constant. Sortable names are already in place (`combat-YYYYMMDD-HHMMSS.log`), so "most

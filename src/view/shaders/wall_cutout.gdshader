@@ -32,13 +32,17 @@ shader_type spatial;
 //   buffer (`FRAGCOORD.z` + `INV_PROJECTION_MATRIX`, Godot's own
 //   standard recipe for this) below — confirmed live to correctly gate
 //   the cutout on which side of a wall the camera is on.
-// Still open (deferred, not a regression from this fix): with the
-// camera and unit on the SAME side of a wall (nothing should occlude at
-// all), the cutout still fires and over-cuts neighboring wall segments.
-// Likely inherent to this shader's own 2D screen-space heuristic ("is
-// this fragment nearer than the unit AND within its screen radius") —
-// see `taskblock_done/Report-Taskblock32.md` for the fuller writeup and
-// a candidate cause.
+// Deferred from that fix, and NOT open any more: with the camera and
+// unit on the SAME side of a wall (nothing should occlude at all), the
+// cutout still fires and over-cuts neighboring wall segments. The cause
+// is this shader's own coarse heuristic — "is this fragment nearer than
+// the unit AND within its screen radius" — with no real ray test
+// against the camera-to-unit line, so a wall merely NEAR a unit
+// satisfies both conditions by geometric coincidence. Tracked as
+// `BR32.05`, which was closed UNADDRESSED rather than fixed (tb61 Pass
+// C, on the owner's instruction) and is in `docs/BUGS-ARCHIVE.md` with
+// the elevation analysis and two candidate fixes. If it resurfaces it
+// is a new report, not that one reopening.
 
 uniform vec4 albedo : source_color = vec4(0.5, 0.5, 0.5, 1.0);
 
