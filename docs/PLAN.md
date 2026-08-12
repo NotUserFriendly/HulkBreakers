@@ -498,6 +498,39 @@ it is a recorded limit rather than a rediscovery.
 <!-- ------------------------------------------------------------------------ -->
 ## The test suite
 
+### The sharded gate does not enforce the work budget
+**Needs:** nothing — taskblock-66 built the machinery and stopped one wire short. **Unblocks:** a
+drift guard that watches the gate people actually run.
+
+**`./run_tests.sh shard` is now the default path at 4 minutes against 22, and it is the path where
+`SuiteBudget` is inert.** Two independent reasons, both verifiable:
+
+- **`tools/merge_shards.py` computes the controlled totals and never gates on them.** Duplication is
+  subtracted at `:109-111` and printed at `:125`; the exit code at `:145-151` comes only from more
+  than one draw, a shard that did not finish, and test failures. `shard_merge.gd:59` describes its own
+  output as *"ready for `SuiteBudget.violations`"* — accurate, and nothing consumes it.
+- **`test_suite_budget.gd:21` reads the committed `suite_profile.json`, not live counters.** Under
+  sharding it re-asserts a snapshot from the last unsharded run, so it passes regardless of what this
+  run cost.
+
+**Drift therefore lands silently until somebody spends 22 minutes on an unsharded gate**, which is
+the run this block was built to stop needing.
+
+**taskblock-66 Pass E6's reasoning is right and was applied to the whole artifact instead of half of
+it.** Per-file wall-clock genuinely is unreliable under eight competing processes, so the packer must
+keep reading an unsharded profile. **The totals are a different matter and this block proved it:**
+Pass D measured `260 − 18 = 242` and `703 − 36 = 667` against unsharded, exactly. **Counts are
+process-count-invariant once duplication is subtracted** — that was the pass's whole finding.
+
+**So the totals half can gate and the per-file half cannot.** Either the merge checks `controlled`
+against `SuiteBudget.BASELINE` itself, or it writes a totals-only artifact that a small post-merge
+step runs `violations()` over — the second keeps one implementation of the rule, at the cost of
+`violations()`'s per-file naming having nothing to name. **Decide which, then wire it**; the argument
+for gating at all is already settled by everything `SuiteBudget`'s header says.
+
+**Related and worth doing in the same pass:** `BR66.01` is a defect in the subtraction this item
+would gate on. Wiring the gate over an under-counting ledger reports green on inflation.
+
 ### Boards become an input, not a product — generate once, serialise, hand out
 **Needs:** nothing. **Unblocks:** a shard map with no corpus-affinity constraint, and a `Grid`
 fixture whose cost does not scale with however many processes want one.
@@ -622,7 +655,12 @@ subtracts the quantity, which is strictly better than the file exclusion it repl
 on whichever `SuiteTier.CORPUS_READERS` file ran first, and failure-history reordering changes which
 one that is, so a filename was only ever a proxy.
 
-**`bouts` and `candidates` have the same problem and no equivalent.** The same three runs measured
+**`bouts`, `candidates` and `maps` have the same problem and no equivalent.** taskblock-66 Pass F
+recorded the third: **every bout generates exactly one map**, so `maps` tracks the draw as well —
+measured at 83 sharded against 84 unsharded, differing only because the draws differed. Pass D
+controlled `maps`'s *other* uncontrolled source, shard duplication; the draw half is this item.
+
+**On `bouts` and `candidates` specifically:** The same three runs measured
 **80 / 85 / 88 bouts** and **911 200 / 1 292 621 / 1 816 411 candidates**, almost all of it the same
 draw. Both are still gated against a single-sample baseline, and `candidates` is not gated at all.
 At the measured completion rate — **0.220**, taskblock-66 Pass A — the draw averages **4.06 seeds**

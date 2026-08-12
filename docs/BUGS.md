@@ -2541,3 +2541,31 @@ is_disabled` for the same part. The disappearance here is that disagreement made
 - **Both are likely retired by the aiming and camera rebuild**, so measure and record rather than
   tuning the current rig.
 
+### BR66.01 — Suspected — owner: `CC`
+**`MapCorpus.forget()` clears `fills`, so a shard can accrue maps it never ledgers**
+- **cluster:** `suite`
+- **Source:** review of taskblock-66, 2026-08-11. **Not yet reproduced against a real gate** — the
+  mechanism is read from the code and the symptom below is consistent with it, which is why this is
+  `Suspected` rather than `Active`.
+- `map_corpus.gd:176` clears `_cache`, `fills` **and** `generated`. `MapGen.maps_generated` is a
+  separate static and is **not** reset. So every fill before a `forget()` is counted by the gated
+  counter and then erased from the ledger the merge subtracts from.
+- **Three test files call it, and two sit in shards that fill boards.** `test_map_corpus.gd:13,17`
+  forgets in setup — so every one of its tests wipes the ledger — and it is in **shard 2 alongside
+  eleven other `MapCorpus` readers**. `test_work_counters.gd:255,265` is in shard 7.
+  `test_shard_merge.gd` forgets deliberately, to simulate a process boundary, and is the one honest
+  caller.
+- **Consequence: under-subtraction.** `ShardMerge.duplication` takes the union of per-shard `fills`;
+  keys erased before the shard reports never enter it, so the merge subtracts less than the real
+  duplication and `maps`/`floods` stay inflated by the difference. That is the exact failure Pass D
+  existed to prevent.
+- **It may already be showing.** The packer spread `MapCorpus` readers across shards 1, 2, 4, 6 and 7
+  — correct under Pass E3's rule, since subtraction was meant to handle it — so duplication should be
+  positive. The gate reported **zero**. A wiped ledger and a well-co-located map produce an identical
+  reading, which is the property that makes this worth confirming rather than assuming.
+- **Cheapest confirmation:** print shard 2's `fills` size against its `maps` delta on one sharded
+  gate. If the ledger is shorter than the delta, this is `Active`.
+- **Fix shape, if confirmed:** `forget()` should clear the cache without erasing the ledger — the
+  ledger is a record of what this process *did*, and a test choosing to re-generate does not unmake
+  the maps already generated. A separate `forget_ledger()` for `test_shard_merge.gd`'s deliberate
+  process-boundary simulation keeps that test honest.
