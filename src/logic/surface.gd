@@ -39,16 +39,24 @@ extends RefCounted
 ## tagging a Part, no code edit. `WALKABLE_TAG` gates `Pathfinder`
 ## standability.
 ##
-## **`RAMP_TAG` is a rendering tag and nothing more, as of tb60 Pass A.** It still makes a
-## surface's own edges ride the sloped `RampGeometry` profile instead of a flat top, and
-## `CellInspection` still names the shape to a player. What it no longer does is grant
-## traversal: the shared "stepping onto this cell is ordinary movement, never a climb or a
-## drop" check that `Pathfinder` and the two discrete vertical actions all read is
-## **deleted**, replaced by `Unit.step_height()` compared against the actual rise. A ramp is
-## content now: sloped geometry a unit walks over because it is shallow, not because it is
-## labelled. Do not reintroduce a traversal reading of this tag; that is the categorical
-## check the pass existed to remove. (tb62 Pass C1 retired both of those actions outright —
-## a climb is an ordinary `MoveAction` step now — so `Pathfinder` is the only reader left.)
+## **`RAMP_TAG` grants no traversal, as of tb60 Pass A.** The shared "stepping onto this cell
+## is ordinary movement, never a climb or a drop" check that `Pathfinder` and the two discrete
+## vertical actions all read is **deleted**, replaced by `Unit.step_height()` compared against
+## the actual rise. Do not reintroduce a traversal reading of this tag; that is the categorical
+## check the pass existed to remove. (tb62 Pass C1 retired both of those actions outright — a
+## climb is an ordinary `MoveAction` step now.)
+##
+## **taskblock-69 follow-up: it grants no geometry either, and this comment used to claim it
+## did.** The sentence here read *"it still makes a surface's own edges ride the sloped
+## `RampGeometry` profile instead of a flat top"*, and that was not true when it was written or
+## since: **nothing in `src/` calls `RampGeometry.edge_heights`**, and `ramp.tres` authors a flat
+## 0.2 slab whose `volume` is byte-identical to `ship_floor.tres`'s. A ramp's `facing` is
+## therefore read by nothing at all.
+##
+## **So the only live reader of this tag is `CellInspection`**, which maps it to
+## `PhysicalState.RAMP` — a label shown to a player. A placed ramp is a floor tile with a name.
+## **That is a stub awaiting work, not a decision** — see `PLAN`'s *Ramps become real slopes* and
+## the header of `ramp_geometry.gd`, which holds the profile this is waiting on.
 const WALKABLE_TAG: StringName = &"walkable"
 const RAMP_TAG: StringName = &"ramp"
 

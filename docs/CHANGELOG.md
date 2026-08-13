@@ -74,11 +74,32 @@ a redraw, and that the redraw is **not** where the derived facing would have put
 against `+Z` like `ledge_veneer`, is a `KIND_BLOCKER` by `EditorTools.kind_for` (it attaches at
 `LEDGE`, never `GROUND`), and nothing in the derivation knows either part exists.
 
-**A surface keeps the panel's own facing, and that is a decision.** `MapPlacement.facing` is what
-makes a ramp directional and a ramp's direction is stated by the author; deriving it from which
-corner of a tile the cursor was over would take an authoring control away. The derivation fills in
-the kinds whose facing **no author could ever mean anything by** — blocker and field item — because
-every consumer discarded it until this block.
+**A surface keeps the panel's own facing.** The derivation fills in the kinds whose facing **no
+author could ever mean anything by** — blocker and field item — because every consumer discarded it
+until this block.
+
+**The first reason given for that carve-out was wrong, and the correction is a finding of its own.**
+It was justified as protecting a ramp's authored direction, from `MapPlacement.facing`'s docstring
+*"What makes a ramp directional"*. That docstring is pre-tb60 and false: **a ramp's facing is read by
+nothing.** `RampGeometry.edge_heights` has no production caller, `ramp.tres` authors a flat 0.2 slab
+byte-identical to `ship_floor.tres`'s, `MapGen` authors no ramps at all, `Surface.facing` never
+reached the pathfinder, and the only live reader of `Surface.RAMP_TAG` is `CellInspection`'s
+player-facing label. **A placed ramp is a floor tile with a name.** The carve-out is therefore inert
+— it is kept because it costs nothing, not because it protects live behaviour. The one
+`Surface.facing` that means anything is the mag lift pad's, where it is a *pairing record* naming
+the partner pad's cell rather than a direction.
+
+**Ramps are flagged as an unbuilt stub, not removed.** tb60 Pass A retired a ramp as *machinery* and
+said outright that it survives as content; the content never arrived, and two comments went on
+claiming otherwise — `Surface.RAMP_TAG`'s *"still makes a surface's own edges ride the sloped
+`RampGeometry` profile"* and `RampGeometry.STANDING_OFFSET`'s *"the same value `MapGen` bakes into a
+ramp `Surface.height`"*. Both corrected, along with `MapPlacement.facing`'s, which was stale on both
+halves (it is no longer surfaces-only either). `ramp.tres`'s `display_name` now reads *"Ramp (flat
+stub — not yet a slope)"* so an author reaching for one sees it in the inspect panel, and
+`test_ramp_geometry.gd::test_a_ramp_is_still_a_flat_stub_and_says_so` pins both the flat volume and
+the flag — **a guard rather than a comment, because a comment is what went stale**. Its failure
+message is the instruction for whoever makes ramps real. Queued as `PLAN`'s *Ramps become real
+slopes*.
 
 **Placement grammar.** `GridPlacement`'s `GROUND` rule is now *"not where something already is at
 this height"* rather than *"only where nothing is placed yet"*, which is what lets a floor at 0.0 and

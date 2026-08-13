@@ -101,8 +101,25 @@ const TERRAIN_TAG: StringName = &"terrain"
 ## reachable by ordinary authoring rather than only by a hand-written `.tres`.
 @export var offset: Vector3 = Vector3.ZERO
 
-## Surfaces only: radians, the same convention `Surface.facing` and `Unit.orientation` use.
-## What makes a ramp directional.
+## Radians, the same convention `Surface.facing` and `Unit.orientation` use.
+##
+## **Not surfaces only, and not about ramps — both halves of what this said were stale.**
+## taskblock-69 Pass A: a **blocker**'s facing is read by every consumer through
+## `UnitGeometry.blocker_placements`, which is what lets a ledge veneer or a ladder hang off the
+## edge it was placed against. And a **ramp** has never been directional in the way this claimed:
+## `Surface.facing` never reached the pathfinder, and as of taskblock-69 nothing in `src/` reads a
+## ramp's facing at all (`ramp.tres` is a flat slab — see `RampGeometry`'s own header).
+##
+## What it means per kind, as of taskblock-69:
+##
+## | kind | `facing` |
+## |---|---|
+## | `KIND_BLOCKER` | **read by everything.** Derived from the click by `FacePlacement.facing_for` |
+## | `KIND_FIELD_ITEM` | derived the same way; the item carries no record of its own |
+## | `KIND_SURFACE` | authored, and read only by the **mag lift pad** |
+##
+## A pad's facing is a **pairing record** rather than a direction: it names the cell the partner
+## pad stands in, which is how `Surface.mag_lift_destination` finds the far end of a lift.
 @export var facing: float = 0.0
 
 

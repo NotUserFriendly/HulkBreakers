@@ -339,6 +339,45 @@ objects will use. Nothing is thrown yet, so today every ejection is a drop weari
 <!-- ------------------------------------------------------------------------ -->
 ## Going up
 
+### Ramps become real slopes
+**Needs:** nothing — the profile is built and tested (`RampGeometry`). **Unblocks:** a shallow rise
+a unit walks up because the geometry is shallow; the first content whose `Surface.facing` means a
+direction.
+
+**A `ramp` today is a `ship_floor` with a label.** Surfaced at taskblock-69 while checking what a
+surface's `facing` is for, and it is further gone than the comments suggested:
+
+- `ramp.tres` authors a **flat 0.2 slab whose `volume` is byte-identical to `ship_floor.tres`'s.**
+- **Nothing in `src/` calls `RampGeometry.edge_heights`** — the profile has had no consumer since
+  it was written at taskblock-38 Pass C, whose own note said *"proven now, even though nothing
+  renders it yet."*
+- **A ramp's `facing` is read by nothing.** `Surface.facing` never reached the pathfinder, and
+  `test_edge_heights_are_unaffected_by_facing` shows even the profile ignores it.
+- The only live reader of `Surface.RAMP_TAG` is `CellInspection`, which maps it to
+  `PhysicalState.RAMP` for a player-facing label.
+- `MapGen` authors none: tb60 Pass A replaced `_connect_with_a_ramp` with stairs of ordinary
+  `ship_floor` tiles at fractional heights, recording no facing.
+- Two authored placements exist, both in `proving_ground.tres`, both at facing `0.0`.
+
+**This is a stub, not a decision to remove ramps.** tb60 Pass A retired a ramp as *machinery* — the
+categorical "stepping onto a ramp is free" check — and was explicit that a ramp survives as content.
+What never arrived is the content: sloped geometry a unit walks over because it is shallow, which
+`Unit.step_height()` already knows how to answer. **Do not reintroduce a traversal reading of the
+tag**; that is the categorical check tb60 A existed to delete, and it is not what this item is.
+
+**The flag is guarded rather than commented**, because a comment is what went stale here:
+`Surface.RAMP_TAG`'s header claimed for thirty-one taskblocks that a ramp rode a sloped profile.
+`test_ramp_geometry.gd::test_a_ramp_is_still_a_flat_stub_and_says_so` pins the flat volume and the
+`(flat stub)` in the part's `display_name`, and **its failure message is the instruction for
+whoever makes ramps real** — retire the test, drop the flag, correct the two headers.
+
+- **What the shape wants deciding.** A `Box` is axis-aligned, so a slope is not expressible as one:
+  the profile is four edge heights, and `render is hitbox` means whatever draws it is also what a
+  ray meets. That is the real question this item opens, and it is the same question a non-axis
+  aligned blocker will ask.
+- **`STANDING_OFFSET` is already the right answer to "where does a unit stand on one"** and is
+  currently read by nothing but a test fixture.
+
 ### The mag lift's two surfaces should stack in one cell
 **Needs:** a way for the planner to value a height change that does not change cell. **Unblocks:**
 a lift reading as one object.

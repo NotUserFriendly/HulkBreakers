@@ -3,6 +3,12 @@
 Passes A, B, C and D landed in order. Full gate green: **3614 tests, 0 failures, 438 s, within the
 work budget, no fallback.**
 
+**Appended after the supervisor asked what ramps are doing.** They were right to: a `ramp` is a flat
+slab identical to `ship_floor` that nothing reads a facing from, and I had justified a real decision
+in this block with a stale docstring that said otherwise. The correction is in *Decisions*, the
+finding is in *Open questions*, and the stub is now flagged in the part and guarded by a test rather
+than left to the comments that went stale in the first place.
+
 **The parity result, which is the block's deliverable.** One resized `wall` on one board at a
 quarter turn, and a probe point that is solid **only because the wall is turned**. Every consumer
 that builds blocker geometry was asked, and every one agrees: the accessor,
@@ -12,8 +18,9 @@ consumers about the point the wall occupies only when it is **not** turned, whic
 double rotation or a mirrored convention would pass. `ClaimResolver` and `Detonation` — the other
 two the acceptance names — have their own cases, and so does `CameraFramingModule`.
 
-**No existing board moved.** `git status data/` is clean and no authored map or section carries a
-non-zero facing (checked across `data/maps` and all of `data/sections/*.tres`). The byte-identity
+**No existing board moved.** No authored map or section changed, and none carries a non-zero facing
+(checked across `data/maps` and all of `data/sections/*.tres`). The only `data/` change in this block
+is the ramp stub flag added at the close-out, which is a `display_name` string on a part. The byte-identity
 claim is asserted rather than assumed: `test_blocker_facing_render.gd::test_a_facing_of_zero_draws_
 exactly_what_it_drew_before` compares the accessor's transforms and boxes directly against the
 pre-existing `assembly_placements(part, cell, 0.0, null, height)` expression, across three cells
@@ -57,14 +64,32 @@ would have made the acceptance true in the code and false in effect. `CameraFram
 header says the bounds must never be *"a second formula"*; it was one.
 
 **The derivation fills in blockers and field items, and leaves surfaces on the panel's value.** The
-taskblock did not say where the derivation stops. `MapPlacement.facing` is documented *"what makes a
-ramp directional"*, and a ramp's direction is a thing an author states — deriving it from which
-corner of a tile the cursor happened to be over would take an explicit authoring control away. The
-kinds it fills in are the ones whose facing **every consumer discarded until Pass A**, so no author
-has ever been able to mean anything by the panel value on one. The alternative — derive for
-everything — would have quietly changed how ramps are authored. Asserted both ways
-(`test_a_ramp_still_takes_the_authored_facing_from_the_panel`). **This is the call in this block
-most likely to be wrong**, and it is one line in `EditorModule.placement_facing` to reverse.
+taskblock did not say where the derivation stops. The kinds it fills in are the ones whose facing
+**every consumer discarded until Pass A**, so no author has ever been able to mean anything by the
+panel value on one. Asserted both ways
+(`test_a_ramp_still_takes_the_authored_facing_from_the_panel`), and it is one line in
+`EditorModule.placement_facing` to reverse.
+
+> **Correction, after the supervisor asked what ramps are doing.** The reason I first gave for this
+> carve-out was wrong. I wrote that *"a ramp's direction is a thing an author states"*, taking it
+> from `MapPlacement.facing`'s own docstring — *"Surfaces only: radians... What makes a ramp
+> directional"* — which is pre-tb60 and false. **A ramp's facing is read by nothing.**
+> `RampGeometry.edge_heights` has no production caller, `ramp.tres` is a flat slab byte-identical to
+> `ship_floor`'s, and `Surface.facing` never reached the pathfinder. There was no live ramp
+> behaviour for the carve-out to protect.
+>
+> **So the carve-out is inert today, and I reported it as load-bearing.** The editor's placeable
+> surfaces are the GROUND-attaching parts — `ramp` and `ship_floor` — and neither's facing is read.
+> The one `Surface.facing` that means anything is the **mag lift pad**, where it is a *pairing
+> record* naming the partner pad's cell rather than a direction (`Surface.mag_lift_destination`) —
+> and a pad attaches at `LEDGE`, so `EditorTools.kind_for` makes it a blocker and it never takes the
+> surface path anyway.
+>
+> **I would still keep the carve-out**, at much lower confidence than I first stated: it costs
+> nothing, and deriving a *direction* into a field that is a pairing record for one part and inert
+> for the rest is the kind of thing that is cheap to skip and expensive to unpick. But it protects
+> nothing today, and that is the honest version. The stale docstring is corrected, along with
+> `Surface.RAMP_TAG`'s claim that a ramp rides a sloped profile.
 
 **A bottom-face click derives nothing.** The taskblock names a side click and a top click. A click
 on the underside of a thing implies no edge, so it keeps the author's own value rather than snapping
@@ -155,10 +180,22 @@ should answer as data). **Flagging rather than building it** — a third gizmo v
 and inventing one inside this block is the kind of unasked design call the report's first section
 exists to catch.
 
-**Is leaving surfaces off the derivation the right line?** See the decisions section. The evidence
-points at yes — a ramp's direction is authored, and the panel value is the only way to author it —
-but it is a judgement the taskblock did not make, and it is one line to reverse if the supervisor
-wants a top click on a ramp to point it.
+**Is leaving surfaces off the derivation the right line?** See the correction in the decisions
+section: the evidence is much thinner than I first reported. The carve-out protects nothing today,
+because no editor-placeable surface has a facing that anything reads. It is one line to reverse.
+
+**Ramps are a stub and were found to be one while checking that.** `ramp.tres` is a flat slab
+identical to `ship_floor`, `RampGeometry.edge_heights` has had no production caller since
+taskblock-38 Pass C wrote it, `MapGen` authors none, and the only live reader of `Surface.RAMP_TAG`
+is the player-facing label in `CellInspection`. **That is unbuilt content, not a removal** — tb60
+Pass A retired a ramp as *machinery* and said explicitly that it survives as content; the content
+never arrived. Queued as `PLAN`'s *Ramps become real slopes*, flagged in the part's `display_name`
+so an author reaching for one sees it, and guarded by
+`test_ramp_geometry.gd::test_a_ramp_is_still_a_flat_stub_and_says_so`, whose failure message is the
+instruction for whoever makes them real. **The guard is a guard rather than a comment because a
+comment is exactly what went stale here** — `Surface.RAMP_TAG`'s header claimed a sloped profile for
+thirty-one taskblocks. Demonstrated non-vacuous both ways: giving the ramp a taller box reddens the
+slope half, removing the `display_name` flag reddens the other.
 
 **`PLAN` item 1's two stale lines are corrected by the item closing.** Both claims — *"a third fixed
 generation height (+4) is what surfaces it"* and *"an exterior wall must follow its neighbouring

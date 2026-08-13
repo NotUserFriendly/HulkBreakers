@@ -11,7 +11,7 @@ size = Vector3(1.0, 0.2, 1.0)
 [resource]
 script = ExtResource("1_ramppt")
 id = &"ramp"
-display_name = "Ramp"
+display_name = "Ramp (flat stub — not yet a slope)"
 material = &"steel"
 attaches_to = Array[StringName]([&"GROUND"])
 tags = Array[StringName]([&"walkable", &"ramp", &"terrain"])
