@@ -5563,6 +5563,13 @@ one line; the reason it stayed a gap is that CC treated a documented limitation 
 
 ### taskblock-51 Pass C — `BR35.08`: detonations are visible, at their real size
 
+> **Partly overwritten at taskblock-68 Pass D — see that entry.** The claim below is still true; the
+> **evidence for it was not what this entry implies.** `test_detonation_draw.gd` was written here to
+> back it and **asserted nothing**: the shot left `origin_height` at 0.0, ran along the ground plane
+> and missed, and the assertion was skipped by an `if blasts.is_empty(): assert_true(true); return`.
+> What actually demonstrated the mechanism was a live log line in `BR51.21`'s archive entry. The test
+> asserts for real from tb68 D onward.
+
 Built to the supervisor's spec: a translucent red sphere from the detonation point, growing outward to
 the **actual explosion radius**, then fading. **Grow : fade is 1 : 3**, and the total is a tunable beside
 the other bullet timing (`DETONATION_MS`, 1000 ms).
