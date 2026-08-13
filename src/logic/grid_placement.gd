@@ -38,15 +38,26 @@ extends RefCounted
 ## evaluate would leave every floor on every map unplaceable.
 ##
 ## **The one-per-cell refusal survives, restated as occupancy rather than as attachment.** A part
-## that attaches to nothing still may not be placed where something already is. That keeps the
-## rule identical on every authored map, which is what makes this the reversible pick: it can be
-## loosened later to "not where something already is *at this height*" — the change vertical
-## stacking wants — in one line, and nothing today depends on either reading, because every
-## `GROUND` caller clears the cell first.
+## that attaches to nothing still may not be placed where something already is.
 ##
-## **Deliberately not loosened here.** Pass B is a storage inversion with no intended behavioural
-## effect; letting two floors share a cell at different heights is a behaviour change wearing a
-## refactor's clothes. Queued in `PLAN.md` instead.
+## **taskblock-69 Pass D: loosened to "not where something already is *at this height*"**, which
+## is the one line taskblock-58 Pass B named and deliberately left. A floor at 0.0 and a floor at
+## 2.0 now share a cell — **two decks, without borrowing a catwalk's side-attachment grammar to
+## express them.**
+##
+## It was left out of Pass B because that pass was a storage inversion with no intended
+## behavioural effect, and this is a behaviour change wearing a refactor's clothes. It is safe to
+## make here for the reason Pass B recorded and this pass re-checked: **nothing depends on either
+## reading, because every `GROUND` caller clears the cell first** — `BoutInjector.set_cell_level`
+## calls `clear_surfaces`, `set_passable` places only when `first_walkable` is null, and
+## `MapGenScratch.place_surface` and `MapGen` author onto fresh cells. `MapSerializer` never comes
+## through here at all; it calls `Grid.add_surface` directly, so no map on disk changes meaning.
+##
+## **Nothing enforces a minimum separation, on the supervisor's call.** A floor at 0.0 and one at
+## 0.1 is authorable and is the author's problem: no constant, and no geometric overlap check —
+## both would be inventing a balance rule to answer an authoring question. `is_equal_approx` here
+## is float-noise tolerance and nothing more, which is why it is Godot's own and not a number this
+## file names.
 const GROUND: StringName = &"GROUND"
 
 ## taskblock-53 Pass C: `ZERO` first, then the four orthogonals. **A stack is
@@ -64,8 +75,16 @@ const _SIDE_OFFSETS: Array[Vector2i] = [
 ## caller is unchanged, and passed through by `place` below.
 static func can_place(grid: Grid, cell: Vector2i, part: Part, height: float = 0.0) -> bool:
 	if GROUND in part.attaches_to:
-		return grid.surfaces_at(cell).is_empty()
+		return not _occupied_at(grid, cell, height)
 	return not _find_attach_point(grid, cell, part, height).is_empty()
+
+
+## Whether `cell` already holds a surface at `height`. taskblock-69 Pass D — see `GROUND`.
+static func _occupied_at(grid: Grid, cell: Vector2i, height: float) -> bool:
+	for surface: Surface in grid.surfaces_at(cell):
+		if is_equal_approx(surface.height, height):
+			return true
+	return false
 
 
 ## Places `part` at `cell` if `can_place` allows it, appending it to
@@ -131,7 +150,12 @@ static func place(
 	grid: Grid, cell: Vector2i, part: Part, height: float, facing: float = 0.0
 ) -> Surface:
 	if GROUND in part.attaches_to:
-		if not grid.surfaces_at(cell).is_empty():
+		# taskblock-69 Pass D: **`can_place`, not a second copy of its rule.** This branch spelled
+		# the occupancy test out again — `not grid.surfaces_at(cell).is_empty()` — while the
+		# function's own doc comment said *"places `part` at `cell` if `can_place` allows it"*. The
+		# two agreed exactly until the moment one of them was loosened, which is the whole of why a
+		# rule stated twice is a rule that will eventually be two rules.
+		if not can_place(grid, cell, part, height):
 			return null
 		var surface := Surface.new(part, height, facing)
 		grid.add_surface(cell, surface)

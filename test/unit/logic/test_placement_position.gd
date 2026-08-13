@@ -192,18 +192,94 @@ func test_the_flat_walk_and_the_cell_walk_cover_the_same_set() -> void:
 		assert_true(by_cell.has(surface), "and the same members")
 
 
-## **`GROUND` means "attaches to nothing" now**, and the one-per-cell refusal survives as
-## occupancy rather than as attachment. Pass B deliberately did not loosen it to per-height —
-## that is a behaviour change, and this pass is a storage inversion. Pinned here so the
-## loosening, when it comes, has to be a deliberate edit to a named test.
-func test_ground_still_refuses_a_second_placement_on_an_occupied_cell() -> void:
+## **`GROUND` means "attaches to nothing"**, and the one-per-cell refusal survives as occupancy
+## rather than as attachment — **at a height**, since taskblock-69 Pass D.
+##
+## **Renamed rather than deleted, which is the point of having pinned it.** taskblock-58 Pass B
+## wrote this as `test_ground_still_refuses_a_second_placement_on_an_occupied_cell` precisely so
+## the loosening would have to be a deliberate edit to a named test instead of a silent change of
+## meaning. It is that edit. What it guards now is the refusal that remains: **same cell, same
+## height, still refused.**
+func test_ground_refuses_a_second_placement_at_the_same_height() -> void:
 	var grid := Grid.new(4, 4)
 	var floor_part: Part = DataLibrary.get_part(&"ship_floor")
 	assert_true(GridPlacement.GROUND in floor_part.attaches_to, "ship_floor is the GROUND case")
 
 	assert_not_null(GridPlacement.place(grid, Vector2i(1, 1), floor_part.duplicate(true), 0.0))
 	assert_null(
-		GridPlacement.place(grid, Vector2i(1, 1), floor_part.duplicate(true), 2.0),
-		"still refused at a different height — not loosened by this pass"
+		GridPlacement.place(grid, Vector2i(1, 1), floor_part.duplicate(true), 0.0),
+		"a second floor at the same height is still the thing that is refused"
 	)
-	assert_eq(grid.surfaces_at(Vector2i(1, 1)).size(), 1)
+	assert_eq(grid.surfaces_at(Vector2i(1, 1)).size(), 1, "and nothing was added")
+
+
+## **The half taskblock-69 Pass D added: two decks in one cell.** *"Loosening it to 'at this
+## height' is what lets a floor at 0.0 and a floor at 2.0 share a cell"* — two decks without
+## borrowing a catwalk's side-attachment grammar to express them.
+func test_ground_lets_two_placements_share_a_cell_at_different_heights() -> void:
+	var grid := Grid.new(4, 4)
+	var floor_part: Part = DataLibrary.get_part(&"ship_floor")
+
+	assert_not_null(GridPlacement.place(grid, Vector2i(1, 1), floor_part.duplicate(true), 0.0))
+	assert_not_null(
+		GridPlacement.place(grid, Vector2i(1, 1), floor_part.duplicate(true), 2.0),
+		"a second deck two units up is a placement the format can now express"
+	)
+	assert_eq(grid.surfaces_at(Vector2i(1, 1)).size(), 2, "and both are really there")
+
+	# **No minimum separation, on the supervisor's call.** A floor at 0.0 and one at 0.1 is
+	# authorable and is the author's problem — no constant, and no geometric overlap check.
+	assert_not_null(
+		GridPlacement.place(grid, Vector2i(2, 2), floor_part.duplicate(true), 0.0),
+		"sanity: the first deck of a fresh cell"
+	)
+	assert_not_null(
+		GridPlacement.place(grid, Vector2i(2, 2), floor_part.duplicate(true), 0.1),
+		"a tenth of a unit apart is authorable, and nothing here has an opinion about it"
+	)
+
+
+## **A two-deck cell survives being saved.** The refusal `can_place` expresses is about *authoring*
+## — `MapSerializer` writes through `Grid.add_surface` and never comes through `GridPlacement` at
+## all — so this is the assertion that the loosening produced a board the format can carry rather
+## than one only the grammar tolerates.
+##
+## The editor's own grammar check is asserted alongside, because that one **does** read
+## `can_place`: before Pass D it would have reported the upper deck as a placement the loader
+## refuses, which is a warning about a board that loads perfectly well.
+func test_a_two_deck_cell_round_trips_and_the_editor_does_not_complain() -> void:
+	var map := MapFile.new()
+	map.width = 4
+	map.rows = 4
+	map.placements.append(
+		MapPlacement.new(Vector2i(1, 1), MapPlacement.KIND_SURFACE, &"ship_floor", 0.0)
+	)
+	map.placements.append(
+		MapPlacement.new(Vector2i(1, 1), MapPlacement.KIND_SURFACE, &"ship_floor", 2.0)
+	)
+
+	var loaded: Dictionary = MapSerializer.to_grid(map)
+	assert_eq(loaded.get("error", ""), "", "a two-deck cell must load")
+	var grid: Grid = loaded["grid"]
+	assert_eq(grid.surfaces_at(Vector2i(1, 1)).size(), 2, "both decks arrived")
+
+	var back: Dictionary = MapSerializer.to_grid(MapSerializer.to_map_file(grid, "two decks"))
+	assert_eq(back.get("error", ""), "", "and must reload after being written out")
+	var heights: Array[float] = []
+	for surface: Surface in (back["grid"] as Grid).surfaces_at(Vector2i(1, 1)):
+		heights.append(surface.height)
+	heights.sort()
+	assert_eq(heights.size(), 2, "two decks came back")
+	assert_almost_eq(heights[0], 0.0, 0.0001, "the lower one")
+	assert_almost_eq(heights[1], 2.0, 0.0001, "and the upper one, at the height it was authored")
+
+	# **The grammar complaint specifically**, not every warning: a four-by-four test map has no
+	# spawn markers either, and that one is true and unrelated.
+	var controller := EditorController.new()
+	controller.load_map(map)
+	var grammar: Array[String] = []
+	for line: String in controller.warnings():
+		gut.p("  editor says: %s" % line)
+		if "already has a surface" in line:
+			grammar.append(line)
+	assert_eq(grammar.size(), 0, "the editor must not call a two-deck cell an illegal placement")

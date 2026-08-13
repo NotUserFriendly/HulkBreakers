@@ -547,10 +547,18 @@ func test_a_refused_placement_does_not_consume_an_undo_step() -> void:
 	assert_eq(editor.undo_depth(), depth, "a refusal is not an edit")
 
 
-## **A stack of surfaces stays legal**, which is the line this refusal must not cross: a catwalk
-## over a floor is two surfaces at one cell and `Grid` holds an ordered list for exactly that. The
-## `GROUND` one-per-cell rule is an authoring opinion and stays a warning.
-func test_a_second_surface_on_one_cell_is_still_placed_and_still_only_warned() -> void:
+## **A stack of surfaces stays legal**, which is the line the blocker refusal above must not cross:
+## a catwalk over a floor is two surfaces at one cell and `Grid` holds an ordered list for exactly
+## that. The `GROUND` rule is an authoring opinion and stays a warning rather than becoming a
+## refusal — **that** distinction is what this guards.
+##
+## **taskblock-69 Pass D changed what the opinion is about, so this test changed with it.** The
+## rule was "one `GROUND` placement per cell" and is now "one per cell *at a height*", which is
+## what lets a floor at 0.0 and a floor at 2.5 be two decks rather than a mistake. So the second
+## deck is no longer warned about, and the case that still is — the same cell at the same height —
+## is asserted here in its place. **A test that changed meaning silently would be worse than one
+## that failed**, which is why it is rewritten rather than relaxed.
+func test_a_second_surface_on_one_cell_is_placed_and_only_warned_at_the_same_height() -> void:
 	var editor := EditorController.new()
 	editor.set_size(3, 3)
 	editor.place(Vector2i(1, 1), &"ship_floor")
@@ -559,8 +567,18 @@ func test_a_second_surface_on_one_cell_is_still_placed_and_still_only_warned() -
 
 	assert_eq(editor.placements_at(Vector2i(1, 1)).size(), 2, "the stack was refused")
 	var said: String = "\n".join(editor.warnings())
-	gut.p("warnings: %s" % said)
-	assert_true(said.contains("already has a surface"), "and it is still reported as an opinion")
+	gut.p("two decks, warnings: %s" % said)
+	assert_false(
+		said.contains("already has a surface"),
+		"two decks in one cell is a placement, not an authoring mistake"
+	)
+
+	# And the case the opinion is still about: a second deck at the height of the first.
+	assert_not_null(editor.place(Vector2i(1, 1), &"ship_floor", MapPlacement.KIND_SURFACE, 2.5))
+	assert_eq(editor.placements_at(Vector2i(1, 1)).size(), 3, "still placed — it is an opinion")
+	var again: String = "\n".join(editor.warnings())
+	gut.p("two at one height, warnings: %s" % again)
+	assert_true(again.contains("already has a surface"), "and it is still reported as an opinion")
 
 
 ## The model always has a board to draw, so the editor's redraw can never be handed nothing.

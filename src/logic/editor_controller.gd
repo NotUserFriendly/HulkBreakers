@@ -697,8 +697,12 @@ func _grammar_warnings() -> Array[String]:
 			# to attach to" is what made a second floor on one cell read as a broken floor part; the
 			# UI review asked *"Shipfloor complaining that it doesn't have anything to attach to. Is
 			# that expected?"* and the answer was yes, about the wrong thing.
+			# taskblock-69 Pass D: **"at that height"**, since a `GROUND` placement may now share a
+			# cell at another one. The sentence has to say what the refusal is actually about or it
+			# sends the author looking for the wrong thing, which is the mistake this branch exists
+			# to have fixed once already.
 			var reason: String = (
-				"the cell already has a surface"
+				"the cell already has a surface at height %.2f" % placement.height
 				if GridPlacement.GROUND in part.attaches_to
 				else "nothing to attach to at height %.2f" % placement.height
 			)
