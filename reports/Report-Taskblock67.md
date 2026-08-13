@@ -2,7 +2,9 @@
 
 **All four passes landed** — A (the sharded gate enforces the work budget), B (a sharded fast gate,
 measured before adoption), C (`fast` and the bare gate become sharded; `profile` names the
-single-process rung), D (the loud, recorded fallback) — each green and committed.
+single-process rung), D (the loud, recorded fallback) — each green and committed. **A close-out
+after them took the evidence half of `BR67.01`**, so a shard that dies now keeps its log; the
+entry stays `Active` because the death itself is still unexplained.
 
 | rung | before | after |
 |---|---:|---:|
@@ -148,10 +150,17 @@ bad luck: `run_tests.sh` writes shard logs to `mktemp -d` under a cleanup trap, 
 that would name the cause is deleted at the moment the gate reports the failure.** The taskblock-66
 addendum hit the same wall from the other side and had to mirror the shard block by hand.
 
-**Pass D deliberately did not fix this**, because D1's instruction is that a shard which started and
-died must stay a gate failure, and keeping its log is a different change from deciding what to do
-about it. The fix is small — keep a failed shard's log somewhere durable — and it is the difference
-between diagnosing this and re-running it hoping for a different answer.
+**The evidence half was fixed in a close-out after the passes, on the supervisor's instruction.** A
+shard with no summary now has its log copied to `out/logs/gate/<utc>/`, the path printed, and the
+incident recorded. **Verified against a real death rather than a fixture** —
+`TestExitCodeProbe.FORCE_DEATH_ENV` makes a shard kill its own process, reproducing the signature
+exactly, and the preserved log ends at the last test the shard entered, which is what was missing.
+
+**The entry stays `Active` and that is the honest state.** What is fixed is the ability to
+investigate; **the cause is still unknown and unreproduced** — green in isolation, green on the next
+gate, no recurrence in the ~10 sharded gates since. `Resolved` would assert a verification nobody
+performed, and `Obsolete` would be false since the code it describes is unchanged. It closes when it
+recurs and is diagnosed, or when enough gates pass to call it unreproducible on the evidence.
 
 ### The sharded and unsharded gates disagree about `maps` and `floods` by 10–14%
 
