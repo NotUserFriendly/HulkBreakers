@@ -276,3 +276,94 @@ func test_no_ghost_where_the_placement_would_be_refused() -> void:
 	)
 	assert_false(editor.apply_tool_at(Vector2i(3, 3)), "and the click that follows authors nothing")
 	assert_eq(editor.controller.placements_at(Vector2i(3, 3)).size(), 1, "the model took it anyway")
+
+
+## **taskblock-69 Pass B: the ghost shows the facing the placement will get.**
+##
+## `_drawn_facing` returned `0.0` for a blocker, and that was correct while `BoardView._spawn_
+## blocker` discarded the facing too — a ghost showing a rotation the board was about to throw away
+## would have been the surprise the module exists to prevent. Pass A took the board to
+## `UnitGeometry.blocker_placements`, which reads the record, so `0.0` became the answer that lies.
+##
+## Asserted the same way `test_what_the_ghost_showed_is_what_gets_placed` above is: the ghost's own
+## transforms read back off its meshes, against the placement the click really authored. **The
+## facing is set on the real panel spinbox**, so it travels the route an author's does.
+func test_the_ghost_shows_a_blockers_authored_facing() -> void:
+	var overlay: ControlOverlay = _overlay()
+	var editor: EditorModule = overlay.module(&"editor") as EditorModule
+	var ghost: PlacementGhostModule = _ghost(overlay)
+	editor.active_tool = &"place_terrain"
+	editor.selected_part = &"ledge_veneer"
+	editor.panel.facing_field.value = PI / 2.0
+	# **Read back rather than assumed.** The spinbox has a 0.01 step measured from its own `-TAU`
+	# minimum, so it snaps a quarter turn to 1.5668 — close enough to be a quarter turn and not
+	# equal to `PI / 2.0`. The panel is the authority on what the author asked for, so it is asked.
+	var wanted: float = editor.facing()
+	assert_almost_eq(wanted, PI / 2.0, 0.01, "sanity: the panel carries about a quarter turn")
+	assert_gt(absf(wanted), 0.1, "and it is emphatically not zero")
+
+	editor.struck_normal = null
+	_picking(overlay).hovered_pick.emit(
+		{"unit": null, "part": null, "cell": Vector2i(2, 2), "t": 1.0, "normal": Vector3.UP}
+	)
+
+	assert_true(ghost.is_showing(), "nothing was previewed")
+	var previewed: Dictionary = ghost.target.duplicate()
+	var shown: Array[Transform3D] = ghost.ghost_transforms()
+	assert_false(shown.is_empty(), "the ghost drew no boxes")
+
+	(
+		_picking(overlay)
+		. board_clicked
+		. emit(
+			{
+				"kind": Enums.HitKind.PART,
+				"unit": null,
+				"part": null,
+				"cell": Vector2i(2, 2),
+				"normal": Vector3.UP,
+			}
+		)
+	)
+
+	var authored: MapPlacement = null
+	for placement: MapPlacement in editor.controller.placements_at(previewed["cell"]):
+		if placement.part_id == &"ledge_veneer":
+			authored = placement
+	assert_not_null(authored, "the click authored no veneer")
+	if authored == null:
+		return
+	assert_almost_eq(
+		authored.facing, wanted, 0.0001, "the placement must carry the facing the panel said"
+	)
+
+	# The boxes the board will draw for that placement, and the boxes the ghost drew, compared as
+	# world positions rather than as two spellings of one formula.
+	var real: Array[BoxPlacement] = UnitGeometry.assembly_placements(
+		DataLibrary.get_part(&"ledge_veneer"),
+		previewed["cell"],
+		authored.facing,
+		null,
+		authored.height
+	)
+	assert_eq(shown.size(), real.size(), "the ghost drew a different number of boxes")
+	for i in range(mini(shown.size(), real.size())):
+		var expected: Transform3D = real[i].transform.translated_local(real[i].box.center)
+		gut.p("  ghost box %d at %s, placement at %s" % [i, shown[i].origin, expected.origin])
+		assert_almost_eq(
+			shown[i].origin.distance_to(expected.origin),
+			0.0,
+			0.0001,
+			"ghost box %d is not where the placement is" % i
+		)
+
+	# And the half a facing-blind ghost would still pass: it is not at the unturned position.
+	var unturned: Array[BoxPlacement] = UnitGeometry.assembly_placements(
+		DataLibrary.get_part(&"ledge_veneer"), previewed["cell"], 0.0, null, authored.height
+	)
+	var flat: Transform3D = unturned[0].transform.translated_local(unturned[0].box.center)
+	assert_gt(
+		shown[0].origin.distance_to(flat.origin),
+		0.1,
+		"the ghost drew the veneer against the edge it would have used unturned"
+	)

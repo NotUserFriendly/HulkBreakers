@@ -182,12 +182,22 @@ func _drawn_height(editor: EditorModule, at: Dictionary) -> float:
 	return editor.height()
 
 
-## The facing `BoardView` will draw this at. **Zero for a blocker or a loose item**, because
-## `_spawn_blocker` passes `0.0` — the authored facing reaches a `Surface` and nothing else.
+## The facing `BoardView` will draw this at — **the authored one, for every kind.**
+##
+## taskblock-69 Pass B. This returned `0.0` for a blocker or a loose item, and it was right to:
+## `_spawn_blocker` passed a literal `0.0`, so the authored facing reached a `Surface` and nothing
+## else, and a ghost that had shown the facing would have been promising a rotation the board was
+## about to discard. **That was the ghost matching the logic**, which is the rule the taskblock-59
+## follow-up settled — *"we needed to make the ghost match the logic, not make the logic match the
+## ghost"* — and it stays the rule here. What changed is the logic: Pass A routed every blocker
+## consumer through `UnitGeometry.blocker_placements`, which reads the record's facing, so `0.0` is
+## now the answer that would lie.
+##
+## `EditorModule._place_with` has always passed `facing()` to `controller.place` for every kind,
+## blocker included, so the facing the click authors and the facing drawn here are one value read
+## twice rather than two values kept in step.
 func _drawn_facing(editor: EditorModule) -> float:
-	if EditorTools.kind_for(editor.active_tool, editor.selected_part) == MapPlacement.KIND_SURFACE:
-		return editor.facing()
-	return 0.0
+	return editor.facing()
 
 
 func _grid() -> Grid:
