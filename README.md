@@ -48,16 +48,20 @@ dump into the test log, because a spatial system nobody can read is one nobody c
 
 ```bash
 ./run_tests.sh test_foo.gd   # one file — the edit loop
-./run_tests.sh fast          # no bouts
-./run_tests.sh shard         # everything, 8 processes
-./run_tests.sh               # everything, one process; writes the suite profile
+./run_tests.sh fast          # no bouts, across 8 processes
+./run_tests.sh               # everything, across 8 processes
+./run_tests.sh profile       # everything, one process; writes the suite profile
 ```
 
 Requires Godot 4.7 and `gdtoolkit` (`pip install gdtoolkit`) for `gdlint` / `gdformat`.
 
-The sharded gate's cost is a band rather than a number: it ends when a randomly-drawn mission
-sample ends, so identical runs land anywhere from roughly 220 s to 630 s. `test/SUITE-PROFILE.md`
-has the current figures.
+**The full gate's cost is a band rather than a number**: it ends when a randomly-drawn mission
+sample ends, so identical runs land far apart. The fast gate draws no sample and so has no such
+spread — which is why it is the one to run while working. `test/SUITE-PROFILE.md` has the current
+figures; seconds are not quoted here, because a number in prose reads as current forever.
+
+`profile` is the only run that can write the suite profile: it measures per-file wall-clock, and
+eight processes competing for cores scramble exactly that.
 
 ## Reading the design
 
