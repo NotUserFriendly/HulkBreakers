@@ -41,6 +41,7 @@ func before_each() -> void:
 
 func after_each() -> void:
 	OS.set_environment(TestExitCodeProbe.FORCE_FAILURE_ENV, _restore_failure)
+	OS.set_environment(TestExitCodeProbe.FORCE_DEATH_ENV, "")
 	for key: String in ["HB_SHARD_MAP", "HB_REPACK_CMD", "HB_DRY_RUN", "HB_FALLBACK_LOG"]:
 		OS.set_environment(key, "")
 	if _dir != "":
@@ -150,3 +151,66 @@ func test_a_failing_test_fails_the_gate_and_never_falls_back() -> void:
 		[] as Array[String],
 		"and nothing was recorded as a fallback, because nothing fell back"
 	)
+
+
+## **`BR67.01`: a shard that dies keeps its log, because otherwise nobody can ever say why.**
+##
+## Observed once for real — shard 0 died after ~499 s, the other seven green at 0 failures, and
+## nothing could be said about the cause: it was green in isolation and green on the next gate.
+## The shard logs live in a `mktemp -d` under a cleanup trap, so **the one artifact that would
+## name the cause is deleted at the moment the gate reports the failure.**
+##
+## Driven against a real death rather than a crafted log. `HB_FORCE_SHARD_DEATH` makes the probe
+## kill its own process, which reproduces the signature exactly — engine banner present, no
+## summary line, terminated by signal. A fixture would assert that the copy works; this asserts
+## that the copy happens for the event it was written for.
+##
+## **It must also stay a gate failure.** A shard that started and died is not an infrastructure
+## fallback, and re-running it single-process would launder a real crash into a slow green run.
+func test_a_shard_that_dies_keeps_its_log_and_still_fails_the_gate() -> void:
+	var map: String = _write(
+		"death_map.json",
+		(
+			'{"shards": {"0": ["res://test/unit/test_exit_code_probe.gd"]}, '
+			+ '"shard_count": 1, "generated_from": "test-only"}'
+		)
+	)
+	var log: String = "%s/fallbacks.log" % _dir
+	OS.set_environment("HB_SHARD_MAP", map)
+	OS.set_environment("HB_REPACK_CMD", "true")
+	OS.set_environment("HB_FALLBACK_LOG", log)
+	OS.set_environment(TestExitCodeProbe.FORCE_DEATH_ENV, "1")
+
+	var result: Dictionary = _run([] as Array[String])
+	var out: String = String(result["out"])
+
+	assert_eq(int(result["code"]), 1, "a dead shard is a failed gate")
+	assert_true(out.contains("DID NOT FINISH"), "and the merge names it")
+	assert_false(out.contains("FELL BACK"), "a shard that STARTED and died never falls back")
+
+	# The path is printed so it can be followed, and it has to be printed to be followed.
+	assert_true(out.contains("logs kept in"), "the gate says where the evidence went")
+	var kept: String = ""
+	for line: String in out.split("\n"):
+		if line.contains("logs kept in "):
+			kept = line.split("logs kept in ")[1].split(" ")[0].strip_edges()
+	assert_ne(kept, "", "and the line carries a usable path")
+	if kept == "":
+		return
+
+	var shard_log: String = "%s/shard0.log" % kept
+	assert_true(FileAccess.file_exists(shard_log), "the dead shard's log survived the cleanup trap")
+	var text: String = FileAccess.get_file_as_string(shard_log)
+	gut.p("preserved %d bytes at %s" % [text.length(), shard_log])
+	# **Diagnostic, not merely present.** What was missing in the real incident was the last thing
+	# the shard was doing, and that is exactly what the tail of this log now carries.
+	assert_true(text.contains("Godot Engine"), "it proves the engine started")
+	assert_true(
+		text.contains("test_exit_code_probe.gd"), "and names the file it was in when it died"
+	)
+
+	var recorded := false
+	for line: String in _record_lines(log):
+		if line.contains("shard-no-summary"):
+			recorded = true
+	assert_true(recorded, "and the incident is in the durable record, so a pattern can be seen")

@@ -1,5 +1,25 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 67 close-out — `BR67.01`, half of it
+
+**A shard that produces no summary now keeps its log.** `run_tests.sh` copies it to
+`out/logs/gate/<utc>/`, prints the path, and records the incident in `audit/gate_fallbacks.log`.
+Only shards with no summary are kept — an ordinary test failure is already reported by the merge
+with its file and message; a shard with no summary is the case where the merge can say nothing
+except that it happened.
+
+**Verified against a real death, not a fixture.** `TestExitCodeProbe.FORCE_DEATH_ENV` makes a shard
+kill its own process, reproducing the signature exactly: engine banner present, no
+`--- suite cost ---`, terminated by signal. **The preserved log ends at the last test the shard
+entered** — precisely what was missing when this happened for real. It also stays a gate failure: a
+shard that started and died is not an infrastructure fallback.
+
+**`BR67.01` stays `Active`, and the distinction is the point.** What is fixed is the ability to
+investigate. **The cause is still unknown and unreproduced** — the shard was green in isolation and
+green on the next gate, and it has not recurred in the ~10 sharded gates since. `Resolved` would
+assert a verification nobody performed and `Obsolete` would be false.
+
+
 ## Taskblock 67 Pass D — the fallback is loud, recorded, and never triggered by a test failure
 
 **The risk was never that sharding breaks; it is that it degrades quietly** and a future CC

@@ -34,6 +34,22 @@ extends GutTest
 ## reason nobody could find.
 const FORCE_FAILURE_ENV := "HB_FORCE_TEST_FAILURE"
 
+## tb67 close-out (`BR67.01`): **a shard that dies mid-suite, on demand.**
+##
+## A forced *failure* is not the same event: it produces a summary line and the merge reports it
+## with a file and a message. The dangerous shape is a shard that leaves **no summary at all** —
+## the engine started, then the process ended — because the merge can then say only that it
+## happened, and the log that would say why is deleted with the temp directory.
+##
+## Killing this process reproduces that signature exactly: banner present, no `--- suite cost ---`,
+## terminated by signal. It is the only way to test the log preservation against the real event
+## rather than against a fixture of it.
+##
+## **Same safety shape as `FORCE_FAILURE_ENV` and the same reason** — default off, specific name,
+## set only for the duration of one subprocess call. A vague name would eventually be set by
+## something else, and this one does not turn the suite red, it ends it.
+const FORCE_DEATH_ENV := "HB_FORCE_SHARD_DEATH"
+
 ## The seed the forced failure replays. Any real bout would do; this one is fixed so
 ## the demonstration is the same every time.
 const DEMO_SEED := 7
@@ -65,6 +81,17 @@ static func replay_handle_for(test_name: String) -> ReplayHandle:
 	if test_name != "test_the_probe_fails_only_when_it_is_asked_to":
 		return null
 	return ReplayHandle.from_seed(DEMO_SEED)
+
+
+## **Ends the process, when asked.** Ordered before the failure probe so the death is the first
+## thing that can happen — a shard that dies half way through is what is being reproduced, and
+## dying after the run had already finished would produce a summary and prove nothing.
+func test_the_probe_ends_the_process_only_when_it_is_asked_to() -> void:
+	if OS.get_environment(FORCE_DEATH_ENV) == "":
+		assert_true(true, "no death requested — this is the ordinary case")
+		return
+	gut.p("deliberate shard death, requested via %s" % FORCE_DEATH_ENV)
+	OS.kill(OS.get_process_id())
 
 
 func test_the_probe_fails_only_when_it_is_asked_to() -> void:

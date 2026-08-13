@@ -2564,9 +2564,19 @@ is_disabled` for the same part. The disappearance here is that disagreement made
   **the one artifact that would name the cause is deleted at the moment the gate reports the
   failure.** The taskblock-66 addendum hit the same wall from the other side and had to mirror the
   shard block by hand to observe anything.
-- **Fix direction, not yet taken:** keep a failed shard's log — or all of them — somewhere durable,
-  so a shard death is diagnosable rather than re-runnable-and-hopefully-different. This is
-  taskblock-67 Pass D's territory (`D2`'s durable record), and this entry is a live instance of
-  exactly what that pass is for: the gate degraded, said so correctly, and left nothing to read.
 - **Frequency so far: 1 in 4 sharded gates this session** (499 s red, then 733 s, 177 s and 357 s
-  green). One occurrence is noise; the entry exists so a second one is not.
+  green). One occurrence is noise; the entry exists so a second one is not. It has not recurred
+  across the ~10 sharded gates since.
+- **The evidence half is fixed (tb67 close-out); the death itself is not.** `run_tests.sh` now
+  copies any shard that produced no summary into `out/logs/gate/<utc>/`, prints the path, and
+  records the incident in `audit/gate_fallbacks.log`. Verified against a **real death** rather than
+  a fixture — `TestExitCodeProbe.FORCE_DEATH_ENV` makes a shard kill its own process, reproducing
+  the signature exactly (engine banner, no `--- suite cost ---`, terminated by signal). The
+  preserved log ends at the last test the shard entered, which is precisely what was missing here.
+- **Deliberately NOT closed, and this is the distinction that matters.** What was fixed is the
+  ability to investigate; **the cause is still unknown and unreproduced.** Marking it `Resolved`
+  would assert a verification nobody performed, and `Obsolete` would be false — the code it
+  describes is still there. It stays `Active` until it recurs and is diagnosed, or until enough
+  sharded gates pass that it can be closed as unreproducible on the evidence.
+- **On recurrence:** read `out/logs/gate/<utc>/shard*.log` — the tail names the last test that
+  shard was in, and `audit/gate_fallbacks.log` says whether it has happened before.

@@ -283,16 +283,39 @@ for p in json.load(open('$map'))['shards']['$i']:
   #
   # **`BR67.01` is exactly the case this must not swallow.** A shard died after ~499 s with no
   # summary and no explanation; it had plainly started, so it stays a failure.
-  local never_started=""
+  local never_started="" unfinished=()
   for i in "${!logs[@]}"; do
     if grep -q -- "--- suite cost ---" "${logs[$i]}"; then
       continue
     fi
+    unfinished+=("$i")
     if [[ "${codes[$i]}" -eq 126 || "${codes[$i]}" -eq 127 ]] \
       && ! grep -q "Godot Engine" "${logs[$i]}"; then
       never_started="shard $i"
     fi
   done
+
+  # ## `BR67.01`: **a shard that dies takes its own evidence with it, unless this runs**
+  #
+  # The shard logs live in a `mktemp -d` under a cleanup trap, so the one artifact that could
+  # name the cause is deleted at the moment the gate reports the failure. Observed once: shard 0
+  # died after ~499 s, the other seven were green at 0 failures, and nothing could be said about
+  # why — it was green in isolation and green on the next gate.
+  #
+  # **Only the shards that produced no summary are kept.** An ordinary test failure is already
+  # reported by the merge with its file and message; a shard with no summary is the case where
+  # the merge can say nothing except that it happened.
+  if [[ ${#unfinished[@]} -gt 0 ]]; then
+    local keep="out/logs/gate/$(date -u +%Y%m%dT%H%M%SZ)"
+    mkdir -p "$keep"
+    for i in "${unfinished[@]}"; do
+      cp "${logs[$i]}" "$keep/shard$i.log" 2> /dev/null || true
+    done
+    echo "" >&2
+    echo "== shard(s) ${unfinished[*]} produced no summary — logs kept in $keep ==" >&2
+    echo "== they would otherwise be deleted with the temp directory (BR67.01) ==" >&2
+    record_incident "shard-no-summary" "shard(s) ${unfinished[*]}; logs in $keep"
+  fi
   if [[ -n "$never_started" ]]; then
     note_fallback \
       "$never_started never started — exit ${codes[0]}, no engine banner in its log" \
