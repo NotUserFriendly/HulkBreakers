@@ -653,25 +653,33 @@ bout plus 0.52 s per turn**. At current draw sizes the two models agree within a
 turn reduction bought against the linear model will over-credit itself**, and that is exactly what
 lowering `TURN_CAP` would be.
 
-### The sharded gate still needs a manual repack, and cannot write the profile
-**Needs:** taskblock-66's shard map — **built**. **Unblocks:** a sharded gate nobody has to
-maintain by hand.
+### The profile still costs a single-process run, and that is the last manual thing about the gate
+**Needs:** nothing. **Unblocks:** a gate with no bookkeeping rung at all.
 
-**Two things taskblock-66 stated rather than automated**, both deliberate and both now the obvious
-follow-up:
+**The repack half of this item landed at taskblock-67 Pass D.** A stale map is detected before
+launch — a test file on disk in no shard — and the gate **repacks both maps itself and says so**, in
+the verdict line and in `audit/gate_fallbacks.log`. It is not a fallback: the gate still shards, it
+just fixes its own input first. The regenerated maps belong in the same commit.
 
-- **Adding a test file makes the committed shard map stale**, and the only thing that says so is
-  `test_shard_map.gd` going red. That is the correct signal — a file in no shard is never run, and
-  a sharded gate would go green having skipped it — but the fix is a manual
-  `godot --headless --path . -s res://tools/pack_shards.gd`. **A repack-on-red step, or a packer run
-  as part of the gate when the map is stale, would close it.**
-- **The sharded gate cannot write the profile** (Pass E6). The packer reads per-file wall-clock and
-  eight processes competing for cores inflate and scramble exactly that, so a sharded regeneration
-  would degrade the packer's own input a little more each time. **So the profile still costs an
-  unsharded 22-minute run**, which is now the most expensive routine thing in the workflow.
-  Worth asking whether the packer could read a counter instead of seconds — `maps`, `turns` and
-  `ui_builds` are machine-independent where wall-clock is not, and the packer only needs *relative*
-  cost.
+**What remains is that `./run_tests.sh profile` cannot be retired.** The packer reads per-file
+wall-clock and eight processes competing for cores inflate and scramble exactly that (tb66 E6), so a
+sharded regeneration would degrade the packer's own input a little more each time and every run
+would look locally reasonable. **The profile therefore still costs a single-process run — measured
+at 1687.7 s at tb67 C**, the most expensive routine thing in the workflow.
+
+**Re-costing the packer on work counters was tested and does not work**, so do not re-derive it:
+packing the seven non-corpus shards on a counter-derived cost and scoring against real wall-clock
+gives a **202.6 s makespan against 141.5 s**. The underlying reason is the item above this one —
+the counters are a proxy for the work somebody instrumented, and sight/LoS sweeping is outside that
+set. **That item is the prerequisite**, not a parallel idea: if a counter-packed makespan ever
+matches a `usec`-packed one, this reopens for free.
+
+**One measurement worth having first, and it is cheap.** taskblock-67 Pass B found the profile
+mispredicts the sharded makespan by 11% in *both* directions — the full map's wall shard finishes
+among fewer competitors than the profile assumed, while the fast map keeps all eight busy, which is
+maximum contention. **Perfect balance maximises contention**, so a packer optimising predicted
+makespan is optimising the wrong quantity by a knowable margin. Whether that margin is stable is not
+known.
 
 ### `BoutCorpus`'s variable draw is subtracted for three counters; `bouts` and `candidates` remain
 **Needs:** nothing. **Unblocks:** ratcheting `bouts` and `candidates` the way `turns`, `floods` and

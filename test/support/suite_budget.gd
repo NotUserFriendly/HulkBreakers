@@ -182,7 +182,28 @@ const BASELINE: Dictionary = {
 	# working.** The full gate that *wrote* the new profile read the old one and passed; the very
 	# next gate read the new numbers and went red. Drift lands, then is reported against the
 	# baseline it broke — which is why taskblock-65 made the full gate write the profile at all.
-	"spawns": 32,
+	# tb67: 32 -> 37, and every one of the five is this block's own. **Named rather than
+	# absorbed**, because "spawns went up by five" is not something anyone can act on:
+	#
+	# | +spawns | what |
+	# |---:|---|
+	# | 1 | `test_merge_shards.gd` — the merge's totals artifact (Pass A) |
+	# | 2 | `test_check_budget.gd` — the budget gate's two verdicts (Pass A) |
+	# | 1 | `test_run_suite.gd` — the retired `shard` rung refusing by name (Pass C) |
+	# | 2 | `test_gate_fallback.gd` — fallback, and never-fall-back (Pass D) |
+	# | −1 | `test_suite_run.gd` — the process-group fix dropped a `pgrep` call (Pass A) |
+	#
+	# All five drive shell behaviour that does not exist inside the engine, so the alternative
+	# was asserting a second implementation of it — the trap `docs/00` names for view maths.
+	#
+	# **Raised because the gate was sitting exactly on its limit**, not because it was over: 37
+	# measured against a limit of 37. A budget with no headroom turns the next added spawn red
+	# and makes it look like drift rather than like a ceiling nobody re-ratcheted.
+	#
+	# Measured on the tb67 D sharded gate (368 scripts / 3578 tests / 0 failures). **Cross-checks
+	# against the unsharded profile**, which read 35 before this block's last two spawns landed —
+	# a counter no scheduling artefact touches, summing identically either way.
+	"spawns": 37,
 }
 
 ## Files whose **turns** are excluded from the gated suite total.
@@ -290,6 +311,11 @@ const PER_FILE: Dictionary = {
 	"res://test/unit/logic/test_suite_run.gd": {"spawns": 10},
 	"res://test/unit/test_run_suite.gd": {"spawns": 10},
 	"res://test/unit/view/test_replay_wiring.gd": {"spawns": 10},
+	# tb67 Pass D: the fallback tests drive `run_tests.sh` as a real subprocess, because the
+	# fallback is shell behaviour and asserting it any other way would be asserting a second
+	# implementation of it. Two spawns, one per property, and the capped headroom is deliberate —
+	# this file should not grow into a place where gates get launched casually.
+	"res://test/unit/test_gate_fallback.gd": {"spawns": 4},
 }
 
 

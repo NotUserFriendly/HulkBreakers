@@ -1,5 +1,56 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 67 Pass D — the fallback is loud, recorded, and never triggered by a test failure
+
+**The risk was never that sharding breaks; it is that it degrades quietly** and a future CC
+concludes twenty-two minutes is normal — the same shape as the profile going eight blocks stale,
+where every individual run looked fine.
+
+**A failing test is a red gate and is never a reason to re-run anything single-process.** The
+fallback list is closed: the map missing or unparseable, `python3` absent, or a shard process that
+never started. **A shard that started and died stays a gate failure** — laundering a real crash into
+a slow green run is worse than the crash.
+
+**The never-started test is drawn as tightly as it can honestly be drawn.** It requires the shell to
+have failed to execute the binary (exit 126/127) **and** no engine banner in that shard's log.
+Everything else — a segfault, a Debugger Break, a kill, an unexplained death — falls through to the
+merge and fails the gate. **`BR67.01` is the case this must not swallow**: a shard died after ~499 s
+with no summary and no explanation, and it had plainly started.
+
+**Loud means three places, because CC reads the tail of a log and reports from it:** a banner where
+it happens naming the condition *and the fix*, the final `=== GATE` verdict line, and
+`audit/gate_fallbacks.log`, committed. **One fallback is noise; the same one four times is a defect
+nobody filed**, and that is only visible if a doc review can read the history.
+
+**A stale map repacks rather than failing with an instruction**, as D2 decided. Verified for real:
+adding `test_gate_fallback.gd` made both maps stale, and the next `fast` gate detected one
+unassigned file, repacked, ran green, and reported the repack in the verdict line and the log. It is
+**not** a fallback — the gate still shards, it just fixes its own input first. The regenerated maps
+belong in the commit, and the diff is large by nature.
+
+**Three test-only seams, one of which exists purely for safety.** `HB_SHARD_MAP` points the gate at
+a map that is not the committed one; `HB_DRY_RUN` stops at the decision and exits **3, never 0**, so
+it cannot be mistaken for a pass (a real fallback runs the whole suite single-process at 1687 s per
+case); and **`HB_REPACK_CMD` replaces the repack with a no-op — without it, a test driving the
+stale-map branch would rewrite the two committed maps as a side effect**, the gate editing the repo
+because a test asked it a question.
+
+**`spawns` re-ratcheted 32 → 37, and all five are this block's own** — 1 for the merge's totals
+artifact, 2 for the budget gate's verdicts, 1 for the retired `shard` rung, 2 for the fallback
+tests, −1 from the process-group fix dropping a `pgrep` call. **Raised because the gate was sitting
+exactly on its limit rather than over it**: 37 measured against a limit of 37, and a budget with no
+headroom turns the next added spawn red in a way that reads as drift. Cross-checks against the
+unsharded profile, which read 35 before Pass D's two landed.
+
+**`docs/TOOLING.md`'s rung section is rewritten**, clearing three of the taskblock-66 census's eight
+stale claims: the `tools/profile_suite.gd` row (deleted eighteen blocks earlier), the *"Three
+rungs"* heading, and the fast gate's *"~126 s"* — which was **684 s** when finally measured, five
+times what the file promised. **Costs are deliberately not restated there**; it points at
+`test/SUITE-PROFILE.md`.
+
+**Gates:** fast 342 scripts / 3287 tests / 0 failures / **120.0 s** (including a self-repack); full
+368 / 3578 / 0 / **180.4 s**, budget within.
+
 ## Taskblock 67 Pass C — sharded is what `fast` and the bare gate mean; `shard` is retired
 
 **The two rungs people type now shard, and their names did not move.** `CLAUDE.md` documents those

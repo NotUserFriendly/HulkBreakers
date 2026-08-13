@@ -25,29 +25,80 @@ Every script honours `GODOT=/path/to/godot` if `godot` isn't on `PATH`.
 | Script | Screen? | What it is |
 |---|---|---|
 | `run_tests.sh <file.gd>` | headless | One file (or directory) — the edit loop, ~3.7 s floor. |
-| `run_tests.sh fast` | headless | Everything that does not build a bout. |
-| `run_tests.sh` | headless | The full gate. Green before a pass commits. |
+| `run_tests.sh fast` | headless | Everything that does not build a bout — **sharded**. |
+| `run_tests.sh` | headless | The full gate — **sharded**. Green before a pass commits. |
 | `run_game.sh` | **on-screen** | The actual game. Press `B` at `battle_scene` for Simulate Bout. |
 | `run_resource_editor.sh` | **on-screen** | The Resource Editor as its own process. |
 | `checkpoint.sh N` | **on-screen** | Runs visual checkpoint `N`. |
 | `tools/checkpoints/run_visual_checkpoint.sh` | **on-screen** | The generic driver `checkpoint.sh` dispatches to. |
 | `tools/bench_release.sh` | export | Release-vs-debug AI planning measurement. |
-| `tools/profile_suite.gd` | headless | Regenerates the suite profile and the budget's baseline. |
+| `run_tests.sh profile` | headless | The single-process run — **the only one that regenerates the suite profile.** |
+| `tools/pack_shards.gd` | headless | Regenerates both committed shard maps from the profile. |
 
 **Headless is not a lesser mode and is not being retired.** It is the only mode that can gate a
 commit, and the on-screen tools exist because `--headless` has a no-op renderer and therefore cannot
 answer "does this *look* right." Both stay.
 
-### Three rungs
+### Four rungs
 
 ```bash
 ./run_tests.sh test_foo.gd   # one file — the edit loop, ~3.7 s + the file itself
-./run_tests.sh fast          # everything that does not build a bout — ~126 s
-./run_tests.sh               # everything. Green before a pass commits.
+./run_tests.sh fast          # no bouts, SHARDED. Green before each pass commit
+./run_tests.sh               # everything, SHARDED. Green before a git push
+./run_tests.sh profile       # everything, one process — the bookkeeping run
 ```
 
 **A targeted run is never what a pass is green on.** It cannot see that a change broke
 a different file, which is the entire reason the full suite exists.
+
+**Costs are not quoted here on purpose** — `test/SUITE-PROFILE.md` holds what the last
+`profile` run measured, and a number restated in prose reads as current forever. The
+heading above said *"Three rungs"* and the fast gate *"~126 s"* for long enough that the
+taskblock-66 census counted both as stale claims; the fast gate was **684 s** when that
+was finally measured, five times what this file promised.
+
+**Which rung shards, and which does not:**
+
+| rung | sharded? | cost |
+|---|---|---|
+| a targeted file | no | a floor plus the file |
+| `fast` | **yes**, over `test/shard_map_fast.json` | a **number** — it builds no bouts, so no corpus draw |
+| the bare gate | **yes**, over `test/shard_map.json` | a **band** — it ends when the draw ends |
+| `profile` | no | the longest, and the only run that writes the profile |
+
+`shard` was a rung between taskblock-66 F and taskblock-67 C. **It is retired** — the bare
+gate is what it named. Typing it prints what to run instead rather than resolving.
+
+**Both sharded rungs enforce the work budget** through `SuiteBudget.violations()` over the
+merged totals. The fast gate is the exception and prints why: it measures part of the
+suite, so a whole-suite budget could never trip on it, and a check that cannot fail is
+worse than no check.
+
+**Run `profile` before a bug-hunt block, before a doc review, and never less often than
+every five taskblocks.** Five because `reports/` keeps a rolling five, so drift found at a
+review can still be attributed to the reports covering it. It is also the only thing that
+sees wall-clock growth in work no counter tracks.
+
+### A fallback is a finding to report
+
+**If the gate says it fell back, that goes in the report.** The sharded path was
+unavailable and the run was single-process — which is slower and looks otherwise
+identical, so the only thing standing between that and a future CC concluding
+twenty-two minutes is normal is somebody noticing.
+
+Only infrastructure may fall back, and the list is closed: the map missing or
+unparseable, `python3` absent, or a shard process that never started. **A failing test
+never falls back** — re-running a red gate single-process would launder a real crash into
+a slow green run.
+
+It is announced in three places, because CC reads the tail of a log and reports from it: a
+banner where it happens, the final `=== GATE` verdict line, and **`audit/gate_fallbacks.log`**,
+which is committed. **One fallback is noise; the same one four times is a defect nobody
+filed**, and that is only visible if a doc review can read the history.
+
+**A stale map is not a fallback.** The gate repacks itself and says so, and the regenerated
+maps belong in your commit — a large diff by nature, since LPT packing is sensitive to its
+input costs.
 
 A bare filename resolves by search — no `res://` paths to type. Two files sharing a
 name prints both and exits 2: a repo mistake to fix, not a case to disambiguate

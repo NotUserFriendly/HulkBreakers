@@ -1,0 +1,15 @@
+# Gate incidents — appended by run_tests.sh, never hand-edited except to add this header.
+#
+# A FALLBACK means the sharded path was unavailable and the gate ran single-process instead.
+# That is a finding to report, not a slow run somebody sat through. Only infrastructure can
+# cause one: the map missing or unparseable, python3 absent, or a shard that never started.
+# A failing test never falls back.
+#
+# A REPACK means a committed shard map was stale — a test file was in no shard — and the gate
+# regenerated both maps before running. The map diff belongs in that commit.
+#
+# **One entry is noise. The same entry four times is a defect nobody filed.** That is what this
+# file is for, and why a doc review should read it.
+#
+# utc<TAB>kind<TAB>rung<TAB>detail<TAB>elapsed
+2026-08-12T23:57:16Z	repack	fast	1 unassigned file(s) in test/shard_map_fast.json	1s

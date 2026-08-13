@@ -86,6 +86,66 @@ GODOT="${GODOT:-godot}"
 # looks like a broken test. That takes a targeted run's floor to about 3.7 s.
 GATE="${1:-full}"
 TARGET=""
+GATE_START=$SECONDS
+
+# ## taskblock-67 Pass D: **the fallback is loud, recorded, and never a test failure**
+#
+# The risk sharding carries is not that it breaks. It is that it **degrades quietly** and a
+# future CC concludes that twenty-two minutes is normal — the same shape as the profile going
+# eight blocks stale, where every individual run looked fine.
+#
+# **A failing test is a red gate. It is never a reason to re-run anything single-process.** Only
+# infrastructure may fall back, and the list is closed: the map missing or unparseable, `python3`
+# absent, or a shard process that never started. A shard that started and *died* is a gate
+# failure and stays one — laundering a real crash into a slow green run is the one outcome worse
+# than the crash.
+#
+# **Loud means it survives being skimmed**, because CC reads the tail of a log and reports from
+# it. So a fallback appears in all three of: a banner where it happens, the final verdict line,
+# and a durable record.
+FALLBACK_LOG="${HB_FALLBACK_LOG:-audit/gate_fallbacks.log}"
+FALLBACK_REASON=""
+REPACK_NOTE=""
+
+# **HB_DRY_RUN is a test-only seam and cannot be mistaken for a pass.** Testing the fallback for
+# real would mean running the whole suite single-process — 1687 s — for each case, so the two
+# decision tests stop the script at the point the decision is made. It exits **3** and prints
+# `DRY RUN`, so a stray export produces something that is obviously not a green gate.
+DRY_RUN="${HB_DRY_RUN:-}"
+
+## Announces a fallback where it happens. The condition and the fix, not just the fact.
+note_fallback() {
+  FALLBACK_REASON="$1"
+  echo "" >&2
+  echo "######################################################################" >&2
+  echo "# SHARDED GATE UNAVAILABLE — FALLING BACK TO ONE PROCESS" >&2
+  echo "# condition: $1" >&2
+  echo "# fix:       $2" >&2
+  echo "# This is a finding to REPORT, not a slow run to sit through." >&2
+  echo "######################################################################" >&2
+}
+
+## The durable half. **One fallback is noise; the same one four times is a defect nobody filed** —
+## which is only visible if they are written down somewhere a doc review will read.
+record_incident() {
+  local kind="$1" detail="$2"
+  mkdir -p "$(dirname "$FALLBACK_LOG")"
+  printf '%s\t%s\t%s\t%s\t%ss\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$kind" "$GATE" "$detail" "$((SECONDS - GATE_START))" \
+    >> "$FALLBACK_LOG"
+}
+
+## The line that gets quoted into a report, and therefore the line a fallback has to reach.
+verdict() {
+  local status="$1" mode="$2" label="PASS"
+  [[ "$status" -ne 0 ]] && label="FAIL"
+  echo ""
+  echo "=== GATE $label — $GATE, $mode, $((SECONDS - GATE_START)) s$REPACK_NOTE"
+  if [[ -n "$FALLBACK_REASON" ]]; then
+    echo "=== FELL BACK TO ONE PROCESS: $FALLBACK_REASON"
+    echo "=== A fallback is a finding to report. Recorded in $FALLBACK_LOG"
+  fi
+}
 
 # ## The sharded path — taskblock-66 Pass F, generalised to two rungs at taskblock-67 Pass C
 #
@@ -111,12 +171,71 @@ TARGET=""
 # engine at all, and the parse guard loads checkpoint SCENARIOS, which are not test files and are
 # therefore in neither map.
 run_sharded() {
-  local map="$1" fast="$2"
+  local map="${HB_SHARD_MAP:-$1}" fast="$2"
+  # **`HB_REPACK_CMD` is a test-only seam, and it exists for safety rather than convenience.**
+  # The stale-map branch rewrites two committed artifacts, so a test that drives this path with a
+  # deliberately-incomplete map would repack the real ones as a side effect. Overriding the
+  # command with a no-op is what lets the branch be exercised without the gate editing the repo.
+  local repack="${HB_REPACK_CMD:-godot --headless --path . -s res://tools/pack_shards.gd}"
 
+  # --- before launch: the three infrastructure conditions ---------------------------
+  if ! command -v python3 > /dev/null 2>&1; then
+    note_fallback "python3 is not on PATH, so the shard merge cannot run" "install python3"
+    return 1
+  fi
   if [[ ! -f "$map" ]]; then
-    echo "no $map — generate it with:" >&2
-    echo "  godot --headless --path . -s res://tools/pack_shards.gd" >&2
-    exit 2
+    note_fallback "$map does not exist" "$repack"
+    return 1
+  fi
+  if ! python3 -c "import json,sys;json.load(open('$map'))['shards']" > /dev/null 2>&1; then
+    note_fallback "$map is not a parseable shard map" "$repack"
+    return 1
+  fi
+
+  # **A stale map repacks rather than failing with an instruction.** The whole premise of
+  # taskblock-67 is automation over discretion at the moment of running, and the repack is one
+  # deterministic command whose input is already committed. **The regenerated maps are part of
+  # the commit and the diff must not be reverted** — and it is a big diff: LPT packing is
+  # sensitive to its input costs, so a repack moved 274 of 367 files at Pass B.
+  #
+  # This is not a fallback. The gate still shards; it just fixes its own input first.
+  local unassigned
+  unassigned=$(python3 - "$map" "${fast:+fast}" <<'PY'
+import json, os, re, sys
+assigned = {p for fs in json.load(open(sys.argv[1]))["shards"].values() for p in fs}
+expected = set()
+for root, _, files in os.walk("test"):
+    for f in files:
+        if f.startswith("test_") and f.endswith(".gd"):
+            expected.add("res://" + os.path.join(root, f).replace(os.sep, "/"))
+if len(sys.argv) > 2 and sys.argv[2] == "fast":
+    # Bout files are absent from the fast map by design, not by staleness.
+    src = open("test/support/suite_tier.gd").read()
+    block = re.search(r"BOUT_FILES[^=]*=\s*\[(.*?)\]", src, re.S).group(1)
+    expected -= set(re.findall(r'"(res://[^"]+)"', block))
+print(len(expected - assigned))
+PY
+)
+  if [[ "$unassigned" -gt 0 ]]; then
+    echo ""
+    echo "== $map is stale: $unassigned test file(s) are in no shard =="
+    echo "== a file in no shard is never run, and the gate would go green having skipped it =="
+    echo "== repacking now; the map diff belongs in your commit =="
+    if [[ -n "$DRY_RUN" ]]; then
+      echo "DRY RUN — would repack and continue sharded"
+      exit 3
+    fi
+    if ! $repack; then
+      note_fallback "$map is stale and the repack failed" "run $repack by hand"
+      return 1
+    fi
+    REPACK_NOTE=" [REPACKED $unassigned unassigned file(s) — commit the map diff]"
+    record_incident "repack" "$unassigned unassigned file(s) in $map"
+  fi
+
+  if [[ -n "$DRY_RUN" ]]; then
+    echo "DRY RUN — would run the sharded gate over $map"
+    exit 3
   fi
 
   local count
@@ -133,7 +252,7 @@ run_sharded() {
   export HB_NO_WRITE_PROFILE=1
   [[ -n "$fast" ]] && export HB_FAST_GATE=1
 
-  local logs=() i log args
+  local logs=() pids=() codes=() i log args
   for i in $(seq 0 $((count - 1))); do
     args=$(python3 -c "
 import json
@@ -146,8 +265,40 @@ for p in json.load(open('$map'))['shards']['$i']:
     GODOT_DISABLE_LEAK_CHECKS=1 "$GODOT" --headless -d \
       --display-driver headless --audio-driver Dummy \
       --path . -s res://tools/run_suite.gd -- $args > "$log" 2>&1 &
+    pids+=($!)
   done
-  wait
+  # **Waited per pid rather than bare `wait`, so each shard's exit code survives.** The
+  # never-started test below cannot be made without them.
+  for i in "${!pids[@]}"; do
+    if wait "${pids[$i]}"; then codes[$i]=0; else codes[$i]=$?; fi
+  done
+
+  # ## The dangerous condition, and why it is drawn this tightly
+  #
+  # *"A shard produced no summary line"* is both a launch failure and a crash, and only the first
+  # may fall back — otherwise **a real crash gets laundered into a slow green run.** So the test
+  # is for a process that demonstrably never got going: the shell could not execute the binary
+  # (126/127) **and** the log carries no engine banner. Anything else — a segfault, a Debugger
+  # Break, a kill, an unexplained death — falls through to the merge and fails the gate.
+  #
+  # **`BR67.01` is exactly the case this must not swallow.** A shard died after ~499 s with no
+  # summary and no explanation; it had plainly started, so it stays a failure.
+  local never_started=""
+  for i in "${!logs[@]}"; do
+    if grep -q -- "--- suite cost ---" "${logs[$i]}"; then
+      continue
+    fi
+    if [[ "${codes[$i]}" -eq 126 || "${codes[$i]}" -eq 127 ]] \
+      && ! grep -q "Godot Engine" "${logs[$i]}"; then
+      never_started="shard $i"
+    fi
+  done
+  if [[ -n "$never_started" ]]; then
+    note_fallback \
+      "$never_started never started — exit ${codes[0]}, no engine banner in its log" \
+      "check that GODOT=${GODOT} is executable"
+    return 1
+  fi
 
   # ## tb67 Pass A: **the sharded gate enforces the work budget.**
   #
@@ -174,16 +325,22 @@ for p in json.load(open('$map'))['shards']['$i']:
   local merge_status=$?
   set -e
   if [[ "$merge_status" -ne 0 ]]; then
+    verdict "$merge_status" "sharded"
     exit "$merge_status"
   fi
   if [[ -n "$fast" ]]; then
     echo ""
     echo "--- work budget --- not checked: a fast gate measures part of the suite"
+    verdict 0 "sharded"
     exit 0
   fi
 
+  set +e
   "$GODOT" --headless --path . -s res://tools/check_budget.gd -- "--totals=$totals"
-  exit $?
+  local budget_status=$?
+  set -e
+  verdict "$budget_status" "sharded"
+  exit "$budget_status"
 }
 
 # **`shard` named the sharded full gate when that was opt-in. The bare gate is that now.**
@@ -197,11 +354,27 @@ if [[ "$GATE" == "shard" ]]; then
   exit 2
 fi
 
+# `run_sharded` exits when it handled the gate. Reaching the line after it means it declined —
+# an infrastructure condition — so the run continues single-process with the banner already
+# printed and the reason carried into the verdict below.
 if [[ "$GATE" == "fast" ]]; then
-  run_sharded "test/shard_map_fast.json" "fast"
+  run_sharded "test/shard_map_fast.json" "fast" || true
+  record_incident "fallback" "$FALLBACK_REASON"
+  if [[ -n "$DRY_RUN" ]]; then
+    verdict 3 "one process (DRY RUN — nothing was run)"
+    exit 3
+  fi
+  export HB_FAST_GATE=1
+  echo "== fast gate, one process: skipping bout-building files =="
 fi
 if [[ "$GATE" == "full" ]]; then
-  run_sharded "test/shard_map.json" ""
+  run_sharded "test/shard_map.json" "" || true
+  record_incident "fallback" "$FALLBACK_REASON"
+  if [[ -n "$DRY_RUN" ]]; then
+    verdict 3 "one process (DRY RUN — nothing was run)"
+    exit 3
+  fi
+  echo "== full gate, one process =="
 fi
 
 # Only `profile` and a targeted file reach here — `fast` and `full` exited inside
@@ -209,6 +382,9 @@ fi
 case "$GATE" in
   profile)
     echo "== profile run: the whole suite in one process, writing the artifacts =="
+    ;;
+  fast | full)
+    # Only reachable after a fallback — the scope stays the whole suite.
     ;;
   *)
     # A bare filename resolves by search — nobody should have to type
@@ -404,7 +580,9 @@ if ! grep -q -- "--- suite cost ---" "$SUITE_LOG"; then
   echo "a Debugger Break (a runtime script error under -d) ends the run before" >&2
   echo "run_suite.gd can compute an exit code, so the process would otherwise" >&2
   echo "report success having skipped everything after the error." >&2
+  verdict 1 "one process"
   exit 1
 fi
 
+verdict "$SUITE_STATUS" "one process"
 exit "$SUITE_STATUS"
