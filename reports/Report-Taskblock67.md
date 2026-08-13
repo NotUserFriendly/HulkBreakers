@@ -8,16 +8,21 @@ entry stays `Active` because the death itself is still unexplained.
 
 | rung | before | after |
 |---|---:|---:|
-| `./run_tests.sh fast` | 684.4 s, one process | **120.0 s**, sharded |
-| `./run_tests.sh` | 1115–1687 s, one process | **180.4 s**, sharded, work budget enforced |
+| `./run_tests.sh fast` | 684.4 s, one process | **108–141 s**, sharded |
+| `./run_tests.sh` | 1115–1687 s, one process | **180–202 s**, sharded, work budget enforced |
 | `./run_tests.sh profile` | — | 1687.7 s, one process, writes the artifacts |
 | `./run_tests.sh shard` | the sharded full gate | **retired** |
 
-**The per-pass rung is 5.7× faster and, more importantly, it is a number rather than a band.** Six
-measured runs put serial `fast` at 684.7/684.1 s and the sharded fast gate at 113.3/113.8 s, every
-spread under 1%. The sharded *full* gate on the same tree ran 177.1, 357.5, 499.2 and 733.2 s — a
-4.1× spread, because it ends when the corpus draw ends. A fast gate builds no bouts, so it has no
-draw. That is the property that makes it the right thing to run before every commit.
+**The per-pass rung is ~5× faster and, more importantly, it has no corpus draw.** Six controlled
+runs — sequential, idle machine — put serial `fast` at 684.7/684.1 s and the sharded fast gate at
+113.3/113.8 s, every spread under 1%. The sharded *full* gate on the same tree ran 177.1, 357.5,
+499.2 and 733.2 s, a **4.1× spread**, because it ends when the draw ends.
+
+**The sub-1% figure is a controlled measurement and should not be read as what the rung costs on any
+given day.** Ad-hoc fast gates run through the rest of the block, on a machine also doing other
+work, came in at **108.2, 120.0, 136.5 and 140.5 s** — a 30% range over essentially the same suite.
+Nothing there is a draw: it is machine state, and one of them included a self-repack. **The claim
+that survives is the structural one** — no bouts, so no distribution — not a promise of 113 s.
 
 **Two things were found rather than built, and both changed what the block did.** The tree was
 **already red when the block started** — `floods` over budget — and it was not drift but the corpus
