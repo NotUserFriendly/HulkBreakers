@@ -1,370 +1,370 @@
 origin_file,part_new,unit_new,real_build,bout_build,data_library,shape,real_ids,conflicts,usec,turns,spawns,shot_planes,candidates,outcome,evidence
-baselines/test_armor_and_ricochet_baseline.gd,3,2,0,0,1,hand_built,1,2,33057,0,0,17,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-baselines/test_deep_strike_stress_baseline.gd,0,0,1,0,1,real_unit,0,0,92131,0,0,0,0,,
-baselines/test_map_generation_baseline.gd,0,0,0,0,0,no_unit,0,0,546530,0,0,0,0,,
-baselines/test_shot_plane_sweep_baseline.gd,2,1,0,0,0,hand_built,1,2,31708,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-determinism/test_determinism_check.gd,0,0,0,0,0,no_unit,0,0,214579,0,0,0,0,,
-integration/test_full_mission.gd,0,0,0,1,1,real_unit,0,0,2742132,15,0,2,36823,,
-unit/data/test_hulk.gd,0,0,2,0,1,real_unit,0,0,192205,0,0,0,0,,
-unit/data/test_material_table.gd,0,0,0,0,1,no_unit,0,0,80932,0,0,0,0,,
-unit/data/test_matrix.gd,0,0,0,0,0,no_unit,0,0,94568,0,0,0,0,,
-unit/data/test_part.gd,9,0,0,0,0,no_unit,3,3,102041,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/data/test_run_state.gd,1,0,0,0,0,no_unit,0,0,49883,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/data/test_shell.gd,4,0,0,0,0,no_unit,0,0,140019,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/data/test_taskblock21_gun_data.gd,5,3,0,0,1,hand_built,2,2,144624,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/data/test_tool_parts.gd,2,1,0,0,0,hand_built,1,2,81769,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/data/test_weapon_def.gd,0,0,0,0,1,no_unit,0,0,193197,0,0,0,0,,
-unit/debug/test_ascii_render.gd,4,0,0,0,0,no_unit,0,0,94289,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/debug/test_bout_injector.gd,7,2,2,0,1,hand_built,1,2,1354329,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/debug/test_bout_injector_determinism.gd,1,1,0,0,0,hand_built,0,0,77953,6,0,0,96,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/debug/test_bout_injector_force_climb.gd,1,1,0,0,0,hand_built,0,0,89516,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/debug/test_bout_injector_kill.gd,2,2,0,0,0,hand_built,1,2,75604,5,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/debug/test_bout_injector_move_object.gd,2,1,0,0,0,hand_built,0,0,117978,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/debug/test_bout_injector_remove_object.gd,3,2,0,0,0,hand_built,1,2,108262,3,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/debug/test_bout_injector_set_cell_level.gd,1,1,0,0,0,hand_built,0,0,82993,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/debug/test_bout_injector_spawn_object.gd,2,1,0,0,0,hand_built,0,0,95410,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/debug/test_build_identity.gd,0,0,0,0,0,no_unit,0,0,74054,0,0,0,0,,
-unit/debug/test_debug_verbs.gd,0,0,0,0,0,no_unit,0,0,65009,0,0,0,0,,
-unit/logic/actions/test_attack_action.gd,13,6,0,0,1,hand_built,3,9,317150,0,0,28,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_burst_action.gd,6,2,0,0,1,hand_built,5,4,402881,0,0,15,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_carry_body_action.gd,6,2,0,0,0,hand_built,4,9,106674,1,0,1,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_end_turn_action.gd,1,1,0,0,0,hand_built,0,0,197313,14,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_extract_action.gd,1,1,0,0,0,hand_built,0,0,125676,3,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_face_action.gd,4,2,0,0,0,hand_built,3,7,118263,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_gather_action.gd,1,1,0,0,0,hand_built,0,0,85132,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/actions/test_grind_action.gd,6,3,0,0,0,hand_built,2,2,69897,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_hold_action.gd,1,1,0,0,0,hand_built,0,0,116985,18,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/actions/test_modify_assembly_action.gd,3,1,0,0,0,hand_built,2,2,64886,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/actions/test_move_action.gd,1,1,0,0,0,hand_built,0,0,290983,2,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/actions/test_pick_up_action.gd,6,2,0,0,0,hand_built,2,5,96051,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_repair_action.gd,5,1,0,0,0,hand_built,3,5,153634,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_shot_resolution.gd,3,1,0,0,0,hand_built,1,2,8381,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/actions/test_shutdown_action.gd,4,3,0,0,0,hand_built,1,4,120129,6,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/actions/test_slash_action.gd,6,3,0,0,0,hand_built,2,2,82353,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_stab_action.gd,4,2,0,0,0,hand_built,2,2,123553,0,0,5,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/actions/test_swap_part_action.gd,3,1,0,0,0,hand_built,1,2,65369,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/ai/test_ally_in_line.gd,1,1,0,0,0,hand_built,1,2,260893,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/ai/test_batch_objective.gd,4,1,0,0,1,hand_built,1,3,12600877,0,0,0,72280,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/ai/test_batch_plumbing.gd,0,0,1,1,1,real_unit,0,0,29946722,32,0,144,48680,,
-unit/logic/ai/test_bout_runner.gd,6,2,0,0,0,hand_built,1,4,1135870,29,0,18,30506,CORRECT,"the rifle's ap_cost 5 against the real 2 is deliberate and the fixture says so: it makes a plain shot unaffordable against the unit's own 3 max_ap, so overwatch is the only option the turn has. A real weapon would remove the thing under test"
-unit/logic/ai/test_bout_setup.gd,0,0,0,22,1,real_unit,0,0,3325687,0,0,0,0,,
-unit/logic/ai/test_close_range_firing_decision.gd,0,0,1,0,1,real_unit,0,0,4211034,0,0,0,10170,,
-unit/logic/ai/test_contest_victory_mode.gd,3,1,0,7,1,hand_built,0,0,966024,3,0,2,981,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/ai/test_distance_flood_direction.gd,0,0,1,0,1,real_unit,0,0,185222,0,0,0,0,,
-unit/logic/ai/test_engagement_rect_cull.gd,3,1,0,0,0,hand_built,0,0,940709,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/ai/test_panic.gd,1,1,0,0,1,hand_built,0,0,339686,0,0,0,4576,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/ai/test_plan_pacer.gd,3,1,0,1,1,hand_built,0,0,13917930,12,0,48,24122,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/ai/test_preset_weapon_reachability.gd,2,0,1,0,1,real_unit,0,0,67525,0,0,0,0,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
-unit/logic/ai/test_search_behaviour.gd,3,1,0,0,1,hand_built,0,0,3407383,14,0,0,93532,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/ai/test_tier_and_profile_table.gd,3,1,0,0,1,hand_built,0,0,5444940,2,0,0,7751,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/ai/test_utility_lookahead.gd,0,0,1,0,1,real_unit,0,0,2292228,0,0,0,4604,,
-unit/logic/ai/test_utility_planner.gd,3,1,0,2,1,hand_built,0,0,21655441,19,0,75,56245,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/ai/test_utility_scorer.gd,0,0,5,0,0,real_unit,0,0,317587,0,0,0,0,,
-unit/logic/ai/test_vertical_planning.gd,0,0,1,0,1,real_unit,0,0,433042,1,0,3,1036,,
-unit/logic/test_action_catalog.gd,10,4,0,0,0,hand_built,5,4,224080,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_action_queue.gd,1,1,0,0,0,hand_built,0,0,156926,1,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_aim_as_input.gd,3,2,0,0,0,hand_built,0,0,307094,0,0,1,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_aim_controller.gd,3,2,0,0,0,hand_built,0,0,256962,0,0,18,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_aim_cost_probe.gd,0,0,1,0,1,real_unit,0,0,3401116,0,0,40,0,,
-unit/logic/test_aim_layer.gd,0,0,0,0,0,no_unit,0,0,52494,0,0,0,0,,
-unit/logic/test_aim_offset_bias.gd,0,0,1,0,1,real_unit,0,0,138738,0,0,4,0,,
-unit/logic/test_aim_plane_geometry.gd,0,0,0,0,0,no_unit,0,0,151176,0,0,0,0,,
-unit/logic/test_aim_point_units.gd,0,0,0,0,1,no_unit,0,0,103071,0,0,1,0,,
-unit/logic/test_ammo_def.gd,0,0,0,0,1,no_unit,0,0,139707,0,0,0,0,,
-unit/logic/test_announcements.gd,0,0,0,0,0,no_unit,0,0,126601,0,0,0,0,,
-unit/logic/test_ap_mp_pips.gd,1,1,0,0,0,hand_built,0,0,108403,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_battle_layout.gd,0,0,0,0,0,no_unit,0,0,164505,0,0,0,0,,
-unit/logic/test_blocker_placement.gd,0,0,0,0,0,no_unit,0,0,106270,0,0,1,0,,
-unit/logic/test_board_picker.gd,0,0,0,0,1,no_unit,0,0,154733,0,0,0,0,,
-unit/logic/test_body_assembler.gd,2,0,16,0,0,real_unit,0,0,183884,0,0,0,0,CORRECT,"the model case, and its header already said so before this audit: the reference humanoid's structural correctness is covered by test_reference_humanoid.gd, and these tests exercise the assembler's contract with purpose-built fixtures"
-unit/logic/test_body_projector.gd,38,18,0,0,0,hand_built,6,10,310165,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_body_skeleton.gd,0,3,1,0,1,hand_built,0,0,213346,0,0,3,0,,
-unit/logic/test_bonus_pen.gd,4,0,0,0,0,no_unit,0,0,65281,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_bot_profiles.gd,0,0,6,0,1,real_unit,0,0,246958,0,0,0,0,,
-unit/logic/test_bout_corpus.gd,0,0,0,14,1,real_unit,0,0,210025,0,0,0,0,,
-unit/logic/test_builder_controller.gd,0,0,2,0,0,real_unit,0,0,223675,0,0,0,0,,
-unit/logic/test_camera_orbit_state.gd,0,0,0,0,0,no_unit,0,0,232611,0,0,0,0,,
-unit/logic/test_cell_inspection.gd,1,1,0,0,1,hand_built,1,2,133836,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_close_range_sight.gd,0,0,2,0,1,real_unit,0,0,194447,0,0,0,0,,
-unit/logic/test_combat_action_speed.gd,2,1,0,0,0,hand_built,2,4,81541,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_combat_log.gd,0,0,0,0,0,no_unit,0,0,157571,0,0,0,0,,
-unit/logic/test_combat_state.gd,2,3,0,0,0,hand_built,0,0,357677,22,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_combat_state_initiative.gd,1,1,0,0,0,hand_built,0,0,121393,21,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_combat_tester_presets.gd,0,0,1,1,1,real_unit,0,0,264157,0,0,0,0,,
-unit/logic/test_command_log.gd,0,0,2,0,0,real_unit,0,0,360805,0,0,0,0,,
-unit/logic/test_completion_sampler.gd,0,0,1,2,1,real_unit,0,0,33256378,53,0,28,132795,,
-unit/logic/test_containers.gd,0,0,0,0,0,no_unit,0,0,53663,0,0,0,0,,
-unit/logic/test_continuous_height_and_escapes.gd,1,1,0,0,1,hand_built,1,2,125774,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_control_bindings.gd,0,0,0,0,0,no_unit,0,0,64675,0,0,0,0,,
-unit/logic/test_csv_line.gd,0,0,0,0,0,no_unit,0,0,84756,0,0,0,0,,
-unit/logic/test_cutout_gate_over_zoom.gd,1,1,0,0,1,hand_built,1,2,413126,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_damage_resolver.gd,39,17,0,0,1,hand_built,4,12,336253,0,0,30,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_damage_resolver_consequences.gd,12,4,0,0,1,hand_built,6,7,146224,2,0,0,0,CORRECT,the arm's failure_mode DISABLE against the real MANGLE is the second of a matched pair — the file asserts MANGLE is the default in one test and sets DISABLE in the next to exercise the other branch
-unit/logic/test_damage_resolver_deflect_modes.gd,2,1,0,0,1,hand_built,0,0,59313,0,0,6,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_damage_resolver_spherecast.gd,1,0,0,0,1,no_unit,0,0,59841,0,0,3,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_damage_source_of_truth.gd,1,0,0,0,1,no_unit,1,0,55373,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_dartboard.gd,1,0,0,0,0,no_unit,0,0,121814,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_dartboard_texture.gd,0,0,0,0,0,no_unit,0,0,331353,0,0,0,0,,
-unit/logic/test_data_library.gd,4,0,0,0,1,no_unit,0,0,277466,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_data_migration_losslessness.gd,0,0,0,0,1,no_unit,0,0,98491,0,0,0,0,,
-unit/logic/test_data_validator.gd,2,0,0,0,0,no_unit,2,1,88156,0,0,0,0,CORRECT,the reactor's failure_mode NOT_A_REAL_MODE is the input the validator exists to reject; a valid value would test nothing
-unit/logic/test_death_mid_turn.gd,0,0,2,0,1,real_unit,0,0,511961,7,0,0,0,,
-unit/logic/test_deep_strike.gd,6,3,9,0,1,hand_built,3,5,724499,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_deflect_resistance_scales_with_penetration.gd,1,0,0,0,1,no_unit,0,0,177735,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_description_builder.gd,0,0,0,0,0,no_unit,0,0,66216,0,0,0,0,,
-unit/logic/test_detonation_draw.gd,2,0,4,0,0,real_unit,1,5,146495,0,0,0,0,DRIFTED,"FIXED tb68 D. Asserted radius 3.0 as 'the part's own real radius' on a hand-built goo_barrel where the game's is 2.0 (detonate_damage 40.0 vs 12.0, material steel vs reactive). Fixing it exposed the larger defect: the shot left origin_height at its 0.0 default, so the ray ran along the ground plane tangent to every box, hit NOTHING, and the assertion was skipped by `if blasts.is_empty(): assert_true(true); return` — vacuous since tb51 C. Now fires at MUZZLE_HEIGHT 0.5 (swept: 0.0 and 0.9 miss, 0.3 hits without destroying), asserts the radius read back off the part, and a second test fires at the real DataLibrary goo_barrel and gets its own 2.0"
-unit/logic/test_editor_controller.gd,0,0,0,0,1,no_unit,0,0,1050436,0,0,0,0,,
-unit/logic/test_editor_tools.gd,0,0,0,0,1,no_unit,0,0,259003,0,0,0,0,,
-unit/logic/test_engine_error_tap.gd,0,0,1,0,0,real_unit,0,0,145718,0,0,0,0,,
-unit/logic/test_every_firing_path_announces_itself.gd,5,3,0,0,0,hand_built,2,4,505007,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_face_placement.gd,0,0,0,0,1,no_unit,0,0,223350,0,0,0,0,,
-unit/logic/test_field_objects.gd,0,0,0,0,1,no_unit,0,0,326072,0,0,1,0,,
-unit/logic/test_file_sink.gd,0,0,0,0,0,no_unit,0,0,115151,0,0,0,0,,
-unit/logic/test_fps_meter.gd,0,0,0,0,0,no_unit,0,0,102743,0,0,0,0,,
-unit/logic/test_generated_board_sight_sweep.gd,0,0,0,0,0,no_unit,0,0,31980192,0,0,0,0,,
-unit/logic/test_generation_heights.gd,0,0,0,0,1,no_unit,0,0,11065190,0,0,0,0,,
-unit/logic/test_gizmo.gd,0,0,0,0,0,no_unit,0,0,312902,0,0,0,0,,
-unit/logic/test_gizmo_grow.gd,0,0,0,0,0,no_unit,0,0,131882,0,0,0,0,,
-unit/logic/test_grid.gd,6,0,0,0,0,no_unit,1,2,306248,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_grid_placement.gd,1,0,0,0,0,no_unit,0,0,110966,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_hover_and_turn_end.gd,1,1,0,0,0,hand_built,1,2,221200,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_inspect_rows.gd,9,1,0,0,1,hand_built,1,2,67879,0,0,0,0,AVOIDING,"a real shell produces 26 rows against this fixture's 3, so the weapons/containers/body partition is only ever exercised with one member per group. The ordering assertions survive the substitution; only the hardcoded row count does not"
-unit/logic/test_instant_resolver.gd,1,1,0,0,0,hand_built,1,2,119052,1,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_intelligence_tiers.gd,0,1,1,0,1,hand_built,0,0,2087879,0,0,0,0,,
-unit/logic/test_internal_targeting.gd,0,2,0,0,1,hand_built,0,0,146654,0,0,6,0,,
-unit/logic/test_inventory.gd,6,0,0,0,0,no_unit,0,0,226794,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_inventory_rows.gd,14,1,0,0,1,hand_built,3,6,133701,0,0,0,0,AVOIDING,"a real shell produces 26 rows against this fixture's 1, so the socket/contents nesting rule this file exists for is only ever tested at depth 0-1"
-unit/logic/test_joints.gd,13,3,0,0,1,hand_built,4,0,182365,0,0,8,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_kit_equipper.gd,3,1,0,0,1,hand_built,1,2,327803,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_knowledge.gd,0,2,0,0,1,hand_built,0,0,56844,0,0,0,0,,
-unit/logic/test_ladder.gd,1,1,0,0,1,hand_built,1,2,253388,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_ledge_veneer.gd,0,0,0,0,1,no_unit,0,0,272243,0,0,0,0,,
-unit/logic/test_life_support.gd,4,1,0,0,0,hand_built,2,4,119335,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_line_of_fire.gd,1,1,0,0,1,hand_built,0,0,149746,0,0,13,0,DRIFTED,"FIXED tb68 D — oracle moved to all_parts_with_joints(), plus a second parity test on the RealUnit chaingunner so a jointless fixture can never hide it again. Was: its oracle excludes shooter.shell.all_parts(); every production path (ShotResolution, AimController, Overwatch) excludes all_parts_with_joints() per BR36.01. The two are identical for this file's socket-less torso, so the divergence is invisible; under a real 48-box shell the plane resolves to the shooter's OWN ammo_rack_joint instead of the wall (substitution probe). The file's header asks for exactly the opposite: 'read the actual plane back, don't re-derive the ray math'"
-unit/logic/test_load_map_verb.gd,1,2,0,0,0,hand_built,1,2,368123,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_log_fold.gd,2,3,0,0,0,hand_built,0,0,151733,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_log_playback.gd,0,0,0,0,0,no_unit,0,0,134449,0,0,0,0,,
-unit/logic/test_loot_table.gd,0,0,0,0,0,no_unit,0,0,126235,0,0,0,0,,
-unit/logic/test_los.gd,1,0,0,0,1,no_unit,1,2,297492,0,0,1,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_mag_lift.gd,0,0,1,0,1,real_unit,0,0,418302,0,0,0,0,,
-unit/logic/test_map_corpus.gd,0,0,0,0,0,no_unit,0,0,3347378,0,0,0,0,,
-unit/logic/test_map_gen.gd,0,0,0,0,0,no_unit,0,0,33879389,0,0,0,0,,
-unit/logic/test_map_gen_raised_rooms.gd,0,0,0,0,1,no_unit,0,0,10743077,0,0,0,0,,
-unit/logic/test_map_gen_reachability.gd,0,0,0,0,0,no_unit,0,0,19553627,0,0,0,0,,
-unit/logic/test_map_navigability.gd,0,0,0,0,1,no_unit,0,0,734516,0,0,0,0,,
-unit/logic/test_map_serializer.gd,0,0,0,2,1,real_unit,0,0,11234568,16,0,48,26776,,
-unit/logic/test_material_entry.gd,0,0,0,0,0,no_unit,0,0,112849,0,0,0,0,,
-unit/logic/test_melee_delivery.gd,6,2,0,0,0,hand_built,3,3,113158,0,0,12,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_melee_line.gd,0,0,0,0,0,no_unit,0,0,131529,0,0,0,0,,
-unit/logic/test_melee_reach.gd,5,1,0,0,0,hand_built,1,2,233054,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_membership_disagreement.gd,2,0,0,0,0,no_unit,1,1,92633,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_mission_state.gd,3,1,0,0,0,hand_built,0,0,379688,5,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_multi_level_geometry.gd,1,1,0,0,0,hand_built,0,0,104355,0,0,4,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_one_aim_path.gd,0,2,0,0,1,hand_built,0,0,181070,0,0,3,0,,
-unit/logic/test_overwatch.gd,5,2,0,0,0,hand_built,3,3,5498891,0,0,1398,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_part_graph.gd,1,0,0,0,0,no_unit,0,0,342295,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_part_picker.gd,2,1,0,0,0,hand_built,0,0,220356,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_pathfinder.gd,4,0,0,0,0,no_unit,1,0,466138,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_penetration_traverses_body.gd,8,7,0,0,1,hand_built,0,0,305954,0,0,13,0,CORRECT,"same pre-BR36.01 all_parts() exclusion list as test_line_of_fire.gd, but inert here: the shooter is Shell.new(Part.new()), a deliberately geometry-free placeholder with no sockets, so the joint-bearing half of the list is empty either way"
-unit/logic/test_per_tier_probe.gd,0,0,0,0,1,no_unit,0,0,7757385,36,0,0,82082,,
-unit/logic/test_perf_stats.gd,0,0,0,0,0,no_unit,0,0,264839,0,0,0,0,,
-unit/logic/test_picker_surfaces.gd,0,0,0,0,1,no_unit,0,0,237045,0,0,0,0,,
-unit/logic/test_placed_volume.gd,2,0,0,0,1,no_unit,0,0,364482,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_placement_position.gd,0,0,0,0,1,no_unit,0,0,375264,0,0,0,0,,
-unit/logic/test_plate_geometry.gd,0,1,0,0,1,hand_built,0,0,199598,0,0,0,0,,
-unit/logic/test_power_drives_ap.gd,12,4,0,0,1,hand_built,0,0,622958,7,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_proving_ground_map.gd,0,0,0,0,0,no_unit,0,0,246879,0,0,0,0,,
-unit/logic/test_queue_log.gd,0,0,1,0,1,real_unit,0,0,790167,0,0,0,0,,
-unit/logic/test_ramp_geometry.gd,0,0,0,0,0,no_unit,0,0,93743,0,0,0,0,,
-unit/logic/test_range_gives_internals_meaning.gd,2,2,0,0,1,hand_built,1,0,101257,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_range_model.gd,3,0,0,0,0,no_unit,0,0,154696,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_ray_caster.gd,1,2,0,0,0,hand_built,0,0,343803,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_ray_chain.gd,4,1,0,0,0,hand_built,0,0,852076,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_ray_surfaces.gd,4,1,0,0,1,hand_built,0,0,755785,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_ray_tiebreak.gd,1,1,0,0,0,hand_built,0,0,2142838,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_reaction_window.gd,4,2,0,0,0,hand_built,3,3,157944,0,0,6,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_real_unit.gd,1,1,4,0,1,hand_built,0,0,-1,-1,-1,-1,-1,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_recoil_resolver.gd,1,0,0,0,0,no_unit,0,0,136480,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_reference_humanoid.gd,2,1,2,0,1,hand_built,0,0,391694,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_repair_resolver.gd,10,2,0,0,0,hand_built,3,5,258548,0,0,0,0,CORRECT,"the leg's material steel against the real artificial_bone reaches nothing: scrap cost is heal_amount * SCRAP_PER_HP with no material term, and the one test that does care sets its own ceramic and asserts the passthrough"
-unit/logic/test_replay_handle.gd,0,0,0,0,1,no_unit,0,0,1549914,0,0,0,0,,
-unit/logic/test_resolution_speed.gd,4,2,0,0,0,hand_built,3,6,236345,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_resolve_ray.gd,2,4,0,0,0,hand_built,0,0,218177,0,0,20,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_resolve_until.gd,6,2,0,0,0,hand_built,5,7,593110,2,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_resolver_parity.gd,1,1,0,0,0,hand_built,0,0,13042357,0,0,1625,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_resource_edit_stack.gd,6,0,0,0,0,no_unit,0,0,143002,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_resource_editor_columns.gd,0,0,0,0,1,no_unit,0,0,302342,0,0,0,0,,
-unit/logic/test_resource_editor_rows.gd,3,0,0,0,0,no_unit,3,0,155989,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_ricochet_stress.gd,4,2,0,0,1,hand_built,2,3,139982,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_scripted_corpus.gd,0,0,0,22,1,real_unit,0,0,3576439,25,0,0,1246,,
-unit/logic/test_seam_sweep.gd,1,1,0,0,0,hand_built,1,3,11061144,0,0,4259,0,CORRECT,"the shooter is excluded from its own shot and the ray's origin is passed in explicitly, so no property of the body can reach the measurement; a real 48-box shell passes it unchanged. Uses all_parts_with_joints(), which is the list production uses"
-unit/logic/test_search_filter.gd,0,0,0,0,0,no_unit,0,0,154980,0,0,0,0,,
-unit/logic/test_seated_placement.gd,0,0,0,0,1,no_unit,0,0,262474,0,0,0,0,,
-unit/logic/test_section_claims.gd,0,0,0,0,1,no_unit,0,0,392492,0,0,0,0,,
-unit/logic/test_section_format.gd,0,0,0,0,0,no_unit,0,0,292350,0,0,0,0,,
-unit/logic/test_section_join.gd,1,1,0,0,0,hand_built,1,2,263752,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_section_preview_rolls.gd,0,0,0,0,0,no_unit,0,0,411628,0,0,0,0,,
-unit/logic/test_section_stacking.gd,0,0,0,0,1,no_unit,0,0,192178,0,0,0,0,,
-unit/logic/test_selection_controller.gd,6,2,0,0,0,hand_built,3,7,639888,2,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_selection_of_cover.gd,1,0,3,0,1,real_unit,1,2,4164458,0,0,0,960,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
-unit/logic/test_selection_target.gd,1,0,1,0,0,real_unit,1,2,260623,0,0,0,0,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
-unit/logic/test_shard_map.gd,0,0,0,0,0,no_unit,0,0,173679,0,0,0,0,,
-unit/logic/test_shard_merge.gd,0,0,0,0,0,no_unit,0,0,728046,0,0,0,0,,
-unit/logic/test_shot_hop_pacing.gd,0,0,0,0,0,no_unit,0,0,64680,0,0,0,0,,
-unit/logic/test_shot_plane.gd,4,3,0,0,1,hand_built,0,0,337685,0,0,17,0,CORRECT,"fixtures authored symmetric about x == 0, the line of fire, because that is the natural body-space origin for the depth-sort rule under test — its own header says so"
-unit/logic/test_shot_plane_amortisation.gd,2,2,0,0,0,hand_built,1,3,228966,0,0,31,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_shot_scatter.gd,3,1,0,0,0,hand_built,1,2,56817,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_sight_cost_probe.gd,0,0,0,0,1,no_unit,0,0,352498,0,0,0,0,,
-unit/logic/test_sight_geometry.gd,1,1,0,0,1,hand_built,1,2,1255296,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_socket.gd,0,0,0,0,0,no_unit,0,0,38722,0,0,0,0,,
-unit/logic/test_spread_pattern.gd,1,0,0,0,0,no_unit,0,0,63327,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_standing_height.gd,0,0,4,0,0,real_unit,0,0,204512,0,0,2,0,,
-unit/logic/test_stat_resolver.gd,1,0,0,0,0,no_unit,0,0,84843,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_step_height.gd,2,1,1,5,1,hand_built,0,0,2737481,0,0,0,0,CORRECT,"the rule is how step height VARIES with leg geometry, so the fixture has to vary — one real unit is one sample, and the assertions are relative to each fixture's own legs"
-unit/logic/test_step_out_interrupt.gd,8,2,0,0,0,hand_built,4,6,98248,0,0,10,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_step_out_planner.gd,7,2,0,0,0,hand_built,3,5,278605,0,0,4,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_suite_order.gd,0,0,0,0,0,no_unit,0,0,105679,0,0,0,0,,
-unit/logic/test_suite_run.gd,0,0,0,0,0,no_unit,0,0,19532959,0,7,0,0,,
-unit/logic/test_suppression.gd,6,3,0,0,0,hand_built,2,2,97657,1,0,4,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_surrogate.gd,5,0,10,0,0,real_unit,2,2,123333,2,0,0,0,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
-unit/logic/test_surrogate_ladder.gd,0,0,0,0,0,no_unit,0,0,112686,0,0,0,0,,
-unit/logic/test_tb38_flat_bout_guard.gd,1,1,0,0,0,hand_built,0,0,232560,24,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_the_punch.gd,3,2,0,0,0,hand_built,1,0,41121,0,0,1,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_tooltip_builder.gd,10,1,0,0,1,hand_built,2,3,180587,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_tracer_geometry.gd,0,0,0,0,0,no_unit,0,0,60463,0,0,0,0,,
-unit/logic/test_transparency_proof.gd,4,2,0,0,0,hand_built,2,4,54722,0,0,31,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_turn_start_power_walks.gd,0,0,1,0,0,real_unit,0,0,84383,0,0,0,0,,
-unit/logic/test_ui_layout.gd,0,0,0,0,0,no_unit,0,0,157690,0,0,0,0,,
-unit/logic/test_unit.gd,8,9,0,0,0,hand_built,0,0,106237,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_unit_geometry.gd,32,22,1,0,1,hand_built,6,10,264394,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_unit_picker.gd,3,2,0,0,0,hand_built,2,4,77616,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_variant_generator.gd,0,0,2,0,1,real_unit,0,0,537273,0,0,0,0,,
-unit/logic/test_vertical_movement.gd,1,1,0,0,1,hand_built,1,2,289059,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_vertical_routes.gd,0,0,0,0,1,no_unit,0,0,13211374,0,0,0,0,,
-unit/logic/test_visibility_field.gd,4,1,0,0,0,hand_built,1,2,355855,0,0,299,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_wall_legibility.gd,4,2,0,0,1,hand_built,1,2,315955,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/logic/test_watched_run.gd,0,0,0,1,1,real_unit,0,0,684346353,575,0,754,860658,,
-unit/logic/test_weapon_chambering.gd,2,0,0,0,1,no_unit,1,0,168563,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_weapon_resolver.gd,1,0,0,0,0,no_unit,1,2,124148,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/logic/test_weapon_rows.gd,12,1,0,0,0,hand_built,4,8,112638,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_weapon_sim_hardening.gd,6,3,0,0,1,hand_built,2,2,462423,0,0,7,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_work_counters.gd,0,0,3,2,1,real_unit,0,0,19562285,26,0,60,54260,,
-unit/logic/test_world_view_seam.gd,3,1,0,1,1,hand_built,0,0,15890860,16,0,72,24340,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/logic/test_wounds.gd,7,2,0,0,1,hand_built,0,0,330242,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/test_check_budget.gd,0,0,0,0,0,no_unit,0,0,1381660,0,2,0,0,,
-unit/test_exit_code_probe.gd,0,0,0,0,0,no_unit,0,0,2028,0,0,0,0,,
-unit/test_gate_fallback.gd,0,0,0,0,0,no_unit,0,0,-1,-1,-1,-1,-1,,
-unit/test_hulk_prefix_guard.gd,0,0,0,0,0,no_unit,0,0,597857,0,0,0,0,,
-unit/test_lint_config.gd,0,0,0,0,0,no_unit,0,0,39411,0,0,0,0,,
-unit/test_merge_shards.gd,0,0,0,0,0,no_unit,0,0,3114752,0,8,0,0,,
-unit/test_no_orphaned_uids.gd,0,0,0,0,0,no_unit,0,0,4602,0,0,0,0,,
-unit/test_retired_planner_sweep.gd,0,0,0,0,0,no_unit,0,0,84094,0,0,0,0,,
-unit/test_run_suite.gd,0,0,0,0,0,no_unit,0,0,17045530,0,9,0,0,,
-unit/test_smoke.gd,0,0,0,0,0,no_unit,0,0,34446,0,0,0,0,,
-unit/test_suite_budget.gd,0,0,0,0,0,no_unit,0,0,43487,0,0,0,0,,
-unit/test_suite_process.gd,0,0,0,0,0,no_unit,0,0,377634,0,1,0,0,,
-unit/test_suite_profile_consistency.gd,0,0,0,0,0,no_unit,0,0,104787,0,0,0,0,,
-unit/test_suite_tier.gd,0,0,0,0,0,no_unit,0,0,16656,0,0,0,0,,
-unit/test_void_vocabulary_guard.gd,0,0,0,0,0,no_unit,0,0,440340,0,0,0,0,,
-unit/view/modules/test_aim_mode.gd,0,0,1,0,1,real_unit,0,0,12467127,0,0,6,0,,
-unit/view/modules/test_battle_placements.gd,0,0,0,0,1,no_unit,0,0,17067858,0,0,0,0,,
-unit/view/modules/test_editor_gizmo_followups.gd,0,0,0,0,1,no_unit,0,0,7021757,0,0,0,0,,
-unit/view/modules/test_editor_isolation.gd,0,0,0,0,1,no_unit,0,0,4416689,0,0,0,0,,
-unit/view/modules/test_editor_mode.gd,0,0,0,0,1,no_unit,0,0,17633321,0,0,0,0,,
-unit/view/modules/test_editor_scale.gd,0,0,0,0,1,no_unit,0,0,7168358,0,0,0,0,,
-unit/view/modules/test_editor_stacks.gd,0,0,0,0,1,no_unit,0,0,6225389,0,0,0,0,,
-unit/view/modules/test_editor_surfaces.gd,0,0,0,0,1,no_unit,0,0,10652694,0,0,0,0,,
-unit/view/modules/test_editor_veneer.gd,0,0,0,0,1,no_unit,0,0,7183488,0,0,0,0,,
-unit/view/modules/test_editor_view_agreement.gd,0,0,0,0,1,no_unit,0,0,8141184,0,0,0,0,,
-unit/view/modules/test_editor_visible_gaps.gd,0,0,0,0,1,no_unit,0,0,14694188,0,0,0,0,,
-unit/view/modules/test_gizmo_drag_fidelity.gd,0,0,0,0,1,no_unit,0,0,5406429,0,0,0,0,,
-unit/view/modules/test_gizmo_module.gd,0,0,0,0,1,no_unit,0,0,10793266,0,0,0,0,,
-unit/view/modules/test_layout_review.gd,0,0,0,0,1,no_unit,0,0,27430541,0,0,0,0,,
-unit/view/modules/test_layout_review_3.gd,0,0,0,0,1,no_unit,0,0,20657803,0,0,0,0,,
-unit/view/modules/test_parts_list.gd,0,0,0,0,1,no_unit,0,0,8206278,0,0,0,0,,
-unit/view/modules/test_pass_c_behaviours.gd,0,0,0,0,1,no_unit,0,0,10150912,2,0,0,0,,
-unit/view/modules/test_slot_properties.gd,0,0,0,0,0,no_unit,0,0,2969,0,0,0,0,,
-unit/view/modules/test_slot_providers.gd,0,0,0,0,1,no_unit,0,0,5420830,0,0,0,0,,
-unit/view/modules/test_surfaces_do_not_overlap.gd,0,0,0,0,1,no_unit,0,0,3017654,0,0,0,0,,
-unit/view/modules/test_three_bars.gd,0,0,0,0,1,no_unit,0,0,20592445,0,0,0,0,,
-unit/view/modules/test_ui_button_sync.gd,0,0,0,0,1,no_unit,0,0,3565291,0,0,0,0,,
-unit/view/modules/test_view_gap_modules.gd,0,0,0,0,1,no_unit,0,0,555968,0,0,0,0,,
-unit/view/modules/test_view_modes.gd,0,0,0,0,1,no_unit,0,0,11734638,0,0,0,0,,
-unit/view/modules/test_view_modules_stand_alone.gd,0,0,0,0,1,no_unit,0,0,325864,0,0,0,0,,
-unit/view/overlays/test_ai_batch_yield.gd,0,0,0,1,1,real_unit,0,0,22466026,48,0,67,87524,,
-unit/view/overlays/test_generate_bout_overlay.gd,0,0,0,2,1,real_unit,0,0,14899797,0,0,0,0,,
-unit/view/overlays/test_spectator_overlay.gd,2,1,1,0,1,hand_built,1,2,57350451,13,0,13,1447,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/overlays/test_squad_control_overlay.gd,12,5,0,0,1,hand_built,4,10,20227314,11,0,6,677,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_action_bar.gd,10,4,0,0,0,hand_built,4,10,295041,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_aim_frame_probe.gd,0,0,1,0,1,real_unit,0,0,5489434,0,0,1,0,,
-unit/view/test_aim_ray_is_camera_dependent.gd,0,0,0,0,0,no_unit,0,0,46695,0,0,0,0,,
-unit/view/test_aim_view_dartboard_cache.gd,2,1,0,0,0,hand_built,2,2,175092,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_aim_view_decal_axis.gd,0,0,0,0,0,no_unit,0,0,47579,0,0,0,0,,
-unit/view/test_aim_view_part_label.gd,3,1,0,0,1,hand_built,3,8,350430,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_ap_mp_pip_row.gd,1,1,0,0,0,hand_built,0,0,156292,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/view/test_batch_badge_view.gd,1,1,0,0,1,hand_built,1,2,905936,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/view/test_battle_scene.gd,7,2,0,1,0,hand_built,4,9,63627397,3,0,0,540,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_battle_scene_input.gd,0,0,0,0,0,no_unit,0,0,4027068,0,0,0,0,,
-unit/view/test_battle_scene_occlusion_fade.gd,3,1,0,0,0,hand_built,3,7,5265604,0,0,6,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_board_view.gd,12,1,0,0,1,hand_built,5,8,110095,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_board_view_occlusion.gd,1,1,0,0,1,hand_built,1,2,236254,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_board_view_winding.gd,0,0,0,0,1,no_unit,0,0,61711,0,0,0,0,,
-unit/view/test_bout_build_log.gd,0,0,0,0,1,no_unit,0,0,51596,0,0,0,0,,
-unit/view/test_builder_scene.gd,0,0,1,0,0,real_unit,0,0,133556,0,0,0,0,,
-unit/view/test_camera_rig.gd,1,1,0,0,0,hand_built,1,2,236890,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_camera_rig_aim.gd,0,0,0,0,0,no_unit,0,0,99479,0,0,0,0,,
-unit/view/test_combat_log_panel.gd,0,0,0,0,0,no_unit,0,0,228257,0,0,0,0,,
-unit/view/test_controls_overlay.gd,0,0,0,0,0,no_unit,0,0,67976,0,0,0,0,,
-unit/view/test_cutout_feed_cost_probe.gd,0,0,1,0,1,real_unit,0,0,550529,0,0,0,0,,
-unit/view/test_cutout_gate_cost_probe.gd,0,0,1,0,1,real_unit,0,0,138551,0,0,0,0,,
-unit/view/test_debug_control_panel.gd,3,2,0,0,1,hand_built,1,0,1142051,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_debug_panel_layout.gd,0,0,1,0,1,real_unit,0,0,8296115,0,0,0,0,,
-unit/view/test_extracted_unit_leaves_the_board.gd,1,1,0,0,0,hand_built,0,0,129866,11,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/view/test_facing_arc.gd,0,0,0,0,0,no_unit,0,0,47986,0,0,0,0,,
-unit/view/test_hierarchical_ui_sink.gd,0,0,0,0,0,no_unit,0,0,69039,0,0,0,0,,
-unit/view/test_hit_volume_view.gd,3,3,0,0,1,hand_built,2,4,338541,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_hit_volume_view_mesh_scene.gd,2,2,0,0,1,hand_built,2,4,63288,0,0,0,0,AVOIDING,"its assertion reads 'no box instance may exist for a part that has a commissioned mesh' and actually checks that NO box instance exists anywhere in the view — identical claims for a one-part fixture, and a real shell separates them. The per-part rule is genuinely covered by test_a_mixed_assembly_renders_the_mesh_and_the_box_together"
-unit/view/test_hit_volume_view_refresh.gd,0,0,1,0,1,real_unit,0,0,146688,0,0,0,0,,
-unit/view/test_hit_volume_view_render_primitive.gd,1,1,0,0,1,hand_built,1,3,93432,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_hit_volume_view_show_assembly.gd,1,0,0,0,1,no_unit,0,0,85022,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/view/test_hit_volume_view_weapon_labels.gd,2,1,0,0,1,hand_built,2,4,135898,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_hulk_theme.gd,0,0,0,0,0,no_unit,0,0,80171,0,0,0,0,,
-unit/view/test_inspect_dim.gd,1,0,1,0,1,real_unit,1,2,3431290,0,0,0,0,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
-unit/view/test_inspect_panel.gd,13,7,0,0,1,hand_built,4,7,541995,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_inspect_viewer_lighting.gd,1,1,0,0,1,hand_built,1,2,81051,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/view/test_inspect_world_leak.gd,0,0,2,0,1,real_unit,0,0,1720153,0,0,0,0,,
-unit/view/test_no_risers.gd,0,0,0,0,1,no_unit,0,0,84191,0,0,0,0,,
-unit/view/test_part_highlight_bidirectional.gd,3,1,0,0,1,hand_built,3,6,127475,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_perf_panel.gd,0,0,0,0,0,no_unit,0,0,4346227,0,0,0,0,,
-unit/view/test_phase12_transparency.gd,3,1,0,0,0,hand_built,3,6,95738,1,0,1,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_replay_wiring.gd,0,0,1,0,1,real_unit,0,0,22354945,0,8,0,600,,
-unit/view/test_resolution_player.gd,1,1,0,0,0,hand_built,0,0,37034050,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/view/test_resolution_player_elevation.gd,1,1,0,0,0,hand_built,0,0,3377482,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/view/test_resource_editor_column_widths.gd,3,0,0,0,1,no_unit,0,0,255244,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/view/test_resource_editor_dropdown.gd,0,0,0,0,1,no_unit,0,0,417448,0,0,0,0,,
-unit/view/test_resource_editor_layout.gd,0,0,0,0,1,no_unit,0,0,565981,0,0,0,0,,
-unit/view/test_resource_editor_nested_rows.gd,1,0,0,0,1,no_unit,0,0,668247,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/view/test_resource_editor_scene.gd,2,0,0,0,1,no_unit,0,0,248586,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
-unit/view/test_resource_editor_table.gd,0,0,0,0,1,no_unit,0,0,698406,0,0,0,0,,
-unit/view/test_resource_editor_undo_save.gd,0,0,0,0,1,no_unit,0,0,539988,0,0,0,0,,
-unit/view/test_stat_block_view.gd,0,0,0,0,0,no_unit,0,0,71683,0,0,0,0,,
-unit/view/test_stat_panel.gd,4,2,0,0,0,hand_built,3,8,257301,1,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller.gd,11,5,0,0,1,hand_built,4,10,3869718,6,0,105,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller_aim.gd,7,2,0,0,1,hand_built,4,9,2931158,2,0,13,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller_aim_facing.gd,3,1,0,0,0,hand_built,3,7,324083,0,0,4,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller_arm.gd,8,3,0,0,0,hand_built,4,8,643982,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller_camera.gd,3,1,0,0,0,hand_built,3,7,358023,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/view/test_tactics_controller_click.gd,5,3,0,0,0,hand_built,2,4,192928,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller_facing.gd,4,2,0,0,0,hand_built,3,7,1178808,0,0,5,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller_hover.gd,4,1,0,0,0,hand_built,1,0,189942,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller_input_capture.gd,1,1,0,0,0,hand_built,0,0,106343,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller_resolve_to.gd,1,1,0,0,0,hand_built,0,0,706153,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
-unit/view/test_tactics_controller_reticle.gd,3,1,0,0,0,hand_built,3,7,1145665,0,0,10,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tactics_controller_step_out.gd,9,3,0,0,0,hand_built,4,10,3651187,0,0,210,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tooltip_controller.gd,2,1,0,0,1,hand_built,1,0,168351,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_tooltip_view.gd,0,0,0,0,0,no_unit,0,0,119152,0,0,0,0,,
-unit/view/test_turn_indicator_timing.gd,0,0,2,0,1,real_unit,0,0,2612373,3,0,0,0,,
-unit/view/test_ui_log_sink_coalescing.gd,0,0,0,0,0,no_unit,0,0,133202,0,0,0,0,,
-unit/view/test_ui_sink.gd,0,0,0,0,0,no_unit,0,0,63741,0,0,0,0,,
-unit/view/test_weapon_panel.gd,6,3,0,0,0,hand_built,3,7,192779,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
-unit/view/test_world_palette.gd,0,0,0,0,0,no_unit,0,0,134274,0,0,0,0,,
+baselines/test_armor_and_ricochet_baseline.gd,3,2,0,0,1,hand_built,1,2,35006,0,0,17,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+baselines/test_deep_strike_stress_baseline.gd,0,0,1,0,1,real_unit,0,0,94717,0,0,0,0,,
+baselines/test_map_generation_baseline.gd,0,0,0,0,0,no_unit,0,0,557631,0,0,0,0,,
+baselines/test_shot_plane_sweep_baseline.gd,2,1,0,0,0,hand_built,1,2,35053,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+determinism/test_determinism_check.gd,0,0,0,0,0,no_unit,0,0,232281,0,0,0,0,,
+integration/test_full_mission.gd,0,0,0,1,1,real_unit,0,0,2792539,15,0,2,36823,,
+unit/data/test_hulk.gd,0,0,2,0,1,real_unit,0,0,184219,0,0,0,0,,
+unit/data/test_material_table.gd,0,0,0,0,1,no_unit,0,0,74501,0,0,0,0,,
+unit/data/test_matrix.gd,0,0,0,0,0,no_unit,0,0,85189,0,0,0,0,,
+unit/data/test_part.gd,9,0,0,0,0,no_unit,3,3,98902,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/data/test_run_state.gd,1,0,0,0,0,no_unit,0,0,44145,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/data/test_shell.gd,4,0,0,0,0,no_unit,0,0,132034,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/data/test_taskblock21_gun_data.gd,5,3,0,0,1,hand_built,2,2,158394,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/data/test_tool_parts.gd,2,1,0,0,0,hand_built,1,2,89828,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/data/test_weapon_def.gd,0,0,0,0,1,no_unit,0,0,206136,0,0,0,0,,
+unit/debug/test_ascii_render.gd,4,0,0,0,0,no_unit,0,0,94554,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/debug/test_bout_injector.gd,7,2,2,0,1,hand_built,1,2,1354451,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/debug/test_bout_injector_determinism.gd,1,1,0,0,0,hand_built,0,0,82019,6,0,0,96,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/debug/test_bout_injector_force_climb.gd,1,1,0,0,0,hand_built,0,0,87427,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/debug/test_bout_injector_kill.gd,2,2,0,0,0,hand_built,1,2,76585,5,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/debug/test_bout_injector_move_object.gd,2,1,0,0,0,hand_built,0,0,144938,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/debug/test_bout_injector_remove_object.gd,3,2,0,0,0,hand_built,1,2,109238,3,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/debug/test_bout_injector_set_cell_level.gd,1,1,0,0,0,hand_built,0,0,82208,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/debug/test_bout_injector_spawn_object.gd,2,1,0,0,0,hand_built,0,0,95374,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/debug/test_build_identity.gd,0,0,0,0,0,no_unit,0,0,75190,0,0,0,0,,
+unit/debug/test_debug_verbs.gd,0,0,0,0,0,no_unit,0,0,65384,0,0,0,0,,
+unit/logic/actions/test_attack_action.gd,13,6,0,0,1,hand_built,3,9,254433,0,0,28,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_burst_action.gd,6,2,0,0,1,hand_built,5,4,351515,0,0,15,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_carry_body_action.gd,6,2,0,0,0,hand_built,4,9,108986,1,0,1,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_end_turn_action.gd,1,1,0,0,0,hand_built,0,0,205701,14,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_extract_action.gd,1,1,0,0,0,hand_built,0,0,131373,3,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_face_action.gd,4,2,0,0,0,hand_built,3,7,116803,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_gather_action.gd,1,1,0,0,0,hand_built,0,0,84763,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/actions/test_grind_action.gd,6,3,0,0,0,hand_built,2,2,65792,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_hold_action.gd,1,1,0,0,0,hand_built,0,0,121301,18,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/actions/test_modify_assembly_action.gd,3,1,0,0,0,hand_built,2,2,66882,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/actions/test_move_action.gd,1,1,0,0,0,hand_built,0,0,296746,2,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/actions/test_pick_up_action.gd,6,2,0,0,0,hand_built,2,5,100191,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_repair_action.gd,5,1,0,0,0,hand_built,3,5,157499,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_shot_resolution.gd,3,1,0,0,0,hand_built,1,2,6797,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/actions/test_shutdown_action.gd,4,3,0,0,0,hand_built,1,4,126730,6,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/actions/test_slash_action.gd,6,3,0,0,0,hand_built,2,2,82798,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_stab_action.gd,4,2,0,0,0,hand_built,2,2,124574,0,0,5,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/actions/test_swap_part_action.gd,3,1,0,0,0,hand_built,1,2,70999,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/ai/test_ally_in_line.gd,1,1,0,0,0,hand_built,1,2,265750,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/ai/test_batch_objective.gd,4,1,0,0,1,hand_built,1,3,12546025,0,0,0,72280,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/ai/test_batch_plumbing.gd,0,0,1,1,1,real_unit,0,0,30181307,32,0,144,48680,,
+unit/logic/ai/test_bout_runner.gd,6,2,0,0,0,hand_built,1,4,1122803,29,0,18,30506,CORRECT,"the rifle's ap_cost 5 against the real 2 is deliberate and the fixture says so: it makes a plain shot unaffordable against the unit's own 3 max_ap, so overwatch is the only option the turn has. A real weapon would remove the thing under test"
+unit/logic/ai/test_bout_setup.gd,0,0,0,22,1,real_unit,0,0,3302682,0,0,0,0,,
+unit/logic/ai/test_close_range_firing_decision.gd,0,0,1,0,1,real_unit,0,0,4214320,0,0,0,10170,,
+unit/logic/ai/test_contest_victory_mode.gd,3,1,0,7,1,hand_built,0,0,974068,3,0,2,981,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/ai/test_distance_flood_direction.gd,0,0,1,0,1,real_unit,0,0,182164,0,0,0,0,,
+unit/logic/ai/test_engagement_rect_cull.gd,3,1,0,0,0,hand_built,0,0,940307,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/ai/test_panic.gd,1,1,0,0,1,hand_built,0,0,338709,0,0,0,4576,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/ai/test_plan_pacer.gd,3,1,0,1,1,hand_built,0,0,14034214,12,0,48,24090,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/ai/test_preset_weapon_reachability.gd,2,0,1,0,1,real_unit,0,0,72097,0,0,0,0,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
+unit/logic/ai/test_search_behaviour.gd,3,1,0,0,1,hand_built,0,0,3423883,14,0,0,93532,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/ai/test_tier_and_profile_table.gd,3,1,0,0,1,hand_built,0,0,5462899,2,0,0,7751,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/ai/test_utility_lookahead.gd,0,0,1,0,1,real_unit,0,0,2285779,0,0,0,4604,,
+unit/logic/ai/test_utility_planner.gd,3,1,0,2,1,hand_built,0,0,21695959,19,0,75,56245,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/ai/test_utility_scorer.gd,0,0,5,0,0,real_unit,0,0,329575,0,0,0,0,,
+unit/logic/ai/test_vertical_planning.gd,0,0,1,0,1,real_unit,0,0,435952,1,0,3,1036,,
+unit/logic/test_action_catalog.gd,10,4,0,0,0,hand_built,5,4,235010,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_action_queue.gd,1,1,0,0,0,hand_built,0,0,154636,1,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_aim_as_input.gd,3,2,0,0,0,hand_built,0,0,308355,0,0,1,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_aim_controller.gd,3,2,0,0,0,hand_built,0,0,271693,0,0,18,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_aim_cost_probe.gd,0,0,1,0,1,real_unit,0,0,3416571,0,0,40,0,,
+unit/logic/test_aim_layer.gd,0,0,0,0,0,no_unit,0,0,54114,0,0,0,0,,
+unit/logic/test_aim_offset_bias.gd,0,0,1,0,1,real_unit,0,0,139356,0,0,4,0,,
+unit/logic/test_aim_plane_geometry.gd,0,0,0,0,0,no_unit,0,0,148276,0,0,0,0,,
+unit/logic/test_aim_point_units.gd,0,0,0,0,1,no_unit,0,0,102494,0,0,1,0,,
+unit/logic/test_ammo_def.gd,0,0,0,0,1,no_unit,0,0,135578,0,0,0,0,,
+unit/logic/test_announcements.gd,0,0,0,0,0,no_unit,0,0,131524,0,0,0,0,,
+unit/logic/test_ap_mp_pips.gd,1,1,0,0,0,hand_built,0,0,111545,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_battle_layout.gd,0,0,0,0,0,no_unit,0,0,163944,0,0,0,0,,
+unit/logic/test_blocker_placement.gd,0,0,0,0,0,no_unit,0,0,104824,0,0,1,0,,
+unit/logic/test_board_picker.gd,0,0,0,0,1,no_unit,0,0,160161,0,0,0,0,,
+unit/logic/test_body_assembler.gd,2,0,16,0,0,real_unit,0,0,183000,0,0,0,0,CORRECT,"the model case, and its header already said so before this audit: the reference humanoid's structural correctness is covered by test_reference_humanoid.gd, and these tests exercise the assembler's contract with purpose-built fixtures"
+unit/logic/test_body_projector.gd,38,18,0,0,0,hand_built,6,10,303923,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_body_skeleton.gd,0,3,1,0,1,hand_built,0,0,211257,0,0,3,0,,
+unit/logic/test_bonus_pen.gd,4,0,0,0,0,no_unit,0,0,64002,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_bot_profiles.gd,0,0,6,0,1,real_unit,0,0,244242,0,0,0,0,,
+unit/logic/test_bout_corpus.gd,0,0,0,14,1,real_unit,0,0,183904,0,0,0,0,,
+unit/logic/test_builder_controller.gd,0,0,2,0,0,real_unit,0,0,226794,0,0,0,0,,
+unit/logic/test_camera_orbit_state.gd,0,0,0,0,0,no_unit,0,0,232269,0,0,0,0,,
+unit/logic/test_cell_inspection.gd,1,1,0,0,1,hand_built,1,2,133151,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_close_range_sight.gd,0,0,2,0,1,real_unit,0,0,194427,0,0,0,0,,
+unit/logic/test_combat_action_speed.gd,2,1,0,0,0,hand_built,2,4,77547,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_combat_log.gd,0,0,0,0,0,no_unit,0,0,165333,0,0,0,0,,
+unit/logic/test_combat_state.gd,2,3,0,0,0,hand_built,0,0,382877,22,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_combat_state_initiative.gd,1,1,0,0,0,hand_built,0,0,123243,21,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_combat_tester_presets.gd,0,0,1,1,1,real_unit,0,0,262548,0,0,0,0,,
+unit/logic/test_command_log.gd,0,0,2,0,0,real_unit,0,0,356940,0,0,0,0,,
+unit/logic/test_completion_sampler.gd,0,0,1,2,1,real_unit,0,0,33391993,53,0,28,132795,,
+unit/logic/test_containers.gd,0,0,0,0,0,no_unit,0,0,53245,0,0,0,0,,
+unit/logic/test_continuous_height_and_escapes.gd,1,1,0,0,1,hand_built,1,2,118916,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_control_bindings.gd,0,0,0,0,0,no_unit,0,0,64121,0,0,0,0,,
+unit/logic/test_csv_line.gd,0,0,0,0,0,no_unit,0,0,86736,0,0,0,0,,
+unit/logic/test_cutout_gate_over_zoom.gd,1,1,0,0,1,hand_built,1,2,414765,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_damage_resolver.gd,39,17,0,0,1,hand_built,4,12,329673,0,0,30,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_damage_resolver_consequences.gd,12,4,0,0,1,hand_built,6,7,143024,2,0,0,0,CORRECT,the arm's failure_mode DISABLE against the real MANGLE is the second of a matched pair — the file asserts MANGLE is the default in one test and sets DISABLE in the next to exercise the other branch
+unit/logic/test_damage_resolver_deflect_modes.gd,2,1,0,0,1,hand_built,0,0,54781,0,0,6,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_damage_resolver_spherecast.gd,1,0,0,0,1,no_unit,0,0,56162,0,0,3,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_damage_source_of_truth.gd,1,0,0,0,1,no_unit,1,0,55876,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_dartboard.gd,1,0,0,0,0,no_unit,0,0,135346,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_dartboard_texture.gd,0,0,0,0,0,no_unit,0,0,289200,0,0,0,0,,
+unit/logic/test_data_library.gd,4,0,0,0,1,no_unit,0,0,222300,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_data_migration_losslessness.gd,0,0,0,0,1,no_unit,0,0,94763,0,0,0,0,,
+unit/logic/test_data_validator.gd,2,0,0,0,0,no_unit,2,1,87909,0,0,0,0,CORRECT,the reactor's failure_mode NOT_A_REAL_MODE is the input the validator exists to reject; a valid value would test nothing
+unit/logic/test_death_mid_turn.gd,0,0,2,0,1,real_unit,0,0,479832,7,0,0,0,,
+unit/logic/test_deep_strike.gd,6,3,9,0,1,hand_built,3,5,700477,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_deflect_resistance_scales_with_penetration.gd,1,0,0,0,1,no_unit,0,0,163572,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_description_builder.gd,0,0,0,0,0,no_unit,0,0,67069,0,0,0,0,,
+unit/logic/test_detonation_draw.gd,2,0,4,0,1,real_unit,1,5,169726,0,0,0,0,DRIFTED,"FIXED tb68 D. Asserted radius 3.0 as 'the part's own real radius' on a hand-built goo_barrel where the game's is 2.0 (detonate_damage 40.0 vs 12.0, material steel vs reactive). Fixing it exposed the larger defect: the shot left origin_height at its 0.0 default, so the ray ran along the ground plane tangent to every box, hit NOTHING, and the assertion was skipped by `if blasts.is_empty(): assert_true(true); return` — vacuous since tb51 C. Now fires at MUZZLE_HEIGHT 0.5 (swept: 0.0 and 0.9 miss, 0.3 hits without destroying), asserts the radius read back off the part, and a second test fires at the real DataLibrary goo_barrel and gets its own 2.0"
+unit/logic/test_editor_controller.gd,0,0,0,0,1,no_unit,0,0,978868,0,0,0,0,,
+unit/logic/test_editor_tools.gd,0,0,0,0,1,no_unit,0,0,228823,0,0,0,0,,
+unit/logic/test_engine_error_tap.gd,0,0,1,0,0,real_unit,0,0,141983,0,0,0,0,,
+unit/logic/test_every_firing_path_announces_itself.gd,5,3,0,0,0,hand_built,2,4,503310,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_face_placement.gd,0,0,0,0,1,no_unit,0,0,227637,0,0,0,0,,
+unit/logic/test_field_objects.gd,0,0,0,0,1,no_unit,0,0,337860,0,0,1,0,,
+unit/logic/test_file_sink.gd,0,0,0,0,0,no_unit,0,0,122129,0,0,0,0,,
+unit/logic/test_fps_meter.gd,0,0,0,0,0,no_unit,0,0,107695,0,0,0,0,,
+unit/logic/test_generated_board_sight_sweep.gd,0,0,0,0,0,no_unit,0,0,32535666,0,0,0,0,,
+unit/logic/test_generation_heights.gd,0,0,0,0,1,no_unit,0,0,11079203,0,0,0,0,,
+unit/logic/test_gizmo.gd,0,0,0,0,0,no_unit,0,0,315093,0,0,0,0,,
+unit/logic/test_gizmo_grow.gd,0,0,0,0,0,no_unit,0,0,137411,0,0,0,0,,
+unit/logic/test_grid.gd,6,0,0,0,0,no_unit,1,2,318470,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_grid_placement.gd,1,0,0,0,0,no_unit,0,0,110753,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_hover_and_turn_end.gd,1,1,0,0,0,hand_built,1,2,227614,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_inspect_rows.gd,9,1,0,0,1,hand_built,1,2,68343,0,0,0,0,AVOIDING,"a real shell produces 26 rows against this fixture's 3, so the weapons/containers/body partition is only ever exercised with one member per group. The ordering assertions survive the substitution; only the hardcoded row count does not"
+unit/logic/test_instant_resolver.gd,1,1,0,0,0,hand_built,1,2,125220,1,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_intelligence_tiers.gd,0,1,1,0,1,hand_built,0,0,2108592,0,0,0,0,,
+unit/logic/test_internal_targeting.gd,0,2,0,0,1,hand_built,0,0,154643,0,0,6,0,,
+unit/logic/test_inventory.gd,6,0,0,0,0,no_unit,0,0,236560,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_inventory_rows.gd,14,1,0,0,1,hand_built,3,6,139444,0,0,0,0,AVOIDING,"a real shell produces 26 rows against this fixture's 1, so the socket/contents nesting rule this file exists for is only ever tested at depth 0-1"
+unit/logic/test_joints.gd,13,3,0,0,1,hand_built,4,0,187313,0,0,8,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_kit_equipper.gd,3,1,0,0,1,hand_built,1,2,336293,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_knowledge.gd,0,2,0,0,1,hand_built,0,0,66451,0,0,0,0,,
+unit/logic/test_ladder.gd,1,1,0,0,1,hand_built,1,2,268836,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_ledge_veneer.gd,0,0,0,0,1,no_unit,0,0,282112,0,0,0,0,,
+unit/logic/test_life_support.gd,4,1,0,0,0,hand_built,2,4,135961,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_line_of_fire.gd,1,1,1,0,1,hand_built,0,0,185467,0,0,15,0,DRIFTED,"FIXED tb68 D — oracle moved to all_parts_with_joints(), plus a second parity test on the RealUnit chaingunner so a jointless fixture can never hide it again. Was: its oracle excludes shooter.shell.all_parts(); every production path (ShotResolution, AimController, Overwatch) excludes all_parts_with_joints() per BR36.01. The two are identical for this file's socket-less torso, so the divergence is invisible; under a real 48-box shell the plane resolves to the shooter's OWN ammo_rack_joint instead of the wall (substitution probe). The file's header asks for exactly the opposite: 'read the actual plane back, don't re-derive the ray math'"
+unit/logic/test_load_map_verb.gd,1,2,0,0,0,hand_built,1,2,374451,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_log_fold.gd,2,3,0,0,0,hand_built,0,0,152316,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_log_playback.gd,0,0,0,0,0,no_unit,0,0,140620,0,0,0,0,,
+unit/logic/test_loot_table.gd,0,0,0,0,0,no_unit,0,0,125660,0,0,0,0,,
+unit/logic/test_los.gd,1,0,0,0,1,no_unit,1,2,306422,0,0,1,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_mag_lift.gd,0,0,1,0,1,real_unit,0,0,423911,0,0,0,0,,
+unit/logic/test_map_corpus.gd,0,0,0,0,0,no_unit,0,0,3383283,0,0,0,0,,
+unit/logic/test_map_gen.gd,0,0,0,0,0,no_unit,0,0,34435147,0,0,0,0,,
+unit/logic/test_map_gen_raised_rooms.gd,0,0,0,0,1,no_unit,0,0,10734239,0,0,0,0,,
+unit/logic/test_map_gen_reachability.gd,0,0,0,0,0,no_unit,0,0,19722397,0,0,0,0,,
+unit/logic/test_map_navigability.gd,0,0,0,0,1,no_unit,0,0,755903,0,0,0,0,,
+unit/logic/test_map_serializer.gd,0,0,0,2,1,real_unit,0,0,11339132,16,0,48,26776,,
+unit/logic/test_material_entry.gd,0,0,0,0,0,no_unit,0,0,110441,0,0,0,0,,
+unit/logic/test_melee_delivery.gd,6,2,0,0,0,hand_built,3,3,107145,0,0,12,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_melee_line.gd,0,0,0,0,0,no_unit,0,0,126760,0,0,0,0,,
+unit/logic/test_melee_reach.gd,5,1,0,0,0,hand_built,1,2,220523,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_membership_disagreement.gd,2,0,0,0,0,no_unit,1,1,81496,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_mission_state.gd,3,1,0,0,0,hand_built,0,0,351866,5,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_multi_level_geometry.gd,1,1,0,0,0,hand_built,0,0,103910,0,0,4,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_one_aim_path.gd,0,2,0,0,1,hand_built,0,0,189236,0,0,3,0,,
+unit/logic/test_overwatch.gd,5,2,0,0,0,hand_built,3,3,5609861,0,0,1398,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_part_graph.gd,1,0,0,0,0,no_unit,0,0,363853,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_part_picker.gd,2,1,0,0,0,hand_built,0,0,226898,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_pathfinder.gd,4,0,0,0,0,no_unit,1,0,480356,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_penetration_traverses_body.gd,8,7,0,0,1,hand_built,0,0,317660,0,0,13,0,CORRECT,"same pre-BR36.01 all_parts() exclusion list as test_line_of_fire.gd, but inert here: the shooter is Shell.new(Part.new()), a deliberately geometry-free placeholder with no sockets, so the joint-bearing half of the list is empty either way"
+unit/logic/test_per_tier_probe.gd,0,0,0,0,1,no_unit,0,0,7886126,36,0,0,82082,,
+unit/logic/test_perf_stats.gd,0,0,0,0,0,no_unit,0,0,279942,0,0,0,0,,
+unit/logic/test_picker_surfaces.gd,0,0,0,0,1,no_unit,0,0,246911,0,0,0,0,,
+unit/logic/test_placed_volume.gd,2,0,0,0,1,no_unit,0,0,376429,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_placement_position.gd,0,0,0,0,1,no_unit,0,0,376996,0,0,0,0,,
+unit/logic/test_plate_geometry.gd,0,1,0,0,1,hand_built,0,0,219917,0,0,0,0,,
+unit/logic/test_power_drives_ap.gd,12,4,0,0,1,hand_built,0,0,663566,7,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_proving_ground_map.gd,0,0,0,0,0,no_unit,0,0,250808,0,0,0,0,,
+unit/logic/test_queue_log.gd,0,0,1,0,1,real_unit,0,0,795040,0,0,0,0,,
+unit/logic/test_ramp_geometry.gd,0,0,0,0,0,no_unit,0,0,96478,0,0,0,0,,
+unit/logic/test_range_gives_internals_meaning.gd,2,2,0,0,1,hand_built,1,0,103606,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_range_model.gd,3,0,0,0,0,no_unit,0,0,160931,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_ray_caster.gd,1,2,0,0,0,hand_built,0,0,375952,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_ray_chain.gd,4,1,0,0,0,hand_built,0,0,867082,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_ray_surfaces.gd,4,1,0,0,1,hand_built,0,0,766705,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_ray_tiebreak.gd,1,1,0,0,0,hand_built,0,0,2172271,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_reaction_window.gd,4,2,0,0,0,hand_built,3,3,163069,0,0,6,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_real_unit.gd,1,1,4,0,1,hand_built,0,0,326044,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_recoil_resolver.gd,1,0,0,0,0,no_unit,0,0,141885,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_reference_humanoid.gd,2,1,2,0,1,hand_built,0,0,443870,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_repair_resolver.gd,10,2,0,0,0,hand_built,3,5,282192,0,0,0,0,CORRECT,"the leg's material steel against the real artificial_bone reaches nothing: scrap cost is heal_amount * SCRAP_PER_HP with no material term, and the one test that does care sets its own ceramic and asserts the passthrough"
+unit/logic/test_replay_handle.gd,0,0,0,0,1,no_unit,0,0,1557163,0,0,0,0,,
+unit/logic/test_resolution_speed.gd,4,2,0,0,0,hand_built,3,6,224265,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_resolve_ray.gd,2,4,0,0,0,hand_built,0,0,237004,0,0,20,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_resolve_until.gd,6,2,0,0,0,hand_built,5,7,597342,2,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_resolver_parity.gd,1,1,0,0,0,hand_built,0,0,11467670,0,0,1625,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_resource_edit_stack.gd,6,0,0,0,0,no_unit,0,0,143104,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_resource_editor_columns.gd,0,0,0,0,1,no_unit,0,0,309940,0,0,0,0,,
+unit/logic/test_resource_editor_rows.gd,3,0,0,0,0,no_unit,3,0,160409,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_ricochet_stress.gd,4,2,0,0,1,hand_built,2,3,143471,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_scripted_corpus.gd,0,0,0,22,1,real_unit,0,0,3685338,25,0,0,1246,,
+unit/logic/test_seam_sweep.gd,1,1,0,0,0,hand_built,1,3,11130993,0,0,4259,0,CORRECT,"the shooter is excluded from its own shot and the ray's origin is passed in explicitly, so no property of the body can reach the measurement; a real 48-box shell passes it unchanged. Uses all_parts_with_joints(), which is the list production uses"
+unit/logic/test_search_filter.gd,0,0,0,0,0,no_unit,0,0,180205,0,0,0,0,,
+unit/logic/test_seated_placement.gd,0,0,0,0,1,no_unit,0,0,294126,0,0,0,0,,
+unit/logic/test_section_claims.gd,0,0,0,0,1,no_unit,0,0,407019,0,0,0,0,,
+unit/logic/test_section_format.gd,0,0,0,0,0,no_unit,0,0,271249,0,0,0,0,,
+unit/logic/test_section_join.gd,1,1,0,0,0,hand_built,1,2,187366,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_section_preview_rolls.gd,0,0,0,0,0,no_unit,0,0,416427,0,0,0,0,,
+unit/logic/test_section_stacking.gd,0,0,0,0,1,no_unit,0,0,203631,0,0,0,0,,
+unit/logic/test_selection_controller.gd,6,2,0,0,0,hand_built,3,7,666782,2,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_selection_of_cover.gd,1,0,3,0,1,real_unit,1,2,4141677,0,0,0,960,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
+unit/logic/test_selection_target.gd,1,0,1,0,0,real_unit,1,2,259740,0,0,0,0,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
+unit/logic/test_shard_map.gd,0,0,0,0,0,no_unit,0,0,179323,0,0,0,0,,
+unit/logic/test_shard_merge.gd,0,0,0,0,0,no_unit,0,0,753787,0,0,0,0,,
+unit/logic/test_shot_hop_pacing.gd,0,0,0,0,0,no_unit,0,0,69050,0,0,0,0,,
+unit/logic/test_shot_plane.gd,4,3,0,0,1,hand_built,0,0,348027,0,0,17,0,CORRECT,"fixtures authored symmetric about x == 0, the line of fire, because that is the natural body-space origin for the depth-sort rule under test — its own header says so"
+unit/logic/test_shot_plane_amortisation.gd,2,2,0,0,0,hand_built,1,3,228175,0,0,31,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_shot_scatter.gd,3,1,0,0,0,hand_built,1,2,56937,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_sight_cost_probe.gd,0,0,0,0,1,no_unit,0,0,354649,0,0,0,0,,
+unit/logic/test_sight_geometry.gd,1,1,0,0,1,hand_built,1,2,1211325,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_socket.gd,0,0,0,0,0,no_unit,0,0,40211,0,0,0,0,,
+unit/logic/test_spread_pattern.gd,1,0,0,0,0,no_unit,0,0,67970,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_standing_height.gd,0,0,4,0,0,real_unit,0,0,208760,0,0,2,0,,
+unit/logic/test_stat_resolver.gd,1,0,0,0,0,no_unit,0,0,78125,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_step_height.gd,2,1,1,5,1,hand_built,0,0,2756626,0,0,0,0,CORRECT,"the rule is how step height VARIES with leg geometry, so the fixture has to vary — one real unit is one sample, and the assertions are relative to each fixture's own legs"
+unit/logic/test_step_out_interrupt.gd,8,2,0,0,0,hand_built,4,6,98626,0,0,10,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_step_out_planner.gd,7,2,0,0,0,hand_built,3,5,286048,0,0,4,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_suite_order.gd,0,0,0,0,0,no_unit,0,0,110395,0,0,0,0,,
+unit/logic/test_suite_run.gd,0,0,0,0,0,no_unit,0,0,19552853,0,7,0,0,,
+unit/logic/test_suppression.gd,6,3,0,0,0,hand_built,2,2,88598,1,0,4,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_surrogate.gd,5,0,10,0,0,real_unit,2,2,132834,2,0,0,0,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
+unit/logic/test_surrogate_ladder.gd,0,0,0,0,0,no_unit,0,0,121454,0,0,0,0,,
+unit/logic/test_tb38_flat_bout_guard.gd,1,1,0,0,0,hand_built,0,0,235889,24,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_the_punch.gd,3,2,0,0,0,hand_built,1,0,40215,0,0,1,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_tooltip_builder.gd,10,1,0,0,1,hand_built,2,3,170682,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_tracer_geometry.gd,0,0,0,0,0,no_unit,0,0,58210,0,0,0,0,,
+unit/logic/test_transparency_proof.gd,4,2,0,0,0,hand_built,2,4,57518,0,0,31,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_turn_start_power_walks.gd,0,0,1,0,0,real_unit,0,0,84511,0,0,0,0,,
+unit/logic/test_ui_layout.gd,0,0,0,0,0,no_unit,0,0,168516,0,0,0,0,,
+unit/logic/test_unit.gd,8,9,0,0,0,hand_built,0,0,105293,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_unit_geometry.gd,32,22,1,0,1,hand_built,6,10,258519,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_unit_picker.gd,3,2,0,0,0,hand_built,2,4,81878,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_variant_generator.gd,0,0,2,0,1,real_unit,0,0,551622,0,0,0,0,,
+unit/logic/test_vertical_movement.gd,1,1,0,0,1,hand_built,1,2,296532,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_vertical_routes.gd,0,0,0,0,1,no_unit,0,0,13419897,0,0,0,0,,
+unit/logic/test_visibility_field.gd,4,1,0,0,0,hand_built,1,2,354162,0,0,299,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_wall_legibility.gd,4,2,0,0,1,hand_built,1,2,313429,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/logic/test_watched_run.gd,0,0,0,1,1,real_unit,0,0,187106340,194,0,156,227310,,
+unit/logic/test_weapon_chambering.gd,2,0,0,0,1,no_unit,1,0,169920,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_weapon_resolver.gd,1,0,0,0,0,no_unit,1,2,128464,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/logic/test_weapon_rows.gd,12,1,0,0,0,hand_built,4,8,115348,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_weapon_sim_hardening.gd,6,3,0,0,1,hand_built,2,2,474993,0,0,7,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_work_counters.gd,0,0,3,2,1,real_unit,0,0,20144134,26,0,60,54260,,
+unit/logic/test_world_view_seam.gd,3,1,0,1,1,hand_built,0,0,16015265,16,0,72,24340,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/logic/test_wounds.gd,7,2,0,0,1,hand_built,0,0,358102,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/test_check_budget.gd,0,0,0,0,0,no_unit,0,0,1523099,0,2,0,0,,
+unit/test_exit_code_probe.gd,0,0,0,0,0,no_unit,0,0,2108,0,0,0,0,,
+unit/test_gate_fallback.gd,0,0,0,0,0,no_unit,0,0,30924677,0,3,0,0,,
+unit/test_hulk_prefix_guard.gd,0,0,0,0,0,no_unit,0,0,590524,0,0,0,0,,
+unit/test_lint_config.gd,0,0,0,0,0,no_unit,0,0,45041,0,0,0,0,,
+unit/test_merge_shards.gd,0,0,0,0,0,no_unit,0,0,3077535,0,8,0,0,,
+unit/test_no_orphaned_uids.gd,0,0,0,0,0,no_unit,0,0,4754,0,0,0,0,,
+unit/test_retired_planner_sweep.gd,0,0,0,0,0,no_unit,0,0,88151,0,0,0,0,,
+unit/test_run_suite.gd,0,0,0,0,0,no_unit,0,0,17131921,0,9,0,0,,
+unit/test_smoke.gd,0,0,0,0,0,no_unit,0,0,33493,0,0,0,0,,
+unit/test_suite_budget.gd,0,0,0,0,0,no_unit,0,0,43407,0,0,0,0,,
+unit/test_suite_process.gd,0,0,0,0,0,no_unit,0,0,375807,0,1,0,0,,
+unit/test_suite_profile_consistency.gd,0,0,0,0,0,no_unit,0,0,102473,0,0,0,0,,
+unit/test_suite_tier.gd,0,0,0,0,0,no_unit,0,0,16435,0,0,0,0,,
+unit/test_void_vocabulary_guard.gd,0,0,0,0,0,no_unit,0,0,335703,0,0,0,0,,
+unit/view/modules/test_aim_mode.gd,0,0,1,0,1,real_unit,0,0,12706908,0,0,6,0,,
+unit/view/modules/test_battle_placements.gd,0,0,0,0,1,no_unit,0,0,17055390,0,0,0,0,,
+unit/view/modules/test_editor_gizmo_followups.gd,0,0,0,0,1,no_unit,0,0,7034160,0,0,0,0,,
+unit/view/modules/test_editor_isolation.gd,0,0,0,0,1,no_unit,0,0,4435658,0,0,0,0,,
+unit/view/modules/test_editor_mode.gd,0,0,0,0,1,no_unit,0,0,17716921,0,0,0,0,,
+unit/view/modules/test_editor_scale.gd,0,0,0,0,1,no_unit,0,0,7168403,0,0,0,0,,
+unit/view/modules/test_editor_stacks.gd,0,0,0,0,1,no_unit,0,0,6249355,0,0,0,0,,
+unit/view/modules/test_editor_surfaces.gd,0,0,0,0,1,no_unit,0,0,10580357,0,0,0,0,,
+unit/view/modules/test_editor_veneer.gd,0,0,0,0,1,no_unit,0,0,7183037,0,0,0,0,,
+unit/view/modules/test_editor_view_agreement.gd,0,0,0,0,1,no_unit,0,0,8193817,0,0,0,0,,
+unit/view/modules/test_editor_visible_gaps.gd,0,0,0,0,1,no_unit,0,0,14715720,0,0,0,0,,
+unit/view/modules/test_gizmo_drag_fidelity.gd,0,0,0,0,1,no_unit,0,0,5406014,0,0,0,0,,
+unit/view/modules/test_gizmo_module.gd,0,0,0,0,1,no_unit,0,0,11138797,0,0,0,0,,
+unit/view/modules/test_layout_review.gd,0,0,0,0,1,no_unit,0,0,27249815,0,0,0,0,,
+unit/view/modules/test_layout_review_3.gd,0,0,0,0,1,no_unit,0,0,20699073,0,0,0,0,,
+unit/view/modules/test_parts_list.gd,0,0,0,0,1,no_unit,0,0,8363903,0,0,0,0,,
+unit/view/modules/test_pass_c_behaviours.gd,0,0,0,0,1,no_unit,0,0,10367664,2,0,0,0,,
+unit/view/modules/test_slot_properties.gd,0,0,0,0,0,no_unit,0,0,3776,0,0,0,0,,
+unit/view/modules/test_slot_providers.gd,0,0,0,0,1,no_unit,0,0,5535098,0,0,0,0,,
+unit/view/modules/test_surfaces_do_not_overlap.gd,0,0,0,0,1,no_unit,0,0,3026572,0,0,0,0,,
+unit/view/modules/test_three_bars.gd,0,0,0,0,1,no_unit,0,0,20934516,0,0,0,0,,
+unit/view/modules/test_ui_button_sync.gd,0,0,0,0,1,no_unit,0,0,3674840,0,0,0,0,,
+unit/view/modules/test_view_gap_modules.gd,0,0,0,0,1,no_unit,0,0,580431,0,0,0,0,,
+unit/view/modules/test_view_modes.gd,0,0,0,0,1,no_unit,0,0,11904892,0,0,0,0,,
+unit/view/modules/test_view_modules_stand_alone.gd,0,0,0,0,1,no_unit,0,0,344160,0,0,0,0,,
+unit/view/overlays/test_ai_batch_yield.gd,0,0,0,1,1,real_unit,0,0,22552582,48,0,67,87572,,
+unit/view/overlays/test_generate_bout_overlay.gd,0,0,0,2,1,real_unit,0,0,15157655,0,0,0,0,,
+unit/view/overlays/test_spectator_overlay.gd,5,2,0,0,0,hand_built,1,2,57092559,13,0,13,1447,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/overlays/test_squad_control_overlay.gd,12,5,0,0,1,hand_built,4,10,20334156,11,0,6,677,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_action_bar.gd,10,4,0,0,0,hand_built,4,10,303676,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_aim_frame_probe.gd,0,0,1,0,1,real_unit,0,0,5565455,0,0,1,0,,
+unit/view/test_aim_ray_is_camera_dependent.gd,0,0,0,0,0,no_unit,0,0,51262,0,0,0,0,,
+unit/view/test_aim_view_dartboard_cache.gd,2,1,0,0,0,hand_built,2,2,180546,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_aim_view_decal_axis.gd,0,0,0,0,0,no_unit,0,0,51640,0,0,0,0,,
+unit/view/test_aim_view_part_label.gd,3,1,0,0,1,hand_built,3,8,364278,0,0,3,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_ap_mp_pip_row.gd,1,1,0,0,0,hand_built,0,0,163344,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/view/test_batch_badge_view.gd,1,1,0,0,1,hand_built,1,2,903478,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/view/test_battle_scene.gd,7,2,0,1,0,hand_built,4,9,64297726,3,0,0,540,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_battle_scene_input.gd,0,0,0,0,0,no_unit,0,0,4142445,0,0,0,0,,
+unit/view/test_battle_scene_occlusion_fade.gd,3,1,0,0,0,hand_built,3,7,5395186,0,0,6,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_board_view.gd,12,1,0,0,1,hand_built,5,8,119736,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_board_view_occlusion.gd,1,1,0,0,1,hand_built,1,2,234740,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_board_view_winding.gd,0,0,0,0,1,no_unit,0,0,66692,0,0,0,0,,
+unit/view/test_bout_build_log.gd,0,0,0,0,1,no_unit,0,0,54884,0,0,0,0,,
+unit/view/test_builder_scene.gd,0,0,1,0,0,real_unit,0,0,136992,0,0,0,0,,
+unit/view/test_camera_rig.gd,1,1,0,0,0,hand_built,1,2,241262,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_camera_rig_aim.gd,0,0,0,0,0,no_unit,0,0,96272,0,0,0,0,,
+unit/view/test_combat_log_panel.gd,0,0,0,0,0,no_unit,0,0,234404,0,0,0,0,,
+unit/view/test_controls_overlay.gd,0,0,0,0,0,no_unit,0,0,72412,0,0,0,0,,
+unit/view/test_cutout_feed_cost_probe.gd,0,0,1,0,1,real_unit,0,0,540728,0,0,0,0,,
+unit/view/test_cutout_gate_cost_probe.gd,0,0,1,0,1,real_unit,0,0,141089,0,0,0,0,,
+unit/view/test_debug_control_panel.gd,3,2,0,0,1,hand_built,1,0,1169410,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_debug_panel_layout.gd,0,0,1,0,1,real_unit,0,0,8336195,0,0,0,0,,
+unit/view/test_extracted_unit_leaves_the_board.gd,1,1,0,0,0,hand_built,0,0,129405,11,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/view/test_facing_arc.gd,0,0,0,0,0,no_unit,0,0,51596,0,0,0,0,,
+unit/view/test_hierarchical_ui_sink.gd,0,0,0,0,0,no_unit,0,0,71319,0,0,0,0,,
+unit/view/test_hit_volume_view.gd,3,3,0,0,1,hand_built,2,4,361729,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_hit_volume_view_mesh_scene.gd,2,2,0,0,1,hand_built,2,4,69491,0,0,0,0,AVOIDING,"its assertion reads 'no box instance may exist for a part that has a commissioned mesh' and actually checks that NO box instance exists anywhere in the view — identical claims for a one-part fixture, and a real shell separates them. The per-part rule is genuinely covered by test_a_mixed_assembly_renders_the_mesh_and_the_box_together"
+unit/view/test_hit_volume_view_refresh.gd,0,0,1,0,1,real_unit,0,0,160834,0,0,0,0,,
+unit/view/test_hit_volume_view_render_primitive.gd,1,1,0,0,1,hand_built,1,3,97899,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_hit_volume_view_show_assembly.gd,1,0,0,0,1,no_unit,0,0,90298,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/view/test_hit_volume_view_weapon_labels.gd,2,1,0,0,1,hand_built,2,4,172349,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_hulk_theme.gd,0,0,0,0,0,no_unit,0,0,122684,0,0,0,0,,
+unit/view/test_inspect_dim.gd,1,0,1,0,1,real_unit,1,2,3672478,0,0,0,0,CORRECT,units come off the game's own assembly path; hand-built Parts are inputs to it
+unit/view/test_inspect_panel.gd,13,7,0,0,1,hand_built,4,7,563669,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_inspect_viewer_lighting.gd,1,1,0,0,1,hand_built,1,2,86872,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/view/test_inspect_world_leak.gd,0,0,2,0,1,real_unit,0,0,1739332,0,0,0,0,,
+unit/view/test_no_risers.gd,0,0,0,0,1,no_unit,0,0,87113,0,0,0,0,,
+unit/view/test_part_highlight_bidirectional.gd,3,1,0,0,1,hand_built,3,6,133764,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_perf_panel.gd,0,0,0,0,0,no_unit,0,0,4394572,0,0,0,0,,
+unit/view/test_phase12_transparency.gd,3,1,0,0,0,hand_built,3,6,89897,1,0,1,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_replay_wiring.gd,0,0,1,0,1,real_unit,0,0,22568482,0,8,0,600,,
+unit/view/test_resolution_player.gd,1,1,0,0,0,hand_built,0,0,37426633,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/view/test_resolution_player_elevation.gd,1,1,0,0,0,hand_built,0,0,3428155,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/view/test_resource_editor_column_widths.gd,3,0,0,0,1,no_unit,0,0,262901,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/view/test_resource_editor_dropdown.gd,0,0,0,0,1,no_unit,0,0,435601,0,0,0,0,,
+unit/view/test_resource_editor_layout.gd,0,0,0,0,1,no_unit,0,0,578798,0,0,0,0,,
+unit/view/test_resource_editor_nested_rows.gd,1,0,0,0,1,no_unit,0,0,683813,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/view/test_resource_editor_scene.gd,2,0,0,0,1,no_unit,0,0,253797,0,0,0,0,CORRECT,never constructs a Unit — the rule is below the level where a body has structure
+unit/view/test_resource_editor_table.gd,0,0,0,0,1,no_unit,0,0,705633,0,0,0,0,,
+unit/view/test_resource_editor_undo_save.gd,0,0,0,0,1,no_unit,0,0,549612,0,0,0,0,,
+unit/view/test_stat_block_view.gd,0,0,0,0,0,no_unit,0,0,74971,0,0,0,0,,
+unit/view/test_stat_panel.gd,4,2,0,0,0,hand_built,3,8,264531,1,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller.gd,11,5,0,0,1,hand_built,4,10,3856754,6,0,105,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller_aim.gd,7,2,0,0,1,hand_built,4,9,3036044,2,0,13,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller_aim_facing.gd,3,1,0,0,0,hand_built,3,7,324115,0,0,4,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller_arm.gd,8,3,0,0,0,hand_built,4,8,663281,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller_camera.gd,3,1,0,0,0,hand_built,3,7,365282,0,0,2,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/view/test_tactics_controller_click.gd,5,3,0,0,0,hand_built,2,4,197705,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller_facing.gd,4,2,0,0,0,hand_built,3,7,1213923,0,0,5,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller_hover.gd,4,1,0,0,0,hand_built,1,0,192361,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller_input_capture.gd,1,1,0,0,0,hand_built,0,0,111204,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller_resolve_to.gd,1,1,0,0,0,hand_built,0,0,722007,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure; a real 48-box shell through its own helper passes unchanged"
+unit/view/test_tactics_controller_reticle.gd,3,1,0,0,0,hand_built,3,7,1258829,0,0,10,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tactics_controller_step_out.gd,9,3,0,0,0,hand_built,4,10,3757608,0,0,210,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tooltip_controller.gd,2,1,0,0,1,hand_built,1,0,169021,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_tooltip_view.gd,0,0,0,0,0,no_unit,0,0,120936,0,0,0,0,,
+unit/view/test_turn_indicator_timing.gd,0,0,2,0,1,real_unit,0,0,2635961,3,0,0,0,,
+unit/view/test_ui_log_sink_coalescing.gd,0,0,0,0,0,no_unit,0,0,134799,0,0,0,0,,
+unit/view/test_ui_sink.gd,0,0,0,0,0,no_unit,0,0,66521,0,0,0,0,,
+unit/view/test_weapon_panel.gd,6,3,0,0,0,hand_built,3,7,181679,0,0,0,0,CORRECT,"hand-built body, but nothing the file asserts can see a body's structure"
+unit/view/test_world_palette.gd,0,0,0,0,0,no_unit,0,0,139411,0,0,0,0,,

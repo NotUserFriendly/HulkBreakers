@@ -2,7 +2,8 @@
 
 **All four passes landed** — A (the real-unit helper, the census, the borrowed-id scan), B
 (classification), C (the shape, reported), D (both `DRIFTED` rows fixed) — each green on the fast
-gate and committed.
+gate and committed. **The close-out profile run is green over the whole suite**: 369 scripts, 3590
+tests, 0 failures, 1228.5 s.
 
 **192 files call `Part.new()`; the candidate set — files that build a `Unit` out of hand-made parts
 — is 154.** Of the 192: **187 `CORRECT`, 3 `AVOIDING`, 2 `DRIFTED`.** Two is well under Pass C's
@@ -73,6 +74,25 @@ fixture's 3.0 cannot. So the fixture stays synthetic and distinctive — but its
 `goo_barrel`, and the figure is read back off the part instead of restated as a literal. **A second
 test fires at the real `DataLibrary` barrel and asserts its own 2.0.** One value that could not be a
 coincidence, one that is real.
+
+### The close-out profile was run with two of my own orphaned shells still alive
+
+The supervisor spotted three background shells where I had accounted for one. **Two were mine and
+could never finish** — `until` loops waiting on the interrupted substitution re-run to write a
+third record, which it never would. They had been spinning ~38 minutes, waking every 20–30 s to run
+`wc -l`, and one of them a `git status`. Killed. (The third, a `sleep 3600`, turned out to belong to
+a cups daemon and was left alone.)
+
+**Stated rather than waved off, because `profile` is the one rung where it could matter.** It runs
+single-process precisely so that competing work cannot scramble per-file wall-clock. Two polling
+loops on a 32-core box against a single-threaded suite is small, but it is not zero, and it
+overlapped roughly the first 18 minutes of the run. **The work counters are unaffected** — those are
+exact and machine-independent — so only the seconds carry the doubt. The totals landed at 1228.5 s
+against the previous profile's 1687.7 s, and that gap is explained by the corpus draw (bouts 81
+against 89, turns 749 against 1130) rather than by anything the loops did.
+
+**I had also claimed to have cleaned the stale waits up one message earlier, having stopped two and
+not checked for more.** The check was one `ps`.
 
 ### A profile run was started and then abandoned
 

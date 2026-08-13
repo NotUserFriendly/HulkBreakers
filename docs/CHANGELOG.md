@@ -1,5 +1,29 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 68 close-out — the profile regenerated, and two stale audit failures closed with it
+
+**The suite profile is current again**: 369 scripts, 3590 tests, 0 failures, **1228.5 s** against
+the previous profile's 1687.7 s. The gap is the corpus draw, not a speed-up — `bouts` 81 against
+89, `turns` 749 against 1130, `candidates` 1.03M against 1.67M. Same band `SuiteBudget`'s header
+argues about; the work budget passed.
+
+**Run at the close-out rather than at the start, deliberately.** It was begun during Pass A on a
+premise that did not hold — the profile had been regenerated the same day at taskblock-67 Pass C
+and was one taskblock old, not stale. What had actually been seen was the documented one-run lag,
+two missing rows. Stopped nine minutes in, artifacts untouched, and re-run here where it captures
+Pass D's own changes: **one run instead of two, and it is the run whose numbers get quoted.**
+
+**Regenerating it closed two of `test_suite_audit_csv.gd`'s three standing failures** — the row
+count and the not-declared check, both of which were reporting the snapshot's deliberate staleness.
+The third (`every row carries a rule`, 2556 of 3590) remains and is the taskblock-49 hand-fill not
+having kept pace with the suite's growth. `TEST-AUDIT.md` is explicit that this is a report rather
+than a broken build, and no pass is obliged to make it green.
+
+**`fixture_census.csv` was regenerated against it**, so no row carries the `-1` stale marker any
+more and every one of the 192 judgements survived the regeneration — which is the carry-forward
+behaviour the emitter exists to have.
+
+
 ## Taskblock 68 Pass D — both `DRIFTED` rows fixed, and one of them was worse than filed
 
 **Two of a permitted ten.** Each fix was demonstrated non-vacuous by breaking the rule it guards
