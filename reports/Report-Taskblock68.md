@@ -143,13 +143,28 @@ after the tree stops moving, and it is one run rather than two.
 
 ## Open questions
 
-### The vacuity class has a second shape, and nothing looks for it
+### The vacuity class has a second shape — **supervisor's call: no guard, and the reasoning changed**
 
 taskblock-50's vacuity work targeted assertions that cannot fail. `test_detonation_draw.gd` was a
-different shape: **a real assertion behind a conditional skip.** `if blasts.is_empty(): gut.p(...);
-assert_true(true); return` reads as defensive and is indistinguishable from a passing test in every
-report. A `grep` for `assert_true(true)` is a one-line check and would have found this in 2026-07.
-Worth deciding whether that becomes a guard; I did not add one unasked.
+different shape: a real assertion behind a conditional skip. I raised whether a `grep` for
+`assert_true(true)` should become a guard. **The supervisor said no. Counting them says the same
+thing, for a reason neither of us had:**
+
+**The 18 other occurrences in the suite are a legitimately different pattern.** Every one guards a
+**build-configuration precondition** — `if not OS.is_debug_build()`, or the null check that stands
+in for it when a debug panel was never built. That is "this test does not apply to this build", and
+since the gate runs `godot -d` the condition is false where it counts and the real assertions run.
+
+**The detonation case inverted it: its condition was the thing under test failing to happen.** "The
+fixture did not detonate" is precisely the outcome that test existed to detect, treated as a skip.
+Same three tokens, opposite meaning — so a guard would be **18 false positives for one defect**, and
+would push the legitimate skip into some other spelling. **The distinguishing feature is not
+`assert_true(true)` at all; it is what the condition tests, and that is not greppable.**
+
+**One correction to the premise, because it bears on relying on review here.** It was written at
+taskblock-51, not early on, and it survived **17 blocks** — taskblock-50's own vacuity sweep and a
+doc review among them. Review did not catch this one. That does not argue for a guard; it argues
+that what found it was putting a real unit through the fixture, which is what this block built.
 
 ### Converting `AVOIDING` fixtures is cheap at the logic layer and expensive at the view layer
 
