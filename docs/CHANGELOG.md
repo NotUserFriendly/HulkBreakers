@@ -1,5 +1,59 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 68 Pass A — the detector, before any classification
+
+**`RealUnit` (`test/support/real_unit.gd`) is now the one place a test says "a real unit".** It
+assembles `combat_tester_chaingun` through `DeepStrike.assemble_from_preset` and then **checks what
+came back**: `DeepStrike.validate_assembly` reports no violations, and the body is exactly
+`BOX_COUNT` boxes. A degenerate assembly **fails the calling test by name at the point of
+construction** rather than being handed back for something to time, which is the whole point — the
+`BR61.06` cost probe measured a one-box body, reported 41 usec, and shipped 13 fps with the suite
+green throughout.
+
+**The 48 was re-measured, not quoted.** `BR61.04` and the `BR61.06` archive entry both say 48; an
+assembled chaingunner today is 48, checked two ways — through the helper and straight off the
+preset, bypassing it.
+
+**The check is the tested half.** `test_real_unit.gd` hands a spy `GutTest` a deliberate one-box
+stand-in and asserts it goes red, because a helper that quietly returned the stand-in would pass
+every other assertion in the file. The stand-in **docks a matrix in a real MATRIX socket on
+purpose**: without it `validate_assembly` rejects it for the root not hosting the matrix and the
+box-count branch is never reached, so the test would have passed while proving nothing about the
+count.
+
+**`audit/fixture_census.gd` emits `audit/fixture_census.csv`** — one row per test file, mechanical
+columns only, judgement columns (`outcome`, `evidence`) carried forward on regeneration the same
+way `tools/run_suite.gd` carries `rule_guarded`. It is a **second** CSV rather than columns on
+`suite_audit.csv`, which is one row per *test* and must stay that way; "does this file build its
+units out of hand-made `Part`s" is a per-file question and a per-test copy would repeat the same
+answer forty times down a file.
+
+**The taskblock's headline number is confirmed mechanically: 192 files call `Part.new()`**, counted
+from the files rather than quoted, by a check that recounts independently of the emitter's own walk.
+The `shape` discriminator splits 369 test files into **160 `no_unit`, 49 `real_unit`, 160
+`hand_built`**; the candidate set — builds a `Unit` *and* calls `Part.new()` — is **154**.
+
+**A second detector was found and built: the borrowed-id scan.** `DRIFTED` has two halves, and the
+half a scan can settle is *the fixture asserts something the game's own data contradicts*. A test
+that writes `gun.id = &"pistol"` and then `gun.damage = 20.0` has authored a pistol that does not
+exist — the real one does 4. **108 files borrow a real part's id and disagree with it across 459
+fields**, written to `audit/fixture_conflicts.csv`, one row per field, because a count is not
+evidence. A conflict is a fact and not a verdict: borrowing `chaingun` as a bare label for "some
+weapon" is ordinary and correct.
+
+**Its first version emitted eight artefact rows and they looked exactly like evidence.**
+`gun.damage = damage` assigns a parameter, and the scan reported a fixture damage of "damage"
+disagreeing with 4.0. Literal-ness is now decided **before** the quotes come off, because `&"steel"`
+and a bare `steel` are the same seven characters afterwards.
+
+**`audit/substitute_real_unit.py`** is the other half of the detector, for Pass B: it replaces a
+candidate's single `-> Unit` helper body with `RealUnit.build`, runs the file, and restores it on
+every path out including an interrupt. **It classifies nothing** — a red file is not a `DRIFTED`
+row, since dropping the helper's parameters and changing the weapon under the test are both
+instrument artefacts, and a script printing a verdict there would manufacture the confident-but-
+wrong list this block exists to find.
+
+
 ## Taskblock 67 close-out — `BR67.01`, half of it
 
 **A shard that produces no summary now keeps its log.** `run_tests.sh` copies it to
