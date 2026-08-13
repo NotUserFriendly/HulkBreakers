@@ -406,18 +406,34 @@ func test_new_battle_logs_the_seed_at_bout_start_to_both_sinks() -> void:
 	# the file sink must render *the same event*, never two independently-built
 	# ones — so this finds the header this scene actually wrote rather than
 	# assuming it sits at byte zero.
+	#
+	# **`BR69.02`, taskblock-69: it must not assume it sits at the END either.**
+	# `FileSink` defaults to `res://out/combat.log` and **every shard of a sharded
+	# gate appends to that one path concurrently**, so "the last `bout_start` in the
+	# file" is whichever of eight processes wrote most recently. This took the last
+	# match and compared it to this scene's own line, which is a race: it read
+	# `seed=0` (another shard's bout, from `BoutSetupModule`'s own empty-field
+	# default) against this scene's `seed=2`.
+	#
+	# **So the search is for this scene's own line rather than for a position.** That
+	# is what "the same event reached both sinks" actually asserts, and it cannot be
+	# raced — no other writer can produce this exact line, because it carries the
+	# event this scene built.
 	var file := FileAccess.open(scene.file_sink.path, FileAccess.READ)
 	var contents: PackedStringArray = file.get_as_text().split("\n", false)
 	file.close()
 	scene.file_sink.close()
 
-	var header := ""
-	for line: String in contents:
-		if line.contains("bout_start"):
-			header = line
-	assert_false(header.is_empty(), "the bout header reached the file")
-	assert_true(header.contains(str(BattleScene.DEFAULT_SEED)))
-	assert_eq(header, log_sink.lines[0], "the same event, not two independently-built ones")
+	var ours: String = log_sink.lines[0]
+	assert_true(ours.contains("bout_start"), "sanity: the UI sink's first line is the header")
+	assert_true(ours.contains(str(BattleScene.DEFAULT_SEED)), "and carries this bout's seed")
+	assert_true(
+		contents.has(ours),
+		(
+			"the same event, not two independently-built ones — the file holds no line equal to %s"
+			% ours
+		)
+	)
 
 
 ## **`BR52.11`'s actual regression, and the one the old shape could not catch.**

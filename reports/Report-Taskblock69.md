@@ -1,7 +1,9 @@
 # Taskblock 69 Report — a blocker's facing reaches everything that reads a blocker
 
-Passes A, B, C and D landed in order. Full gate green: **3614 tests, 0 failures, 438 s, within the
-work budget, no fallback.**
+Passes A, B, C and D landed in order. Full gate green: **3615 tests, 0 failures, 198 s, within the
+work budget, no fallback** — re-taken at the push, after the close-out and the ramp addendum. The
+438 s figure this report first carried was measured before both and is superseded; the spread is the
+corpus draw, not a speed-up (`bouts` 81 against 86, `turns` 643 against 855).
 
 **Appended after the supervisor asked what ramps are doing.** They were right to: a `ramp` is a flat
 slab identical to `ship_floor` that nothing reads a facing from, and I had justified a real decision
@@ -152,6 +154,17 @@ so it is asked.
 **5. `test_editor_controller.gd::test_a_second_surface_on_one_cell_is_still_placed_and_still_only_
 warned` — the fixture held the assumption Pass D deliberately overturned.** Caught by the fast gate,
 not by a targeted run. Rewritten, per the decision above.
+
+**6. `test_battle_scene.gd::test_new_battle_logs_the_seed_at_bout_start_to_both_sinks` — a race in
+the suite, found by the pre-push full gate** (`BR69.02`). Not caused by this block: the same gate had
+been green 317 s earlier on the same tree, and the file passes in isolation. `FileSink` defaults to
+`res://out/combat.log` and **all eight shard processes append to it concurrently**, while the test
+took the **last** `bout_start` line in that shared file and compared it to its own — so it read
+another shard's `seed=0` against its own `seed=2`. It now searches for a line **equal to** this
+scene's own header, which is what *"the same event reached both sinks"* asserts and cannot be raced.
+Demonstrated non-vacuous by feeding the two sinks different events. **The hazard itself is left
+open** — eight processes writing one live log is a property of the sharded gate, and any future test
+reasoning about that file's contents as a whole will race the same way.
 
 ---
 

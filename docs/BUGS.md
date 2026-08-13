@@ -2613,3 +2613,36 @@ is_disabled` for the same part. The disappearance here is that disagreement made
 - **The fix, when it is scheduled:** `part = PlacedVolume.placed_part(part, placement.size,
   placement.offset)` before building the boxes, which is what `MapSerializer._apply` already does.
   Re-run the generated-board claim tests and say whether any section's overlap answer moved.
+
+### BR69.02 — Active — owner: `CC`
+**Every shard of a sharded gate appends to one `out/combat.log`, so a test reading it races**
+- **cluster:** `suite`
+- **Source:** `CC`, 2026-08-13, taskblock-69 close-out.  ·  **CC session:** `c3af9fa5-bfaf-40e7-8d76-9c8bc7f741a9`
+- **What happened.** The full gate went red on
+  `test_battle_scene.gd::test_new_battle_logs_the_seed_at_bout_start_to_both_sinks` —
+  `["bout_start: seed=0"] expected to equal ["bout_start: seed=2"]`. The same gate had been green
+  317 s earlier on the same tree, and the file passes in isolation.
+- **The mechanism.** `FileSink._init` defaults to `res://out/combat.log` and `BattleScene.
+  load_battle` constructs one with no argument, so **all eight shard processes append to that single
+  path concurrently.** The test read the file and took the **last** line containing `bout_start`,
+  which is whichever of eight processes wrote most recently. The `seed=0` it picked up is
+  `BoutSetupModule`'s own empty-seed-field default (`bout_setup_module.gd:113`), written by a bout
+  another shard had just started.
+- **The test half is fixed** (taskblock-69 close-out): it searches the file for a line **equal to
+  this scene's own UI-sink header** instead of for the last one at a position. That is what *"the
+  same event reached both sinks"* actually asserts and it cannot be raced, since no other writer can
+  produce that exact line. Demonstrated non-vacuous by feeding the two sinks different events —
+  four assertions go red — and restored.
+- **The hazard itself is not fixed, and it is why this is `Active`.** Eight processes interleaving
+  writes into one live log is a real property of the sharded gate, not a property of that one test.
+  `FileSink` defends against corruption (`seek_end()` before every write, `BR52.04`) so lines stay
+  whole, but any future test that reasons about the file's *contents as a whole* — ordering,
+  adjacency, counts, "the last N lines" — will race the same way, and it will fail rarely and look
+  like a flake.
+- **Frequency: 1 red in 3 full sharded gates this session.** It is a race, so the count means little
+  beyond "it happens".
+- **Options when it is scheduled.** Give a `BattleScene` built under test a per-process path (the
+  `p_path` parameter already exists, and `FileSink._rotated` is deliberately keyed per path for a
+  related reason); or have the sharded runner point `out/combat.log` at a per-shard file. The first
+  is smaller and does not change what a real session writes, which is the property `FileSink`'s
+  header argues hardest for.
