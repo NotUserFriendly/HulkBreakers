@@ -2646,3 +2646,125 @@ is_disabled` for the same part. The disappearance here is that disagreement made
   related reason); or have the sharded runner point `out/combat.log` at a per-shard file. The first
   is smaller and does not change what a real session writes, which is the property `FileSink`'s
   header argues hardest for.
+
+### BR69.03 — Active — owner: `SUPERVISOR`
+**Mag lifts generate on stairs, and want a minimum height difference**
+- **cluster:** `generation`
+- **Source:** `SUPERVISOR`, 2026-08-13, taskblock-69 verification pass.  ·  **CC session:** `c3af9fa5-bfaf-40e7-8d76-9c8bc7f741a9`
+- **Reported.** *"Mag lifts are generating ON stairs. Mag lifts should probably have a min difference of two."*
+- **Why it can happen.** `GridPlacement.place_mag_lift_pair` refuses when either end already carries a
+  vertical route (`Surface.has_vertical_route_at`, the `BR62.03` guard) and requires only that the two
+  ends differ in height *at all* — `absf(upper_height - lower_height) <= 0.001` is the whole test.
+  **A stair is not a vertical route:** tb60 Pass A replaced ramps with runs of ordinary `ship_floor`
+  tiles at fractional heights, which carry no ladder or lift tag, so `has_vertical_route_at` answers
+  false for every tread and a lift may be stamped straight onto one.
+- **The minimum difference is a design number and is the supervisor's**, not CC's to invent
+  (CLAUDE.md: never present an invented balance number as design). *"Probably two"* is recorded here
+  as the reported figure, not as a decision.
+- **Two halves, and they are separable.** A lift landing on a stair is a placement rule; a lift that
+  climbs less than N is a balance rule. The first is arguably the real defect — a lift and a stair
+  serving the same rise is redundant route, which is what `BR62.03` was about in the ladder case.
+
+### BR69.04 — Active — owner: `SUPERVISOR`
+**A generated floor under a wall sits at 0 with the wall raised, instead of the floor rising**
+- **cluster:** `generation`
+- **Source:** `SUPERVISOR`, 2026-08-13, taskblock-69 verification pass.  ·  **CC session:** `c3af9fa5-bfaf-40e7-8d76-9c8bc7f741a9`
+- **Reported.** *"Ship floors under walls are generating at 0, with the wall offset up, rather than
+  ship floors generating level with neighbors, with a wall offset of 0."*
+- **What it is about.** `MapGen._stand_wall` is the one thing that authors a blocker at a non-zero
+  height (`ray_caster.gd`'s own note records it as such), and taskblock-63 Pass D3 gave a blocker the
+  `height` field that made *"an exterior wall follows its neighbours up"* expressible. **The wall
+  rising is that feature working**; the complaint is that the *floor beneath it* stayed at 0 rather
+  than rising to match its neighbours, so the deck has a hole under the wall.
+- **`test_no_generated_wall_is_shorter_than_the_floor_beside_it` passes**, which is consistent: it
+  constrains the wall against the floor **beside** it, and says nothing about the floor **under** it.
+  So this is an unguarded neighbour, not a regression.
+- **Not touched by taskblock-69.** That block changed which consumers read a blocker's `facing`; the
+  generator was explicitly out of scope and no generation code was edited.
+
+### BR69.05 — Active — owner: `SUPERVISOR`
+**Editor face picking flickers and highlights the wrong object, or one when nothing is under the cursor**
+- **cluster:** `editor`
+- **Source:** `SUPERVISOR`, 2026-08-13, taskblock-69 verification pass.  ·  **CC session:** `c3af9fa5-bfaf-40e7-8d76-9c8bc7f741a9`
+- **Reported.** *"Pointing at a face of an object is HIGHLY inconsistent, flickering between states,
+  highlighting an object when I'm pointed at another or even when pointed at nothing."*
+- **Probably the most valuable entry in this batch**, because it is upstream of two others. Every
+  editor verb keys off `EditorModule.struck_normal` / `struck_point`, which are set from the pick for
+  the duration of one hover or click. **When the pick is wrong or absent, the placement, the ghost
+  and the veneer span are all wrong together** — `BR69.08` is the veneer case of exactly that, and it
+  would explain a ghost that disagrees with the placement intermittently rather than always.
+- **Not taskblock-69's, as far as CC can show.** `PartPicker.hit`'s blocker branch was rewritten in
+  Pass A to call `UnitGeometry.blocker_placements`, and at `facing = 0.0` — every authored board —
+  that is the identical expression it replaced, asserted directly by
+  `test_blocker_facing_render.gd::test_a_facing_of_zero_draws_exactly_what_it_drew_before`. The
+  nearest-hit comparison was moved into `_nearest_hit` unchanged (`>= best_t: continue` became
+  `< best_t: accept`, the same branch). **CC cannot see the flicker and has not reproduced it**, so
+  this is the limit of what can be claimed rather than an exoneration.
+- **Where to look first.** `BoardInspectModule`'s hover path and `PartPicker.near_ray`'s `SKIP_RADIUS`
+  reject, which is a cheap perpendicular filter (`BR35.01`) sized in whole cells and is the one thing
+  in the chain that can admit or drop a candidate for reasons unrelated to the actual geometry.
+
+### BR69.06 — Active — owner: `SUPERVISOR`
+**Ladders are invisible when placed in the editor**
+- **cluster:** `editor`
+- **Source:** `SUPERVISOR`, 2026-08-13, taskblock-69 verification pass.  ·  **CC session:** `c3af9fa5-bfaf-40e7-8d76-9c8bc7f741a9`
+- **Reported.** *"Ladders are invisible when placed in editor."*
+- **Measured, and it is not the logic layer.** An editor-authored ladder resolves to
+  `kind_for(ladder) = blocker`, the map loads with no error, `grid.blocker_at` returns the ladder,
+  `UnitGeometry.blocker_placements` yields **1 box**, and `BoardView.build` spawns the same number of
+  box meshes as the identical route with a `wall`. **The geometry reaches the board.**
+- **So it is a rendering or a position question, and CC cannot see it.** Two candidates, both
+  unconfirmed:
+  - `ladder.tres` authors `center (0, 0.5, 0.45), size (0.6, 1, 0.1)` — a **0.1-thin panel sitting
+    exactly on the cell boundary**. Against a wall or a neighbouring floor's edge that is a sliver
+    with coincident faces, which reads as invisible or as z-fighting rather than as absent.
+  - **taskblock-69 Pass C may aggravate it.** A ladder placed by a top click now derives a facing
+    toward the nearest cell edge, where before it always faced `+Z`. If the edge clicked abuts a
+    wall, the panel is now *inside* that wall where it previously sat clear of it. That is CC's
+    change and is the first thing to rule out — place one against an open edge and see if it appears.
+
+### BR69.07 — Active — owner: `SUPERVISOR`
+**The placement ghost ignores a veneer's grown size and height, so it previews a stub**
+- **cluster:** `editor`
+- **Source:** `SUPERVISOR`, 2026-08-13, taskblock-69 verification pass.  ·  **CC session:** `c3af9fa5-bfaf-40e7-8d76-9c8bc7f741a9`
+- **Reported as two.** *"Veneer ghost is min height"* and *"Veneer ghost doesn't match what's actually
+  placed."* **One root cause**, so one entry.
+- **Reproduced, with numbers.** Hovering the side of a deck at height 2.0 with `ledge_veneer` armed:
+  the ghost draws a box at origin `(3.55, 0.4, 3.0)` at the part's natural `0.8` height; the click
+  authors `height 0.0, size (1.0, 2.0, 0.1)`, whose box sits at `(3.55, 1.0, 3.0)`. **The ghost shows
+  a 0.8-tall veneer and the board gets a 2.0-tall one.**
+- **The cause.** `EditorModule._place_with` asks `_veneer_at`, which returns `{height, size}`, and
+  writes that `size` onto the placement. **`PlacementGhostModule._draw` never asks it**: it draws
+  `DataLibrary.get_part(selected_part)` — the natural part — and takes its height from
+  `_drawn_height`, which knows nothing about a grown span. The module has no veneer branch at all.
+- **Predates taskblock-69** (taskblock-58 Pass E built the ghost, taskblock-59 Pass D added veneer
+  growth without extending it) **and is squarely against that module's own acceptance**: *"what
+  appears is what the ghost showed — a placement that surprises is the defect this exists to
+  prevent."* The structural claim it makes — one answer asked by both — holds for the *cell* and now
+  for the *facing*, and was never true for size or height.
+- **X and Z agree exactly** (`3.55`, `3.0` in both), so taskblock-69 Pass B/C's facing half is
+  working; it is the size and height halves that were never wired.
+- **The fix is to give the ghost the same two calls the click makes** — `_veneer_at` for the span and
+  `PlacedVolume.placed_part` for the boxes — rather than a second formula, which is what the module's
+  header already demands.
+
+### BR69.08 — Active — owner: `SUPERVISOR`
+**A veneer grows to the top of the whole stack, not to the ledge that was clicked**
+- **cluster:** `editor`
+- **Source:** `SUPERVISOR`, 2026-08-13, taskblock-69 verification pass.  ·  **CC session:** `c3af9fa5-bfaf-40e7-8d76-9c8bc7f741a9`
+- **Reported.** *"Veneer grows too big when placed against a ledge."*
+- **Measured.** A deck at 2.0 with a `wall` standing on it, clicked from the side:
+  `LedgeVeneer.placement_for` returns `size (1.0, 2.0, 0.1)` when it is given the **deck alone** and
+  `size (1.0, 4.4, 0.1)` when it is given **the deck and the wall** — the wall's own 2.4 added on top.
+  A veneer more than twice the height of the ledge it faces.
+- **Which of those two the editor passes depends on the pick.** `EditorModule.struck_placements`
+  returns the one placement the click struck, resolved by `struck_point.y` — but **falls back to the
+  cell's entire stack when `struck_point` is not a `Vector3`**, and `EditorController.placement_at`
+  never returns null for a non-empty cell, so that fallback fires exactly when the pick reported no
+  point. **`BR69.05` is that condition**, which is why these two are worth reading together and why
+  this one may be intermittent rather than constant.
+- **Predates taskblock-69** — taskblock-59 Pass D authored both the span rule and the
+  `struck_placements` fallback.
+- **Worth deciding rather than patching:** whether a veneer clicked on a stack should face the struck
+  *piece* (today's intent) or the *ledge* — the walkable surface — regardless of what is standing on
+  it. The second is closer to the reported expectation and is a rule change, not a bug fix.
