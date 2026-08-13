@@ -2548,8 +2548,8 @@ is_disabled` for the same part. The disappearance here is that disagreement made
 - **Both are likely retired by the aiming and camera rebuild**, so measure and record rather than
   tuning the current rig.
 
-### BR67.01 — Active — owner: `CC`
-**A sharded gate's shard 0 died with no summary, and the evidence was deleted before it could be read**
+### BR67.01 — Suspected — owner: `CC`
+**A sharded gate's shard 0 died once with no summary, and nothing has explained it**
 - **cluster:** `suite`
 - **Source:** `CC`, 2026-08-12, taskblock-67 Pass A.  ·  **CC session:** `71e5192b-9e3e-4ccd-9a58-48616be7dca8`
 - **What happened.** A `./run_tests.sh shard` reported `shard 0: DID NOT FINISH — no '--- suite cost
@@ -2573,10 +2573,15 @@ is_disabled` for the same part. The disappearance here is that disagreement made
   a fixture — `TestExitCodeProbe.FORCE_DEATH_ENV` makes a shard kill its own process, reproducing
   the signature exactly (engine banner, no `--- suite cost ---`, terminated by signal). The
   preserved log ends at the last test the shard entered, which is precisely what was missing here.
-- **Deliberately NOT closed, and this is the distinction that matters.** What was fixed is the
-  ability to investigate; **the cause is still unknown and unreproduced.** Marking it `Resolved`
-  would assert a verification nobody performed, and `Obsolete` would be false — the code it
-  describes is still there. It stays `Active` until it recurs and is diagnosed, or until enough
-  sharded gates pass that it can be closed as unreproducible on the evidence.
+- **`Suspected`, not `Active`, and it was filed wrong.** The entry covered two things: a described
+  structural defect (the logs deleted by the cleanup trap) and **a single unexplained death**. The
+  first is fixed, so what remains is a lead — one observation, no reproduction, no described
+  mechanism, and no evidence yet that it is a defect in this repo rather than the machine. That is
+  what `Suspected` is for. **`BR66.01` is the precedent**: it sat `Suspected` until it was
+  reproduced in isolation, then moved to `Active`.
+- **What would move it.** A recurrence with a preserved log → `Active`, described by whatever the
+  log's tail names. Enough sharded gates without one → closed as unreproducible, which is
+  `Obsolete` and not `Resolved`, since nobody will have verified a fix. **Refine it at a review
+  pass rather than leaving it to sit** — that is the obligation `Suspected` carries.
 - **On recurrence:** read `out/logs/gate/<utc>/shard*.log` — the tail names the last test that
   shard was in, and `audit/gate_fallbacks.log` says whether it has happened before.

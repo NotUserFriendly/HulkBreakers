@@ -14,10 +14,12 @@ kill its own process, reproducing the signature exactly: engine banner present, 
 entered** — precisely what was missing when this happened for real. It also stays a gate failure: a
 shard that started and died is not an infrastructure fallback.
 
-**`BR67.01` stays `Active`, and the distinction is the point.** What is fixed is the ability to
-investigate. **The cause is still unknown and unreproduced** — the shard was green in isolation and
-green on the next gate, and it has not recurred in the ~10 sharded gates since. `Resolved` would
-assert a verification nobody performed and `Obsolete` would be false.
+**`BR67.01` is `Suspected`, and it was filed as `Active` in error.** The entry covered two things —
+a described structural defect (logs deleted by the cleanup trap) and a single unexplained death. The
+first is fixed; what remains is **one observation with no reproduction and no mechanism**, which is
+what `Suspected` exists for. `BR66.01` is the precedent: `Suspected` until reproduced in isolation,
+then `Active`. The original reasoning only tested `Active` against the two *closing* statuses and
+never against `Suspected`.
 
 
 ## Taskblock 67 Pass D — the fallback is loud, recorded, and never triggered by a test failure

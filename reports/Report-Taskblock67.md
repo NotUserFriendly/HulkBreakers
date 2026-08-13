@@ -4,7 +4,7 @@
 measured before adoption), C (`fast` and the bare gate become sharded; `profile` names the
 single-process rung), D (the loud, recorded fallback) — each green and committed. **A close-out
 after them took the evidence half of `BR67.01`**, so a shard that dies now keeps its log; the
-entry stays `Active` because the death itself is still unexplained.
+entry is `Suspected` — the death itself is one unexplained observation.
 
 | rung | before | after |
 |---|---:|---:|
@@ -161,11 +161,16 @@ incident recorded. **Verified against a real death rather than a fixture** —
 `TestExitCodeProbe.FORCE_DEATH_ENV` makes a shard kill its own process, reproducing the signature
 exactly, and the preserved log ends at the last test the shard entered, which is what was missing.
 
-**The entry stays `Active` and that is the honest state.** What is fixed is the ability to
-investigate; **the cause is still unknown and unreproduced** — green in isolation, green on the next
-gate, no recurrence in the ~10 sharded gates since. `Resolved` would assert a verification nobody
-performed, and `Obsolete` would be false since the code it describes is unchanged. It closes when it
-recurs and is diagnosed, or when enough gates pass to call it unreproducible on the evidence.
+**The entry is `Suspected`, and I first set it to `Active` wrongly.** What is fixed is the ability
+to investigate; the cause is **one observation with no reproduction and no mechanism** — green in
+isolation, green on the next gate, no recurrence in the ~10 sharded gates since. That is what
+`Suspected` is for, and `BR66.01` is the precedent: it sat `Suspected` until reproduced in
+isolation, then moved to `Active`.
+
+**The reasoning error is worth recording because it is repeatable.** I tested `Active` only against
+the two *closing* statuses — not `Resolved`, not `Obsolete`, therefore `Active` — and never against
+`Suspected`. Ruling out closure says nothing about whether a lead has been confirmed. `Suspected`
+also carries an obligation `Active` does not: refine it at a review pass rather than letting it sit.
 
 ### The sharded and unsharded gates disagree about `maps` and `floods` by 10–14%
 
