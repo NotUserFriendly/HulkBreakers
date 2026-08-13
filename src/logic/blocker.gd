@@ -23,8 +23,10 @@ extends RefCounted
 ## the same fields**, which is `BR62.05`.
 ##
 ## **It was invisible because nothing authored a non-zero blocker height.** A third
-## fixed generation height (+4) is exactly what surfaces it: a floor at +4 sits above
-## every wall on the board, so an exterior wall has to follow its neighbours up.
+## fixed generation height is what surfaced it: a floor above every wall on the board
+## means an exterior wall has to follow its neighbours up. **Both halves are built** —
+## `MapGen.TALL_ROOM_LEVEL` and the wall-follows-its-neighbour invariant
+## (`test_no_generated_wall_is_shorter_than_the_floor_beside_it`), taskblock-69.
 ##
 ## ## Why the same four field names as `MapPlacement`, not a new idea
 ##
@@ -59,12 +61,18 @@ var size: Vector3
 var offset: Vector3
 ## Radians, the convention `Surface.facing` and `Unit.orientation` use.
 ##
-## **Carried but not yet drawn.** `BoardView._spawn_blocker` renders at facing 0.0, and
-## `PLAN`'s *Blockers need a real transform* item is where the drawing half lives — a
-## placement carrying a facing that nothing renders is the visual/logic disagreement
-## taskblock-59 spent a block removing. It is stored here so the round trip is lossless
-## and so that item has somewhere to put its answer, and that limit is stated rather than
-## left to be discovered.
+## **Read by everything, through one call.** taskblock-69 Pass A: `UnitGeometry.
+## blocker_placements(cell, grid)` is the only answer to *"what boxes does this blocker
+## occupy"*, and it reads this field alongside the height sum. Between taskblock-63 Pass D3
+## and then it was written, saved, loaded and then discarded by all ten consumers — each of
+## which built its own boxes at a literal `0.0` orientation — so a placement's facing
+## survived being saved and did not survive being looked at. **Fixing only the view would
+## have been worse than leaving it**: a blocker drawn rotated while blocking, occluding and
+## taking hits unrotated is *render is hitbox* broken from the other side.
+##
+## **The next field added here is a change in `blocker_placements` and nowhere else**, which
+## is what that accessor exists to make true. `height` cost nine migrations to reach the
+## resolvers and this one cost ten; a third would have cost eleven.
 var facing: float
 
 

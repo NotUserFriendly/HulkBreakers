@@ -91,71 +91,32 @@ results are then consumed in turn order — never to the acting itself.
 
 # NEXT
 
-### 1. Blockers need a real transform, and the veneer's facing waits on it
-**Needs:** nothing — the storage half landed at taskblock-63 Pass D3. **Unblocks:**
-ledge veneers facing the edge they hang off; ladders on any side of a cell; any terrain part whose
-meaning depends on which way it points.
+### 1. A rotate handle, so a derived facing can be adjusted
+**Needs:** nothing — a blocker's facing is stored, drawn and read by every consumer (tb69 A/B).
+**Unblocks:** an author correcting a derived facing without editing a `.tres`; anything later whose
+orientation is not a quarter turn.
 
-**Supervisor's call, 2026-08-06: blockers need a real transform** — not quarter-turn rotation baked
-into the boxes.
+**taskblock-69's one unmet acceptance, and it is unmet rather than descoped.** The supervisor's call
+was *"the click picks a sensible facing; the manipulation gizmo overrides it"*, and tb69 C built the
+first half: `FacePlacement.facing_for` derives a facing from the struck face, and it is written into
+the record at placement time so nothing recomputes over the top of a later change. **What does not
+exist is the gizmo half.** `Gizmo.Handles` is `TRANSLATE, RESIZE` and nothing else, so there is no
+route through the UI to override anything.
 
-**Reported as a veneer defect**: *"veneers don't respect the facing of the clicked side of a thing.
-They also always place on one edge of a top face, and should align their facing to the edge. They're
-already getting the 'grow to' height from a piece, so they should face it as well. Ladders may need
-this behavior as well."* All true, and the cause is one layer below the veneer.
+**The property the override needs is built and tested** —
+`test_placement_facing.gd::test_an_adjusted_facing_survives_a_save_load_and_a_redraw` writes the
+adjustment straight onto the record, saves, reloads and re-renders. So what is missing is a handle
+set and its drag arithmetic, not a question about whether the value would hold.
 
-**A blocker's facing does not survive being placed.** `MapPlacement.facing` is documented *"Surfaces
-only: radians... What makes a ramp directional"*, `MapSerializer.to_grid` stores a blocker as
-`grid.blockers[cell] = part` with no orientation anywhere, and `BoardView._spawn_blocker` draws it
-at facing `0.0`. So a `ledge_veneer` — which authors its box against **+Z** and is a `KIND_BLOCKER`
-— can only ever appear on one edge of a cell, whichever edge the author meant.
-
-**The deriving half was built and then reverted, deliberately.** A side click can face the veneer
-back at the ledge it hangs from, and a top click can read the struck point to pick the nearest cell
-edge — both landed and tested. **They were backed out because the drawing half does not exist**, and
-a placement carrying a facing that nothing renders is precisely the visual/logic disagreement this
-project spent taskblock-59 removing. *Both halves need to be possible first.* The derivation is
-small and can be rebuilt in an afternoon; it is not the work.
-
-- **Why not bake rotation into the boxes**, which is how `size` and `offset` already reach the
-  board: a `Box` is axis-aligned, so that buys quarter turns only. Enough for four cell edges and
-  wrong as a foundation — the supervisor's answer is a real transform, which also serves a ladder on
-  an arbitrary face and anything later that is not axis-aligned.
-- ~~**`Grid.blockers` is `Vector2i -> Part`**, so there is nowhere to put an orientation today.~~
-  **Built (taskblock-63 Pass D3).** It holds a `Blocker`. *A cell holds one blocker* still wants the
-  same entry to become a list, and the two are still cheaper together — but that item now needs a
-  container change rather than a record that does not exist.
-- **`UnitGeometry.assembly_placements` already takes an orientation** and `RayCaster`, `SightSpans`
-  and `PartPicker` all read the boxes it produces — so once a blocker can carry one, geometry,
-  picking and sight follow with no further change. It is the storage that is missing, not the maths.
-
-**A blocker's placement context is a dictionary key, and that is the whole defect.** `grid.blockers` is
-`Dictionary[Vector2i, Part]`, while a surface is a `Surface(part, height, facing)` record and a body
-part receives a full `Transform3D` from the socket-tree walk. **A `Part` is a template; the transform
-lives in the placement context** — and blockers are the one kind whose context carries a cell and
-nothing else.
-
-**Surfaces got their record in taskblock-38. Blockers never got the equivalent.**
-
-**So this is not "give blockers a transform" — it is give them the record surfaces already have**, and
-`MapPlacement` **is** that record: it carries `height`, `size`, `offset` and `facing` today. The work is
-`Grid.blockers` holding a record rather than a bare `Part`, the serializer carrying fields it already
-has, and `board_view.gd:349` reading them.
-
-**`BR62.05` was the live half and it is closed** (taskblock-63 Pass D3): `Grid.blockers` holds a
-`Blocker` record carrying `height`, `size`, `offset` and `facing`, `MapSerializer` carries all four
-both directions, and `board_view.gd` reads them. **What is left is exactly the drawing half** —
-`BoardView._spawn_blocker` still renders at facing `0.0`, so a placement's facing survives being
-saved and does not survive being looked at. That is the visual/logic disagreement taskblock-59 spent
-a block removing, and it is stated in `Blocker`'s own header rather than left to be found.
-
-**And the deriving half can be rebuilt now.** A side click facing the veneer back at its ledge and a
-top click reading the struck point both landed once and were backed out *because the drawing half did
-not exist*. Half of that objection is gone.
-
-**A third fixed generation height (+4, alongside 0 and +1) is what surfaces it.** A floor at +4 sits
-above every wall on the board, so an exterior wall must **follow its neighbouring tiles up** — which
-becomes *authorable* once a blocker carries a height, rather than needing a rule of its own.
+- **Angular drag, not linear.** `GizmoDrag` projects a screen delta onto an axis in world space and
+  returns a distance; a rotate handle wants an angle about the placement's own vertical axis. That is
+  a real addition to that class rather than a third caller of what is there.
+- **A third handle set, on the existing rule.** *"One click selects and gives translate arrows; a
+  second click swaps to resize handles"* — a third would want an answer about how the author reaches
+  it, and `EditorTools.GIZMO_TOOLS` is where that answer already lives as data.
+- **Quarter turns are the common case and must not be the only one.** The derivation produces
+  quarter turns because a cell has four edges; `Blocker.facing` is radians and a snap-to-quarter drag
+  with a modifier to free it is the shape to weigh, not a four-value cycle.
 
 ### 2. A confined unit should be legible, not silent
 **Needs:** nothing. **Unblocks:** a stranded unit being distinguishable from a hang.
@@ -169,23 +130,7 @@ from being indistinguishable from a frozen one, which is a legibility problem, n
 one. `can_return` (tb62 Pass D) means the planner now *avoids* stranding itself; this is for when
 it happens anyway — knocked into a pit, or spawned somewhere the generator's repair gave up on.
 
-### 3. A GROUND placement may share a cell at another height
-**Needs:** *Floors reference a location* (landed, tb58 B). **Unblocks:** two decks in one cell without
-a catwalk's side-attachment grammar.
-
-**One line, deliberately not taken in tb58 B.** `GROUND` now means "attaches to nothing", and the
-refusal it used to express survives as occupancy: `GridPlacement` refuses a second placement on a cell
-that already holds one. Loosening it to *"at this height"* is what lets a floor at 0.0 and a floor at
-2.0 share a cell.
-
-**It was left alone because Pass B was a storage inversion with no intended behavioural effect**, and
-this is a behaviour change wearing a refactor's clothes. Nothing today depends on either reading —
-every `GROUND` caller clears the cell first — so it is reversible in both directions, which is exactly
-why it should be a decision rather than a side effect.
-`test_placement_position.gd::test_ground_still_refuses_a_second_placement_on_an_occupied_cell` pins
-the current reading, so the change has to be a deliberate edit to a named test.
-
-### 4. A cell holds one blocker, so nothing stacks vertically
+### 3. A cell holds one blocker, so nothing stacks vertically
 **Needs:** `Grid.blockers` becoming a list per cell, or a placement carrying enough position to be
 addressed below another. **Unblocks:** stacking a pillar on a pillar; a wall taller than its part.
 
@@ -194,6 +139,19 @@ a cell is a thing the format cannot express, so the click says so and the ghost 
 it. **The record half has since landed** — `grid.gd:47`'s `blockers` holds a `Blocker` carrying
 `height`, `size`, `offset` and `facing` (taskblock-63 Pass D3), not a bare `Part`. **What has not
 changed is the cardinality:** one entry per cell, and that is this item.
+
+**taskblock-69 made the refactor cheaper and did not start it.** *"What boxes does this blocker
+occupy"* now has one answer — `UnitGeometry.blocker_placements(cell, grid)` — where ten consumers
+each built their own. So the geometry half of a cell holding several blockers is **one function to
+change instead of ten**, which is a reason to have done tb69 first and not a reason to start this
+here. The 84 read sites below are unaffected: they are about `grid.blockers`' cardinality, which
+tb69 did not touch.
+
+**And the sibling loosening landed** (tb69 D): a `GROUND` **surface** may now share a cell at
+another height, so two decks in one cell are expressible. **That is not this item** — it is the
+surface store, which was already an ordered list per cell, where this is `blockers[cell]` holding
+exactly one. Worth naming so the two are not confused: the format can now express two floors in a
+cell and still cannot express two walls.
 
 **The author's route to a taller wall is the Scale tool** (Pass C), which is the better verb for it —
 one part at a designed size rather than two pretending. What is genuinely missing is *stacking

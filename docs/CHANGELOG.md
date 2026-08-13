@@ -1,5 +1,113 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 69 — a blocker's facing reaches everything that reads a blocker
+
+**Geometry.** `UnitGeometry.blocker_placements(cell, grid)` is the one answer to *"what boxes does
+this blocker occupy"* — the `Blocker` record read once, returning `BoxPlacement`s carrying both the
+height sum and the facing. `Blocker.facing` had landed at taskblock-63 Pass D3 and was discarded by
+every consumer: nine call sites built their own boxes and each passed a literal `0.0` orientation,
+so a placement's facing survived being saved and did not survive being looked at.
+
+**Ten consumers read the accessor, not nine.** The taskblock's table listed nine sites and two of
+its rows were wrong, checked line by line: `detonation.gd:92` is the **unit** assembly walk and
+already passes `unit.orientation`, and `claim_resolver.gd:358` works from a `MapPlacement` and
+already passed `placement.facing`. Meanwhile `camera_framing_module.gd:86` was a tenth site the
+table did not name, building blocker boxes at `0.0` exactly as the others did. The property is
+*every* blocker consumer agrees, so it is included.
+
+**The parity property is the deliverable.** `test_blocker_facing_parity.gd` puts one resized wall
+on one board at a quarter turn and asks each consumer whether a point that is solid **only because
+the wall is turned** is solid: the accessor, `RayCaster.cast_geometry`, `RayCaster.obstructed`,
+`RayCaster.blocker_obstructed_among`, `SightSpans`, `PartPicker.hit` and `BoardView`'s real drawn
+meshes. A second test asks the same consumers about the point the wall occupies only when it is
+**not** turned, which is the half a double rotation would pass. Claims and detonation get their own
+cases; camera framing gets one on a bare grid, because its answer is a whole-board AABB that a
+probe point cannot discriminate on a floored board.
+
+**Two consumers were measuring rotated boxes as though they were axis-aligned**, found by that
+test. `CameraFramingModule._absorb` and `ClaimResolver.placement_aabb` each built a box's AABB as
+`centre ± size / 2` — the same answer only while every transform in the chain is a pure translation,
+because a box's centre does not move when the box turns about it. Both now go through
+`UnitGeometry.placements_aabb`, which takes all eight corners, and which returns an empty `AABB` for
+an empty list rather than one assembled from infinities.
+
+**Field items deliberately keep the raw call**, in `RayCaster` (twice), `SightSpans`, `PartPicker`
+and `BoardView`. A loose item carries no `Blocker` record — no facing, no placed height — and rests
+on the tile it fell onto. Each of the five sites says so rather than leaving the asymmetry to be
+discovered, and `test_blocker_facing_parity.gd` asserts a loose part is unmoved by a board whose
+blocker is turned.
+
+**Three shared helpers now take their boxes as an argument** rather than building them:
+`RayCaster._consider_assembly`, `PartPicker._nearest_hit` and `BoardView._spawn_blocker`. Each is
+the one path a blocker and a field item share, so one expression had to serve both and the only one
+that does is the one that discards the facing. `PartPicker._nearest_surface_hit` collapsed into
+`_nearest_hit` on the way — it was the same loop over a different list.
+
+**View.** `BoardView` and the placement ghost both draw the record's facing.
+`test_blocker_facing_render.gd` reads it back off the real `MeshInstance3D`: a `ledge_veneer` placed
+at each of four quarter turns has to hang its panel against a **named cell edge**, and its thin axis
+has to turn with it. Asserted that way rather than against `Basis(Vector3.UP, facing)`, which would
+be the test re-deriving the formula and would pass just as well against the mirrored rotation
+convention this codebase has shipped before.
+
+**A facing of `0.0` is byte-identical to before.** The accessor's transforms and boxes are compared
+directly against the pre-existing `assembly_placements(part, cell, 0.0, null, height)` expression
+across three cells including a raised one. `data/` is unchanged; no authored map carries a non-zero
+facing.
+
+**Editor.** `FacePlacement.facing_for` derives a facing from the click that makes a placement: a
+**side** click faces the placement back at the piece it was hung off — the placement lands one step
+along the struck normal, so the thing it hangs from is one step against it — and a **top** click
+reads the struck point and faces the nearest cell edge. A bottom face and a pick with no face or no
+point both keep the author's own panel value rather than snapping to an axis nobody chose. The
+rotation comes from `BodyProjector.orientation_for`, never a second `atan2`.
+
+**`EditorModule.placement_facing` is `placement_target`'s counterpart** — one answer, asked by the
+click and by the ghost, so a preview cannot disagree with what it previews. Asked of the **struck**
+cell, and asked inside the window where `struck_normal` / `struck_point` are set.
+
+**Derived at placement time, never re-applied on read**, which is what makes a later adjustment
+survive. `test_placement_facing.gd` asserts an overridden facing survives a save/load round trip and
+a redraw, and that the redraw is **not** where the derived facing would have put it.
+
+**A ladder is the case that proves the derivation is not veneer-specific.** `ladder` authors its box
+against `+Z` like `ledge_veneer`, is a `KIND_BLOCKER` by `EditorTools.kind_for` (it attaches at
+`LEDGE`, never `GROUND`), and nothing in the derivation knows either part exists.
+
+**A surface keeps the panel's own facing, and that is a decision.** `MapPlacement.facing` is what
+makes a ramp directional and a ramp's direction is stated by the author; deriving it from which
+corner of a tile the cursor was over would take an authoring control away. The derivation fills in
+the kinds whose facing **no author could ever mean anything by** — blocker and field item — because
+every consumer discarded it until this block.
+
+**Placement grammar.** `GridPlacement`'s `GROUND` rule is now *"not where something already is at
+this height"* rather than *"only where nothing is placed yet"*, which is what lets a floor at 0.0 and
+a floor at 2.0 be two decks in one cell. No minimum separation and no geometric overlap check, on
+the supervisor's call — 0.0 and 0.1 is authorable and is the author's problem. See `SUPERSEDED.md`
+for what it was and why it was safe here.
+
+**`GridPlacement.place` had a second copy of that rule** and it was found by the loosening: the
+function's own doc comment said *"places `part` at `cell` if `can_place` allows it"* while its
+`GROUND` branch spelled the occupancy test out again. It calls `can_place` now.
+
+**Two named tests changed meaning and were rewritten rather than relaxed.**
+`test_ground_still_refuses_a_second_placement_on_an_occupied_cell` → `..._at_the_same_height`, which
+tb58 B had pinned specifically so this loosening would have to be a deliberate edit; and
+`test_editor_controller.gd`'s surface-stacking test, which now asserts two decks are **not** warned
+about and that two at one height still are — the opinion-versus-refusal distinction it really
+guards, updated for what the opinion is now about.
+
+**Found and not fixed:** `BR69.01` — `ClaimResolver.placement_aabb` never applies
+`PlacedVolume.placed_part`, so a section claim measures the library part and ignores
+`MapPlacement.size`. Latent (no authored section carries a non-zero size or facing) and a different
+field from this block's, so it is logged rather than ridden along with.
+
+**Not built:** a rotate handle. `Gizmo.Handles` is `TRANSLATE, RESIZE` and nothing else, so *"the
+gizmo overrides it"* cannot be driven through the gizmo today. What is built and tested is the
+property that makes such an override possible — the record is the authority and nothing recomputes
+over the top of it. Queued in `PLAN.md`.
+
+
 ## Taskblock 68 close-out — the profile regenerated, and two stale audit failures closed with it
 
 **The suite profile is current again**: 369 scripts, 3590 tests, 0 failures, **1228.5 s** against

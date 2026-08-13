@@ -532,3 +532,48 @@ per-file wall-clock.
 not depend on somebody remembering an opt-in flag; that still holds, and the cadence it now depends
 on is written into `CLAUDE.md` — before a bug-hunt block, before a doc review, never less often than
 every five taskblocks.
+
+## A `GROUND` placement needed an empty cell (tb58 B → tb69 D)
+**Was:** `GridPlacement.can_place` returned `grid.surfaces_at(cell).is_empty()` for a `GROUND`
+part — *"attaches to nothing and is legal only where nothing is placed yet."* One floor per cell,
+at any height.
+**Now:** legal unless something is already there **at that height**. A floor at 0.0 and a floor at
+2.0 share a cell; two floors at 0.0 still do not.
+**Why:** two decks in one cell, without borrowing a catwalk's side-attachment grammar to express
+them. tb58 B named this exact loosening as the change vertical stacking wants and deliberately did
+not make it — that pass was a storage inversion with no intended behavioural effect, and this is a
+behaviour change wearing a refactor's clothes. Safe here for the reason tb58 B recorded and tb69 D
+re-checked: **every `GROUND` caller clears the cell first**, and `MapSerializer` writes through
+`Grid.add_surface` and never comes through `GridPlacement` at all, so no map on disk changed
+meaning.
+**No minimum separation, on the supervisor's call.** A floor at 0.0 and one at 0.1 is authorable
+and is the author's problem — no constant, no geometric overlap check.
+**Watch for:** comments and tests saying a cell holds one `GROUND` placement.
+`test_placement_position.gd::test_ground_still_refuses_a_second_placement_on_an_occupied_cell` was
+renamed to `..._at_the_same_height`, and `test_editor_controller.gd`'s stacking test was rewritten
+for the same reason — both had pinned the old reading on purpose.
+
+## A blocker's `facing` was stored and read by nothing (tb63 D3 → tb69 A)
+**Was:** `Blocker.facing` was written, saved and loaded, and then discarded by every consumer.
+Nine call sites turned a blocker into boxes and each passed a literal `0.0` orientation, so a
+placement's facing survived being saved and did not survive being looked at. `Blocker`'s own header
+stated the limit rather than leaving it to be found.
+**Now:** `UnitGeometry.blocker_placements(cell, grid)` is the one answer to *"what boxes does this
+blocker occupy"*, carrying the height sum and the facing off the same record. Ten consumers read
+it — the taskblock named nine and `CameraFramingModule.content_bounds` was a tenth.
+**Why:** a veneer or ladder facing the edge it hangs from. Fixing only the view would have drawn a
+blocker rotated while it blocked, occluded and took hits unrotated — *render is hitbox* broken from
+the other side, the class taskblock-59 spent a block removing.
+**Watch for:** any new `assembly_placements(part, cell, 0.0, null, height)` written against a
+blocker. `test_blocker_facing_parity.gd` is the guard, and the four **field-item** call sites that
+legitimately keep the raw call each say why at the site.
+
+## The placement ghost drew a blocker at facing `0.0` (tb58 E → tb69 B)
+**Was:** `PlacementGhostModule._drawn_facing` returned `0.0` for a blocker or a loose item, because
+`BoardView._spawn_blocker` did — *"the authored facing reaches a `Surface` and nothing else."*
+**Now:** the ghost previews the facing the click will author, derived by
+`EditorModule.placement_facing`.
+**Why:** **the rule did not change; the logic under it did.** The taskblock-59 follow-up settled
+that the ghost matches the logic and never the reverse, and `0.0` was the honest preview while the
+board discarded the facing. tb69 A took the board to `blocker_placements`, which made `0.0` the
+answer that lies.
