@@ -42,7 +42,7 @@ extends RefCounted
 const PRESET_ID := &"combat_tester_chaingun"
 
 ## **48 boxes for an assembled `combat_tester_chaingun` shell** — quoted from `BUGS.md`'s
-## `BR61.04` and the `BR61.06` archive entry, and re-measured at tb68 A1 against this helper's
+## `BR61.04` and the `BR32.05` archive entry, and re-measured at tb68 A1 against this helper's
 ## own build. If content moves it, this constant is a one-line correction carrying a new
 ## provenance tag; it is not an investigation.
 const BOX_COUNT := 48

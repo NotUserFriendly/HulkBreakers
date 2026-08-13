@@ -121,6 +121,65 @@ cluster hides.
 
 ---
 
+## The third judgement column — `outcome`, on the fixture census (taskblock-68)
+
+**A second artifact, and a different question.** `suite_audit.csv` asks *what does this test cost
+and what rule does it guard*. `audit/fixture_census.csv` asks *is this file's hand-built fixture
+correct, or is it hiding something* — a **per-file** question, because the fixture is a property of
+the file rather than of any one test. Same judgement-column discipline, same carried-forward
+regeneration, one row per file.
+
+**Why the question exists.** A cost probe measured a **one-box** body, reported 41 usec per unit,
+and the supervisor's next live session came back at **13 fps** — an assembled shell is 48 boxes and
+`placements_aabb` costs eight corner transforms per box (`BR32.05`'s archive entry). The suite was
+green throughout, and nothing in it could have said otherwise.
+
+**Every classified fixture is exactly one of three.** The classification set is the files that call
+`Part.new()`; a file that never builds a `Part` has no fixture to classify.
+
+| | meaning | action |
+|---|---|---|
+| **`CORRECT`** | The rule under test does not involve a body's structure. A hand-built `Part` is the *right* fixture — narrower, faster, and it fails for one reason. | Leave it, and **say so in the row.** An unexplained hand-built fixture is what makes the next auditor re-derive all of this. |
+| **`AVOIDING`** | Hand-built to dodge cost or setup, not because the rule is structure-free. It would pass against a real unit; nobody tried. | Move it onto a real definition, or record why the cost is not worth it. |
+| **`DRIFTED`** | **The test passes against a unit that could not occur.** A real unit breaks it, or the fixture asserts something the game's own data contradicts. | The outcome worth finding. It is what produced the 13 fps. |
+
+### The line between `DRIFTED` and an instrument artefact
+
+The obvious rule — *substitute a real unit; if the file goes red it is `DRIFTED`* — does not
+survive contact. The substitution drops whatever the fixture helper parameterised and changes the
+weapon under the test, so most red files are red for reasons that say nothing about the fixture.
+taskblock-68 drew the line here, and it is the reusable part:
+
+> **A broken assertion is `DRIFTED` when it is a claim about the game. It is an artefact when it is
+> a restatement of the fixture's own inputs.**
+
+`assert_eq(rows.size(), 3)`, where 3 is the number of parts the fixture just authored, restates an
+input — it would be equally true of any fixture and says nothing about the game. But `assert_eq(
+real_hit.part.id, &"wall", "the real plane really does resolve to the wall")` is a claim about how
+the game resolves a shot, and a real shell contradicts it.
+
+**The corollary is that `AVOIDING` absorbs most of the interesting middle.** A fixture whose rule
+*does* involve structure but which is only ever exercised at trivial scale — one part, one row, one
+socket — is `AVOIDING`, not `CORRECT` and not `DRIFTED`.
+
+### The three instruments, all committed and all regenerable
+
+- **`audit/fixture_census.gd`** -> `fixture_census.csv`. `shape` (`no_unit` / `real_unit` /
+  `hand_built`) narrows the classification set to the candidates; `hand_built` is the candidate set.
+- **the borrowed-id scan**, in the same emitter -> `fixture_conflicts.csv`. A test that writes
+  `gun.id = &"pistol"` and then `gun.damage = 20.0` has authored a pistol that does not exist. This
+  settles the half of `DRIFTED` that a scan can settle. **A conflict is a fact, not a verdict** —
+  borrowing a real id as a readable label is ordinary and correct, and is what most rows are.
+- **`audit/substitute_real_unit.py`** -> `substitution_probe.jsonl`. Replaces a candidate's single
+  `-> Unit` helper with `RealUnit.build` and runs it. Applicable only to files with exactly one
+  such helper, and **it emits no verdict** — see the line above.
+
+**`test/support/real_unit.gd` is what "a real unit" means.** One checked constructor: it validates
+through `DeepStrike.validate_assembly` and asserts the box count, so a degenerate assembly fails
+the calling test at the point of construction instead of being handed back to be measured.
+
+---
+
 ## Procedure
 
 1. **Regenerate the mechanical columns.** The per-test profiler emits everything except the two

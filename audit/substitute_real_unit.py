@@ -45,6 +45,12 @@ import json
 import os
 
 HELPER = re.compile(r"^func\s+(\w+)\s*\(([^)]*)\)\s*->\s*Unit\s*:\s*$", re.M)
+
+# **The probe must not probe its own instrument.** `test_real_unit.gd`'s single `-> Unit` helper
+# IS the deliberate one-box stand-in `RealUnit.check` exists to refuse, so substituting a real
+# chaingunner into it makes the guard assert that a real unit is degenerate. It goes red for a
+# reason that is the opposite of a finding, and the first run reported it alongside the real ones.
+EXCLUDED = {"test/unit/logic/test_real_unit.gd"}
 RUN = [
     "godot",
     "--headless",
@@ -71,7 +77,11 @@ def substitute(source):
     cell = "cell" if re.search(r"\bcell\s*:", params) else "Vector2i.ZERO"
 
     lines = source.split("\n")
-    start = source[: match.start()].count("\n")
+    # **The signature's LAST line, not its first.** `[^)]*` spans newlines, so a helper whose
+    # parameters are wrapped over several lines matches correctly and then had its own signature
+    # overwritten from line two onward, leaving an orphaned `) -> Unit:` — three of the ninety-five
+    # targets are wrapped, and all three came back as a parse error rather than as a result.
+    start = source[: match.end()].count("\n")
     end = start + 1
     while end < len(lines) and (lines[end].strip() == "" or lines[end].startswith(("\t", " "))):
         end += 1
@@ -87,12 +97,27 @@ def substitute(source):
     return "\n".join(lines[: start + 1] + body + lines[end:])
 
 
+# A substituted file can raise where the original never did, and `-d` answers a runtime error
+# with an interactive debugger prompt. `run_tests.sh` documents the consequence: a break in the
+# LAST script sits at `debug>` waiting for input that never comes. Closing stdin makes the prompt
+# read EOF, and the timeout is the backstop — the slowest file in the suite is under 70 s.
+TIMEOUT_S = 300
+
+
 def run(path):
     """(passed, [failure lines]) for one test file."""
     env = dict(os.environ, GODOT_DISABLE_LEAK_CHECKS="1")
-    proc = subprocess.run(
-        RUN + ["--test=res://%s" % path], capture_output=True, text=True, env=env
-    )
+    try:
+        proc = subprocess.run(
+            RUN + ["--test=res://%s" % path],
+            capture_output=True,
+            text=True,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            timeout=TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired:
+        return "timed-out", ["no summary within %d s" % TIMEOUT_S]
     out = proc.stdout + proc.stderr
     # The runner's own summary line is the only trustworthy verdict: a non-zero exit also
     # covers a debugger break, which is a different fact and is reported as `did-not-finish`.
@@ -116,6 +141,10 @@ def main():
 
     with open(args.out, "w") as sink:
         for i, path in enumerate(paths, 1):
+            if path in EXCLUDED:
+                sink.write(json.dumps({"file": path, "skipped": "the probe's own instrument"}) + "\n")
+                print(f"[{i}/{len(paths)}] SKIP {path}", flush=True)
+                continue
             source = open(path).read()
             swapped = substitute(source)
             if swapped is None:

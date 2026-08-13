@@ -50,3 +50,7 @@ temp.md
 *.swp
 *.swo
 *~
+
+# Python bytecode from the audit tree's helpers (audit_rules.py, classify_fixtures.py,
+# substitute_real_unit.py). Regenerated on every run; never part of a commit.
+__pycache__/

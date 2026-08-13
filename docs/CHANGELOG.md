@@ -1,5 +1,72 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 68 Pass B — classified, and the line that made it classifiable
+
+**`audit/classify_fixtures.py` writes the census's `outcome` and `evidence` columns** from a stated
+rule plus an explicit exceptions table. Not by hand: **192 rows classified by hand is 192 chances
+to be inconsistent and nobody can review the result**, where a short rule and a list of departures
+from it is reviewable in one screen.
+
+| outcome | files |
+|---|---:|
+| `CORRECT` | 187 |
+| `AVOIDING` | 3 |
+| `DRIFTED` | **2** |
+
+**The substitution probe ran over 95 of the 154 candidates** — the ones with exactly one
+`-> Unit` helper to substitute. Every baseline was green first, so nothing red is inherited: **43
+passed unchanged with a real 48-box chaingunner**, 31 failed, 21 did not finish.
+
+**The taskblock's own rule — "substituted run fails -> `DRIFTED`" — does not survive contact, and
+that is the reusable finding.** The substitution drops whatever the helper parameterised and
+changes the weapon under the test, so most red files are red for reasons that say nothing about the
+fixture. The line drawn instead, now documented in `docs/TEST-AUDIT.md`:
+
+> **A broken assertion is `DRIFTED` when it is a claim about the game. It is an artefact when it is
+> a restatement of the fixture's own inputs.**
+
+**`DRIFTED` 1 of 2 — `test_line_of_fire.gd` re-derives production's self-exclusion list and gets it
+wrong.** Its oracle excludes `shooter.shell.all_parts()`; every production path — `ShotResolution`,
+`AimController`, `Overwatch`, `DamageResolver.body_of` — excludes `all_parts_with_joints()`, which
+is what `BR36.01` established the list must be. **The two are identical for this file's socket-less
+torso**, so the divergence is invisible; under a real shell the plane resolves to the shooter's own
+`ammo_rack_joint` instead of the wall. The file's header asks for exactly the opposite: *"read the
+actual plane back, don't re-derive the ray math."*
+
+**Three more files use the same pre-`BR36.01` list and are inert, which is worth recording rather
+than fixing.** `test_penetration_traverses_body.gd`'s shooter is `Shell.new(Part.new())`, a
+geometry-free placeholder; `test_internal_targeting.gd`'s is a bare `DataLibrary` torso whose
+sockets are unoccupied — and `walk_with_joints` emits a joint only for an **occupied** socket. The
+pattern is one substitution away from mattering in each.
+
+**`DRIFTED` 2 of 2 — `test_detonation_draw.gd` asserts a radius as "the part's own real radius"
+that the part does not have.** It builds a `goo_barrel` at radius 3.0 where the game's is **2.0**
+(and `detonate_damage` 40.0 against 12.0, material `steel` against `reactive`). The rule — the
+drawn radius is a readout of what resolved rather than a guess — is still guarded; the sentence
+claiming the number is the game's is what is false.
+
+**The `AVOIDING` three are all the same shape: a rule that does involve structure, exercised only
+at trivial scale.** `test_inspect_rows.gd` (26 rows against 3) and `test_inventory_rows.gd` (26
+against 1) test tree partition and nesting one member deep. `test_hit_volume_view_mesh_scene.gd`
+asserts *"no box instance may exist for a part that has a commissioned mesh"* and actually checks
+that no box exists **anywhere in the view** — identical claims for a one-part fixture, and a real
+shell separates them.
+
+**The borrowed-id conflicts are overwhelmingly legitimate, and that is a result.** 108 files
+disagree with real data across 459 fields, and reading them found the idiom rather than a defect:
+**a test borrows a real id as a readable label while authoring values chosen to isolate a rule.**
+`test_bout_runner.gd` sets a `rifle` to `ap_cost` 5 against the real 2 *and says why* — it makes a
+plain shot unaffordable against the fixture's own 3 max AP, so overwatch is the only option the
+turn has. A real weapon would delete the thing under test.
+
+**Two instrument defects found in my own probe, both fixed.** Its helper regex spans newlines, so
+the three targets with a wrapped signature had their own signature overwritten from line two
+onward and came back as a parse error rather than a result. And it ran `godot -d` with no timeout
+and an open stdin — `run_tests.sh` documents that a Debugger Break in the last script sits at a
+`debug>` prompt forever, so the probe could have hung indefinitely on a file its substitution had
+just made throw.
+
+
 ## Taskblock 68 Pass A — the detector, before any classification
 
 **`RealUnit` (`test/support/real_unit.gd`) is now the one place a test says "a real unit".** It
@@ -7,10 +74,10 @@ assembles `combat_tester_chaingun` through `DeepStrike.assemble_from_preset` and
 came back**: `DeepStrike.validate_assembly` reports no violations, and the body is exactly
 `BOX_COUNT` boxes. A degenerate assembly **fails the calling test by name at the point of
 construction** rather than being handed back for something to time, which is the whole point — the
-`BR61.06` cost probe measured a one-box body, reported 41 usec, and shipped 13 fps with the suite
+`BR32.05` cost probe measured a one-box body, reported 41 usec, and shipped 13 fps with the suite
 green throughout.
 
-**The 48 was re-measured, not quoted.** `BR61.04` and the `BR61.06` archive entry both say 48; an
+**The 48 was re-measured, not quoted.** `BR61.04` and the `BR32.05` archive entry both say 48; an
 assembled chaingunner today is 48, checked two ways — through the helper and straight off the
 preset, bypassing it.
 
