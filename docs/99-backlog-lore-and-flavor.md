@@ -157,6 +157,57 @@ kinds*.
 realism, and it is the first system that makes *where a hulk is* mean something. It needs the
 atmosphere and decompression model, which needs the propagation model, which is already recorded.
 
+## Heat has addresses that are not yours
+**Supervisor, 2026-08-12.** Anger the opposition enough and **they stop coming for you and start
+coming for what you are attached to** — allies, the yard you dump scrap at, the station you buy fuel
+from. **Especially the ones less defended than you are**, which is the whole point: heat you earned
+is spent where it is cheapest to spend.
+
+**The reason to record it is that it makes heat a resource with a geography** rather than a number
+that raises encounter difficulty. It also gives *"which friends do I actually have"* a mechanical
+answer, and it presumes a persistent map of relationships that does not exist yet.
+
+**Wants:** something like `Claims, faction reputation, local space encounters` below, and a notion of
+places you return to. **Nebulous until those have shape.**
+
+## "Breaker, we're under attack. We've got shells available for linking."
+**Supervisor, 2026-08-12.** An ally under attack can offer **linkage** — you jump a matrix into a
+shell *they* provide and arrive instantly, or you **fly there** and arrive with your own known
+shells, later, possibly to find them already on the back foot or already lost.
+
+**The trade is the idea:** speed in an unknown body against delay in a body you built. It is the
+first thing that makes *a matrix is not its shell* a decision rather than a setting, and the meta
+layer's version of the same pillar the combat layer already runs on.
+
+**And it opens a third option that costs nothing to add once the first two exist: leaving shells in
+places.** A shell you built, parked at a friend's yard, is a link target with none of the compromise
+— **you pre-positioned it, which means you chose in advance who was worth defending.** That is a
+better expression of the alliance than any reputation number.
+
+**Wants:** persistent allies and locations, and matrix-to-shell linkage as a meta-layer verb.
+**Note the pull toward the item above** — the same map of relationships serves both.
+
+## Ship-mounted weapons, and boarding as the second layer
+**Supervisor, 2026-08-12.** The **same weapon parts** appear at three scales. Inside a voidhulk they
+are things to hack, and the smaller ones can be **pulled off and used as turrets**. Outside, they
+**bolt to shuttles and small ships** — so ship combat is not a separate system, it is the part system
+at a different grid size.
+
+**With multigrid that produces two simultaneous layers**, and the tension between them is the design:
+
+- **Ship-to-ship**, heavy guns, fast and decisive and it **wrecks the prize**.
+- **Boarding**, light and slow, disabling their weapons or taking the hull mostly intact.
+
+**"Do we fire, or do we get aboard?"** is a real choice because the answer changes what you are left
+holding. **And it is the first thing that makes ship combat not one player's job in multiplayer** —
+somebody flies and shoots while somebody else is in a breaching pod, and both are playing the same
+game.
+
+**Wants:** multigrid, and vehicles as assemblies of parts. `PLAN`'s *tiles as anchor-sockets* open
+question is upstream of this. **The parts half is already the plan** — standing rule 3 says author
+everything as parts including infrastructure and huge objects, precisely so this kind of thing is
+assembly rather than retrofit.
+
 ## Deferred systems
 - **Ship upgrade tree** and **scanner tiers**.
 - **Map selling** to other scavs.

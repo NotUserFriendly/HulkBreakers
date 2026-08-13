@@ -169,15 +169,71 @@ from being indistinguishable from a frozen one, which is a legibility problem, n
 one. `can_return` (tb62 Pass D) means the planner now *avoids* stranding itself; this is for when
 it happens anyway — knocked into a pit, or spawned somewhere the generator's repair gave up on.
 
-### 3. The destroyed-ladder fall
-**Needs:** forced movement. **Unblocks:** terrain destruction meaning something vertically.
+### 3. A GROUND placement may share a cell at another height
+**Needs:** *Floors reference a location* (landed, tb58 B). **Unblocks:** two decks in one cell without
+a catwalk's side-attachment grammar.
 
-**Two of its four dependencies landed at taskblock-62 Pass C2.** *"A unit occupying a position
-partway up"* is built — a unit's position is `(cell, height)` and a partial climb rests there — and
-*"interrupts firing mid-action"* landed at taskblock-53. What is left is **terrain destruction
-affecting whatever stands on or attaches to it** and **falls / throws / knockback as real
-movement**, which is the same machinery *Forced movement* and `eject` wait on. Three items, one
-dependency.
+**One line, deliberately not taken in tb58 B.** `GROUND` now means "attaches to nothing", and the
+refusal it used to express survives as occupancy: `GridPlacement` refuses a second placement on a cell
+that already holds one. Loosening it to *"at this height"* is what lets a floor at 0.0 and a floor at
+2.0 share a cell.
+
+**It was left alone because Pass B was a storage inversion with no intended behavioural effect**, and
+this is a behaviour change wearing a refactor's clothes. Nothing today depends on either reading —
+every `GROUND` caller clears the cell first — so it is reversible in both directions, which is exactly
+why it should be a decision rather than a side effect.
+`test_placement_position.gd::test_ground_still_refuses_a_second_placement_on_an_occupied_cell` pins
+the current reading, so the change has to be a deliberate edit to a named test.
+
+### 4. A cell holds one blocker, so nothing stacks vertically
+**Needs:** `Grid.blockers` becoming a list per cell, or a placement carrying enough position to be
+addressed below another. **Unblocks:** stacking a pillar on a pillar; a wall taller than its part.
+
+taskblock-59 Pass A refused the gesture rather than letting it corrupt the editor: a second blocker on
+a cell is a thing the format cannot express, so the click says so and the ghost declines to preview
+it. **The record half has since landed** — `grid.gd:47`'s `blockers` holds a `Blocker` carrying
+`height`, `size`, `offset` and `facing` (taskblock-63 Pass D3), not a bare `Part`. **What has not
+changed is the cardinality:** one entry per cell, and that is this item.
+
+**The author's route to a taller wall is the Scale tool** (Pass C), which is the better verb for it —
+one part at a designed size rather than two pretending. What is genuinely missing is *stacking
+distinct things*: a crate on a pillar, a barrel on a crate.
+
+- `MapPlacement.offset` (Pass C) already carries a sub-cell displacement, so the **geometry** of a
+  stack is expressible today. What is not is the **grid's** idea of it: `blockers[cell]` holds one
+  part, and the pathfinder and `Grid.blockers` sweeps ask in whole cells.
+- **That limit is already live and is not new here.** A 3 x 3 wall authored by Pass C is one blocker
+  on one cell while covering nine, and an offset placement blocks the cell it was authored at
+  whatever its geometry overlaps. Stated in `MapPlacement.offset`'s own note rather than left to be
+  found.
+
+**Re-asked by the supervisor after taskblock-59 and scoped rather than started** — *"pillars and
+other terrain features should stack atop each other. This might be a big ask, so check before
+implementing."* It is. **Measured 2026-08-06: `grid.blockers` is read at 84 sites across 28 files**,
+41 of them in production logic:
+
+| pattern | sites | difficulty |
+|---|---|---|
+| `blockers.has(cell)` guards | 14 | mechanical — becomes *"is anything here"* |
+| `for cell in blockers` iteration | 14 | mechanical, but it is the ray marcher, sight spans and detonation |
+| `blockers[cell] = part` writes | 13 | mostly `MapGen` and `BoutInjector` |
+| `blockers[cell]` indexed reads | 5 | **the real decisions** — *which* one? |
+| `size`/`erase`/`keys` | 7 | mechanical |
+
+**The count is not the hard part.** Most readers genuinely need **every** blocker rather than the
+first — `RayCaster` marches geometry, `SightSpans` derives occlusion, `ShotPlane` projects, `Cover`
+and `VisibilityField` ask about blocking — while `DamageResolver` and `Detonation` do *identity*
+checks (`blockers[cell] == part`) that need list semantics to stay correct. `Grid.shootable_part_at`
+and `cell_of_blocker` both assume one.
+
+**Two cheaper things already work and should be weighed before starting.** A *taller* pillar is
+authorable now — Pass C's Scale drag on the top face gives one part at the authored height with
+proportional hp, which is better than two parts pretending. And `Grid.field_items` already holds an
+ordered array per cell and `BoardView` draws it through `_spawn_blocker`'s own geometry, so several
+parts in one cell already **draw**; what they do not do is block, because `Pathfinder` and
+`ShotPlane` never read `field_items`. **The open design question is therefore what distinguishes a
+blocker from a field item** once a cell can hold several of either — answer that before the
+refactor, not during it.
 
 # QUEUED
 
@@ -220,6 +276,107 @@ filed as defects**: `walk_with_joints` emits a joint only for an **occupied** so
 shooters have none — one is `Shell.new(Part.new())`, a geometry-free placeholder, the other a bare
 `DataLibrary` torso. Each is one fixture change away from mattering, and the change that would do
 it is the obvious improvement to either file.
+
+<!-- ------------------------------------------------------------------------ -->
+## Ballistics and forced movement
+
+*Four items, one substrate. Ordered: the primitive, then the family that uses it, then the two things
+waiting on that.*
+
+**Demoted out of NEXT 2026-08-12.** *The destroyed-ladder fall* sat in NEXT naming a dependency that
+sat two thousand lines below it — precisely the violation NEXT's invariant exists to make visible.
+Grouped here so they stop being discoverable only by reading all four.
+
+**`Ballistic motion` was added at the same time because three entries named it as a dependency and
+none of them was it.** `eject`'s `Needs:` line said *"ballistic motion (grenades, forced movement)"*,
+*Explosions* calls a hazard blob *"a ballistic projectile"*, and nothing in the file was the thing.
+
+### Ballistic motion — an arc is a second way for something to travel
+**Needs:** nothing. **Unblocks:** grenades and thrown objects; arcing heavy weapons; hazard blobs
+(*Explosions: three types on one substrate*); `eject` becoming a real motion; the *thrown* case of
+*Forced movement*.
+
+**Everything the game fires today travels in a straight line.** `RayChain` marches from muzzle to aim
+point and continues while it has damage — which is right for bullets and is the only motion a
+projectile has. **A grenade, a thrown body, a mortar round and a hazard blob all travel an arc**, and
+an arc is not a special case of a ray: it can clear a wall a ray cannot pass, it can be blocked by a
+ceiling a ray never meets, and where it *lands* matters as much as what it hits on the way.
+
+**Supervisor, 2026-08-12: `eject` is a projectile attack, in the same family as grenades, heavy
+weapons and thrown people.** That is the framing this item records — **the arc is one substrate and
+the payloads differ**, exactly as *Explosions* treats HE/fragmentation/hazard as three magnitudes on
+one substrate rather than three systems.
+
+**One primitive, stated as a contract so the payloads can be authored against it:**
+
+- **An origin, a target cell, and a computed arc between them** — with the arc's height a function of
+  distance and whatever force threw it. *Explosions* already depends on this reading: higher HE throws
+  hazard blobs **flatter**, which is only meaningful if flatness is a parameter of the arc.
+- **Interruption is geometry, and it is not the same question a ray asks.** The arc can be stopped
+  mid-flight by something it meets; **it can also simply land short.** Both need an answer, and
+  *"where does it end up"* is the one a ray never has to give.
+- **Something happens on landing**, and that is the payload's business rather than the arc's — a
+  detonation, a hazard blob, a matrix in a cell, a body that is now prone somewhere else.
+- **It is not a second shot resolver.** *Explosions*' rule holds: fragments are bullets and use the
+  existing resolver. **The arc delivers a thing to a place; what happens when it arrives goes through
+  the machinery that already exists.** If the arc starts resolving damage, that is the bug.
+
+**Arcing weapons are the reason this is not only a throwing feature.** A weapon whose round arcs is a
+weapon that can be fired from behind cover at something the shooter cannot see — which is a different
+tactical verb from anything in the game today, and it wants the aim model to have something to say
+about it before it is built.
+
+### Forced movement — flung, thrown, knocked prone
+**Needs:** nothing for the *knocked prone* and *flung* cases; the **thrown** case wants *Ballistic
+motion* above, since a thrown unit travels an arc rather than a push. **Three items wait on this
+one** — `eject` becoming a real motion, the destroyed-ladder fall, and knockback as a melee outcome —
+so doing it early collapses three waiting entries into one piece of work. Consequences pair with the
+deep-fall rules.
+
+**One family, not three features.** Being flung by decompression, thrown by an attack, and knocked
+prone by a fall are the same shape: **an outside actor applies movement and/or a pose to a unit that
+didn't choose it.** Nothing like this exists today — every position change in the game is a unit
+spending its own MP on its own turn — so this is genuinely new machinery, and worth building once for
+all three rather than three times.
+
+- **Movement plus pose, from an external cause.** The mover isn't the moved. A flung unit travels in the
+  direction of the pressure drop; a thrown unit along the attack vector; a fallen unit stays put and
+  changes pose. Same verb, different arguments.
+- **Consequences pair with the deep-fall rules.** Falling past the safe hop-down distance is meant to
+  cost damage or a knockdown; that consequence *is* forced movement's output, so design them together
+  rather than inventing knockdown twice.
+- **Resistance is an attribute roll — later, and not defined yet.** Once attributes land, a unit rolls
+  to resist being moved or posed. Perks that avoid the consequence entirely are already sketched under
+  Perks. **Do not invent the roll's shape or numbers ahead of that** — leave a flagged hook.
+- Standard CRPG vocabulary applies (thrown, knocked prone); no need to invent terms.
+
+### The destroyed-ladder fall
+**Needs:** forced movement. **Unblocks:** terrain destruction meaning something vertically.
+
+**Two of its four dependencies landed at taskblock-62 Pass C2.** *"A unit occupying a position
+partway up"* is built — a unit's position is `(cell, height)` and a partial climb rests there — and
+*"interrupts firing mid-action"* landed at taskblock-53. What is left is **terrain destruction
+affecting whatever stands on or attaches to it** and **falls / throws / knockback as real
+movement**, which is the same machinery *Forced movement* and `eject` wait on. Three items, one
+dependency.
+
+### `eject` becomes a real motion once things can be thrown
+**Needs:** *Ballistic motion* (above); *Forced movement* for the landing's consequence. **Unblocks:**
+`eject` meaning what its name says.
+
+**`eject` currently names a motion the game does not have.** A matrix leaving a destroyed shell is meant
+to be *thrown* — an arc, a landing cell some distance away, the same ballistic path grenades and thrown
+objects will use. Nothing is thrown yet, so today every ejection is a drop wearing the word.
+
+- **The distinction is shell versus surrogate.** A **shell throws** its matrix clear; a **surrogate just
+  drops** it, like any other part falling from a destroyed parent (see `SUPERSEDED.md`). Both keep
+  "matrices are never lost" — they differ in motion, not in outcome.
+- **When ballistics land, only the shell path grows an arc.** The surrogate path stays a drop
+  permanently, which is the point of the distinction rather than an unfinished half.
+- **Until then the naming should not lie.** `DamageResolver.eject_matrix_if_needed`'s surrogate branch is
+  a drop; calling it an ejection is how the retired design keeps looking current.
+- Shares its dependency with *Forced movement — flung, thrown, knocked prone*, and probably its
+  implementation: an arc from a cell to a cell, with something to do on landing.
 
 <!-- ------------------------------------------------------------------------ -->
 ## Going up
@@ -441,54 +598,6 @@ AI fix.
 <!-- ------------------------------------------------------------------------ -->
 ## Blockers, stacking and veneers
 
-### A cell holds one blocker, so nothing stacks vertically
-**Needs:** `Grid.blockers` becoming a list per cell, or a placement carrying enough position to be
-addressed below another. **Unblocks:** stacking a pillar on a pillar; a wall taller than its part.
-
-taskblock-59 Pass A refused the gesture rather than letting it corrupt the editor: `Grid.blockers` is
-`Vector2i -> Part` and `MapPlacement.height` is documented as a surface's field, so a second blocker
-on a cell is a thing the format cannot express. The click now says so and the ghost declines to
-preview it.
-
-**The author's route to a taller wall is the Scale tool** (Pass C), which is the better verb for it —
-one part at a designed size rather than two pretending. What is genuinely missing is *stacking
-distinct things*: a crate on a pillar, a barrel on a crate.
-
-- `MapPlacement.offset` (Pass C) already carries a sub-cell displacement, so the **geometry** of a
-  stack is expressible today. What is not is the **grid's** idea of it: `blockers[cell]` holds one
-  part, and the pathfinder and `Grid.blockers` sweeps ask in whole cells.
-- **That limit is already live and is not new here.** A 3 x 3 wall authored by Pass C is one blocker
-  on one cell while covering nine, and an offset placement blocks the cell it was authored at
-  whatever its geometry overlaps. Stated in `MapPlacement.offset`'s own note rather than left to be
-  found.
-
-**Re-asked by the supervisor after taskblock-59 and scoped rather than started** — *"pillars and
-other terrain features should stack atop each other. This might be a big ask, so check before
-implementing."* It is. **Measured 2026-08-06: `grid.blockers` is read at 84 sites across 28 files**,
-41 of them in production logic:
-
-| pattern | sites | difficulty |
-|---|---|---|
-| `blockers.has(cell)` guards | 14 | mechanical — becomes *"is anything here"* |
-| `for cell in blockers` iteration | 14 | mechanical, but it is the ray marcher, sight spans and detonation |
-| `blockers[cell] = part` writes | 13 | mostly `MapGen` and `BoutInjector` |
-| `blockers[cell]` indexed reads | 5 | **the real decisions** — *which* one? |
-| `size`/`erase`/`keys` | 7 | mechanical |
-
-**The count is not the hard part.** Most readers genuinely need **every** blocker rather than the
-first — `RayCaster` marches geometry, `SightSpans` derives occlusion, `ShotPlane` projects, `Cover`
-and `VisibilityField` ask about blocking — while `DamageResolver` and `Detonation` do *identity*
-checks (`blockers[cell] == part`) that need list semantics to stay correct. `Grid.shootable_part_at`
-and `cell_of_blocker` both assume one.
-
-**Two cheaper things already work and should be weighed before starting.** A *taller* pillar is
-authorable now — Pass C's Scale drag on the top face gives one part at the authored height with
-proportional hp, which is better than two parts pretending. And `Grid.field_items` already holds an
-ordered array per cell and `BoardView` draws it through `_spawn_blocker`'s own geometry, so several
-parts in one cell already **draw**; what they do not do is block, because `Pathfinder` and
-`ShotPlane` never read `field_items`. **The open design question is therefore what distinguishes a
-blocker from a field item** once a cell can hold several of either — answer that before the
-refactor, not during it.
 
 ### A veneer grown upward can never snap to anything
 **Needs:** a pick that reports **which** surface of a stack was struck, rather than the stack's own
@@ -813,38 +922,6 @@ from a planner-driven bout to a scripted queue with no loss of coverage.
 - **Hand-built is quietly wrong** — the fixture has drifted from what the game actually produces, and
   the test passes against a board that could not occur. This is the outcome worth finding.
 
-### Act on the suite audit
-**Needs:** the audit index — **built** (taskblock-49, `audit/suite_audit.csv`, 2431 rows classified
-under 328 rules). **Unblocks:** a suite whose cost is proportional to what it actually guards.
-
-The index exists; **nothing has been cut, by design** — taskblock-49 was scoped to evidence. This item
-is the acting-on, under `docs/TEST-AUDIT.md`'s cut rule: *a test may only be cut if breaking the rule it
-guards makes a different test fail*, **demonstrated rather than asserted**, with the covering test
-recorded beside the cut.
-
-Three specific things the index put on the table, in value order:
-
-**Two of the three findings below have since been acted on, and the third is no longer expensive.**
-Recorded corrected rather than deleted, because the *shape* of each is still the thing this item is for.
-
-- ~~**Eight name defects**~~ **— closed, taskblock-50 Pass E3.** The `description` column is empty
-  across all 2668 rows. The lesson stands: a filled description is a defect report, and the column
-  should stay empty.
-- ~~**`test_full_mission::test_bout_completion_rate_meets_the_measured_floor`, a 62.6 s sole guard**~~
-  **— retired, taskblock-50 Pass D.** Replaced by `test_seeds_to_first_completion_stays_low`, and
-  `test_full_mission.gd` now costs **1.2 s**. It was exactly the row someone proposes cutting on cost
-  alone, and it was retired by making the measurement cheaper rather than by cutting the guard.
-- **`test_completion_sampler::test_the_in_window_verb_reports_the_same_sample_and_changes_nothing`**
-  still exists, but its file is **6.2 s**, not the 102.3 s recorded here. **The corpus lever is no
-  longer worth a supervisor call.** Six other tests guard the same rule for ~0.001 s each, so the
-  cut-rule question remains open on its merits, at a fraction of the stakes.
-
-**The audit's headline finding was not the predicted one, and that shapes this item.** `TEST-AUDIT.md`
-expects expensive rows sharing a rule with cheap ones to be the output. They exist — but in every case
-checked the cheap peer guards the rule at *unit* level and the expensive one guards it end-to-end
-through a real bout, so breaking bout-level determinism does not redden the cheap peer and the cut rule
-correctly refuses the cut. **The real question the index answers is per rule: does this rule need a
-bout-level rung at all?** Answering that for the ~10 rules that own a bout-playing test is the work.
 
 ### Review pass over the test suite — *the survey half; the index landed in taskblock-49*
 **Needs:** nothing.
@@ -932,6 +1009,39 @@ suite *claims* is the point.
 conclusion — an item proposing a supervisor decision about a 102-second lever that had become a
 six-second one. **A cost recorded here should carry the taskblock that measured it**, or it reads as
 current forever.
+
+### Act on the suite audit
+**Needs:** the audit index — **built** (taskblock-49, `audit/suite_audit.csv`, 2431 rows classified
+under 328 rules). **Unblocks:** a suite whose cost is proportional to what it actually guards.
+
+The index exists; **nothing has been cut, by design** — taskblock-49 was scoped to evidence. This item
+is the acting-on, under `docs/TEST-AUDIT.md`'s cut rule: *a test may only be cut if breaking the rule it
+guards makes a different test fail*, **demonstrated rather than asserted**, with the covering test
+recorded beside the cut.
+
+Three specific things the index put on the table, in value order:
+
+**Two of the three findings below have since been acted on, and the third is no longer expensive.**
+Recorded corrected rather than deleted, because the *shape* of each is still the thing this item is for.
+
+- ~~**Eight name defects**~~ **— closed, taskblock-50 Pass E3.** The `description` column is empty
+  across all 2668 rows. The lesson stands: a filled description is a defect report, and the column
+  should stay empty.
+- ~~**`test_full_mission::test_bout_completion_rate_meets_the_measured_floor`, a 62.6 s sole guard**~~
+  **— retired, taskblock-50 Pass D.** Replaced by `test_seeds_to_first_completion_stays_low`, and
+  `test_full_mission.gd` now costs **1.2 s**. It was exactly the row someone proposes cutting on cost
+  alone, and it was retired by making the measurement cheaper rather than by cutting the guard.
+- **`test_completion_sampler::test_the_in_window_verb_reports_the_same_sample_and_changes_nothing`**
+  still exists, but its file is **6.2 s**, not the 102.3 s recorded here. **The corpus lever is no
+  longer worth a supervisor call.** Six other tests guard the same rule for ~0.001 s each, so the
+  cut-rule question remains open on its merits, at a fraction of the stakes.
+
+**The audit's headline finding was not the predicted one, and that shapes this item.** `TEST-AUDIT.md`
+expects expensive rows sharing a rule with cheap ones to be the output. They exist — but in every case
+checked the cheap peer guards the rule at *unit* level and the expensive one guards it end-to-end
+through a real bout, so breaking bout-level determinism does not redden the cheap peer and the cut rule
+correctly refuses the cut. **The real question the index answers is per rule: does this rule need a
+bout-level rung at all?** Answering that for the ~10 rules that own a bout-playing test is the work.
 
 ### The review layer earns its keep
 **Needs:** taskblock-48 Pass B2 (replay of failures). **Unblocks:** the supervisor being able to spot
@@ -1619,6 +1729,13 @@ the wreck contributes no `agility`, no `step_height` and no locomotion — which
   `test_membership_disagreement.gd` characterises the current contradiction and will need rewriting
   rather than patching when this lands.
 
+**Cover and walls are the unauthored half, and they arrived here from *Small mechanical notes*
+(taskblock-68 review).** Walls are destructible cover parts and a destroyed one currently clears to
+fully passable. The machinery exists — `failure_mode = MANGLE`, `is_mangled`, `mangles_into` — and is
+**never authored onto cover**. Authoring it turns a destroyed wall or crate into rubble:
+**passable-but-higher-cost and still low cover**, rather than gone. Data authoring plus a small
+`move_cost` branch, and it is the cheapest demonstration that this refit produces something visible.
+
 ### Status effects and boosts
 **Needs:** nothing. **Unblocks:** perks, power and therms, wound thresholds.
 
@@ -1849,23 +1966,6 @@ Each example is a different combination, which is what shows the three axes are 
 **And one it exposes:** `BR34.05` (misses vanish) matters more here, because a fragment that finds
 nothing to hit is the same defect multiplied by however many fragments an explosion throws.
 
-### `eject` becomes a real motion once things can be thrown
-**Needs:** ballistic motion (grenades, forced movement). **Unblocks:** `eject` meaning what its name
-says.
-
-**`eject` currently names a motion the game does not have.** A matrix leaving a destroyed shell is meant
-to be *thrown* — an arc, a landing cell some distance away, the same ballistic path grenades and thrown
-objects will use. Nothing is thrown yet, so today every ejection is a drop wearing the word.
-
-- **The distinction is shell versus surrogate.** A **shell throws** its matrix clear; a **surrogate just
-  drops** it, like any other part falling from a destroyed parent (see `SUPERSEDED.md`). Both keep
-  "matrices are never lost" — they differ in motion, not in outcome.
-- **When ballistics land, only the shell path grows an arc.** The surrogate path stays a drop
-  permanently, which is the point of the distinction rather than an unfinished half.
-- **Until then the naming should not lie.** `DamageResolver.eject_matrix_if_needed`'s surrogate branch is
-  a drop; calling it an ejection is how the retired design keeps looking current.
-- Shares its dependency with *Forced movement — flung, thrown, knocked prone*, and probably its
-  implementation: an arc from a cell to a cell, with something to do on landing.
 
 ### Overwatch: declaring it ends the turn, and spending buys quality
 **Needs:** nothing. **Unblocks:** overwatch reading as a commitment rather than a cheap extra.
@@ -2178,21 +2278,6 @@ answering a flatter question than it could.
 - **Gases and windows** arrive as volumes carrying a transmission property. Opaque by being there,
   transparent by declaration — the exception running the right way.
 
-### A GROUND placement may share a cell at another height
-**Needs:** *Floors reference a location* (landed, tb58 B). **Unblocks:** two decks in one cell without
-a catwalk's side-attachment grammar.
-
-**One line, deliberately not taken in tb58 B.** `GROUND` now means "attaches to nothing", and the
-refusal it used to express survives as occupancy: `GridPlacement` refuses a second placement on a cell
-that already holds one. Loosening it to *"at this height"* is what lets a floor at 0.0 and a floor at
-2.0 share a cell.
-
-**It was left alone because Pass B was a storage inversion with no intended behavioural effect**, and
-this is a behaviour change wearing a refactor's clothes. Nothing today depends on either reading —
-every `GROUND` caller clears the cell first — so it is reversible in both directions, which is exactly
-why it should be a decision rather than a side effect.
-`test_placement_position.gd::test_ground_still_refuses_a_second_placement_on_an_occupied_cell` pins
-the current reading, so the change has to be a deliberate edit to a named test.
 
 ### The editor's remaining gestures
 **Needs:** nothing except where noted. **Unblocks:** authoring a board without knowing what the tools
@@ -2963,27 +3048,6 @@ widens the concept:
   while still is probably what keeps it dynamic, and the rate is a real balance number rather than a
   detail to fill in later.
 
-### Forced movement — flung, thrown, knocked prone
-**Needs:** nothing mechanically. **Three items wait on this one** — `eject` becoming a real motion, the
-destroyed-ladder fall, and knockback as a melee outcome — so doing it early collapses three waiting
-entries into one piece of work. Consequences: consequences pair with the deep-fall rules.
-
-**One family, not three features.** Being flung by decompression, thrown by an attack, and knocked
-prone by a fall are the same shape: **an outside actor applies movement and/or a pose to a unit that
-didn't choose it.** Nothing like this exists today — every position change in the game is a unit
-spending its own MP on its own turn — so this is genuinely new machinery, and worth building once for
-all three rather than three times.
-
-- **Movement plus pose, from an external cause.** The mover isn't the moved. A flung unit travels in the
-  direction of the pressure drop; a thrown unit along the attack vector; a fallen unit stays put and
-  changes pose. Same verb, different arguments.
-- **Consequences pair with the deep-fall rules.** Falling past the safe hop-down distance is meant to
-  cost damage or a knockdown; that consequence *is* forced movement's output, so design them together
-  rather than inventing knockdown twice.
-- **Resistance is an attribute roll — later, and not defined yet.** Once attributes land, a unit rolls
-  to resist being moved or posed. Perks that avoid the consequence entirely are already sketched under
-  Perks. **Do not invent the roll's shape or numbers ahead of that** — leave a flagged hook.
-- Standard CRPG vocabulary applies (thrown, knocked prone); no need to invent terms.
 
 ### Step-out refinements
 **Needs:** nothing, but **read `BR27.15` first.** That entry found step-out has *no view affordance at
@@ -3053,11 +3117,19 @@ Carried over from the old `Support gaps` grouping, unchanged and still unspecifi
 it stays this thin through another review it belongs in `docs/99` until it has a shape.
 
 ### Hacking
-**Needs:** Attributes (Int-based), Status. **Unblocks:** *Rampancy*'s active-pressure framing; the
-"control system hacked" presentation note under *Small mechanical notes*.
+**Needs:** Attributes (Int-based), Status. **Unblocks:** *Rampancy*'s active-pressure framing.
 
-Int-based, and the RAM cost model it would spend against already exists (`05`). The presentation
-treatment is already written down separately — what is missing is the mechanic it would present.
+Int-based, and the RAM cost model it would spend against already exists (`05`).
+
+**The presentation treatment is settled and is folded in here** (moved from *Small mechanical notes*,
+taskblock-68 review — it was the only home it had, and it was a note about a mechanic that does not
+exist yet). When a player's shell is hacked and the hacker takes a turn with it, **do not render it
+as a stat change.** Render it as *the player losing control of their own interface*: actions
+highlight right before they are cast, clicks do nothing, a simulated cursor moves on its own. **Not
+"your shell was hacked" but "your entire control system was hacked."**
+
+**No new mechanics** — it reads the existing action queue and drives the existing overlay in a
+scripted, locked-out mode. It applies to mind-overwrite too, whenever either lands.
 
 ### Voidhulk stability as an environmental hazard
 **Needs:** nothing identified. **Unblocks:** nothing.
@@ -3277,30 +3349,37 @@ pirates, settlement.
   which doesn't exist yet, plus perks.
 
 
-### Small mechanical notes
-- **The FPS readout repaints far faster than it changes.** `FpsMeter`'s window is already one second and
-  its arithmetic is right (frame count over elapsed time, not the mean of per-frame rates); the churn is
-  `CombatLogPanel._process` rebuilding the label every frame. Throttle the *text* to roughly three times a
-  second and keep `sample()` on every frame — sampling once a second instead reduces the average to a
-  single sample and makes the instantaneous figure meaningless.
-- **Double crit** — crit above 100% rolls a second tier (125% = always crit, 25% chance to *double* crit:
-  bypass armour AND bonus damage). The single-crit rule is built; the >100% tier is the extension.
-- **Body-as-cover / bullet-catcher** — body-carry as inert cargo is built; the *tactical* use, holding a corpse
-  as a shield to cover a retreat, is not. A carried body should project into the shot plane as cover for its
-  carrier.
-- **Disposable back items / back-armour as flanking counter** — parts already mount on a BACK socket; this is
-  authoring a sacrificial back item plus the flanking-counter framing.
-- **"Control system hacked" presentation.** When a player's shell is hacked and the hacker takes a turn with
-  it, don't render it as a stat change — render it as *the player losing control of their own interface*:
-  actions highlight right before they're cast, clicks do nothing, even a simulated cursor moving on its own.
-  Not "your shell was hacked" but "your entire control system was hacked." A presentation treatment for
-  hacking and mind-overwrite when they land, not new mechanics — it reads the existing action queue and drives
-  the existing overlay in a scripted, locked-out mode.
-- **Cover material split for visual reading.** The temporary cover models are all the same gray, making cover
-  types hard to tell apart. Since colour is material-derived, split the authoring rather than the models: keep
-  `sheet_steel` at the current gray and add `heavy_steel` at a darker gray, **identical stats**. Purely
-  legibility, no balance change.
-- **Mangle and wreck states for cover and walls.** Walls are destructible cover parts and a destroyed one
-  clears to fully passable. The mangle machinery exists (`failure_mode = MANGLE`, `is_mangled`, `mangles_into`)
-  but is never authored onto cover. Authoring it turns a destroyed wall or crate into rubble:
-  passable-but-higher-cost and still low cover. Data authoring plus a small `move_cost` branch.
+### A carried body should be cover, not just cargo
+**Needs:** nothing structural — a carried body already exists as inert cargo. **Unblocks:** carrying
+a body being a tactical decision rather than a logistics one.
+
+**Salvaged from *Small mechanical notes*, taskblock-68 review.** Body-carry as cargo is built; the
+*tactical* use — holding a corpse as a shield to cover a retreat — is not.
+
+**The mechanism is one sentence and it is not the shot plane.** The note as written said a carried
+body should *"project into the shot plane as cover"*; since taskblock-52 Pass F the plane answers
+*where the player is pointing* and `RayChain` resolves. **A carried body needs to be geometry the
+march meets** — boxes in the carrier's assembly at the carry pose — which is also what makes it
+absorb the round rather than merely occlude the aim.
+
+### Back items, and back armour as the flanking counter
+**Needs:** nothing — parts already mount on a `BACK` socket. **Unblocks:** a deliberate answer to
+being flanked, rather than only positioning.
+
+**Salvaged from *Small mechanical notes*, taskblock-68 review.** Two halves that arrived together and
+are separable: **a disposable back item** — sacrificial, authored to be lost — and **the framing that
+back armour is what you spend against a flank**. The socket exists; this is authoring plus the
+decision that the counter to flanking is a part rather than a manoeuvre.
+
+### Cover materials should be distinguishable by looking at them
+**Needs:** nothing. **Unblocks:** reading cover type at a glance, without an overlay.
+
+**Salvaged from *Small mechanical notes*, taskblock-68 review.** The temporary cover models are all
+the same gray, so cover types are hard to tell apart. **Colour is material-derived, so split the
+authoring rather than the models:** keep `sheet_steel` at the current gray and add `heavy_steel` at a
+darker gray, **identical stats**.
+
+**Explicitly not a balance change**, which is what separates it from *Two unauthored defaults carry a
+shipped material's whole feel* — that item is about defaults that decide penetration; this one must
+change nothing but the colour.
+
