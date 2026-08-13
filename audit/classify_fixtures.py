@@ -78,6 +78,8 @@ EXCEPTIONS = {
     # --- DRIFTED -------------------------------------------------------------------------------
     "unit/logic/test_line_of_fire.gd": (
         "DRIFTED",
+        "FIXED tb68 D — oracle moved to all_parts_with_joints(), plus a second parity test on the "
+        "RealUnit chaingunner so a jointless fixture can never hide it again. Was: "
         "its oracle excludes shooter.shell.all_parts(); every production path "
         "(ShotResolution, AimController, Overwatch) excludes all_parts_with_joints() per BR36.01. "
         "The two are identical for this file's socket-less torso, so the divergence is invisible; "
@@ -87,10 +89,14 @@ EXCEPTIONS = {
     ),
     "unit/logic/test_detonation_draw.gd": (
         "DRIFTED",
-        "asserts radius 3.0 as 'the part's own real radius' on a hand-built goo_barrel; the "
-        "game's goo_barrel is radius 2.0, detonate_damage 12.0 not 40.0, material reactive not "
-        "steel (fixture_conflicts.csv). The rule — the drawn radius is a readout of what resolved "
-        "— is still guarded; the sentence claiming the number is the game's is what is false",
+        "FIXED tb68 D. Asserted radius 3.0 as 'the part's own real radius' on a hand-built "
+        "goo_barrel where the game's is 2.0 (detonate_damage 40.0 vs 12.0, material steel vs "
+        "reactive). Fixing it exposed the larger defect: the shot left origin_height at its 0.0 "
+        "default, so the ray ran along the ground plane tangent to every box, hit NOTHING, and "
+        "the assertion was skipped by `if blasts.is_empty(): assert_true(true); return` — "
+        "vacuous since tb51 C. Now fires at MUZZLE_HEIGHT 0.5 (swept: 0.0 and 0.9 miss, 0.3 hits "
+        "without destroying), asserts the radius read back off the part, and a second test fires "
+        "at the real DataLibrary goo_barrel and gets its own 2.0",
     ),
     # --- AVOIDING ------------------------------------------------------------------------------
     "unit/logic/test_inspect_rows.gd": (

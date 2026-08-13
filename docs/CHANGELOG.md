@@ -1,5 +1,49 @@
 # CHANGELOG.md — What's Been Built
 
+## Taskblock 68 Pass D — both `DRIFTED` rows fixed, and one of them was worse than filed
+
+**Two of a permitted ten.** Each fix was demonstrated non-vacuous by breaking the rule it guards
+and confirming red, then restoring — `src/` clean both times.
+
+**`test_line_of_fire.gd`: the oracle is now the production call.** It excluded
+`shooter.shell.all_parts()`; `ShotResolution`, `AimController`, `Overwatch` and
+`DamageResolver.body_of` all exclude `all_parts_with_joints()`, which `BR36.01` established is the
+list a shot-plane self-exclusion needs. Now `all_parts_with_joints()`, plus a **second parity test
+on the `RealUnit` chaingunner**, so the fixture can never hide the difference again — it asserts up
+front that the two lists actually differ for that body, which a socket-less torso cannot.
+
+**Demonstrated both ways.** Reverting the new test's list to `all_parts()` resolves the plane to
+the shooter's own `half_cylinder_plate_facet_7_joint` instead of the wall. Making
+`has_clear_line_of_fire` return `true` unconditionally reddens both parity tests.
+
+**`test_detonation_draw.gd` was filed as a wrong number and turned out to be a vacuous test.** The
+filed defect was real — it asserted radius 3.0 as *"the part's own real radius"* where the game's
+`goo_barrel` is **2.0** (`detonate_damage` 40.0 against 12.0, material `steel` against `reactive`).
+Fixing the claim exposed the larger one: **the shot hit nothing at all.**
+
+`ShotResolution.resolve_and_log_point` takes `origin_height`, which this call never passed, so it
+defaulted to **0.0** — a ray along the ground plane, tangent to the bottom face of every box in its
+path, and both the barrel's box and the reference humanoid's legs start at y 0.0. The shot missed
+the barrel *and* the bystander, and the assertion that would have caught it sat behind
+`if blasts.is_empty(): assert_true(true); return`. **Green since taskblock-51 Pass C while
+resolving a miss** — taskblock-50's vacuity class, hiding behind a skip rather than a weak
+assertion.
+
+Swept to find a shot that connects: **0.0 and 0.9 hit nothing, 0.3 hits without destroying, 0.5
+detonates.** The file now fires from `MUZZLE_HEIGHT` 0.5, asserts the radius *read back off the
+part* rather than restated as a literal, and **a second test fires at the real `DataLibrary`
+`goo_barrel` and gets its own 2.0** — one value that could not be a coincidence, one that is real.
+
+**Traced, per the "a number is a fact too" rule, and the trace comes back clean.** The corrected
+2.0 was never quoted downstream from this test: `BR51.21`'s archive entry carries a **live** log
+line, `detonation: goo_barrel detonated at (18, 2), radius 2.0, 0 caught`. So taskblock-51 Pass C's
+claim that *"the radius travels in the log"* was true — the evidence for it just came from a
+supervisor's session rather than from the suite, which is exactly the dependence this block exists
+to find.
+
+**The three `AVOIDING` rows are filed, not fixed** (`PLAN`, "Convert the `AVOIDING` fixtures").
+
+
 ## Taskblock 68 Pass B — classified, and the line that made it classifiable
 
 **`audit/classify_fixtures.py` writes the census's `outcome` and `evidence` columns** from a stated

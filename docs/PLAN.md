@@ -179,36 +179,47 @@ affecting whatever stands on or attaches to it** and **falls / throws / knockbac
 movement**, which is the same machinery *Forced movement* and `eject` wait on. Three items, one
 dependency.
 
-### 4. Do the tests approximate things the game already defines?
-**Needs:** nothing. **Unblocks:** trusting a headless measurement; the class of failure taskblock-61
-repeated four times.
-
-**191 test files call `Part.new()` directly; seven build against a real shell template.** Hand-built
-stand-ins are the norm and real definitions are the exception — so the question is **not** "find the
-cheats", it is **"when is a hand-built fixture correct, and when is it hiding something?"**
-
-**taskblock-61 paid for this directly.** Pass C measured a cost probe against a **one-box torso** where
-a real shell is **48 boxes**, concluded the cutout was affordable, and the supervisor's next in-game
-session came back at **13 fps**. Passes A through D repeated that shape four times: measure a component
-headlessly, infer the system, report a conclusion the next in-game action disproved.
-
-**Three outcomes per fixture**, the same shape as taskblock-54's audit of the 133 hand-built state
-files:
-
-- **Hand-built is right.** A test of a pure function over two positions needs no shell, and forcing one
-  on it is slower and less focused. Leave it and say so.
-- **Hand-built was avoiding something** — usually cost or setup. Move it onto a real definition.
-- **Hand-built has drifted from what the game produces**, so the test passes against a unit that could
-  not occur. **This is the outcome worth finding**, and it is the one that produced the 13 fps.
-
-**The detector is cheap: put a real chaingunner through every test that simplifies a unit** and see what
-breaks. A fixture that only passes with a one-box stand-in is telling you something.
-
-**An audit, not a sweep.** It produces evidence and a list; acting on it is separate, under
-`TEST-AUDIT.md`'s cut rule.
-
 # QUEUED
 
+
+<!-- ------------------------------------------------------------------------ -->
+## What the fixture audit spun off (taskblock-68)
+
+### Convert the three `AVOIDING` fixtures
+**Needs:** nothing — `RealUnit` landed at taskblock-68 A1. **Unblocks:** the tree/partition rules
+in the inspect and inventory panels being tested at a real body's scale rather than at one member.
+
+**Filed rather than fixed, deliberately** — taskblock-68 bounded itself to the `DRIFTED` rows, and
+these carry no correctness claim. All three are the same shape: **a rule that does involve a body's
+structure, exercised only at trivial scale.**
+
+- **`test_inspect_rows.gd`** — a real shell produces **26 rows against this fixture's 3**, so the
+  weapons/containers/body-parts partition is only ever exercised with one member per group. The
+  ordering assertions survive a real unit; only the hardcoded row count does not.
+- **`test_inventory_rows.gd`** — 26 rows against **1**. The socket/contents nesting rule the file
+  exists for is only ever tested at depth 0–1.
+- **`test_hit_volume_view_mesh_scene.gd`** — its assertion reads *"no box instance may exist for a
+  part that has a commissioned mesh"* and actually checks that **no box exists anywhere in the
+  view**. Identical claims for a one-part fixture; a real shell separates them, and the assertion
+  would have to become what it already says it is.
+
+**All three are cheap** — sub-second logic/view tests where a real unit is one helper call. **The
+expensive end of the same conversion is measured and is not cheap:** substituting a real shell into
+`test_spectator_overlay.gd` ran past **7 minutes against its 57 s baseline** before being
+interrupted. A view-overlay fixture is not a candidate for conversion on cost grounds alone.
+
+### Three tests re-derive production's self-exclusion list with the pre-`BR36.01` `all_parts()`
+**Needs:** nothing. **Unblocks:** the same class of hidden divergence taskblock-68 found in
+`test_line_of_fire.gd`.
+
+**`test_line_of_fire.gd` was the one that could be shown wrong and was fixed at taskblock-68 D.**
+Three others pass `shooter.shell.all_parts()` where every production path passes
+`all_parts_with_joints()` — `test_internal_targeting.gd` and `test_penetration_traverses_body.gd`
+(three call sites). **They are inert today and that is the only reason they are queued rather than
+filed as defects**: `walk_with_joints` emits a joint only for an **occupied** socket, and both
+shooters have none — one is `Shell.new(Part.new())`, a geometry-free placeholder, the other a bare
+`DataLibrary` torso. Each is one fixture change away from mattering, and the change that would do
+it is the obvious improvement to either file.
 
 <!-- ------------------------------------------------------------------------ -->
 ## Going up

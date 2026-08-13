@@ -43,6 +43,19 @@ func test_has_clear_line_of_fire_is_false_when_a_wall_blocks_the_shot() -> void:
 ## first hit — read the actual plane back, don't re-derive the ray math
 ## (docs/00's own standing rule for spatial systems, applied to a boolean
 ## predicate instead of a screen-space transform).
+##
+## **tb68 Pass D: the self-exclusion list was the pre-`BR36.01` one, and this
+## file's fixture is what hid it.** The oracle excluded
+## `shooter.shell.all_parts()`; every production path — `ShotResolution`,
+## `AimController`, `Overwatch`, `DamageResolver.body_of` — excludes
+## `all_parts_with_joints()`, which is the list `BR36.01` established a
+## shot-plane self-exclusion needs ("every region this body could produce").
+## The two are **identical for a socket-less torso**, so the divergence could
+## not surface here: `walk_with_joints` emits a joint only for an OCCUPIED
+## socket, and this fixture has none. Put a real assembled shell through the
+## same test and the plane resolves to the shooter's own `ammo_rack_joint`
+## instead of the wall. An oracle that is not the production call is not
+## reading the plane back, which is the one thing this test claims to do.
 func test_has_clear_line_of_fire_matches_the_real_shotplanes_own_first_hit() -> void:
 	var grid := Grid.new(5, 6)
 	var shooter := _standing_unit(&"shooter", 0.5, Vector2i(2, 0))
@@ -57,7 +70,9 @@ func test_has_clear_line_of_fire_matches_the_real_shotplanes_own_first_hit() -> 
 		state
 	)
 	var aim_point: Vector2 = ShotPlane.center_of(plane, target)
-	var real_hit: Region = ShotPlane.resolve_projectile(plane, aim_point, shooter.shell.all_parts())
+	var real_hit: Region = ShotPlane.resolve_projectile(
+		plane, aim_point, shooter.shell.all_parts_with_joints()
+	)
 
 	assert_eq(
 		LineOfFire.has_clear_line_of_fire(shooter, target, shooter.cell, state),
@@ -65,6 +80,48 @@ func test_has_clear_line_of_fire_matches_the_real_shotplanes_own_first_hit() -> 
 		"the predicate must agree with the real plane's own first hit, wall included"
 	)
 	assert_eq(real_hit.part.id, &"wall", "sanity: the real plane really does resolve to the wall")
+
+
+## **The same parity claim, against a body that has joints at all** (tb68 Pass D).
+##
+## The test above cannot see the exclusion list it passes, because its shooter is a
+## single socket-less torso and `all_parts()` and `all_parts_with_joints()` return
+## the same array for it. This one puts the real assembled chaingunner on the board,
+## so the shooter has 48 boxes and occupied sockets, and the joint regions the
+## pre-`BR36.01` list omitted are actually present to be wrongly hit.
+func test_the_parity_holds_for_a_shooter_whose_body_has_joints() -> void:
+	var grid := Grid.new(5, 6)
+	var shooter: Unit = RealUnit.build(self, Vector2i(2, 0))
+	var target := _standing_unit(&"target", 0.5, Vector2i(2, 5))
+	var state := CombatState.new(grid, [shooter, target])
+	grid.place_blocker(Vector2i(2, 2), DataLibrary.get_part(&"wall"))
+
+	var excluded: Array[Part] = shooter.shell.all_parts_with_joints()
+	assert_gt(
+		excluded.size(),
+		shooter.shell.all_parts().size(),
+		"sanity: a real shell has occupied sockets, so the two lists must differ here"
+	)
+
+	var direction := Vector2(target.cell - shooter.cell)
+	var plane: Array[Region] = ShotPlane.build(
+		Vector3(shooter.cell.x, 0.0, shooter.cell.y),
+		Vector3(direction.normalized().x, 0.0, direction.normalized().y),
+		state
+	)
+	var aim_point: Vector2 = ShotPlane.center_of(plane, target)
+	var real_hit: Region = ShotPlane.resolve_projectile(plane, aim_point, excluded)
+
+	assert_eq(
+		LineOfFire.has_clear_line_of_fire(shooter, target, shooter.cell, state),
+		real_hit != null and real_hit.body == target,
+		"the predicate must agree with the real plane, for a body that has joints"
+	)
+	assert_eq(
+		real_hit.part.id,
+		&"wall",
+		"the wall, not one of the shooter's own joint regions at point-blank range"
+	)
 
 
 ## Regression: with nothing but open terrain, LOF and LOS must agree exactly

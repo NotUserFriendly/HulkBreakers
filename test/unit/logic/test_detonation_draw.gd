@@ -10,6 +10,15 @@ extends GutTest
 ## the same defect `BR35.04` was filed for — geometry that looks right and corresponds to
 ## nothing — so what is drawn comes from what resolved.
 
+## The muzzle height the shot is fired from. **tb68 Pass D: this used to be left at
+## `resolve_and_log_point`'s own `origin_height` default of 0.0**, which puts the ray exactly on
+## the ground plane, tangent to the bottom face of every box in its path — the barrel's own box
+## starts at y 0.0, and so do the reference humanoid's legs. The shot hit **nothing at all**, and
+## the assertion it fed was skipped by an `if blasts.is_empty(): assert_true(true); return`, so
+## the file reported green while resolving a miss. Swept: 0.0 and 0.9 hit nothing, 0.3 hits but
+## does not destroy, **0.5 detonates**.
+const MUZZLE_HEIGHT := 0.5
+
 
 func test_the_timing_matches_the_specified_ratio() -> void:
 	assert_almost_eq(ResolutionPlayer.DETONATION_MS, 1000.0, 0.001, "the stated default")
@@ -30,20 +39,10 @@ func test_the_sphere_is_translucent_and_red() -> void:
 	assert_gt(colour.r, colour.b)
 
 
-## **The explosion's own geometry reaches the log**, which is what lets the drawn radius be a
-## readout rather than a guess.
-func test_a_detonation_logs_its_centre_and_its_real_radius() -> void:
-	var volatile := Part.new()
-	volatile.id = &"goo_barrel"
-	volatile.material = &"steel"
-	volatile.hp = 1
-	volatile.max_hp = 1
-	volatile.detonate_damage = 40.0
-	volatile.detonate_radius = 3.0
-	# An open StringName vocabulary, not an enum — CLAUDE.md: enums are for closed engine states.
-	volatile.failure_mode = &"DETONATE"
-	volatile.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 1.0))]
-
+## Fires one shot into whatever `volatile` is, placed at (4, 4), and returns the `detonation`
+## events the combat log saw. Shared by the synthetic case and the real-barrel case below so the
+## two differ only in the part, which is the whole comparison.
+func _detonation_events(volatile: Part) -> Array[LogEvent]:
 	var grid := Grid.new(10, 10)
 	grid.place_blocker(Vector2i(4, 4), volatile)
 	var bystander: Unit = DeepStrike.assemble_reference_humanoid(Matrix.new(), Vector2i(5, 4), 0)
@@ -53,19 +52,84 @@ func test_a_detonation_logs_its_centre_and_its_real_radius() -> void:
 	state.combat_log.add_sink(sink)
 
 	ShotResolution.resolve_and_log_point(
-		state, shooter, Vector2(0, 4), Vector2(1, 0), Vector2(0.0, 0.5), 12.0, 0.0, 0.0, null
+		state,
+		shooter,
+		Vector2(0, 4),
+		Vector2(1, 0),
+		Vector2(0.0, 0.5),
+		12.0,
+		0.0,
+		0.0,
+		null,
+		false,
+		0.0,
+		MUZZLE_HEIGHT
 	)
+	return sink.events_of_kind(&"detonation")
 
-	var blasts: Array[LogEvent] = sink.events_of_kind(&"detonation")
+
+## **The explosion's own geometry reaches the log**, which is what lets the drawn radius be a
+## readout rather than a guess.
+##
+## **tb68 Pass D: this fixture used to be called `goo_barrel` and was not one.** It authored
+## radius 3.0, `detonate_damage` 40.0 and material `steel` where the game's `goo_barrel` is 2.0,
+## 12.0 and `reactive` — so the assertion "the part's own real radius" named a barrel that could
+## not occur. The distinctive radius is worth keeping (2.0 could coincide with a hardcoded
+## default; 3.0 cannot), so what changed is the **claim**: the id no longer borrows a real
+## part's name, and the figure is read back off the part rather than restated as a literal.
+## `test_the_real_goo_barrels_own_radius_is_what_gets_logged` covers the game's own part.
+func test_a_detonation_logs_its_centre_and_its_authored_radius() -> void:
+	var volatile := Part.new()
+	volatile.id = &"test_volatile"
+	volatile.material = &"steel"
+	volatile.hp = 1
+	volatile.max_hp = 1
+	volatile.detonate_damage = 40.0
+	volatile.detonate_radius = 3.0
+	# An open StringName vocabulary, not an enum — CLAUDE.md: enums are for closed engine states.
+	volatile.failure_mode = &"DETONATE"
+	volatile.volume = [Box.new(Vector3(0.0, 0.5, 0.0), Vector3(1.0, 1.0, 1.0))]
+
+	var blasts: Array[LogEvent] = _detonation_events(volatile)
+	assert_false(blasts.is_empty(), "the fixture must actually detonate or this asserts nothing")
 	if blasts.is_empty():
-		gut.p("the fixture did not detonate — nothing to assert about geometry")
-		assert_true(true)
 		return
 	gut.p("detonation: %s" % blasts[0].text)
 	assert_eq(blasts.size(), 1, "one explosion, one event — not one per victim")
-	assert_almost_eq(float(blasts[0].data["radius"]), 3.0, 0.001, "the part's own real radius")
+	assert_almost_eq(
+		float(blasts[0].data["radius"]),
+		volatile.detonate_radius,
+		0.001,
+		"the radius travelling in the log is the part's own, read back off the part"
+	)
 	assert_true(blasts[0].data.has("center_x"), "and where it happened")
 	assert_true(blasts[0].data.has("center_height"))
+
+
+## **The same claim against the part the game actually ships** (tb68 Pass D).
+##
+## The test above proves a detonation logs *its part's* radius using a synthetic barrel whose
+## radius is distinctive. This one proves the game's own `goo_barrel` reaches the log intact —
+## `DataLibrary`'s part, its authored `detonate_radius`, no literal in the assertion. Between
+## them: a value that could not be a coincidence, and a value that is real.
+func test_the_real_goo_barrels_own_radius_is_what_gets_logged() -> void:
+	var barrel: Part = DataLibrary.get_part(&"goo_barrel")
+	assert_not_null(barrel, "the game must still ship a goo_barrel")
+	if barrel == null:
+		return
+	assert_eq(barrel.failure_mode, &"DETONATE", "sanity: it is still the part that explodes")
+
+	var blasts: Array[LogEvent] = _detonation_events(barrel.duplicate(true))
+	assert_false(blasts.is_empty(), "the real barrel must actually detonate under this shot")
+	if blasts.is_empty():
+		return
+	gut.p("real goo_barrel detonation: %s" % blasts[0].text)
+	assert_almost_eq(
+		float(blasts[0].data["radius"]),
+		barrel.detonate_radius,
+		0.001,
+		"the shipped part's own radius, not a number this test chose"
+	)
 
 
 ## **`BR51.20`: zeroing a part actually fails it.**
