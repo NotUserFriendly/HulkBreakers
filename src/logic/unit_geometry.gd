@@ -71,6 +71,35 @@ static func blocker_height_for_cell(cell: Vector2i, grid: Grid) -> float:
 	return true_height_for_cell(cell, grid) + placed
 
 
+## **Every box the blocker at `cell` occupies** — its height sum *and* its facing, read off the
+## one `Blocker` record. taskblock-69 Pass A. Empty when no blocker stands there.
+##
+## **This exists for the same reason `blocker_height_for_cell` above does, one field later.**
+## `height` reached the resolvers by nine call sites each spelling `true_height_for_cell(cell) +
+## record.height`, and that sum became one function precisely because nine copies of an
+## arithmetic expression is nine chances to disagree — `BR64.01` was two of them disagreeing.
+## `facing` landed at taskblock-63 Pass D3 and was then discarded by every one of those nine,
+## which passed a literal `0.0` as the orientation. So a placement's facing survived being saved
+## and did not survive being looked at.
+##
+## **Fixing only the drawing half would have been worse than leaving it.** A veneer that renders
+## rotated while blocking, occluding and taking hits unrotated is *render is hitbox* broken from
+## the other side — the exact class of defect taskblock-59 spent a block removing. The question
+## *"what boxes does this blocker occupy"* now has one answer, so the tenth record field is a
+## change here and nowhere else.
+##
+## **A field item deliberately does not come through here.** It carries no `Blocker` record, rests
+## on the tile, and has no facing to read — `RayCaster`, `SightSpans`, `PartPicker` and `BoardView`
+## each keep a raw `assembly_placements` call for that case and say so at the site.
+static func blocker_placements(cell: Vector2i, grid: Grid) -> Array[BoxPlacement]:
+	var blocker: Blocker = grid.blocker_at(cell)
+	if blocker == null or blocker.part == null:
+		return []
+	return assembly_placements(
+		blocker.part, cell, blocker.facing, null, true_height_for_cell(cell, grid) + blocker.height
+	)
+
+
 ## Every living part's boxes, each as a BoxPlacement carrying that part's
 ## full world transform (unit facing + board position + socket chain +
 ## pose).
@@ -455,7 +484,19 @@ static func _sphere_from_placements(
 ## placement list with no owning Unit at all (a resource-editor preview,
 ## docs/10 taskblock04 C1's "field object" case) can get the same honest
 ## answer without fabricating one.
+##
+## **All eight corners, never `centre ± size / 2`** — and taskblock-69 Pass A found two places
+## that had written the cheap version by hand (`CameraFramingModule.content_bounds` and
+## `ClaimResolver.placement_aabb`). The two agree exactly while every transform in the chain is a
+## pure translation, and diverge the moment one carries a rotation: a box's centre does not move
+## when the box turns about it, so the cheap form reports a three-cell wall as three cells wide on
+## X however far round it has been turned. Both now come here.
+##
+## An empty list is an empty `AABB`, which is what "no geometry to measure" means — never one
+## assembled from infinities.
 static func placements_aabb(box_placements: Array[BoxPlacement]) -> AABB:
+	if box_placements.is_empty():
+		return AABB()
 	var min_corner: Vector3 = Vector3.INF
 	var max_corner: Vector3 = -Vector3.INF
 	for placement: BoxPlacement in box_placements:

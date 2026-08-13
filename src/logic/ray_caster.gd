@@ -195,9 +195,7 @@ static func obstructed(
 			continue
 		if _below_or_above(surface, y_low, y_high):
 			continue
-		if _any_box_hit(
-			UnitGeometry.surface_placements(surface), from, dir, limit, exclude_parts
-		):
+		if _any_box_hit(UnitGeometry.surface_placements(surface), from, dir, limit, exclude_parts):
 			return true
 
 	for cell: Vector2i in grid.field_items:
@@ -209,6 +207,10 @@ static func obstructed(
 		for item: Variant in grid.field_items[cell]:
 			# A loose Matrix has no volume, so nothing for a sight line to meet either.
 			if item is Part and not exclude_parts.has(item) and BodyProjector.projects(item):
+				# taskblock-69 Pass A: **the raw call, deliberately** — the blocker branch above
+				# went to `UnitGeometry.blocker_placements` and this did not. A field item carries
+				# no `Blocker` record, so it has no facing and no placed height; it rests on the
+				# tile. Stated here rather than left as an asymmetry to be discovered.
 				if _any_box_hit(
 					UnitGeometry.assembly_placements(item, cell, 0.0, null, item_height),
 					from,
@@ -268,12 +270,10 @@ static func _blocker_in_the_way(
 	var height: float = UnitGeometry.blocker_height_for_cell(cell, grid)
 	if not PartPicker.near_ray(cell, from, dir, height):
 		return false
+	# taskblock-69 Pass A: the record's facing as well as its height, from the one accessor —
+	# a blocker rotated on the board has to be rotated in the way of a sight line too.
 	return _any_box_hit(
-		UnitGeometry.assembly_placements(part, cell, 0.0, null, height),
-		from,
-		dir,
-		limit,
-		exclude_parts
+		UnitGeometry.blocker_placements(cell, grid), from, dir, limit, exclude_parts
 	)
 
 
@@ -349,7 +349,8 @@ static func blocker_obstructed_among(
 			if not PartPicker.near_ray(cell, from, dirs[i], height):
 				continue
 			if box_placements.is_empty():
-				box_placements = UnitGeometry.assembly_placements(part, cell, 0.0, null, height)
+				# taskblock-69 Pass A: height and facing together, off the one record.
+				box_placements = UnitGeometry.blocker_placements(cell, grid)
 			if _any_box_hit(box_placements, from, dirs[i], limits[i], exclude_parts):
 				return cell
 	return null
@@ -410,6 +411,8 @@ static func _geometry_into(
 			part,
 			cell,
 			blocker_height,
+			# taskblock-69 Pass A: the record's boxes — its facing as well as its height.
+			UnitGeometry.blocker_placements(cell, grid),
 			from,
 			dir_n,
 			exclude_parts,
@@ -454,6 +457,10 @@ static func _geometry_into(
 					item,
 					cell,
 					item_height,
+					# taskblock-69 Pass A: **the raw call, deliberately.** A field item has no
+					# `Blocker` record and therefore no facing to read — it lies where it fell.
+					# `blocker_placements` would look up a record this cell may not even have.
+					UnitGeometry.assembly_placements(item, cell, 0.0, null, item_height),
 					from,
 					dir_n,
 					exclude_parts,
@@ -522,12 +529,20 @@ static func _consider_surface(
 ## same wall at two different heights. Measured: 12 pairs on seed `642296523`, all of them in
 ## the one `TALL_ROOM_LEVEL` room, where `_stand_wall` is the only thing that places a blocker
 ## at a nonzero height.
+##
+## **taskblock-69 Pass A: the boxes arrive built, rather than being built here.** This is the one
+## marcher two different kinds share — a blocker, which carries a `Blocker` record and therefore a
+## facing, and a loose field item, which carries no record at all. Building them here meant one
+## expression had to serve both, and the only expression that does is the one that ignores the
+## facing. The caller says where its boxes come from; this still owns the nearest-hit bookkeeping,
+## which is what it was ever for.
 static func _consider_assembly(
 	best: Array[RayHit],
 	best_t: float,
 	root: Part,
 	cell: Vector2i,
 	height: float,
+	placements: Array[BoxPlacement],
 	from: Vector3,
 	dir_n: Vector3,
 	exclude_parts: Array[Part],
@@ -538,7 +553,7 @@ static func _consider_assembly(
 		cell.x * UnitGeometry.CELL_SIZE, height, cell.y * UnitGeometry.CELL_SIZE
 	)
 	var result: float = best_t
-	for placement: BoxPlacement in UnitGeometry.assembly_placements(root, cell, 0.0, null, height):
+	for placement: BoxPlacement in placements:
 		result = _consider(
 			best,
 			result,

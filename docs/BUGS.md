@@ -2585,3 +2585,31 @@ is_disabled` for the same part. The disappearance here is that disagreement made
   pass rather than leaving it to sit** — that is the obligation `Suspected` carries.
 - **On recurrence:** read `out/logs/gate/<utc>/shard*.log` — the tail names the last test that
   shard was in, and `audit/gate_fallbacks.log` says whether it has happened before.
+
+### BR69.01 — Active — owner: `CC`
+**A section claim measures the library part, so `MapPlacement.size` never reaches the claim**
+- **cluster:** `geometry`
+- **Source:** `CC`, 2026-08-12, taskblock-69 Pass A.  ·  **CC session:** `c3af9fa5-bfaf-40e7-8d76-9c8bc7f741a9`
+- **What it is.** `ClaimResolver.placement_aabb` resolves its part with `DataLibrary.get_part(placement.part_id)`
+  and measures that part's own authored boxes. It never calls `PlacedVolume.placed_part`, which is the
+  one function that turns `MapPlacement.size` / `.offset` into real geometry and which
+  `MapSerializer._apply` calls on the identical placement a few lines before handing it to the grid.
+  So a `3 x 1 x 1` wall claims a `1 x 1 x 1` footprint: **the claim and the board disagree about the
+  same authored row**, which is the exact disagreement `placement_aabb`'s own doc comment says it
+  exists to prevent (*"what a claim measures itself against is the geometry that will actually
+  exist, not a cell-shaped approximation of it"*).
+- **How it was found.** Writing taskblock-69 Pass A's cross-consumer parity test. The claim path was
+  being compared against `UnitGeometry.blocker_placements` for a resized wall and reported `1.0`
+  where the board placed `3.0`. The test now uses `ledge_veneer`, whose authored box is asymmetric
+  with no resize needed, rather than asserting this defect away — see
+  `test_blocker_facing_parity.gd::test_a_section_claim_measures_the_same_footprint_the_board_places`.
+- **Latent today, and that is why it is `Active` rather than urgent.** No authored section carries a
+  non-zero `MapPlacement.size` or `.facing` — checked across all of `data/sections/*.tres` at
+  taskblock-69. It becomes live the moment an author uses the Scale tool inside a section, which is
+  a verb that already exists (tb59 Pass C).
+- **Not fixed here on purpose.** taskblock-69 is about `facing`, and this is `size` — a different
+  field, and a one-line change to what section geometry claims is a behaviour change to map
+  generation that deserves its own measurement rather than riding along.
+- **The fix, when it is scheduled:** `part = PlacedVolume.placed_part(part, placement.size,
+  placement.offset)` before building the boxes, which is what `MapSerializer._apply` already does.
+  Re-run the generated-board claim tests and say whether any section's overlap answer moved.

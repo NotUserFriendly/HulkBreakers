@@ -61,9 +61,9 @@ var _spans: Dictionary = {}
 static func of(grid: Grid) -> SightSpans:
 	var spans := SightSpans.new()
 	for cell: Vector2i in grid.blockers:
-		spans._absorb_assembly(
-			grid.blocker_part_at(cell), cell, grid, UnitGeometry.blocker_height_for_cell(cell, grid)
-		)
+		# taskblock-69 Pass A: the one accessor — the record's height sum *and* its facing. A
+		# veneer rotated onto the north edge of a cell must occlude from the north edge.
+		spans._absorb(UnitGeometry.blocker_placements(cell, grid), grid.blocker_part_at(cell))
 	for surface: Surface in grid.placements():
 		spans._absorb(
 			UnitGeometry.assembly_placements(
@@ -123,13 +123,16 @@ func obstructs(from: Vector3, to: Vector3, from_cell: Vector2i, to_cell: Vector2
 	return false
 
 
-## taskblock-63 Pass D3: `height` is passed in rather than resolved here, because the two
-## callers want different answers — a blocker carries its own placed height and a loose field
-## item lies on the tile. Defaulted to `NAN` so a caller that says nothing still gets the tile,
-## which is every caller this had before the record existed.
-func _absorb_assembly(root: Part, cell: Vector2i, grid: Grid, height: float = NAN) -> void:
-	if is_nan(height):
-		height = UnitGeometry.true_height_for_cell(cell, grid)
+## **A loose field item's boxes, and only those.** taskblock-63 Pass D3 gave this a `height`
+## parameter so the blocker branch could pass its own placed height; taskblock-69 Pass A took the
+## blocker branch to `UnitGeometry.blocker_placements` instead, which carries the facing too, so
+## the parameter has no second caller left and is gone with it.
+##
+## **The raw `assembly_placements` call is deliberate here.** A field item carries no `Blocker`
+## record: no facing, no placed height, it rests on the tile it fell onto. That asymmetry with the
+## blocker branch above is the point, stated here rather than left to be discovered.
+func _absorb_assembly(root: Part, cell: Vector2i, grid: Grid) -> void:
+	var height: float = UnitGeometry.true_height_for_cell(cell, grid)
 	_absorb(UnitGeometry.assembly_placements(root, cell, 0.0, null, height), root)
 
 

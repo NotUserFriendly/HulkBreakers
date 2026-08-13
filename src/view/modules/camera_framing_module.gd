@@ -78,22 +78,21 @@ static func content_bounds(grid: Grid) -> Variant:
 			)
 		)
 	for cell: Vector2i in grid.blockers:
-		var part: Part = grid.blocker_part_at(cell)
-		if part == null:
-			continue
-		bounds = _absorb(
-			bounds,
-			UnitGeometry.assembly_placements(
-				part, cell, 0.0, null, UnitGeometry.blocker_height_for_cell(cell, grid)
-			)
-		)
+		# taskblock-69 Pass A: the one accessor. **This site is a tenth, not one of the nine the
+		# taskblock listed** — it builds a blocker's boxes for framing exactly as the other nine
+		# did, and would have been left behind by a fix aimed only at the named list. It is
+		# included because the property is *every* blocker consumer agrees, not *nine* of them.
+		bounds = _absorb(bounds, UnitGeometry.blocker_placements(cell, grid))
 	return bounds
 
 
+## taskblock-69 Pass A: **`UnitGeometry.placements_aabb`, not a hand-rolled centre-and-size box.**
+## This built each box's AABB as `centre ± size / 2`, which is the same answer only while every
+## transform in the chain is a pure translation — a box's centre does not move when the box turns
+## about it, so a three-cell wall turned a quarter turn still framed as three cells wide on X.
+## This module's own header says the bounds must never be *"a second formula"*; it was one.
 static func _absorb(bounds: Variant, placements: Array[BoxPlacement]) -> Variant:
-	var out: Variant = bounds
-	for placement: BoxPlacement in placements:
-		var centre: Vector3 = placement.transform * placement.box.center
-		var box := AABB(centre - placement.box.size * 0.5, placement.box.size)
-		out = box if out == null else (out as AABB).merge(box)
-	return out
+	if placements.is_empty():
+		return bounds
+	var box: AABB = UnitGeometry.placements_aabb(placements)
+	return box if bounds == null else (bounds as AABB).merge(box)

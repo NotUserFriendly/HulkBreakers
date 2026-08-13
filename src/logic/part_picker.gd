@@ -79,8 +79,10 @@ static func hit(
 		var blocker_height: float = UnitGeometry.blocker_height_for_cell(cell, grid)
 		if not near_ray(cell, from, dir, blocker_height):
 			continue
+		# taskblock-69 Pass A: the one accessor — height sum and facing off the same record, so
+		# what a click selects is the box the board drew and the ray marched.
 		var box_hit: Dictionary = _nearest_hit(
-			grid.blocker_part_at(cell), cell, grid, from, dir, blocker_height
+			UnitGeometry.blocker_placements(cell, grid), from, dir
 		)
 		if not box_hit.is_empty() and float(box_hit["t"]) < nearest_t:
 			nearest_t = box_hit["t"]
@@ -94,7 +96,15 @@ static func hit(
 			continue
 		for item: Variant in grid.field_items[cell]:
 			if item is Part:
-				var box_hit: Dictionary = _nearest_hit(item, cell, grid, from, dir)
+				# taskblock-69 Pass A: **the raw call, deliberately.** A field item carries no
+				# `Blocker` record — no facing, no placed height — so it stays on the tile.
+				var box_hit: Dictionary = _nearest_hit(
+					UnitGeometry.assembly_placements(
+						item, cell, 0.0, null, UnitGeometry.true_height_for_cell(cell, grid)
+					),
+					from,
+					dir
+				)
 				if not box_hit.is_empty() and float(box_hit["t"]) < nearest_t:
 					nearest_t = box_hit["t"]
 					nearest_unit = null
@@ -137,19 +147,18 @@ static func hit(
 ## The same shape `_nearest_hit` produces for a blocker, against the same
 ## `UnitGeometry.assembly_placements` call `BoardView` draws a tile from — *render is hitbox*
 ## (`docs/10`), which is what makes a struck face a real answer rather than an approximation.
+## taskblock-69 Pass A: **the same loop as `_nearest_hit`, so it is that loop.** Both were
+## "walk a placement list, keep the nearest box" with their own copies of the comparison; once
+## `_nearest_hit` took its boxes as an argument, the only thing left here was which boxes to
+## build. A surface's own `facing` was already read — this path never had the defect.
 static func _nearest_surface_hit(surface: Surface, from: Vector3, dir: Vector3) -> Dictionary:
-	var best: Dictionary = {}
-	var best_t: float = INF
-	var placements: Array[BoxPlacement] = UnitGeometry.assembly_placements(
-		surface.part, surface.cell, surface.facing, null, surface.height
+	return _nearest_hit(
+		UnitGeometry.assembly_placements(
+			surface.part, surface.cell, surface.facing, null, surface.height
+		),
+		from,
+		dir
 	)
-	for placement: BoxPlacement in placements:
-		var box_hit: Dictionary = UnitPicker.ray_box_hit(placement, from, dir)
-		if box_hit.is_empty() or float(box_hit["t"]) >= best_t:
-			continue
-		best_t = box_hit["t"]
-		best = {"t": best_t, "normal": box_hit["normal"]}
-	return best
 
 
 ## `BR35.01`: **a cheap reject before the per-box test.** `hit` ran a full assembly ray test
@@ -213,10 +222,9 @@ static func near_ray(cell: Vector2i, from: Vector3, dir: Vector3, height: float 
 	return perpendicular.length() <= SKIP_RADIUS * UnitGeometry.CELL_SIZE
 
 
-## The nearest hit across every box in `part`'s own assembly tree at
-## `cell` (`UnitGeometry.assembly_placements`, the same boxes
-## `BoardView._spawn_blocker` draws) as `{t, normal}`, or an empty Dictionary if
-## the ray misses all of them.
+## The nearest of `placements` the ray strikes, as `{t, normal}`, or an empty Dictionary if it
+## misses all of them. Every caller here — blocker, field item, placed surface — is this walk
+## over a different list.
 ##
 ## taskblock-58 Pass A: was `_nearest_t`, returning a bare `Variant` distance.
 ## The normal belongs to **the specific box that won**, which is why it is
@@ -232,18 +240,19 @@ static func near_ray(cell: Vector2i, from: Vector3, dir: Vector3, height: float 
 ## stood above it, which contradicts `docs/10`'s "render is hitbox" and was
 ## invisible on a flat map. `ShotPlane.build` already used
 ## `true_height_for_cell` for the same objects, making this the odd one of three.
-## taskblock-63 Pass D3: `height` is passed in rather than resolved here — a blocker carries
-## its own and a loose field item lies on the tile. `NAN` means "resolve the tile", which is
-## what both callers got before the record existed.
+##
+## **taskblock-69 Pass A: the boxes arrive built.** taskblock-63 Pass D3 made `height` a
+## parameter because a blocker and a field item wanted different answers; `facing` is that
+## problem one field later, and a third parameter would have been a third migration. What a
+## blocker occupies is `UnitGeometry.blocker_placements`' single answer now, so this asks its
+## caller for a list and keeps only the nearest-box comparison, which is what it was ever for.
 static func _nearest_hit(
-	part: Part, cell: Vector2i, grid: Grid, from: Vector3, dir: Vector3, height: float = NAN
+	placements: Array[BoxPlacement], from: Vector3, dir: Vector3
 ) -> Dictionary:
 	var nearest_t: float = INF
 	var nearest_normal := Vector3.ZERO
 	var hit_something := false
-	if is_nan(height):
-		height = UnitGeometry.true_height_for_cell(cell, grid)
-	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell, 0.0, null, height):
+	for placement: BoxPlacement in placements:
 		var box_hit: Dictionary = UnitPicker.ray_box_hit(placement, from, dir)
 		if box_hit.is_empty():
 			continue

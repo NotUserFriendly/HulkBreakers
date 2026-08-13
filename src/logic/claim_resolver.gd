@@ -355,17 +355,17 @@ static func placement_aabb(placement: MapPlacement, origin: Vector2i) -> AABB:
 	var part: Part = DataLibrary.get_part(placement.part_id)
 	if part == null:
 		return AABB()
-	var boxes: Array[BoxPlacement] = UnitGeometry.assembly_placements(
-		part, placement.cell + origin, placement.facing, null, placement.height
+	# taskblock-69 Pass A: **`UnitGeometry.placements_aabb`, not a hand-rolled centre-and-size
+	# box.** This path already read `placement.facing` — it works from a `MapPlacement` rather
+	# than from `Grid.blockers`, so it never had the discarded-facing defect the other nine
+	# consumers did — but it then measured the rotated boxes as though they were axis-aligned,
+	# because a box's centre does not move when the box turns about it. A section claim for a
+	# turned three-cell wall therefore reserved a three-by-one footprint on the wrong axis.
+	return UnitGeometry.placements_aabb(
+		UnitGeometry.assembly_placements(
+			part, placement.cell + origin, placement.facing, null, placement.height
+		)
 	)
-	var total := AABB()
-	var first := true
-	for box: BoxPlacement in boxes:
-		var center: Vector3 = box.transform * box.box.center
-		var one := AABB(center - box.box.size * 0.5, box.box.size)
-		total = one if first else total.merge(one)
-		first = false
-	return total
 
 
 static func _union_of(boxes: Array[Box]) -> AABB:

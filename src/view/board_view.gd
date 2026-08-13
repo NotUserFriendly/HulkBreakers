@@ -354,7 +354,17 @@ func build(
 		# what its floor was — which is right for a wall standing on the ground and wrong
 		# for one following its neighbours up a shelf. `0.0` still means "the floor here",
 		# which is every blocker on every board authored before the record existed.
-		_spawn_blocker(blocker, cell, material_table, record.height)
+		# taskblock-69 Pass A: the boxes come from `UnitGeometry.blocker_placements`, the one
+		# accessor that reads the record — height sum *and* facing. The board is one of nine
+		# consumers that each used to build their own, all of them passing a literal `0.0`
+		# orientation, so a rotated blocker drew and blocked unrotated alike.
+		_spawn_blocker(
+			blocker,
+			cell,
+			material_table,
+			UnitGeometry.blocker_placements(cell, grid),
+			UnitGeometry.blocker_height_for_cell(cell, grid)
+		)
 		if blocker.id == &"wall":
 			walls += 1
 		else:
@@ -635,7 +645,11 @@ static func _add_box(mesh: ImmediateMesh, xform: Transform3D, size: Vector3) -> 
 ## the same trick HitVolumeView already uses for a downed unit (taskblock03 G) —
 ## so it reads as a fallen assembly, not upright cover.
 func _spawn_blocker(
-	part: Part, cell: Vector2i, material_table: MaterialTable, placed_height: float = 0.0
+	part: Part,
+	cell: Vector2i,
+	material_table: MaterialTable,
+	placements: Array[BoxPlacement],
+	height: float
 ) -> void:
 	var dropped: bool = DamageResolver.DROPPED_TAG in part.tags
 	# taskblock-61 Pass C1: an authored tag, not `part.id == &"wall"` — content identity in code is
@@ -656,14 +670,15 @@ func _spawn_blocker(
 	#
 	# taskblock-63 Pass D3: **plus the placement's own height, when it has one.** The cell's
 	# tile is where a blocker rests by default; a wall following a shelf up is authored
-	# above it, and until `Blocker` existed there was nowhere for that fact to live. Added
-	# to the tile height rather than replacing it, so `0.0` — every blocker on every board
-	# authored before this — means exactly what it always did. This is the same sum
-	# `UnitGeometry.blocker_height_for_cell` makes for the resolvers; it is spelled out here
-	# rather than called because `_spawn_blocker` also draws loose field items, which carry
-	# no record and must keep resting on the tile.
-	var height: float = _height_for(cell) + placed_height
-	for placement: BoxPlacement in UnitGeometry.assembly_placements(part, cell, 0.0, null, height):
+	# above it, and until `Blocker` existed there was nowhere for that fact to live.
+	#
+	# taskblock-69 Pass A: **both the boxes and that height now arrive from the caller**, so
+	# this function stops deciding either. It draws two kinds — a blocker, which carries a
+	# `Blocker` record and therefore a facing, and a loose field item, which carries no record
+	# at all and rests on the tile it fell onto. One expression here had to serve both, and the
+	# only one that does is the one that discards the facing. `height` is still needed for
+	# `_dropped_transform`'s own pivot, which is a point rather than a box.
+	for placement: BoxPlacement in placements:
 		var instance := MeshInstance3D.new()
 		var box_mesh := BoxMesh.new()
 		box_mesh.size = placement.box.size
@@ -721,7 +736,17 @@ static func _dropped_transform(cell: Vector2i, height: float = 0.0) -> Transform
 ## as every other ground overlay in this file.
 func _spawn_field_item(item: Variant, cell: Vector2i, material_table: MaterialTable) -> void:
 	if item is Part:
-		_spawn_blocker(item, cell, material_table)
+		# taskblock-69 Pass A: **the raw call, deliberately.** A loose item carries no `Blocker`
+		# record — no facing to draw, no placed height — so it rests on the tile, which is what
+		# `_height_for` has always answered. The asymmetry with the blocker sweep is the point.
+		var height: float = _height_for(cell)
+		_spawn_blocker(
+			item,
+			cell,
+			material_table,
+			UnitGeometry.assembly_placements(item, cell, 0.0, null, height),
+			height
+		)
 	elif item is Matrix:
 		_static.add_child(_marker(cell, FIELD_ITEM_MARKER_COLOR, FIELD_ITEM_MARKER_HEIGHT))
 
