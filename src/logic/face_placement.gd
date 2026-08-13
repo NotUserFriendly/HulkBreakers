@@ -152,3 +152,73 @@ static func span_of(placements: Array[MapPlacement]) -> Dictionary:
 	if is_inf(top):
 		return {"top": 0.0, "bottom": 0.0}
 	return {"top": top, "bottom": bottom}
+
+
+## **The facing a placement gets from the click that made it**, in the radians convention
+## `Blocker.facing`, `Surface.facing` and `Unit.orientation` all share. taskblock-69 Pass C.
+##
+## Reported as a veneer defect: *"veneers don't respect the facing of the clicked side of a thing.
+## They also always place on one edge of a top face, and should align their facing to the edge.
+## They're already getting the 'grow to' height from a piece, so they should face it as well."*
+## `LedgeVeneer.placement_for` already reads the *grow-to* height from the piece that was struck;
+## this reads the **direction** from the same click.
+##
+## | struck face | derived facing |
+## |---|---|
+## | a side | back at the piece that was struck — the placement lands beside it and faces it |
+## | top (+Y) | the cell edge nearest the struck point |
+## | bottom (−Y) | `fallback` — nothing hangs off the underside of a thing at an edge |
+## | no face at all | `fallback` |
+##
+## **`fallback` is the author's own panel value**, so a click that implies no direction leaves the
+## authored one alone rather than snapping it to an axis nobody chose.
+##
+## ## The rotation convention is `BodyProjector`'s, and it is not re-derived here
+##
+## A part authored against `+Z` — `ledge_veneer`, `ladder` — has its panel on its own `+Z` face, so
+## the facing wanted is the one whose forward points that way. `BodyProjector.orientation_for` is
+## the exact inverse of `forward_for`, which is *the* rotation convention in this codebase; spelling
+## `atan2` here would be the second copy, and the mirrored-convention bug its own header describes
+## is what a second copy costs.
+##
+## ## Derived at placement time, never re-applied on read
+##
+## This returns a value the caller writes into the record once. **A rule re-applied whenever
+## geometry is asked for would undo any later adjustment** — the placement's facing is the
+## authority the moment it exists, and the derivation is only what fills it in.
+static func facing_for(cell: Vector2i, normal: Variant, point: Variant, fallback: float) -> float:
+	if normal is not Vector3:
+		return fallback
+	var face: Vector3 = normal as Vector3
+	if face.y <= -AXIS_EPSILON:
+		return fallback
+	if face.y >= AXIS_EPSILON:
+		return _facing_toward_nearest_edge(cell, point, fallback)
+	# **Back at what was struck.** The placement lands at `cell + _side_step(normal)`, which is one
+	# step along the normal; the piece it hangs from is therefore one step *against* it.
+	var step: Vector2i = _side_step(face)
+	return BodyProjector.orientation_for(Vector2(float(-step.x), float(-step.y)))
+
+
+## **The facing that points at whichever edge of `cell` the struck point is nearest.**
+##
+## *"They also always place on one edge of a top face, and should align their facing to the edge."*
+## A top click has no direction of its own — the normal is straight up — so the direction is read
+## off **where inside the cell** the author clicked. Whichever of X or Z the point leans further
+## along picks the edge, the same either-or `_side_step` applies to a normal and for the same
+## reason: a diagonal is not an edge a cell has.
+##
+## A pick that reported no point falls back — the author's panel value, not a guessed axis.
+## Dead centre resolves to the `+X` edge by `>=`, which is arbitrary and is a case no click can
+## really land on; it is stated rather than left as an accident of the comparison.
+static func _facing_toward_nearest_edge(cell: Vector2i, point: Variant, fallback: float) -> float:
+	if point is not Vector3:
+		return fallback
+	var world: Vector3 = point as Vector3
+	var from_centre := Vector2(
+		world.x - float(cell.x) * UnitGeometry.CELL_SIZE,
+		world.z - float(cell.y) * UnitGeometry.CELL_SIZE
+	)
+	if absf(from_centre.x) >= absf(from_centre.y):
+		return BodyProjector.orientation_for(Vector2(signf(from_centre.x), 0.0))
+	return BodyProjector.orientation_for(Vector2(0.0, signf(from_centre.y)))

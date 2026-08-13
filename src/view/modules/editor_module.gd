@@ -318,9 +318,13 @@ func _place_with(cell: Vector2i, tool: StringName) -> bool:
 	# in, because the span reads what is already at the landing cell and an auto-placed floor would
 	# be a surface the author never authored, arriving in time to be snapped to.
 	var veneer: Dictionary = _veneer_at(cell, at)
+	# taskblock-69 Pass C: **derived from the struck face, not read off the panel.** Asked of the
+	# STRUCK cell rather than the landing cell — a side click's facing is a fact about the piece
+	# that was clicked, and `at` is one step away from it.
+	var pointing: float = placement_facing(cell)
 	if not veneer.is_empty():
 		var grown: MapPlacement = controller.place(
-			at, selected_part, selected_kind, veneer["height"], facing()
+			at, selected_part, selected_kind, veneer["height"], pointing
 		)
 		if grown == null:
 			return false
@@ -328,7 +332,7 @@ func _place_with(cell: Vector2i, tool: StringName) -> bool:
 		return true
 	_ensure_a_tile_under(at)
 	var placed: MapPlacement = controller.place(
-		at, selected_part, selected_kind, target["height"], facing()
+		at, selected_part, selected_kind, target["height"], pointing
 	)
 	if placed == null:
 		return false
@@ -453,6 +457,28 @@ func placement_target(cell: Vector2i) -> Dictionary:
 	return FacePlacement.target_from(
 		struck_placements(cell), cell, struck_normal, height(), DataLibrary.get_part(selected_part)
 	)
+
+
+## **Which way the next placement faces**, derived from the click that makes it. taskblock-69
+## Pass C.
+##
+## `placement_target`'s counterpart, and the same arrangement for the same reason: **one answer,
+## asked by the ghost and by the click.** A preview that derived its own facing and a placement
+## that derived its own facing would be two answers to one question, which is what the ghost exists
+## to stop being possible.
+##
+## **A surface keeps the panel's own value, and that is a decision rather than an omission.**
+## `MapPlacement.facing` is documented *"what makes a ramp directional"*, and a ramp's direction is
+## a thing the author states — deriving it from which corner of a tile the cursor happened to be
+## over would take an explicit authoring control away. The kinds this fills in are the ones whose
+## facing was **discarded by every consumer** until taskblock-69 Pass A, so no author has ever been
+## able to mean anything by the panel value on one: a blocker (`ledge_veneer`, `ladder`, a wall
+## segment) and a loose field item.
+func placement_facing(cell: Vector2i) -> float:
+	var authored: float = facing()
+	if EditorTools.kind_for(active_tool, selected_part) == MapPlacement.KIND_SURFACE:
+		return authored
+	return FacePlacement.facing_for(cell, struck_normal, struck_point, authored)
 
 
 ## **The placement the click struck**, or the topmost at `cell` when the pick reported no point.

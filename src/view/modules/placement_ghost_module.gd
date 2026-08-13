@@ -94,6 +94,10 @@ func _on_hovered_pick(pick: Dictionary) -> void:
 	editor.struck_normal = pick.get("normal")
 	editor.struck_point = pick.get("point")
 	var at: Dictionary = editor.placement_target(cell as Vector2i)
+	# taskblock-69 Pass C: **asked inside the same window, for the same reason.** The derived facing
+	# reads the struck face and the struck point, and both are restored two lines below — a `_draw`
+	# that asked afterwards would preview a facing the click is not going to use.
+	var pointing: float = editor.placement_facing(cell as Vector2i)
 	# taskblock-59 Pass A: **asked while the struck face is still set**, because the refusal is about
 	# where the placement would land and that is what the face decides.
 	var refusal: String = editor.placement_refusal(cell as Vector2i)
@@ -107,7 +111,7 @@ func _on_hovered_pick(pick: Dictionary) -> void:
 		clear()
 		return
 	target = at
-	_draw(editor, target)
+	_draw(editor, target, pointing)
 
 
 func clear() -> void:
@@ -127,14 +131,14 @@ func ghost_transforms() -> Array[Transform3D]:
 	return found
 
 
-func _draw(editor: EditorModule, at: Dictionary) -> void:
+func _draw(editor: EditorModule, at: Dictionary, facing: float) -> void:
 	clear()
 	target = at
 	var part: Part = DataLibrary.get_part(editor.selected_part)
 	if part == null or _root == null:
 		return
 	var placements: Array[BoxPlacement] = UnitGeometry.assembly_placements(
-		part, at["cell"], _drawn_facing(editor), null, _drawn_height(editor, at)
+		part, at["cell"], facing, null, _drawn_height(editor, at)
 	)
 	for placement: BoxPlacement in placements:
 		var mesh := MeshInstance3D.new()
@@ -180,24 +184,6 @@ func _drawn_height(editor: EditorModule, at: Dictionary) -> float:
 	if grid != null and Surface.first_walkable(grid.surfaces_at(cell)) != null:
 		return UnitGeometry.true_height_for_cell(cell, grid)
 	return editor.height()
-
-
-## The facing `BoardView` will draw this at — **the authored one, for every kind.**
-##
-## taskblock-69 Pass B. This returned `0.0` for a blocker or a loose item, and it was right to:
-## `_spawn_blocker` passed a literal `0.0`, so the authored facing reached a `Surface` and nothing
-## else, and a ghost that had shown the facing would have been promising a rotation the board was
-## about to discard. **That was the ghost matching the logic**, which is the rule the taskblock-59
-## follow-up settled — *"we needed to make the ghost match the logic, not make the logic match the
-## ghost"* — and it stays the rule here. What changed is the logic: Pass A routed every blocker
-## consumer through `UnitGeometry.blocker_placements`, which reads the record's facing, so `0.0` is
-## now the answer that would lie.
-##
-## `EditorModule._place_with` has always passed `facing()` to `controller.place` for every kind,
-## blocker included, so the facing the click authors and the facing drawn here are one value read
-## twice rather than two values kept in step.
-func _drawn_facing(editor: EditorModule) -> float:
-	return editor.facing()
 
 
 func _grid() -> Grid:
